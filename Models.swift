@@ -8,6 +8,7 @@
 
 import Foundation
 import SwiftData
+import UIKit
 
 // MARK: - Wing
 /// Modèle SwiftData représentant une voile de parapente
@@ -38,6 +39,32 @@ final class Wing {
     /// Convertit le modèle SwiftData en DTO pour l'envoi vers la Watch
     func toDTO() -> WingDTO {
         WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: photoData)
+    }
+
+    /// Convertit en DTO avec photo compressée pour la Watch (max 50KB)
+    func toDTOForWatch() -> WingDTO {
+        var compressedPhotoData: Data? = nil
+
+        if let originalData = photoData, let image = UIImage(data: originalData) {
+            // Redimensionner l'image pour la Watch (max 100x100)
+            let maxSize: CGFloat = 100
+            let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
+            let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            image.draw(in: CGRect(origin: .zero, size: newSize))
+            let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+
+            // Compresser en JPEG avec qualité réduite
+            compressedPhotoData = resizedImage?.jpegData(compressionQuality: 0.5)
+
+            if let data = compressedPhotoData {
+                print("📸 Compressed photo from \(originalData.count / 1024)KB to \(data.count / 1024)KB")
+            }
+        }
+
+        return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: compressedPhotoData)
     }
 }
 

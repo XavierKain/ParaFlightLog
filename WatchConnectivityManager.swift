@@ -61,7 +61,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
 
         let wings = dataController.fetchWings()
-        let wingsDTO = wings.map { $0.toDTO() }
+        // Utiliser toDTOForWatch pour compresser les images
+        let wingsDTO = wings.map { $0.toDTOForWatch() }
 
         print("📤 Attempting to send \(wingsDTO.count) wings to Watch...")
 
@@ -108,7 +109,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
 
         let wings = dataController.fetchWings()
-        let wingsDTO = wings.map { $0.toDTO() }
+        // Utiliser toDTOForWatch pour compresser les images
+        let wingsDTO = wings.map { $0.toDTOForWatch() }
 
         print("📤 Attempting to transfer \(wingsDTO.count) wings to Watch...")
 
@@ -197,9 +199,19 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     /// Reçoit un message instantané depuis la Watch (alternative plus rapide)
     func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-        print("📨 Received instant message from Watch")
+        print("📨 Received instant message from Watch: \(message.keys)")
 
-        // Même logique que didReceiveUserInfo mais avec réponse
+        // Vérifier si c'est une demande de synchronisation des voiles
+        if let action = message["action"] as? String, action == "requestWings" {
+            print("📥 Watch requested wings sync")
+            DispatchQueue.main.async { [weak self] in
+                self?.sendWingsToWatch()
+            }
+            replyHandler(["status": "success", "message": "Wings sync triggered"])
+            return
+        }
+
+        // Sinon, c'est un vol
         guard let flightData = message["flight"] as? [String: Any],
               let jsonData = try? JSONSerialization.data(withJSONObject: flightData),
               let flightDTO = try? JSONDecoder().decode(FlightDTO.self, from: jsonData) else {
@@ -225,6 +237,19 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                     self?.dataController?.addFlight(from: flightDTO, location: nil, spotName: nil)
                     replyHandler(["status": "success", "spotName": "Unknown"])
                 }
+            }
+        }
+    }
+
+    /// Reçoit un message sans réponse attendue
+    func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        print("📨 Received message from Watch (no reply): \(message.keys)")
+
+        // Vérifier si c'est une demande de synchronisation des voiles
+        if let action = message["action"] as? String, action == "requestWings" {
+            print("📥 Watch requested wings sync")
+            DispatchQueue.main.async { [weak self] in
+                self?.sendWingsToWatch()
             }
         }
     }
