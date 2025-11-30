@@ -67,6 +67,11 @@ final class Wing {
 
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: compressedPhotoData)
     }
+
+    /// Convertit en DTO sans photo (fallback si la sync avec images échoue)
+    func toDTOWithoutPhoto() -> WingDTO {
+        return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil)
+    }
 }
 
 // MARK: - Flight

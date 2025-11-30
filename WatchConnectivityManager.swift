@@ -61,33 +61,65 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
 
         let wings = dataController.fetchWings()
-        // Utiliser toDTOForWatch pour compresser les images
-        let wingsDTO = wings.map { $0.toDTOForWatch() }
 
-        print("📤 Attempting to send \(wingsDTO.count) wings to Watch...")
+        // Essayer d'abord avec les images compressées
+        let wingsDTOWithPhotos = wings.map { $0.toDTOForWatch() }
 
-        // Encoder directement en Data avec JSONEncoder (gère correctement Data/Base64)
-        guard let jsonData = try? JSONEncoder().encode(wingsDTO) else {
-            print("❌ Failed to encode wings to JSON data")
+        print("📤 Attempting to send \(wingsDTOWithPhotos.count) wings to Watch (with photos)...")
+
+        if let jsonData = try? JSONEncoder().encode(wingsDTOWithPhotos) {
+            let dataSizeKB = Double(jsonData.count) / 1024.0
+            print("📊 Encoded data size with photos: \(String(format: "%.2f", dataSizeKB)) KB")
+
+            // Si moins de 100KB, envoyer avec les photos
+            if dataSizeKB < 100 {
+                let base64String = jsonData.base64EncodedString()
+                let context = ["wingsData": base64String]
+
+                do {
+                    try WCSession.default.updateApplicationContext(context)
+                    print("✅ Sent \(wingsDTOWithPhotos.count) wings to Watch via updateApplicationContext (with photos)")
+                    return
+                } catch {
+                    print("⚠️ Failed with photos: \(error.localizedDescription), trying without...")
+                }
+            } else {
+                print("⚠️ Data too large (\(String(format: "%.0f", dataSizeKB))KB), sending without photos...")
+            }
+        }
+
+        // Fallback : envoyer sans les photos
+        sendWingsWithoutPhotos()
+    }
+
+    /// Envoie les voiles sans photos (fallback)
+    private func sendWingsWithoutPhotos() {
+        guard let dataController = dataController else { return }
+
+        let wings = dataController.fetchWings()
+        let wingsDTONoPhotos = wings.map { $0.toDTOWithoutPhoto() }
+
+        print("📤 Sending \(wingsDTONoPhotos.count) wings WITHOUT photos...")
+
+        guard let jsonData = try? JSONEncoder().encode(wingsDTONoPhotos) else {
+            print("❌ Failed to encode wings without photos")
             return
         }
 
-        // Vérifier la taille des données
         let dataSizeKB = Double(jsonData.count) / 1024.0
-        print("📊 Encoded data size: \(String(format: "%.2f", dataSizeKB)) KB")
+        print("📊 Encoded data size without photos: \(String(format: "%.2f", dataSizeKB)) KB")
 
-        // Convertir en String Base64 pour le transfert (plus fiable que [[String: Any]])
         let base64String = jsonData.base64EncodedString()
         let context = ["wingsData": base64String]
 
         do {
             try WCSession.default.updateApplicationContext(context)
-            print("✅ Sent \(wingsDTO.count) wings to Watch via updateApplicationContext")
+            print("✅ Sent \(wingsDTONoPhotos.count) wings to Watch (without photos)")
         } catch {
             print("❌ Failed to send wings: \(error.localizedDescription)")
-            print("   Error details: \(error)")
-            // Fallback sur transferUserInfo
-            sendWingsViaTransfer()
+            // Dernier recours : transferUserInfo
+            WCSession.default.transferUserInfo(context)
+            print("📤 Fallback: using transferUserInfo")
         }
     }
 
@@ -108,17 +140,16 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
 
         let wings = dataController.fetchWings()
-        // Utiliser toDTOForWatch pour compresser les images
-        let wingsDTO = wings.map { $0.toDTOForWatch() }
+        // Sans photos pour le transfer
+        let wingsDTO = wings.map { $0.toDTOWithoutPhoto() }
 
-        print("📤 Attempting to transfer \(wingsDTO.count) wings to Watch...")
+        print("📤 Attempting to transfer \(wingsDTO.count) wings to Watch (without photos)...")
 
         guard let jsonData = try? JSONEncoder().encode(wingsDTO) else {
             print("❌ Failed to encode wings")
             return
         }
 
-        // Convertir en String Base64 pour le transfert
         let base64String = jsonData.base64EncodedString()
         let userInfo = ["wingsData": base64String]
 

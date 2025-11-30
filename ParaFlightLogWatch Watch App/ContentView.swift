@@ -13,25 +13,49 @@ struct ContentView: View {
     @State private var selectedWing: WingDTO?
     @State private var selectedTab: Int = 0
     @State private var isFlying: Bool = false
+    // Timer et startDate au niveau ContentView pour persister pendant la navigation
+    @State private var flightStartDate: Date?
+    @State private var elapsedSeconds: Int = 0
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            // Écran 1 : Sélection de voile
-            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab, isFlying: isFlying)
-                .environment(watchManager)
-                .tag(0)
+        ZStack {
+            TabView(selection: $selectedTab) {
+                // Écran 1 : Sélection de voile
+                WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab, isFlying: isFlying)
+                    .environment(watchManager)
+                    .tag(0)
 
-            // Écran 2 : Timer et contrôle du vol
-            FlightTimerView(selectedWing: $selectedWing, selectedTab: $selectedTab, isFlying: $isFlying)
-                .environment(watchManager)
-                .tag(1)
+                // Écran 2 : Timer et contrôle du vol
+                FlightTimerView(
+                    selectedWing: $selectedWing,
+                    selectedTab: $selectedTab,
+                    isFlying: $isFlying,
+                    flightStartDate: $flightStartDate,
+                    elapsedSeconds: $elapsedSeconds
+                )
+                    .environment(watchManager)
+                    .tag(1)
+            }
+            .tabViewStyle(.page)
+            .allowsHitTesting(!isFlying || selectedTab == 1) // Bloquer swipe sauf sur l'écran timer
+
+            // Overlay invisible pour bloquer le swipe pendant le vol
+            if isFlying && selectedTab == 1 {
+                Color.clear
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture()
+                            .onChanged { _ in } // Absorber le gesture
+                    )
+                    .allowsHitTesting(false) // Laisser passer les taps au bouton Stop
+            }
         }
-        .tabViewStyle(.page)
-        // Empêcher le changement de tab pendant le vol via onChange
         .onChange(of: selectedTab) { oldValue, newValue in
             if isFlying && newValue != 1 {
                 // Forcer le retour à l'écran du chrono si un vol est en cours
-                selectedTab = 1
+                withAnimation {
+                    selectedTab = 1
+                }
             }
         }
     }
@@ -140,103 +164,107 @@ struct FlightTimerView: View {
     @Binding var selectedWing: WingDTO?
     @Binding var selectedTab: Int
     @Binding var isFlying: Bool
-    @State private var startDate: Date?
-    @State private var elapsedSeconds: Int = 0
-    @State private var timer: Timer?
+    @Binding var flightStartDate: Date?
+    @Binding var elapsedSeconds: Int
+
     @State private var showingFlightSummary = false
     @State private var completedFlightData: (duration: Int, wing: WingDTO)?
 
+    // Timer avec TimelineView pour être robuste même pendant la navigation
     var body: some View {
-        VStack(spacing: 8) {
-            // Voile sélectionnée
-            if let wing = selectedWing {
-                HStack(spacing: 6) {
-                    // Photo ou icône de la voile
-                    if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
-                        Image(uiImage: uiImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(width: 35, height: 35)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                    } else {
-                        Image(systemName: "wind")
-                            .font(.headline)
-                            .foregroundStyle(.blue)
-                            .frame(width: 35, height: 35)
-                    }
+        TimelineView(.periodic(from: .now, by: 1.0)) { timeline in
+            VStack(spacing: 8) {
+                // Voile sélectionnée
+                if let wing = selectedWing {
+                    HStack(spacing: 6) {
+                        // Photo ou icône de la voile
+                        if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
+                            Image(uiImage: uiImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(width: 35, height: 35)
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
+                        } else {
+                            Image(systemName: "wind")
+                                .font(.headline)
+                                .foregroundStyle(.blue)
+                                .frame(width: 35, height: 35)
+                        }
 
-                    VStack(spacing: 2) {
-                        Text(wing.name)
-                            .font(.headline)
-                            .lineLimit(1)
-                        if let size = wing.size {
-                            Text("\(size) m²")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
+                        VStack(spacing: 2) {
+                            Text(wing.name)
+                                .font(.headline)
+                                .lineLimit(1)
+                            if let size = wing.size {
+                                Text("\(size) m²")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
                         }
                     }
-                }
-            } else {
-                VStack(spacing: 4) {
-                    Image(systemName: "arrow.left")
-                        .font(.title3)
-                        .foregroundStyle(.orange)
-                    Text("Choisir une voile")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-            }
-
-            // Spot (si vol en cours)
-            if isFlying {
-                HStack(spacing: 4) {
-                    Image(systemName: "location.fill")
-                        .font(.caption2)
-                        .foregroundStyle(.blue)
-                    Text(locationService.currentSpotName)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                .padding(.vertical, 4)
-            }
-
-            // Chrono
-            Text(formatElapsedTime(elapsedSeconds))
-                .font(.system(size: 38, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(isFlying ? .green : .primary)
-
-            // Bouton Start/Stop
-            Button {
-                if isFlying {
-                    stopFlight()
                 } else {
-                    startFlight()
+                    VStack(spacing: 4) {
+                        Image(systemName: "arrow.left")
+                            .font(.title3)
+                            .foregroundStyle(.orange)
+                        Text("Choisir une voile")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                    }
                 }
-            } label: {
-                Label(isFlying ? "Stop" : "Start", systemImage: isFlying ? "stop.circle.fill" : "play.circle.fill")
-                    .font(.title3)
+
+                // Spot (si vol en cours)
+                if isFlying {
+                    HStack(spacing: 4) {
+                        Image(systemName: "location.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.blue)
+                        Text(locationService.currentSpotName)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.vertical, 4)
+                }
+
+                // Chrono - calculé dynamiquement à chaque tick
+                let displaySeconds = calculateElapsedSeconds()
+                Text(formatElapsedTime(displaySeconds))
+                    .font(.system(size: 38, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(isFlying ? .green : .primary)
+
+                // Bouton Start/Stop
+                Button {
+                    if isFlying {
+                        stopFlight()
+                    } else {
+                        startFlight()
+                    }
+                } label: {
+                    Label(isFlying ? "Stop" : "Start", systemImage: isFlying ? "stop.circle.fill" : "play.circle.fill")
+                        .font(.title3)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(isFlying ? .red : .green)
+                .disabled(!isFlying && selectedWing == nil)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(isFlying ? .red : .green)
-            .disabled(!isFlying && selectedWing == nil)
         }
         .sheet(isPresented: $showingFlightSummary) {
             if let data = completedFlightData {
                 FlightSummaryView(duration: data.duration, wing: data.wing)
             }
         }
-        .onDisappear {
-            timer?.invalidate()
+    }
+
+    // MARK: - Helpers
+
+    private func calculateElapsedSeconds() -> Int {
+        guard isFlying, let start = flightStartDate else {
+            return elapsedSeconds
         }
-        .onChange(of: scenePhase) { oldPhase, newPhase in
-            if newPhase == .active && isFlying, let start = startDate {
-                // Recalculer le temps écoulé depuis le début du vol
-                elapsedSeconds = Int(Date().timeIntervalSince(start))
-            }
-        }
+        return Int(Date().timeIntervalSince(start))
     }
 
     // MARK: - Flight Control
@@ -244,28 +272,21 @@ struct FlightTimerView: View {
     private func startFlight() {
         guard selectedWing != nil else { return }
 
-        startDate = Date()
+        flightStartDate = Date()
         elapsedSeconds = 0
         isFlying = true
 
         // Démarrer la localisation
         locationService.startUpdatingLocation()
-
-        // Démarrer le timer
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            elapsedSeconds += 1
-        }
     }
 
     private func stopFlight() {
-        guard let wing = selectedWing, let start = startDate else { return }
+        guard let wing = selectedWing, let start = flightStartDate else { return }
 
         let end = Date()
         let duration = Int(end.timeIntervalSince(start))
 
-        // Arrêter le timer et le GPS
-        timer?.invalidate()
-        timer = nil
+        // Arrêter le GPS
         locationService.stopUpdatingLocation()
 
         // Créer le FlightDTO
@@ -284,15 +305,13 @@ struct FlightTimerView: View {
 
         // Reset l'interface
         isFlying = false
-        elapsedSeconds = 0
-        startDate = nil
+        elapsedSeconds = duration // Garder le temps final affiché
+        flightStartDate = nil
         selectedWing = nil
 
         // Afficher le résumé
         showingFlightSummary = true
     }
-
-    // MARK: - Helpers
 
     private func formatElapsedTime(_ seconds: Int) -> String {
         let hours = seconds / 3600
