@@ -19,14 +19,14 @@ struct ContentView: View {
 
     var body: some View {
         TabView {
-            FlightsView()
-                .tabItem {
-                    Label("Vols", systemImage: "airplane")
-                }
-
             WingsView()
                 .tabItem {
                     Label("Voiles", systemImage: "wind")
+                }
+
+            FlightsView()
+                .tabItem {
+                    Label("Vols", systemImage: "airplane")
                 }
 
             StatsView()
@@ -1104,8 +1104,16 @@ struct WingFlightsDetailView: View {
     let wing: Wing
     let flights: [Flight]
 
-    var wingFlights: [Flight] {
-        flights.filter { $0.wing?.id == wing.id }.sorted { $0.startDate > $1.startDate }
+    // Calculer les vols filtrés immédiatement lors de l'init
+    private let wingFlights: [Flight]
+
+    init(wing: Wing, flights: [Flight]) {
+        self.wing = wing
+        self.flights = flights
+        // Pré-calculer les vols de cette voile
+        self.wingFlights = flights
+            .filter { $0.wing?.id == wing.id }
+            .sorted { $0.startDate > $1.startDate }
     }
 
     var body: some View {
@@ -1156,8 +1164,16 @@ struct SpotFlightsDetailView: View {
     let spotName: String
     let flights: [Flight]
 
-    var spotFlights: [Flight] {
-        flights.filter { $0.spotName == spotName }.sorted { $0.startDate > $1.startDate }
+    // Calculer les vols filtrés immédiatement lors de l'init
+    private let spotFlights: [Flight]
+
+    init(spotName: String, flights: [Flight]) {
+        self.spotName = spotName
+        self.flights = flights
+        // Pré-calculer les vols de ce spot
+        self.spotFlights = flights
+            .filter { $0.spotName == spotName }
+            .sorted { $0.startDate > $1.startDate }
     }
 
     var body: some View {

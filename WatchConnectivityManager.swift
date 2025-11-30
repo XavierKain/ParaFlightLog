@@ -66,22 +66,19 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
         print("📤 Attempting to send \(wingsDTO.count) wings to Watch...")
 
-        // Encoder en dictionnaire pour WatchConnectivity
-        guard let data = try? JSONEncoder().encode(wingsDTO) else {
+        // Encoder directement en Data avec JSONEncoder (gère correctement Data/Base64)
+        guard let jsonData = try? JSONEncoder().encode(wingsDTO) else {
             print("❌ Failed to encode wings to JSON data")
             return
         }
 
         // Vérifier la taille des données
-        let dataSizeKB = Double(data.count) / 1024.0
+        let dataSizeKB = Double(jsonData.count) / 1024.0
         print("📊 Encoded data size: \(String(format: "%.2f", dataSizeKB)) KB")
 
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
-            print("❌ Failed to convert data to JSON object")
-            return
-        }
-
-        let context = ["wings": json]
+        // Convertir en String Base64 pour le transfert (plus fiable que [[String: Any]])
+        let base64String = jsonData.base64EncodedString()
+        let context = ["wingsData": base64String]
 
         do {
             try WCSession.default.updateApplicationContext(context)
@@ -89,6 +86,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         } catch {
             print("❌ Failed to send wings: \(error.localizedDescription)")
             print("   Error details: \(error)")
+            // Fallback sur transferUserInfo
+            sendWingsViaTransfer()
         }
     }
 
@@ -114,13 +113,15 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
         print("📤 Attempting to transfer \(wingsDTO.count) wings to Watch...")
 
-        guard let data = try? JSONEncoder().encode(wingsDTO),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+        guard let jsonData = try? JSONEncoder().encode(wingsDTO) else {
             print("❌ Failed to encode wings")
             return
         }
 
-        let userInfo = ["wings": json]
+        // Convertir en String Base64 pour le transfert
+        let base64String = jsonData.base64EncodedString()
+        let userInfo = ["wingsData": base64String]
+
         WCSession.default.transferUserInfo(userInfo)
         print("✅ Transferred \(wingsDTO.count) wings to Watch via transferUserInfo")
     }

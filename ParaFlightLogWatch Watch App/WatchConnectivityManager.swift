@@ -16,11 +16,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     static let shared = WatchConnectivityManager()
 
     // Liste des voiles reçues de l'iPhone
-    var wings: [WingDTO] = [] {
-        didSet {
-            saveWingsLocally()
-        }
-    }
+    var wings: [WingDTO] = []
 
     // État de la connexion
     var isPhoneReachable: Bool = false
@@ -28,10 +24,12 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     private override init() {
         super.init()
-        // Charger les voiles sauvegardées
+        // Charger les voiles sauvegardées de manière synchrone (rapide)
         loadWingsFromLocal()
-        // Activer automatiquement la session au démarrage
-        activateSession()
+        // Activer la session en arrière-plan pour éviter le lag
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            self?.activateSession()
+        }
     }
 
     // MARK: - Local Persistence
@@ -182,41 +180,56 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     /// Reçoit des données via transferUserInfo (alternative)
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         print("📥 Received user info from iPhone")
-
-        // Vérifier si ce sont des Wings
-        if userInfo["wings"] != nil {
-            processReceivedContext(userInfo)
-        }
+        processReceivedContext(userInfo)
     }
 
     /// Traite le contexte reçu (extraction des Wings)
     private func processReceivedContext(_ context: [String: Any]) {
         print("🔍 Processing received context: \(context.keys)")
 
-        guard let wingsData = context["wings"] as? [[String: Any]] else {
-            print("❌ No 'wings' key in context or wrong type")
+        // Nouveau format : wingsData en Base64
+        if let base64String = context["wingsData"] as? String,
+           let jsonData = Data(base64Encoded: base64String) {
+
+            let dataSizeKB = Double(jsonData.count) / 1024.0
+            print("📊 Received data size: \(String(format: "%.2f", dataSizeKB)) KB")
+
+            guard let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
+                print("❌ Failed to decode WingDTO array from Base64")
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.wings = decodedWings
+                self.saveWingsLocally()
+                print("✅ Successfully received and stored \(decodedWings.count) wings from iPhone")
+            }
             return
         }
 
-        print("🔍 Found \(wingsData.count) wings in context")
+        // Ancien format (compatibilité) : wings en [[String: Any]]
+        if let wingsData = context["wings"] as? [[String: Any]] {
+            print("🔍 Found \(wingsData.count) wings in context (legacy format)")
 
-        guard let jsonData = try? JSONSerialization.data(withJSONObject: wingsData) else {
-            print("❌ Failed to convert wings to JSON data")
+            guard let jsonData = try? JSONSerialization.data(withJSONObject: wingsData) else {
+                print("❌ Failed to convert wings to JSON data")
+                return
+            }
+
+            guard let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
+                print("❌ Failed to decode WingDTO array")
+                return
+            }
+
+            DispatchQueue.main.async {
+                self.wings = decodedWings
+                self.saveWingsLocally()
+                print("✅ Successfully received and stored \(decodedWings.count) wings from iPhone (legacy)")
+            }
             return
         }
 
-        let dataSizeKB = Double(jsonData.count) / 1024.0
-        print("📊 Received data size: \(String(format: "%.2f", dataSizeKB)) KB")
-
-        guard let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
-            print("❌ Failed to decode WingDTO array")
-            return
-        }
-
-        DispatchQueue.main.async {
-            self.wings = decodedWings
-            print("✅ Successfully received and stored \(decodedWings.count) wings from iPhone")
-        }
+        print("⚠️ No valid wings data found in context")
     }
 
     #if os(watchOS)
