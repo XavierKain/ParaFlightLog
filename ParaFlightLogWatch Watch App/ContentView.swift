@@ -18,38 +18,26 @@ struct ContentView: View {
     @State private var elapsedSeconds: Int = 0
 
     var body: some View {
-        ZStack {
-            TabView(selection: $selectedTab) {
-                // Écran 1 : Sélection de voile
-                WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab, isFlying: isFlying)
-                    .environment(watchManager)
-                    .tag(0)
+        TabView(selection: $selectedTab) {
+            // Écran 1 : Sélection de voile
+            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab, isFlying: isFlying)
+                .environment(watchManager)
+                .tag(0)
 
-                // Écran 2 : Timer et contrôle du vol
-                FlightTimerView(
-                    selectedWing: $selectedWing,
-                    selectedTab: $selectedTab,
-                    isFlying: $isFlying,
-                    flightStartDate: $flightStartDate,
-                    elapsedSeconds: $elapsedSeconds
-                )
-                    .environment(watchManager)
-                    .tag(1)
-            }
-            .tabViewStyle(.page)
-            .allowsHitTesting(!isFlying || selectedTab == 1) // Bloquer swipe sauf sur l'écran timer
-
-            // Overlay invisible pour bloquer le swipe pendant le vol
-            if isFlying && selectedTab == 1 {
-                Color.clear
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture()
-                            .onChanged { _ in } // Absorber le gesture
-                    )
-                    .allowsHitTesting(false) // Laisser passer les taps au bouton Stop
-            }
+            // Écran 2 : Timer et contrôle du vol
+            FlightTimerView(
+                selectedWing: $selectedWing,
+                selectedTab: $selectedTab,
+                isFlying: $isFlying,
+                flightStartDate: $flightStartDate,
+                elapsedSeconds: $elapsedSeconds
+            )
+                .environment(watchManager)
+                .tag(1)
         }
+        .tabViewStyle(.page)
+        // Bloquer complètement le swipe pendant le vol avec un gesture vide qui a priorité
+        .gesture(isFlying ? DragGesture().onChanged { _ in }.onEnded { _ in } : nil)
         .onChange(of: selectedTab) { oldValue, newValue in
             if isFlying && newValue != 1 {
                 // Forcer le retour à l'écran du chrono si un vol est en cours
@@ -305,7 +293,7 @@ struct FlightTimerView: View {
 
         // Reset l'interface
         isFlying = false
-        elapsedSeconds = duration // Garder le temps final affiché
+        elapsedSeconds = 0 // Remettre le chrono à zéro pour le prochain vol
         flightStartDate = nil
         selectedWing = nil
 
