@@ -8,11 +8,11 @@
 
 import Foundation
 import CoreLocation
+import MapKit
 
 @Observable
 final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
-    private let geocoder = CLGeocoder()
 
     var lastKnownLocation: CLLocation?
     var currentSpotName: String = "Recherche..."
@@ -43,6 +43,50 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         locationManager.stopUpdatingLocation()
     }
 
+    // MARK: - Reverse Geocoding avec MapKit
+
+    private func reverseGeocode(location: CLLocation) {
+        Task {
+            do {
+                let request = MKLocalSearch.Request()
+                request.naturalLanguageQuery = "current location"
+                request.region = MKCoordinateRegion(
+                    center: location.coordinate,
+                    latitudinalMeters: 1000,
+                    longitudinalMeters: 1000
+                )
+
+                // Utiliser MKLocalPointsOfInterestRequest pour obtenir le nom du lieu
+                let placemarkRequest = CLGeocoder()
+
+                // Fallback: utiliser les coordonnées pour afficher
+                // On va simplement faire une recherche locale pour trouver le nom
+                let search = MKLocalSearch(request: request)
+                let response = try await search.start()
+
+                if let firstItem = response.mapItems.first {
+                    let spotName = firstItem.placemark.locality ??
+                                   firstItem.placemark.subLocality ??
+                                   firstItem.placemark.administrativeArea ??
+                                   "Spot inconnu"
+                    await MainActor.run {
+                        self.currentSpotName = spotName
+                        print("✅ Watch spot: \(spotName)")
+                    }
+                } else {
+                    await MainActor.run {
+                        self.currentSpotName = "Spot inconnu"
+                    }
+                }
+            } catch {
+                print("❌ Watch geocoding error: \(error.localizedDescription)")
+                await MainActor.run {
+                    self.currentSpotName = "Spot inconnu"
+                }
+            }
+        }
+    }
+
     // MARK: - CLLocationManagerDelegate
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
@@ -51,25 +95,8 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         lastKnownLocation = location
         print("📍 Watch location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
 
-        // Reverse geocoding
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            if let error = error {
-                print("❌ Watch geocoding error: \(error.localizedDescription)")
-                self?.currentSpotName = "Spot inconnu"
-                return
-            }
-
-            guard let placemark = placemarks?.first else {
-                self?.currentSpotName = "Spot inconnu"
-                return
-            }
-
-            let spotName = placemark.locality ?? placemark.subLocality ?? placemark.administrativeArea ?? "Spot inconnu"
-            DispatchQueue.main.async {
-                self?.currentSpotName = spotName
-                print("✅ Watch spot: \(spotName)")
-            }
-        }
+        // Reverse geocoding avec MapKit
+        reverseGeocode(location: location)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
