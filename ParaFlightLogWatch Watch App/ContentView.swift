@@ -17,7 +17,7 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             // Écran 1 : Sélection de voile
-            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab)
+            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab, isFlying: isFlying)
                 .environment(watchManager)
                 .tag(0)
 
@@ -27,7 +27,13 @@ struct ContentView: View {
                 .tag(1)
         }
         .tabViewStyle(.page)
-        .disabled(isFlying) // Désactiver le swipe pendant le vol
+        // Empêcher le changement de tab pendant le vol via onChange
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if isFlying && newValue != 1 {
+                // Forcer le retour à l'écran du chrono si un vol est en cours
+                selectedTab = 1
+            }
+        }
     }
 }
 
@@ -37,6 +43,7 @@ struct WingSelectionView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Binding var selectedWing: WingDTO?
     @Binding var selectedTab: Int
+    var isFlying: Bool = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -113,6 +120,8 @@ struct WingSelectionView: View {
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(selectedWing?.id == wing.id ? Color.green.opacity(0.15) : Color.gray.opacity(0.2))
                             )
+                            .disabled(isFlying) // Désactiver pendant le vol
+                            .opacity(isFlying ? 0.5 : 1.0)
                         }
                     }
                     .padding(.horizontal, 4)

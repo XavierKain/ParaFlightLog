@@ -252,6 +252,7 @@ struct EditFlightView: View {
 struct WingsView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \Wing.createdAt, order: .reverse) private var wings: [Wing]
     @State private var showingAddWing = false
 
@@ -292,8 +293,12 @@ struct WingsView: View {
     }
 
     private func deleteWings(at offsets: IndexSet) {
-        for index in offsets {
-            dataController.deleteWing(wings[index])
+        withAnimation {
+            for index in offsets {
+                let wing = wings[index]
+                modelContext.delete(wing)
+            }
+            try? modelContext.save()
         }
         // Mettre à jour la Watch après suppression
         watchManager.sendWingsToWatch()

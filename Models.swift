@@ -51,16 +51,17 @@ final class Wing {
             let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
             let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
 
-            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-            image.draw(in: CGRect(origin: .zero, size: newSize))
-            let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
-            UIGraphicsEndImageContext()
+            // Utiliser UIGraphicsImageRenderer pour conserver la transparence
+            let renderer = UIGraphicsImageRenderer(size: newSize)
+            let resizedImage = renderer.image { context in
+                image.draw(in: CGRect(origin: .zero, size: newSize))
+            }
 
-            // Compresser en JPEG avec qualité réduite
-            compressedPhotoData = resizedImage?.jpegData(compressionQuality: 0.5)
+            // Utiliser PNG pour conserver la transparence (pas JPEG)
+            compressedPhotoData = resizedImage.pngData()
 
             if let data = compressedPhotoData {
-                print("📸 Compressed photo from \(originalData.count / 1024)KB to \(data.count / 1024)KB")
+                print("📸 Compressed photo from \(originalData.count / 1024)KB to \(data.count / 1024)KB (PNG with transparency)")
             }
         }
 
