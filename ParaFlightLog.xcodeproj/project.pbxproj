@@ -6,14 +6,61 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6532EDBB92000C716D0 /* LocationService.swift */; };
+		2564C6582EDBB92000C716D0 /* DataController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6522EDBB92000C716D0 /* DataController.swift */; };
+		2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6542EDBB92000C716D0 /* IOSViews.swift */; };
+		2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */; };
+		257C68F32ECB7651005F3773 /* ParaFlightLogWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		25C979902EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
+		25C979922EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
+		25C979932EDBB5DA009233B8 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798E2EDBB5DA009233B8 /* Models.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		257C68F12ECB7651005F3773 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 257C68CD2ECB7559005F3773 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 257C68E82ECB7650005F3773;
+			remoteInfo = "ParaFlightLogWatch Watch App";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		257C68F72ECB7651005F3773 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				257C68F32ECB7651005F3773 /* ParaFlightLogWatch Watch App.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		2564C6522EDBB92000C716D0 /* DataController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataController.swift; sourceTree = "<group>"; };
+		2564C6532EDBB92000C716D0 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		2564C6542EDBB92000C716D0 /* IOSViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSViews.swift; sourceTree = "<group>"; };
+		2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
 		257C68D52ECB7559005F3773 /* ParaFlightLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ParaFlightLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ParaFlightLogWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		25C9798E2EDBB5DA009233B8 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		25C9798F2EDBB5DA009233B8 /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		257C68D72ECB7559005F3773 /* ParaFlightLog */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ParaFlightLog;
+			sourceTree = "<group>";
+		};
+		257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = "ParaFlightLogWatch Watch App";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -26,13 +73,35 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		257C68E62ECB7650005F3773 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		2564C6552EDBB92000C716D0 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				2564C6542EDBB92000C716D0 /* IOSViews.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
 		257C68CC2ECB7559005F3773 = {
 			isa = PBXGroup;
 			children = (
+				25C9798E2EDBB5DA009233B8 /* Models.swift */,
+				2564C6522EDBB92000C716D0 /* DataController.swift */,
+				2564C6532EDBB92000C716D0 /* LocationService.swift */,
+				2564C6552EDBB92000C716D0 /* Views */,
+				2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */,
+				25C9798F2EDBB5DA009233B8 /* SharedModels.swift */,
 				257C68D72ECB7559005F3773 /* ParaFlightLog */,
+				257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */,
 				257C68D62ECB7559005F3773 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -41,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				257C68D52ECB7559005F3773 /* ParaFlightLog.app */,
+				257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -55,10 +125,12 @@
 				257C68D12ECB7559005F3773 /* Sources */,
 				257C68D22ECB7559005F3773 /* Frameworks */,
 				257C68D32ECB7559005F3773 /* Resources */,
+				257C68F72ECB7651005F3773 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				257C68F22ECB7651005F3773 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				257C68D72ECB7559005F3773 /* ParaFlightLog */,
@@ -68,6 +140,28 @@
 			);
 			productName = ParaFlightLog;
 			productReference = 257C68D52ECB7559005F3773 /* ParaFlightLog.app */;
+			productType = "com.apple.product-type.application";
+		};
+		257C68E82ECB7650005F3773 /* ParaFlightLogWatch Watch App */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 257C68F42ECB7651005F3773 /* Build configuration list for PBXNativeTarget "ParaFlightLogWatch Watch App" */;
+			buildPhases = (
+				257C68E52ECB7650005F3773 /* Sources */,
+				257C68E62ECB7650005F3773 /* Frameworks */,
+				257C68E72ECB7650005F3773 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */,
+			);
+			name = "ParaFlightLogWatch Watch App";
+			packageProductDependencies = (
+			);
+			productName = "ParaFlightLogWatch Watch App";
+			productReference = 257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -81,6 +175,9 @@
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
 					257C68D42ECB7559005F3773 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
+					257C68E82ECB7650005F3773 = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
 				};
@@ -100,12 +197,20 @@
 			projectRoot = "";
 			targets = (
 				257C68D42ECB7559005F3773 /* ParaFlightLog */,
+				257C68E82ECB7650005F3773 /* ParaFlightLogWatch Watch App */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		257C68D32ECB7559005F3773 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		257C68E72ECB7650005F3773 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -119,10 +224,32 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				25C979922EDBB5DA009233B8 /* SharedModels.swift in Sources */,
+				25C979932EDBB5DA009233B8 /* Models.swift in Sources */,
+				2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */,
+				2564C6582EDBB92000C716D0 /* DataController.swift in Sources */,
+				2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */,
+				2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		257C68E52ECB7650005F3773 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				25C979902EDBB5DA009233B8 /* SharedModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		257C68F22ECB7651005F3773 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 257C68E82ECB7650005F3773 /* ParaFlightLogWatch Watch App */;
+			targetProxy = 257C68F12ECB7651005F3773 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		257C68E02ECB755A005F3773 /* Debug */ = {
@@ -178,7 +305,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -236,7 +363,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 26.1;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -256,6 +383,9 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -288,6 +418,9 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -310,6 +443,74 @@
 			};
 			name = Release;
 		};
+		257C68F52ECB7651005F3773 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S96H22CQ8W;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWatch;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de vos vols.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		257C68F62ECB7651005F3773 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S96H22CQ8W;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWatch;
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de vos vols.";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.watchkitapp;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -327,6 +528,15 @@
 			buildConfigurations = (
 				257C68E32ECB755A005F3773 /* Debug */,
 				257C68E42ECB755A005F3773 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		257C68F42ECB7651005F3773 /* Build configuration list for PBXNativeTarget "ParaFlightLogWatch Watch App" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				257C68F52ECB7651005F3773 /* Debug */,
+				257C68F62ECB7651005F3773 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
