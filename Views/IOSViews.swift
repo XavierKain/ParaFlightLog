@@ -255,6 +255,8 @@ struct WingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.createdAt, order: .reverse) private var wings: [Wing]
     @State private var showingAddWing = false
+    @State private var wingToAction: Wing?
+    @State private var showingActionSheet = false
 
     var body: some View {
         NavigationStack {
@@ -272,8 +274,15 @@ struct WingsView: View {
                         } label: {
                             WingRow(wing: wing)
                         }
+                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                            Button(role: .destructive) {
+                                wingToAction = wing
+                                showingActionSheet = true
+                            } label: {
+                                Label("Supprimer", systemImage: "trash")
+                            }
+                        }
                     }
-                    .onDelete(perform: deleteWings)
                 }
             }
             .navigationTitle("Mes voiles")
@@ -289,19 +298,30 @@ struct WingsView: View {
             .sheet(isPresented: $showingAddWing) {
                 AddWingView()
             }
-        }
-    }
-
-    private func deleteWings(at offsets: IndexSet) {
-        withAnimation {
-            for index in offsets {
-                let wing = wings[index]
-                modelContext.delete(wing)
+            .confirmationDialog("Que voulez-vous faire ?", isPresented: $showingActionSheet, presenting: wingToAction) { wing in
+                Button("Archiver") {
+                    dataController.archiveWing(wing)
+                }
+                Button("Supprimer définitivement", role: .destructive) {
+                    let flightCount = wing.flights?.count ?? 0
+                    if flightCount > 0 {
+                        // Si la voile a des vols, forcer l'archivage
+                        dataController.archiveWing(wing)
+                    } else {
+                        // Si pas de vols, suppression directe
+                        dataController.deleteWing(wing)
+                    }
+                }
+                Button("Annuler", role: .cancel) { }
+            } message: { wing in
+                let flightCount = wing.flights?.count ?? 0
+                if flightCount > 0 {
+                    Text("Cette voile a \(flightCount) vol\(flightCount > 1 ? "s" : "") enregistré\(flightCount > 1 ? "s" : ""). L'archivage conservera les données, la suppression les effacera.")
+                } else {
+                    Text("Cette voile n'a aucun vol enregistré.")
+                }
             }
-            try? modelContext.save()
         }
-        // Mettre à jour la Watch après suppression
-        watchManager.sendWingsToWatch()
     }
 }
 
@@ -621,7 +641,6 @@ struct WingDetailView: View {
     @Query private var allFlights: [Flight]
     @State private var showingEditWing = false
     @State private var selectedFlight: Flight?
-    @State private var showingArchiveAlert = false
 
     var flights: [Flight] {
         allFlights.filter { $0.wing?.id == wing.id }
@@ -699,16 +718,6 @@ struct WingDetailView: View {
                     }
                 }
             }
-
-            Section {
-                Button(role: .destructive) {
-                    showingArchiveAlert = true
-                } label: {
-                    Label("Archiver cette voile", systemImage: "archivebox")
-                }
-            } footer: {
-                Text("L'archivage masque la voile mais conserve tous les vols. Vous pourrez la restaurer depuis Réglages > Voiles archivées.")
-            }
         }
         .navigationTitle("Détails")
         .navigationBarTitleDisplayMode(.inline)
@@ -726,15 +735,6 @@ struct WingDetailView: View {
         }
         .sheet(item: $selectedFlight) { flight in
             EditFlightView(flight: flight)
-        }
-        .alert("Archiver cette voile ?", isPresented: $showingArchiveAlert) {
-            Button("Annuler", role: .cancel) { }
-            Button("Archiver", role: .destructive) {
-                dataController.archiveWing(wing)
-                dismiss()
-            }
-        } message: {
-            Text("La voile \"\(wing.name)\" sera masquée mais tous ses vols seront conservés. Vous pourrez la restaurer depuis les Réglages.")
         }
     }
 }
@@ -1904,7 +1904,7 @@ struct FlightSummaryView: View {
 struct ArchivedWingsView: View {
     @Environment(DataController.self) private var dataController
     @Environment(\.dismiss) private var dismiss
-    @State private var archivedWings: [Wing] = []
+    @Query(filter: #Predicate<Wing> { $0.isArchived }, sort: \Wing.createdAt, order: .reverse) private var archivedWings: [Wing]
     @State private var selectedWing: Wing?
     @State private var showingDeleteAlert = false
     @State private var wingToDelete: Wing?
@@ -1970,7 +1970,6 @@ struct ArchivedWingsView: View {
                         HStack(spacing: 12) {
                             Button {
                                 dataController.unarchiveWing(wing)
-                                refreshArchivedWings()
                             } label: {
                                 Label("Restaurer", systemImage: "arrow.uturn.backward")
                                     .font(.caption)
@@ -1994,15 +1993,11 @@ struct ArchivedWingsView: View {
         }
         .navigationTitle("Voiles archivées")
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            refreshArchivedWings()
-        }
         .alert("Supprimer définitivement ?", isPresented: $showingDeleteAlert) {
             Button("Annuler", role: .cancel) { }
             Button("Supprimer", role: .destructive) {
                 if let wing = wingToDelete {
                     dataController.permanentlyDeleteWing(wing)
-                    refreshArchivedWings()
                 }
             }
         } message: {
@@ -2011,10 +2006,6 @@ struct ArchivedWingsView: View {
                 Text("⚠️ Cette action est irréversible ! La voile \"\(wing.name)\" et ses \(flightCount) vol\(flightCount > 1 ? "s" : "") seront définitivement supprimés.")
             }
         }
-    }
-
-    private func refreshArchivedWings() {
-        archivedWings = dataController.fetchArchivedWings()
     }
 
     private func colorFromString(_ colorString: String) -> Color {
