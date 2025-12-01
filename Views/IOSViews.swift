@@ -126,7 +126,7 @@ struct FlightRow: View {
 struct EditFlightView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    @Query private var wings: [Wing]
+    @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.createdAt, order: .reverse) private var wings: [Wing]
 
     let flight: Flight
 
@@ -253,7 +253,7 @@ struct WingsView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Wing.createdAt, order: .reverse) private var wings: [Wing]
+    @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.createdAt, order: .reverse) private var wings: [Wing]
     @State private var showingAddWing = false
 
     var body: some View {
@@ -616,10 +616,12 @@ struct EditWingView: View {
 
 struct WingDetailView: View {
     let wing: Wing
+    @Environment(\.dismiss) private var dismiss
     @Environment(DataController.self) private var dataController
     @Query private var allFlights: [Flight]
     @State private var showingEditWing = false
     @State private var selectedFlight: Flight?
+    @State private var showingArchiveAlert = false
 
     var flights: [Flight] {
         allFlights.filter { $0.wing?.id == wing.id }
@@ -697,6 +699,16 @@ struct WingDetailView: View {
                     }
                 }
             }
+
+            Section {
+                Button(role: .destructive) {
+                    showingArchiveAlert = true
+                } label: {
+                    Label("Archiver cette voile", systemImage: "archivebox")
+                }
+            } footer: {
+                Text("L'archivage masque la voile mais conserve tous les vols. Vous pourrez la restaurer depuis Réglages > Voiles archivées.")
+            }
         }
         .navigationTitle("Détails")
         .navigationBarTitleDisplayMode(.inline)
@@ -714,6 +726,15 @@ struct WingDetailView: View {
         }
         .sheet(item: $selectedFlight) { flight in
             EditFlightView(flight: flight)
+        }
+        .alert("Archiver cette voile ?", isPresented: $showingArchiveAlert) {
+            Button("Annuler", role: .cancel) { }
+            Button("Archiver", role: .destructive) {
+                dataController.archiveWing(wing)
+                dismiss()
+            }
+        } message: {
+            Text("La voile \"\(wing.name)\" sera masquée mais tous ses vols seront conservés. Vous pourrez la restaurer depuis les Réglages.")
         }
     }
 }
@@ -1223,7 +1244,7 @@ struct TimerView: View {
     @Environment(DataController.self) private var dataController
     @Environment(LocationService.self) private var locationService
     @Environment(\.scenePhase) private var scenePhase
-    @Query(sort: \Wing.createdAt, order: .reverse) private var wings: [Wing]
+    @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.createdAt, order: .reverse) private var wings: [Wing]
 
     @State private var selectedWing: Wing?
     @State private var isFlying = false
@@ -1879,6 +1900,138 @@ struct FlightSummaryView: View {
     }
 }
 
+// MARK: - ArchivedWingsView (Liste des voiles archivées)
+
+struct ArchivedWingsView: View {
+    @Environment(DataController.self) private var dataController
+    @Environment(\.dismiss) private var dismiss
+    @State private var archivedWings: [Wing] = []
+    @State private var selectedWing: Wing?
+    @State private var showingDeleteAlert = false
+    @State private var wingToDelete: Wing?
+
+    var body: some View {
+        List {
+            if archivedWings.isEmpty {
+                ContentUnavailableView(
+                    "Aucune voile archivée",
+                    systemImage: "archivebox",
+                    description: Text("Les voiles archivées apparaîtront ici")
+                )
+            } else {
+                ForEach(archivedWings) { wing in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 12) {
+                            // Photo de la voile ou icône par défaut
+                            if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 50, height: 50)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                            } else {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
+                                    .frame(width: 50, height: 50)
+                                    .overlay {
+                                        Image(systemName: "wind")
+                                            .foregroundStyle(colorFromString(wing.color ?? "Gris"))
+                                    }
+                            }
+
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(wing.name)
+                                    .font(.headline)
+
+                                HStack(spacing: 12) {
+                                    if let size = wing.size {
+                                        Text("\(size) m²")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    if let type = wing.type {
+                                        Text(type)
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+
+                                // Nombre de vols
+                                let flightCount = wing.flights?.count ?? 0
+                                if flightCount > 0 {
+                                    Text("\(flightCount) vol\(flightCount > 1 ? "s" : "")")
+                                        .font(.caption)
+                                        .foregroundStyle(.blue)
+                                }
+                            }
+                        }
+
+                        // Boutons d'action
+                        HStack(spacing: 12) {
+                            Button {
+                                dataController.unarchiveWing(wing)
+                                refreshArchivedWings()
+                            } label: {
+                                Label("Restaurer", systemImage: "arrow.uturn.backward")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button(role: .destructive) {
+                                wingToDelete = wing
+                                showingDeleteAlert = true
+                            } label: {
+                                Label("Supprimer", systemImage: "trash")
+                                    .font(.caption)
+                            }
+                            .buttonStyle(.bordered)
+                        }
+                        .padding(.top, 4)
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .navigationTitle("Voiles archivées")
+        .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            refreshArchivedWings()
+        }
+        .alert("Supprimer définitivement ?", isPresented: $showingDeleteAlert) {
+            Button("Annuler", role: .cancel) { }
+            Button("Supprimer", role: .destructive) {
+                if let wing = wingToDelete {
+                    dataController.permanentlyDeleteWing(wing)
+                    refreshArchivedWings()
+                }
+            }
+        } message: {
+            if let wing = wingToDelete {
+                let flightCount = wing.flights?.count ?? 0
+                Text("⚠️ Cette action est irréversible ! La voile \"\(wing.name)\" et ses \(flightCount) vol\(flightCount > 1 ? "s" : "") seront définitivement supprimés.")
+            }
+        }
+    }
+
+    private func refreshArchivedWings() {
+        archivedWings = dataController.fetchArchivedWings()
+    }
+
+    private func colorFromString(_ colorString: String) -> Color {
+        switch colorString.lowercased() {
+        case "rouge", "red": return .red
+        case "bleu", "blue": return .blue
+        case "vert", "green": return .green
+        case "jaune", "yellow": return .yellow
+        case "orange": return .orange
+        case "violet", "purple": return .purple
+        case "noir", "black": return .black
+        default: return .gray
+        }
+    }
+}
+
 // MARK: - SettingsView (Paramètres et import de données)
 
 struct SettingsView: View {
@@ -1892,6 +2045,14 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Voiles") {
+                    NavigationLink {
+                        ArchivedWingsView()
+                    } label: {
+                        Label("Voiles archivées", systemImage: "archivebox")
+                    }
+                }
+
                 Section("Apple Watch") {
                     HStack {
                         Text("App Watch")

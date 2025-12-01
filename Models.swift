@@ -20,19 +20,21 @@ final class Wing {
     var type: String?        // ex: "Soaring", "Cross", "Acro"
     var color: String?       // texte libre ou hex
     var photoData: Data?     // Photo de la voile stockée en Data
+    var isArchived: Bool     // Voile archivée (masquée par défaut)
     var createdAt: Date
 
     // Relation inverse : tous les vols effectués avec cette voile
     @Relationship(deleteRule: .cascade, inverse: \Flight.wing)
     var flights: [Flight]?
 
-    init(id: UUID = UUID(), name: String, size: String? = nil, type: String? = nil, color: String? = nil, photoData: Data? = nil, createdAt: Date = Date()) {
+    init(id: UUID = UUID(), name: String, size: String? = nil, type: String? = nil, color: String? = nil, photoData: Data? = nil, isArchived: Bool = false, createdAt: Date = Date()) {
         self.id = id
         self.name = name
         self.size = size
         self.type = type
         self.color = color
         self.photoData = photoData
+        self.isArchived = isArchived
         self.createdAt = createdAt
     }
 

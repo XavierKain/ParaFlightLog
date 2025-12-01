@@ -39,12 +39,32 @@ final class DataController {
     // MARK: - Wings CRUD
 
     /// Récupère toutes les voiles triées par date de création (plus récentes en premier)
-    func fetchWings() -> [Wing] {
-        let descriptor = FetchDescriptor<Wing>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+    /// - Parameter includeArchived: Si true, inclut les voiles archivées (défaut: false)
+    func fetchWings(includeArchived: Bool = false) -> [Wing] {
+        var descriptor = FetchDescriptor<Wing>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+
+        // Filtrer les voiles archivées par défaut
+        if !includeArchived {
+            descriptor.predicate = #Predicate<Wing> { !$0.isArchived }
+        }
+
         do {
             return try modelContext.fetch(descriptor)
         } catch {
             print("❌ Error fetching wings: \(error)")
+            return []
+        }
+    }
+
+    /// Récupère uniquement les voiles archivées
+    func fetchArchivedWings() -> [Wing] {
+        var descriptor = FetchDescriptor<Wing>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        descriptor.predicate = #Predicate<Wing> { $0.isArchived }
+
+        do {
+            return try modelContext.fetch(descriptor)
+        } catch {
+            print("❌ Error fetching archived wings: \(error)")
             return []
         }
     }
@@ -72,6 +92,31 @@ final class DataController {
         wing.size = size
         wing.type = type
         wing.color = color
+        saveContext()
+        // Synchronisation automatique vers la Watch
+        syncWingsToWatch()
+    }
+
+    /// Archive une voile (masquée par défaut mais données préservées)
+    func archiveWing(_ wing: Wing) {
+        wing.isArchived = true
+        saveContext()
+        // Synchronisation automatique vers la Watch
+        syncWingsToWatch()
+    }
+
+    /// Désarchive une voile (la rend visible à nouveau)
+    func unarchiveWing(_ wing: Wing) {
+        wing.isArchived = false
+        saveContext()
+        // Synchronisation automatique vers la Watch
+        syncWingsToWatch()
+    }
+
+    /// Supprime définitivement une voile (et tous ses vols en cascade)
+    /// ⚠️ Cette action est irréversible !
+    func permanentlyDeleteWing(_ wing: Wing) {
+        modelContext.delete(wing)
         saveContext()
         // Synchronisation automatique vers la Watch
         syncWingsToWatch()
