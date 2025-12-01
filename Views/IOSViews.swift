@@ -744,7 +744,7 @@ struct WingDetailView: View {
 struct StatsView: View {
     @Environment(DataController.self) private var dataController
     @Query private var flights: [Flight]
-    @Query private var wings: [Wing]
+    @Query(filter: #Predicate<Wing> { !$0.isArchived }) private var wings: [Wing]
 
     var body: some View {
         NavigationStack {
@@ -770,7 +770,6 @@ struct StatsView: View {
 // MARK: - TotalStatsCard
 
 struct TotalStatsCard: View {
-    @Environment(DataController.self) private var dataController
     let flights: [Flight]
 
     var body: some View {

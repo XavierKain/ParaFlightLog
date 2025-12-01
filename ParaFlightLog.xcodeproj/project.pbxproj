@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250A317D2EDDFB18004F63C8 /* StatsCache.swift */; };
 		2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6532EDBB92000C716D0 /* LocationService.swift */; };
 		2564C6582EDBB92000C716D0 /* DataController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6522EDBB92000C716D0 /* DataController.swift */; };
 		2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6542EDBB92000C716D0 /* IOSViews.swift */; };
@@ -42,6 +43,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		250A317D2EDDFB18004F63C8 /* StatsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCache.swift; sourceTree = "<group>"; };
 		2564C6522EDBB92000C716D0 /* DataController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataController.swift; sourceTree = "<group>"; };
 		2564C6532EDBB92000C716D0 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		2564C6542EDBB92000C716D0 /* IOSViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSViews.swift; sourceTree = "<group>"; };
@@ -94,6 +96,7 @@
 		257C68CC2ECB7559005F3773 = {
 			isa = PBXGroup;
 			children = (
+				250A317D2EDDFB18004F63C8 /* StatsCache.swift */,
 				25C9798E2EDBB5DA009233B8 /* Models.swift */,
 				2564C6522EDBB92000C716D0 /* DataController.swift */,
 				2564C6532EDBB92000C716D0 /* LocationService.swift */,
@@ -229,6 +232,7 @@
 				2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */,
 				2564C6582EDBB92000C716D0 /* DataController.swift in Sources */,
 				2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */,
+				250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */,
 				2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
