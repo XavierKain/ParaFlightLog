@@ -134,17 +134,23 @@ struct ExcelImporter {
 
         // Format "H:MM:SS" ou "HH:MM:SS" (Excel export format)
         if cleaned.contains(":") {
-            let components = cleaned.components(separatedBy: ":")
+            let components = cleaned.components(separatedBy: ":").map { $0.trimmingCharacters(in: .whitespaces) }
             if components.count == 3 {
                 // Format H:MM:SS
                 guard let hours = Int(components[0]),
                       let minutes = Int(components[1]),
-                      let seconds = Int(components[2]) else { return nil }
+                      let seconds = Int(components[2]) else {
+                    print("⚠️ Failed to parse duration components: \(components)")
+                    return nil
+                }
                 return hours * 3600 + minutes * 60 + seconds
             } else if components.count == 2 {
                 // Format H:MM (sans secondes)
                 guard let hours = Int(components[0]),
-                      let minutes = Int(components[1]) else { return nil }
+                      let minutes = Int(components[1]) else {
+                    print("⚠️ Failed to parse duration components: \(components)")
+                    return nil
+                }
                 return hours * 3600 + minutes * 60
             }
         }
@@ -173,6 +179,7 @@ struct ExcelImporter {
             return minutes * 60
         }
 
+        print("⚠️ Could not parse duration: '\(duration)'")
         return nil
     }
 

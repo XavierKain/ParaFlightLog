@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		22CB05BC9DC7475FA0FB1B29 /* ExcelImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F59C05F06B3F4EA687E9A769 /* ExcelImporter.swift */; };
 		250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250A317D2EDDFB18004F63C8 /* StatsCache.swift */; };
 		25145B8C2EDE042F0095D7A9 /* ExcelImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25145B8B2EDE042F0095D7A9 /* ExcelImporter.swift */; };
 		2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6532EDBB92000C716D0 /* LocationService.swift */; };
@@ -54,7 +53,6 @@
 		257C68D52ECB7559005F3773 /* ParaFlightLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ParaFlightLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ParaFlightLogWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		25C9798E2EDBB5DA009233B8 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		F59C05F06B3F4EA687E9A769 /* ExcelImporter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ExcelImporter.swift; sourceTree = "<group>"; };
 		25C9798F2EDBB5DA009233B8 /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -103,7 +101,6 @@
 				25145B8B2EDE042F0095D7A9 /* ExcelImporter.swift */,
 				250A317D2EDDFB18004F63C8 /* StatsCache.swift */,
 				25C9798E2EDBB5DA009233B8 /* Models.swift */,
-				F59C05F06B3F4EA687E9A769 /* ExcelImporter.swift */,
 				2564C6522EDBB92000C716D0 /* DataController.swift */,
 				2564C6532EDBB92000C716D0 /* LocationService.swift */,
 				2564C6552EDBB92000C716D0 /* Views */,
@@ -241,8 +238,7 @@
 				2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */,
 				250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */,
 				2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */,
-			
-				22CB05BC9DC7475FA0FB1B29 /* ExcelImporter.swift in Sources */,);
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		257C68E52ECB7650005F3773 /* Sources */ = {

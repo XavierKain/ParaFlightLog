@@ -2218,19 +2218,30 @@ struct SettingsView: View {
 
         DispatchQueue.global(qos: .userInitiated).async {
             do {
+                // Parse le fichier en arrière-plan
                 let data = try ExcelImporter.parseExcelFile(at: url)
-                let result = try ExcelImporter.importToDatabase(data: data, dataController: dataController)
 
+                print("✅ Parsed \(data.flights.count) flights from file")
+
+                // Import dans la base DOIT être sur le main thread (SwiftData requirement)
                 DispatchQueue.main.async {
-                    isImporting = false
-                    importMessage = result.summary
-                    showingImportSuccess = true
+                    do {
+                        let result = try ExcelImporter.importToDatabase(data: data, dataController: self.dataController)
+
+                        self.isImporting = false
+                        self.importMessage = result.summary
+                        self.showingImportSuccess = true
+                    } catch {
+                        self.isImporting = false
+                        self.importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
+                        self.showingImportSuccess = true
+                    }
                 }
             } catch {
                 DispatchQueue.main.async {
-                    isImporting = false
-                    importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
-                    showingImportSuccess = true
+                    self.isImporting = false
+                    self.importMessage = "❌ Erreur de lecture:\n\(error.localizedDescription)"
+                    self.showingImportSuccess = true
                 }
             }
         }
