@@ -29,6 +29,9 @@ struct ParaFlightLogApp: App {
                 .environment(watchConnectivityManager)
                 .environment(locationService)
                 .environment(localizationManager)
+                // Forcer le rechargement quand la langue change
+                .id(localizationManager.currentLanguage?.rawValue ?? "system")
+                .environment(\.locale, localizationManager.locale)
         }
         .modelContainer(dataController.modelContainer)
     }
@@ -39,11 +42,13 @@ private struct IOSRootView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(LocationService.self) private var locationService
+    @Environment(LocalizationManager.self) private var localizationManager
 
     @State private var hasInitialized = false
 
     var body: some View {
         ContentView()
+            .environment(\.locale, localizationManager.locale)
             .onAppear {
                 // Configurer les bonnes références (une seule fois)
                 if !hasInitialized {

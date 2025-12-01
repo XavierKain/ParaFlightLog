@@ -17,7 +17,16 @@ final class LocalizationManager {
     var currentLanguage: Language? {
         didSet {
             saveLanguagePreference()
+            applyLanguage()
         }
+    }
+
+    // Locale SwiftUI pour forcer le changement de langue dans l'interface
+    var locale: Locale {
+        if let language = currentLanguage {
+            return Locale(identifier: language.rawValue)
+        }
+        return Locale.current
     }
 
     enum Language: String, CaseIterable {
@@ -41,6 +50,7 @@ final class LocalizationManager {
 
     private init() {
         loadLanguagePreference()
+        applyLanguage()
     }
 
     // MARK: - Persistence
@@ -50,9 +60,13 @@ final class LocalizationManager {
     private func saveLanguagePreference() {
         if let language = currentLanguage {
             UserDefaults.standard.set(language.rawValue, forKey: languageKey)
+            // Définir également AppleLanguages pour que le système utilise cette langue
+            UserDefaults.standard.set([language.rawValue], forKey: "AppleLanguages")
         } else {
             UserDefaults.standard.removeObject(forKey: languageKey)
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
         }
+        UserDefaults.standard.synchronize()
     }
 
     private func loadLanguagePreference() {
@@ -64,19 +78,26 @@ final class LocalizationManager {
         }
     }
 
+    private func applyLanguage() {
+        // Définir la langue au niveau du système pour les futures sessions
+        if let language = currentLanguage {
+            UserDefaults.standard.set([language.rawValue], forKey: "AppleLanguages")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+        }
+        UserDefaults.standard.synchronize()
+    }
+
     // MARK: - Localization
 
     /// Récupère une chaîne localisée
     func localized(_ key: String) -> String {
-        guard let language = currentLanguage else {
-            // Utiliser la langue du système
-            return NSLocalizedString(key, comment: "")
-        }
+        let language = currentLanguage ?? effectiveLanguage
 
         // Utiliser la langue sélectionnée manuellement
         guard let path = Bundle.main.path(forResource: language.rawValue, ofType: "lproj"),
               let bundle = Bundle(path: path) else {
-            return key
+            return NSLocalizedString(key, comment: "")
         }
 
         return NSLocalizedString(key, bundle: bundle, comment: "")
