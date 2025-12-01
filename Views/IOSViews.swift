@@ -2029,8 +2029,11 @@ struct SettingsView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(\.modelContext) private var modelContext
     @Query private var wings: [Wing]
+    @Query private var flights: [Flight]
     @State private var showingImportSuccess = false
     @State private var importMessage = ""
+    @State private var showingDocumentPicker = false
+    @State private var isImporting = false
 
     var body: some View {
         NavigationStack {
@@ -2090,6 +2093,20 @@ struct SettingsView: View {
                     }
                 }
 
+                Section("Données") {
+                    Button {
+                        showingDocumentPicker = true
+                    } label: {
+                        Label("Importer depuis Excel/CSV", systemImage: "square.and.arrow.down")
+                    }
+
+                    Button {
+                        exportToCSV()
+                    } label: {
+                        Label("Exporter en CSV", systemImage: "square.and.arrow.up")
+                    }
+                }
+
                 Section("Développeur") {
                     Button {
                         generateTestData()
@@ -2121,10 +2138,24 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Réglages")
-            .alert("Import réussi", isPresented: $showingImportSuccess) {
-                Button("OK") { }
+            .sheet(isPresented: $showingDocumentPicker) {
+                DocumentPicker { url in
+                    importExcelFile(from: url)
+                }
+            }
+            .alert(isImporting ? "Import en cours..." : "Résultat", isPresented: Binding(
+                get: { showingImportSuccess || isImporting },
+                set: { if !$0 { showingImportSuccess = false; isImporting = false } }
+            )) {
+                if !isImporting {
+                    Button("OK") { }
+                }
             } message: {
-                Text(importMessage)
+                if isImporting {
+                    Text("Importation des données...")
+                } else {
+                    Text(importMessage)
+                }
             }
         }
     }
@@ -2182,6 +2213,93 @@ struct SettingsView: View {
         }
     }
 
+    private func importExcelFile(from url: URL) {
+        isImporting = true
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            do {
+                let data = try ExcelImporter.parseExcelFile(at: url)
+                let result = try ExcelImporter.importToDatabase(data: data, dataController: dataController)
+
+                DispatchQueue.main.async {
+                    isImporting = false
+                    importMessage = result.summary
+                    showingImportSuccess = true
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    isImporting = false
+                    importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
+                    showingImportSuccess = true
+                }
+            }
+        }
+    }
+
+    private func exportToCSV() {
+        guard !flights.isEmpty else {
+            importMessage = "⚠️ Aucun vol à exporter"
+            showingImportSuccess = true
+            return
+        }
+
+        // Générer le CSV
+        var csvContent = "Date,Voile,Spot,Durée,Notes\n"
+
+        for flight in flights.sorted(by: { $0.startDate < $1.startDate }) {
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "dd/MM/yyyy"
+            let dateString = dateFormatter.string(from: flight.startDate)
+
+            let wingName = flight.wing?.name ?? "Inconnu"
+            let spotName = flight.spotName ?? "Inconnu"
+            let duration = formatDurationForExport(flight.durationSeconds)
+            let notes = flight.notes ?? ""
+
+            let line = "\(dateString),\(wingName),\(spotName),\(duration),\"\(notes)\"\n"
+            csvContent += line
+        }
+
+        // Sauvegarder et partager
+        let fileName = "ParaFlightLog_Export_\(Date().timeIntervalSince1970).csv"
+        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            importMessage = "❌ Erreur: impossible d'accéder aux documents"
+            showingImportSuccess = true
+            return
+        }
+
+        let fileURL = documentsPath.appendingPathComponent(fileName)
+
+        do {
+            try csvContent.write(to: fileURL, atomically: true, encoding: .utf8)
+
+            // Partager le fichier
+            let activityVC = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let rootVC = windowScene.windows.first?.rootViewController {
+                rootVC.present(activityVC, animated: true)
+            }
+
+            importMessage = "✅ Export réussi: \(flights.count) vols"
+            showingImportSuccess = true
+        } catch {
+            importMessage = "❌ Erreur d'export: \(error.localizedDescription)"
+            showingImportSuccess = true
+        }
+    }
+
+    private func formatDurationForExport(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+
+        if hours > 0 {
+            return "\(hours)h\(String(format: "%02d", minutes))"
+        } else {
+            return "\(minutes)min"
+        }
+    }
+
     private func deleteAllData() {
         // Supprimer tous les vols
         do {
@@ -2193,6 +2311,47 @@ struct SettingsView: View {
         } catch {
             importMessage = "❌ Erreur: \(error.localizedDescription)"
             showingImportSuccess = true
+        }
+    }
+}
+
+// MARK: - DocumentPicker (Import Excel/CSV)
+
+import UniformTypeIdentifiers
+
+struct DocumentPicker: UIViewControllerRepresentable {
+    let onDocumentPicked: (URL) -> Void
+
+    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
+        // Support CSV, Excel files, and plain text
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [
+            .commaSeparatedText,
+            .plainText,
+            .data,
+            UTType(filenameExtension: "xlsx")!,
+            UTType(filenameExtension: "xls")!
+        ])
+        picker.allowsMultipleSelection = false
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: UIDocumentPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onDocumentPicked: onDocumentPicked)
+    }
+
+    class Coordinator: NSObject, UIDocumentPickerDelegate {
+        let onDocumentPicked: (URL) -> Void
+
+        init(onDocumentPicked: @escaping (URL) -> Void) {
+            self.onDocumentPicked = onDocumentPicked
+        }
+
+        func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
+            guard let url = urls.first else { return }
+            onDocumentPicked(url)
         }
     }
 }
