@@ -42,6 +42,31 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         print("🔗 WatchConnectivity session activating...")
     }
 
+    // MARK: - Send Language to Watch
+
+    /// Envoie la langue sélectionnée vers la Watch
+    func sendLanguageToWatch(_ languageCode: String?) {
+        guard WCSession.default.activationState == .activated else {
+            print("⚠️ WCSession not activated, cannot send language")
+            return
+        }
+
+        var context = WCSession.default.applicationContext
+        
+        if let code = languageCode {
+            context["language"] = code
+        } else {
+            context.removeValue(forKey: "language")
+        }
+
+        do {
+            try WCSession.default.updateApplicationContext(context)
+            print("🌐 Sent language to Watch: \(languageCode ?? "system")")
+        } catch {
+            print("❌ Failed to send language: \(error.localizedDescription)")
+        }
+    }
+
     // MARK: - Send Wings to Watch
 
     /// Envoie la liste des voiles vers la Watch

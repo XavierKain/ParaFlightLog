@@ -86,6 +86,9 @@ final class LocalizationManager {
             UserDefaults.standard.removeObject(forKey: "AppleLanguages")
         }
         UserDefaults.standard.synchronize()
+        
+        // Envoyer la langue à la Watch
+        WatchConnectivityManager.shared.sendLanguageToWatch(currentLanguage?.rawValue)
     }
 
     // MARK: - Localization

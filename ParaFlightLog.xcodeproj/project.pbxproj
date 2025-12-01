@@ -19,7 +19,6 @@
 		25C979932EDBB5DA009233B8 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798E2EDBB5DA009233B8 /* Models.swift */; };
 		3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
 		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
-		EXCEL001BUILD0001 /* ExcelImporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25145B8B2EDE042F0095D7A9 /* ExcelImporter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -48,7 +47,7 @@
 
 /* Begin PBXFileReference section */
 		250A317D2EDDFB18004F63C8 /* StatsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCache.swift; sourceTree = "<group>"; };
-		25145B8B2EDE042F0095D7A9 /* ExcelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParaFlightLog/ExcelImporter.swift; sourceTree = "<group>"; };
+		25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParaFlightLog/ExcelImporter.swift; sourceTree = "<group>"; };
 		2564C6522EDBB92000C716D0 /* DataController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataController.swift; sourceTree = "<group>"; };
 		2564C6532EDBB92000C716D0 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		2564C6542EDBB92000C716D0 /* IOSViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSViews.swift; sourceTree = "<group>"; };
@@ -104,11 +103,10 @@
 		257C68CC2ECB7559005F3773 = {
 			isa = PBXGroup;
 			children = (
-				25145B8B2EDE042F0095D7A9 /* ExcelImporter.swift */,
+				25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */,
 				250A317D2EDDFB18004F63C8 /* StatsCache.swift */,
 				25C9798E2EDBB5DA009233B8 /* Models.swift */,
 				38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */,
-				F59C05F06B3F4EA687E9A769 /* ExcelImporter.swift */,
 				2564C6522EDBB92000C716D0 /* DataController.swift */,
 				2564C6532EDBB92000C716D0 /* LocationService.swift */,
 				2564C6552EDBB92000C716D0 /* Views */,
