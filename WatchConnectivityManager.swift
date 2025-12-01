@@ -194,9 +194,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         isWatchAppInstalled = session.isWatchAppInstalled
         isWatchReachable = session.isReachable
 
-        // Envoyer automatiquement les voiles à l'activation
+        // Envoyer automatiquement les voiles et la langue à l'activation
         if activationState == .activated {
             sendWingsToWatch()
+            
+            // Envoyer la langue courante
+            let languageCode = LocalizationManager.shared.currentLanguage?.rawValue
+            sendLanguageToWatch(languageCode)
         }
     }
 
