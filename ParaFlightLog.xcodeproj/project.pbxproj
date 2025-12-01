@@ -7,9 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
-		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
 		250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250A317D2EDDFB18004F63C8 /* StatsCache.swift */; };
+		25145BD62EDE096C0095D7A9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
 		2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6532EDBB92000C716D0 /* LocationService.swift */; };
 		2564C6582EDBB92000C716D0 /* DataController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6522EDBB92000C716D0 /* DataController.swift */; };
 		2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6542EDBB92000C716D0 /* IOSViews.swift */; };
@@ -18,7 +17,8 @@
 		25C979902EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		25C979922EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		25C979932EDBB5DA009233B8 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798E2EDBB5DA009233B8 /* Models.swift */; };
-		LM001BUILDFILE0001 /* LocalizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = LM001FILEREF000001 /* LocalizationManager.swift */; };
+		3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
+		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -51,15 +51,14 @@
 		2564C6522EDBB92000C716D0 /* DataController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataController.swift; sourceTree = "<group>"; };
 		2564C6532EDBB92000C716D0 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		2564C6542EDBB92000C716D0 /* IOSViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSViews.swift; sourceTree = "<group>"; };
-		C310D0CB152141398E4E5E4F /* ChartsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchConnectivityManager.swift; sourceTree = "<group>"; };
 		257C68D52ECB7559005F3773 /* ParaFlightLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ParaFlightLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ParaFlightLogWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		25C9798E2EDBB5DA009233B8 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
-		38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
-		F59C05F06B3F4EA687E9A769 /* ExcelImporter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ExcelImporter.swift; sourceTree = "<group>"; };
 		25C9798F2EDBB5DA009233B8 /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
-		LM001FILEREF000001 /* LocalizationManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalizationManager.swift; sourceTree = "<group>"; };
+		38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
+		C310D0CB152141398E4E5E4F /* ChartsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
+		F59C05F06B3F4EA687E9A769 /* ExcelImporter.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ExcelImporter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -97,8 +96,8 @@
 			isa = PBXGroup;
 			children = (
 				2564C6542EDBB92000C716D0 /* IOSViews.swift */,
-			
-				C310D0CB152141398E4E5E4F /* ChartsView.swift */,);
+				C310D0CB152141398E4E5E4F /* ChartsView.swift */,
+			);
 			path = Views;
 			sourceTree = "<group>";
 		};
@@ -222,16 +221,16 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			
-				3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */,);
+				25145BD62EDE096C0095D7A9 /* Localizable.xcstrings in Resources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		257C68E72ECB7650005F3773 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-			
-				3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */,);
+				3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
@@ -248,8 +247,8 @@
 				2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */,
 				250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */,
 				2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */,
-			
-				E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */,);
+				E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */,
+			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		257C68E52ECB7650005F3773 /* Sources */ = {
