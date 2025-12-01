@@ -1,294 +1,96 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Voiles" : {
-      "extractionState" : "manual",
+    "%.4f, %.4f" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wings"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voiles"
+            "state" : "new",
+            "value" : "%1$.4f, %2$.4f"
           }
         }
       }
     },
-    "Vols" : {
+    "%@ de vol" : {
+
+    },
+    "%@ m²" : {
+
+    },
+    "%lld" : {
+
+    },
+    "%lld spot%@ différent%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flights"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vols"
+            "state" : "new",
+            "value" : "%1$lld spot%2$@ différent%3$@"
           }
         }
       }
     },
-    "Stats" : {
+    "%lld vol%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stats"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stats"
+            "state" : "new",
+            "value" : "%1$lld vol%2$@"
           }
         }
       }
     },
-    "Graphiques" : {
+    "%lldh %@m" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Charts"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Graphiques"
+            "state" : "new",
+            "value" : "%1$lldh %2$@m"
           }
         }
       }
     },
-    "Chrono" : {
+    "%lldh%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Timer"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chrono"
+            "state" : "new",
+            "value" : "%1$lldh%2$@"
           }
         }
       }
     },
-    "Réglages" : {
+    "%lldmin" : {
+
+    },
+    "+ %lld autre%@ spot%@" : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "Settings"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réglages"
+            "state" : "new",
+            "value" : "+ %1$lld autre%2$@ spot%3$@"
           }
         }
       }
     },
-    "Mes voiles" : {
+    "⚠️ Cette action est irréversible ! La voile \"%@\" et ses %lld vol%@ seront définitivement supprimés." : {
       "localizations" : {
         "en" : {
           "stringUnit" : {
-            "state" : "translated",
-            "value" : "My Wings"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mes voiles"
+            "state" : "new",
+            "value" : "⚠️ Cette action est irréversible ! La voile \"%1$@\" et ses %2$lld vol%3$@ seront définitivement supprimés."
           }
         }
       }
     },
-    "Ajouter" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouter"
-          }
-        }
-      }
+    "⚠️ La fin doit être après le début" : {
+
     },
-    "Aucune voile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No wings"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune voile"
-          }
-        }
-      }
+    "1" : {
+
     },
-    "Archiver" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Archive"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Archiver"
-          }
-        }
-      }
-    },
-    "Supprimer définitivement" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete permanently"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer définitivement"
-          }
-        }
-      }
-    },
-    "Annuler" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cancel"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Annuler"
-          }
-        }
-      }
-    },
-    "Importer depuis Excel/CSV" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import from Excel/CSV"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Importer depuis Excel/CSV"
-          }
-        }
-      }
-    },
-    "Exporter en CSV" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Export to CSV"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exporter en CSV"
-          }
-        }
-      }
-    },
-    "Données" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Data"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Données"
-          }
-        }
-      }
-    },
-    "Voiles archivées" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Archived wings"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voiles archivées"
-          }
-        }
-      }
-    },
-    "Apple Watch" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Watch"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Watch"
-          }
-        }
-      }
-    },
-    "Développeur" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Developer"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Développeur"
-          }
-        }
-      }
+    "1.0.0" : {
+
     },
     "À propos" : {
       "localizations" : {
@@ -302,38 +104,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "À propos"
-          }
-        }
-      }
-    },
-    "Timeline" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Timeline"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Timeline"
-          }
-        }
-      }
-    },
-    "Spots" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spots"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spots"
           }
         }
       }
@@ -354,6 +124,466 @@
         }
       }
     },
+    "Ajouter" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter"
+          }
+        }
+      }
+    },
+    "Ajoutez d'abord une voile dans l'onglet Voiles" : {
+
+    },
+    "Ajoutez votre première voile" : {
+
+    },
+    "Ajoutez-en depuis l'iPhone" : {
+
+    },
+    "Annuler" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
+          }
+        }
+      }
+    },
+    "App Watch" : {
+
+    },
+    "Apple Watch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Watch"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Watch"
+          }
+        }
+      }
+    },
+    "Archiver" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archive"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archiver"
+          }
+        }
+      }
+    },
+    "ARRÊTER LE VOL" : {
+
+    },
+    "Aucun spot" : {
+
+    },
+    "Aucun vol" : {
+
+    },
+    "Aucun vol durant cette période" : {
+
+    },
+    "Aucune" : {
+
+    },
+    "Aucune donnée" : {
+
+    },
+    "Aucune voile" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No wings"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune voile"
+          }
+        }
+      }
+    },
+    "Aucune voile archivée" : {
+
+    },
+    "Build" : {
+
+    },
+    "Caractéristiques" : {
+
+    },
+    "Ce spot sera utilisé en priorité sur la détection GPS automatique" : {
+
+    },
+    "Cette voile a %lld vol%@ enregistré%@. L'archivage conservera les données, la suppression les effacera." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Cette voile a %1$lld vol%2$@ enregistré%3$@. L'archivage conservera les données, la suppression les effacera."
+          }
+        }
+      }
+    },
+    "Cette voile n'a aucun vol enregistré." : {
+
+    },
+    "Changer la photo" : {
+
+    },
+    "Changer le spot" : {
+
+    },
+    "Choisir une photo" : {
+
+    },
+    "Choisir une voile" : {
+
+    },
+    "Chrono" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timer"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chrono"
+          }
+        }
+      }
+    },
+    "Commencez un vol depuis la Watch ou l'onglet Chrono" : {
+
+    },
+    "Coordonnées" : {
+
+    },
+    "Couleur" : {
+
+    },
+    "Date" : {
+
+    },
+    "Date et heure" : {
+
+    },
+    "Début du vol" : {
+
+    },
+    "Définir le spot manuellement" : {
+
+    },
+    "DÉMARRER LE VOL" : {
+
+    },
+    "Détails" : {
+
+    },
+    "Développeur" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Developer"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Développeur"
+          }
+        }
+      }
+    },
+    "Données" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Données"
+          }
+        }
+      }
+    },
+    "durée" : {
+
+    },
+    "Durée" : {
+
+    },
+    "Durée calculée" : {
+
+    },
+    "Enregistrer" : {
+
+    },
+    "Exporter en CSV" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export to CSV"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Exporter en CSV"
+          }
+        }
+      }
+    },
+    "Fermer" : {
+
+    },
+    "Fin du vol" : {
+
+    },
+    "Générer des données de test" : {
+
+    },
+    "Graphiques" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charts"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Graphiques"
+          }
+        }
+      }
+    },
+    "h" : {
+
+    },
+    "heures" : {
+
+    },
+    "Heures" : {
+
+    },
+    "Heures de vol" : {
+
+    },
+    "Historique des vols" : {
+
+    },
+    "Import en cours..." : {
+
+    },
+    "Importation des données..." : {
+
+    },
+    "Importer depuis Excel/CSV" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from Excel/CSV"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importer depuis Excel/CSV"
+          }
+        }
+      }
+    },
+    "Informations" : {
+
+    },
+    "Installée" : {
+
+    },
+    "Joignable" : {
+
+    },
+    "Les voiles archivées apparaîtront ici" : {
+
+    },
+    "Mes voiles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My Wings"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mes voiles"
+          }
+        }
+      }
+    },
+    "Mes vols" : {
+
+    },
+    "min" : {
+
+    },
+    "Modifier" : {
+
+    },
+    "Modifier la voile" : {
+
+    },
+    "Modifier le vol" : {
+
+    },
+    "Nom" : {
+
+    },
+    "Nom du spot" : {
+
+    },
+    "Nombre de voiles" : {
+
+    },
+    "Nombre de vols" : {
+
+    },
+    "Non" : {
+
+    },
+    "Non installée" : {
+
+    },
+    "Notes" : {
+
+    },
+    "Nouvelle voile" : {
+
+    },
+    "OK" : {
+
+    },
+    "Oui" : {
+
+    },
+    "Par spot" : {
+
+    },
+    "Par voile" : {
+
+    },
+    "Période" : {
+
+    },
+    "Photo" : {
+
+    },
+    "Que voulez-vous faire ?" : {
+
+    },
+    "Récapitulatif" : {
+
+    },
+    "Réglages" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réglages"
+          }
+        }
+      }
+    },
+    "Répartition des heures" : {
+
+    },
+    "Restaurer" : {
+
+    },
+    "Résultat" : {
+
+    },
+    "Sélection" : {
+
+    },
+    "Sélectionner une voile" : {
+
+    },
+    "session%@" : {
+
+    },
+    "Sessions" : {
+
+    },
+    "Spot" : {
+
+    },
+    "Spots" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spots"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spots"
+          }
+        }
+      }
+    },
     "Spots de vol" : {
       "localizations" : {
         "en" : {
@@ -366,6 +596,167 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Spots de vol"
+          }
+        }
+      }
+    },
+    "Start" : {
+
+    },
+    "Statistiques" : {
+
+    },
+    "Stats" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stats"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stats"
+          }
+        }
+      }
+    },
+    "Stop" : {
+
+    },
+    "Supprimer" : {
+
+    },
+    "Supprimer définitivement" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete permanently"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer définitivement"
+          }
+        }
+      }
+    },
+    "Supprimer définitivement ?" : {
+
+    },
+    "Supprimer et utiliser le GPS" : {
+
+    },
+    "Supprimer la photo" : {
+
+    },
+    "Supprimer toutes les données" : {
+
+    },
+    "Synchroniser les voiles" : {
+
+    },
+    "Taille (ex: 22 m²)" : {
+
+    },
+    "Temps" : {
+
+    },
+    "temps de vol" : {
+
+    },
+    "TEMPS DE VOL" : {
+
+    },
+    "Terminer" : {
+
+    },
+    "Timeline" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timeline"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timeline"
+          }
+        }
+      }
+    },
+    "Total" : {
+
+    },
+    "Type" : {
+
+    },
+    "Version" : {
+
+    },
+    "Voile" : {
+
+    },
+    "Voile utilisée" : {
+
+    },
+    "Voiles" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wings"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voiles"
+          }
+        }
+      }
+    },
+    "Voiles archivées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archived wings"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voiles archivées"
+          }
+        }
+      }
+    },
+    "Vol terminé !" : {
+
+    },
+    "vol%@" : {
+
+    },
+    "Vols" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flights"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vols"
           }
         }
       }

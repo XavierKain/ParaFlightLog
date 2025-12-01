@@ -15,6 +15,7 @@ struct ParaFlightLogApp: App {
     @State private var dataController = DataController()
     @State private var watchConnectivityManager = WatchConnectivityManager.shared
     @State private var locationService = LocationService()
+    @State private var localizationManager = LocalizationManager.shared
 
     init() {
         // L'initialisation sera faite dans IOSRootView.onAppear
@@ -27,6 +28,7 @@ struct ParaFlightLogApp: App {
                 .environment(dataController)
                 .environment(watchConnectivityManager)
                 .environment(locationService)
+                .environment(localizationManager)
         }
         .modelContainer(dataController.modelContainer)
     }

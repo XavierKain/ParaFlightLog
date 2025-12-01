@@ -2032,6 +2032,7 @@ struct ArchivedWingsView: View {
 struct SettingsView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
+    @Environment(LocalizationManager.self) private var localizationManager
     @Environment(\.modelContext) private var modelContext
     @Query private var wings: [Wing]
     @Query private var flights: [Flight]
@@ -2048,6 +2049,27 @@ struct SettingsView: View {
                         ArchivedWingsView()
                     } label: {
                         Label("Voiles archivées", systemImage: "archivebox")
+                    }
+                }
+
+                Section("Langue") {
+                    Picker("Langue de l'application", selection: Binding(
+                        get: { localizationManager.currentLanguage },
+                        set: { localizationManager.currentLanguage = $0 }
+                    )) {
+                        Text("Système").tag(nil as LocalizationManager.Language?)
+                        ForEach(LocalizationManager.Language.allCases, id: \.self) { language in
+                            Text("\(language.flag) \(language.displayName)")
+                                .tag(language as LocalizationManager.Language?)
+                        }
+                    }
+                    .pickerStyle(.menu)
+
+                    HStack {
+                        Text("Langue actuelle")
+                        Spacer()
+                        Text("\(localizationManager.effectiveLanguage.flag) \(localizationManager.effectiveLanguage.displayName)")
+                            .foregroundStyle(.secondary)
                     }
                 }
 
