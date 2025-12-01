@@ -46,6 +46,10 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
            let decoded = try? JSONDecoder().decode([WingDTO].self, from: data) {
             wings = decoded
             print("📂 Loaded \(wings.count) wings from local storage")
+            // Précharger les images en arrière-plan après le chargement local
+            DispatchQueue.global(qos: .userInitiated).async {
+                WatchImageCache.shared.preloadImages(for: decoded)
+            }
         }
     }
 
@@ -208,6 +212,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             DispatchQueue.main.async {
                 self.wings = decodedWings
                 self.saveWingsLocally()
+                // Précharger les images en arrière-plan
+                WatchImageCache.shared.preloadImages(for: decodedWings)
                 print("✅ Successfully received and stored \(decodedWings.count) wings from iPhone")
             }
             return
@@ -230,6 +236,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             DispatchQueue.main.async {
                 self.wings = decodedWings
                 self.saveWingsLocally()
+                // Précharger les images en arrière-plan
+                WatchImageCache.shared.preloadImages(for: decodedWings)
                 print("✅ Successfully received and stored \(decodedWings.count) wings from iPhone (legacy)")
             }
             return

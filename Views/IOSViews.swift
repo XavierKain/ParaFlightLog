@@ -16,38 +16,64 @@ import PhotosUI
 struct ContentView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
+    @Environment(LocalizationManager.self) private var localizationManager
+    
+    // Conserver l'onglet sélectionné lors du changement de langue
+    @State private var selectedTab: Int = 0
+    // Trigger pour animation de transition
+    @State private var languageRefreshID = UUID()
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             WingsView()
                 .tabItem {
                     Label("Voiles", systemImage: "wind")
                 }
+                .tag(0)
 
             FlightsView()
                 .tabItem {
                     Label("Vols", systemImage: "airplane")
                 }
+                .tag(1)
 
             StatsView()
                 .tabItem {
                     Label("Stats", systemImage: "chart.bar")
                 }
+                .tag(2)
 
             ChartsView()
                 .tabItem {
                     Label("Graphiques", systemImage: "chart.xyaxis.line")
                 }
+                .tag(3)
 
             TimerView()
                 .tabItem {
                     Label("Chrono", systemImage: "timer")
                 }
+                .tag(4)
 
             SettingsView()
                 .tabItem {
                     Label("Réglages", systemImage: "gearshape")
                 }
+                .tag(5)
+        }
+        // Animation douce lors du changement de langue
+        .id(languageRefreshID)
+        .onChange(of: localizationManager.currentLanguage) { _, _ in
+            // Sauvegarder l'onglet actuel
+            let currentTab = selectedTab
+            // Animation de fondu enchaîné
+            withAnimation(.easeInOut(duration: 0.3)) {
+                languageRefreshID = UUID()
+            }
+            // Restaurer l'onglet après le refresh
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                selectedTab = currentTab
+            }
         }
     }
 }

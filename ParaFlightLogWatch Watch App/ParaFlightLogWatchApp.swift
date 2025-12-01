@@ -13,6 +13,9 @@ struct ParaFlightLogWatch_Watch_AppApp: App {
     @State private var watchConnectivityManager = WatchConnectivityManager.shared
     @State private var locationService = WatchLocationService()
     @State private var localizationManager = WatchLocalizationManager.shared
+    
+    // ID pour forcer le rafraîchissement en douceur
+    @State private var languageRefreshID = UUID()
 
     var body: some Scene {
         WindowGroup {
@@ -20,9 +23,14 @@ struct ParaFlightLogWatch_Watch_AppApp: App {
                 .environment(watchConnectivityManager)
                 .environment(locationService)
                 .environment(localizationManager)
-                // Forcer le rechargement quand la langue change
-                .id(localizationManager.currentLanguage?.rawValue ?? "system")
                 .environment(\.locale, localizationManager.locale)
+                // Animation douce au changement de langue
+                .id(languageRefreshID)
+                .onChange(of: localizationManager.currentLanguage) { _, _ in
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        languageRefreshID = UUID()
+                    }
+                }
                 .onAppear {
                     locationService.requestAuthorization()
                 }

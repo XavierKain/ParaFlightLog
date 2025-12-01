@@ -29,8 +29,6 @@ struct ParaFlightLogApp: App {
                 .environment(watchConnectivityManager)
                 .environment(locationService)
                 .environment(localizationManager)
-                // Forcer le rechargement quand la langue change
-                .id(localizationManager.currentLanguage?.rawValue ?? "system")
                 .environment(\.locale, localizationManager.locale)
         }
         .modelContainer(dataController.modelContainer)
