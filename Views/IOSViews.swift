@@ -34,6 +34,11 @@ struct ContentView: View {
                     Label("Stats", systemImage: "chart.bar")
                 }
 
+            ChartsView()
+                .tabItem {
+                    Label("Graphiques", systemImage: "chart.xyaxis.line")
+                }
+
             TimerView()
                 .tabItem {
                     Label("Chrono", systemImage: "timer")
