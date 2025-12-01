@@ -11,6 +11,16 @@
         }
       }
     },
+    "%@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@"
+          }
+        }
+      }
+    },
     "%@ de vol" : {
 
     },
@@ -445,6 +455,15 @@
     "Joignable" : {
 
     },
+    "Langue" : {
+
+    },
+    "Langue actuelle" : {
+
+    },
+    "Langue de l'application" : {
+
+    },
     "Les voiles archivées apparaîtront ici" : {
 
     },
@@ -657,6 +676,9 @@
 
     },
     "Synchroniser les voiles" : {
+
+    },
+    "Système" : {
 
     },
     "Taille (ex: 22 m²)" : {
