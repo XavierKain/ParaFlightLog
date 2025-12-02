@@ -9,6 +9,7 @@
 
 import Foundation
 import SwiftUI
+import WidgetKit
 
 @Observable
 final class WatchLocalizationManager {
@@ -18,6 +19,8 @@ final class WatchLocalizationManager {
     var currentLanguage: Language? {
         didSet {
             saveLanguagePreference()
+            // Rafraîchir le widget pour qu'il utilise la nouvelle langue
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 

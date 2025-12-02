@@ -9,6 +9,37 @@
 import SwiftUI
 import WidgetKit
 
+// MARK: - Localization Helper
+
+/// Helper pour les chaînes localisées du widget
+/// Lit la langue depuis les UserDefaults de l'app Watch (synchronisée depuis iPhone)
+private enum WidgetStrings {
+    /// Clé utilisée par WatchLocalizationManager pour stocker la langue
+    private static let languageKey = "watch_app_language"
+    
+    /// Vérifie si la langue sélectionnée dans l'app est le français
+    private static var isFrench: Bool {
+        // Lire la langue depuis UserDefaults (partagé avec l'app Watch)
+        if let languageCode = UserDefaults.standard.string(forKey: languageKey) {
+            return languageCode == "fr"
+        }
+        // Fallback: utiliser la langue du système
+        return Locale.current.language.languageCode?.identifier == "fr"
+    }
+    
+    static var startFlight: String {
+        isFrench ? "Démarrer un vol" : "Start a flight"
+    }
+    
+    static var description: String {
+        isFrench ? "Affiche le statut de vol et accès rapide" : "Shows flight status and quick access"
+    }
+    
+    static var flight: String {
+        isFrench ? "Vol" : "Flight"
+    }
+}
+
 // MARK: - Timeline Entry
 
 struct FlightEntry: TimelineEntry {
@@ -99,12 +130,13 @@ struct CircularWidgetView: View {
                 }
             }
         } else {
-            // Au repos : afficher l'icône de l'app
-            Image("WidgetIcon")
-                .resizable()
-                .scaledToFill()
-                .frame(width: 50, height: 50)
-                .clipShape(Circle())
+            // Au repos : afficher l'icône du parapente
+            ZStack {
+                AccessoryWidgetBackground()
+                Image(systemName: "wind")
+                    .font(.system(size: 28, weight: .medium))
+                    .symbolRenderingMode(.hierarchical)
+            }
         }
     }
 }
@@ -114,13 +146,15 @@ struct RectangularWidgetView: View {
     let entry: FlightEntry
 
     var body: some View {
-        HStack(spacing: 6) {
-            // Icône de l'app
-            Image("WidgetIcon")
-                .resizable()
-                .scaledToFit()
-                .frame(width: 26, height: 26)
-                .clipShape(RoundedRectangle(cornerRadius: 6))
+        HStack(spacing: 8) {
+            // Icône avec SF Symbol
+            ZStack {
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(.ultraThinMaterial)
+                    .frame(width: 26, height: 26)
+                Image(systemName: "wind")
+                    .font(.system(size: 14, weight: .semibold))
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 if entry.isFlying {
@@ -138,7 +172,7 @@ struct RectangularWidgetView: View {
                     Text("ParaFlightLog")
                         .font(.headline)
 
-                    Text(String(localized: "widget_start_flight"))
+                    Text(WidgetStrings.startFlight)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -154,12 +188,10 @@ struct CornerWidgetView: View {
     let entry: FlightEntry
 
     var body: some View {
-        Image("WidgetIcon")
-            .resizable()
-            .scaledToFit()
-            .clipShape(Circle())
+        Image(systemName: "wind")
+            .font(.system(size: 20, weight: .semibold))
             .widgetLabel {
-                Text(String(localized: "widget_flight"))
+                Text(WidgetStrings.flight)
             }
     }
 }
@@ -173,7 +205,7 @@ struct InlineWidgetView: View {
             Label(entry.elapsedTime, systemImage: "play.fill")
                 .fontWeight(.semibold)
         } else {
-            Label("ParaFlightLog", systemImage: "timer")
+            Label("ParaFlightLog", systemImage: "wind")
         }
     }
 }
@@ -188,7 +220,7 @@ struct ParaFlightLogWidget: Widget {
             FlightWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("ParaFlightLog")
-        .description(String(localized: "widget_description"))
+        .description(WidgetStrings.description)
         .supportedFamilies([
             .accessoryCircular,
             .accessoryRectangular,
