@@ -93,13 +93,6 @@
 			);
 			target = 25145C282EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension */;
 		};
-		25145C432EDF01E50095D7A9 /* Exceptions for "ParaFlightLogWatch Watch App" folder in "ParaFlightLogWidgetExtensionExtension" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				ParaFlightLogWidget.swift,
-			);
-			target = 25145C282EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension */;
-		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -118,9 +111,6 @@
 		};
 		257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				25145C432EDF01E50095D7A9 /* Exceptions for "ParaFlightLogWatch Watch App" folder in "ParaFlightLogWidgetExtensionExtension" target */,
-			);
 			path = "ParaFlightLogWatch Watch App";
 			sourceTree = "<group>";
 		};
