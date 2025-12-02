@@ -86,23 +86,26 @@ struct CircularWidgetView: View {
 
     var body: some View {
         if entry.isFlying {
-            // Pendant un vol : afficher le chrono avec jauge
-            Gauge(value: 0.5) {
-                Image(systemName: "paragliding")
-                    .font(.system(size: 20))
-            } currentValueLabel: {
-                Text(entry.elapsedTime)
-                    .font(.system(size: 11, weight: .semibold))
-                    .monospacedDigit()
-            }
-            .gaugeStyle(.accessoryCircular)
-        } else {
-            // Au repos : afficher l'icône de l'app (parapente)
+            // Pendant un vol : afficher le chrono
             ZStack {
                 AccessoryWidgetBackground()
-                Image(systemName: "paragliding")
-                    .font(.system(size: 24, weight: .medium))
-                    .foregroundStyle(.primary)
+                VStack(spacing: 0) {
+                    Image(systemName: "timer")
+                        .font(.system(size: 14))
+                        .foregroundStyle(.green)
+                    Text(entry.elapsedTime)
+                        .font(.system(size: 12, weight: .semibold))
+                        .monospacedDigit()
+                }
+            }
+        } else {
+            // Au repos : afficher l'icône de l'app
+            ZStack {
+                AccessoryWidgetBackground()
+                Image("WidgetIcon")
+                    .resizable()
+                    .scaledToFit()
+                    .clipShape(Circle())
             }
         }
     }
@@ -114,9 +117,12 @@ struct RectangularWidgetView: View {
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: entry.isFlying ? "play.fill" : "paragliding")
-                .font(.title3)
-                .foregroundStyle(entry.isFlying ? .green : .primary)
+            // Icône de l'app
+            Image("WidgetIcon")
+                .resizable()
+                .scaledToFit()
+                .frame(width: 26, height: 26)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
 
             VStack(alignment: .leading, spacing: 2) {
                 if entry.isFlying {
@@ -134,7 +140,7 @@ struct RectangularWidgetView: View {
                     Text("ParaFlightLog")
                         .font(.headline)
 
-                    Text("Lancer un vol")
+                    Text("widget_start_flight")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -150,10 +156,12 @@ struct CornerWidgetView: View {
     let entry: FlightEntry
 
     var body: some View {
-        Image(systemName: "paragliding")
-            .font(.title2)
+        Image("WidgetIcon")
+            .resizable()
+            .scaledToFit()
+            .clipShape(Circle())
             .widgetLabel {
-                Text("Vol")
+                Text("widget_flight")
             }
     }
 }
@@ -167,7 +175,7 @@ struct InlineWidgetView: View {
             Label(entry.elapsedTime, systemImage: "play.fill")
                 .fontWeight(.semibold)
         } else {
-            Label("ParaFlightLog", systemImage: "paragliding")
+            Label("ParaFlightLog", systemImage: "timer")
         }
     }
 }
@@ -182,7 +190,7 @@ struct ParaFlightLogWidget: Widget {
             FlightWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("ParaFlightLog")
-        .description("Lancez l'app et suivez vos vols")
+        .description("widget_description")
         .supportedFamilies([
             .accessoryCircular,
             .accessoryRectangular,
