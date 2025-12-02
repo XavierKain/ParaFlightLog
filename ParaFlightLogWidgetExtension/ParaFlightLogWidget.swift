@@ -100,13 +100,11 @@ struct CircularWidgetView: View {
             }
         } else {
             // Au repos : afficher l'icône de l'app
-            ZStack {
-                AccessoryWidgetBackground()
-                Image("WidgetIcon")
-                    .resizable()
-                    .scaledToFit()
-                    .clipShape(Circle())
-            }
+            Image("WidgetIcon")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 50, height: 50)
+                .clipShape(Circle())
         }
     }
 }
@@ -140,7 +138,7 @@ struct RectangularWidgetView: View {
                     Text("ParaFlightLog")
                         .font(.headline)
 
-                    Text("widget_start_flight")
+                    Text(String(localized: "widget_start_flight"))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -161,7 +159,7 @@ struct CornerWidgetView: View {
             .scaledToFit()
             .clipShape(Circle())
             .widgetLabel {
-                Text("widget_flight")
+                Text(String(localized: "widget_flight"))
             }
     }
 }
@@ -190,7 +188,7 @@ struct ParaFlightLogWidget: Widget {
             FlightWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("ParaFlightLog")
-        .description("widget_description")
+        .description(String(localized: "widget_description"))
         .supportedFamilies([
             .accessoryCircular,
             .accessoryRectangular,
