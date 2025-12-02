@@ -237,17 +237,19 @@ struct FlightTimerView: View {
     private func startFlight() {
         guard selectedWing != nil else { return }
 
+        // Démarrer le timer IMMÉDIATEMENT pour une réponse instantanée
         flightStartDate = Date()
         elapsedSeconds = 0
         isFlying = true
 
-        // Démarrer la localisation
-        locationService.startUpdatingLocation()
-        
-        // Démarrer le timer pour mettre à jour le chrono
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             updateElapsedSeconds()
+        }
+
+        // Démarrer la localisation de manière asynchrone pour ne pas bloquer l'UI
+        Task {
+            locationService.startUpdatingLocation()
         }
     }
 

@@ -12,10 +12,10 @@ import WatchKit
 /// Cache singleton pour les images des voiles
 final class WatchImageCache {
     static let shared = WatchImageCache()
-    
-    private var cache: [UUID: UIImage] = [:]
+
+    fileprivate var cache: [UUID: UIImage] = [:]
     private let queue = DispatchQueue(label: "com.paraflightlog.imagecache", qos: .userInitiated)
-    
+
     private init() {}
     
     /// Récupère une image du cache ou la décode si nécessaire
@@ -97,7 +97,22 @@ struct CachedWingImage: View {
     }
     
     private func loadImage() {
-        // Charger depuis le cache (ou décoder si nécessaire)
-        cachedImage = WatchImageCache.shared.image(for: wing.id, data: wing.photoData)
+        // Vérifier le cache immédiatement (synchrone)
+        if let cached = WatchImageCache.shared.cache[wing.id] {
+            cachedImage = cached
+            return
+        }
+
+        // Si pas en cache, décoder en arrière-plan pour ne pas bloquer l'UI
+        guard let data = wing.photoData else { return }
+
+        Task.detached(priority: .userInitiated) {
+            if let image = UIImage(data: data) {
+                await MainActor.run {
+                    WatchImageCache.shared.cache[wing.id] = image
+                    cachedImage = image
+                }
+            }
+        }
     }
 }

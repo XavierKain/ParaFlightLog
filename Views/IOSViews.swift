@@ -17,11 +17,9 @@ struct ContentView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(LocalizationManager.self) private var localizationManager
-    
+
     // Conserver l'onglet sélectionné lors du changement de langue
     @State private var selectedTab: Int = 0
-    // Trigger pour animation de transition
-    @State private var languageRefreshID = UUID()
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -60,20 +58,6 @@ struct ContentView: View {
                     Label("Réglages", systemImage: "gearshape")
                 }
                 .tag(5)
-        }
-        // Animation douce lors du changement de langue
-        .id(languageRefreshID)
-        .onChange(of: localizationManager.currentLanguage) { _, _ in
-            // Sauvegarder l'onglet actuel
-            let currentTab = selectedTab
-            // Animation de fondu enchaîné
-            withAnimation(.easeInOut(duration: 0.3)) {
-                languageRefreshID = UUID()
-            }
-            // Restaurer l'onglet après le refresh
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                selectedTab = currentTab
-            }
         }
     }
 }
@@ -1539,18 +1523,21 @@ struct TimerView: View {
     private func startFlight() {
         guard selectedWing != nil else { return }
 
+        // Démarrer le timer IMMÉDIATEMENT pour une réponse instantanée
         startDate = Date()
         elapsedSeconds = 0
         isFlying = true
-
-        locationService.startUpdatingLocation()
-
-        // Ne mettre à jour le spot que si aucun spot manuel n'est défini
-        if manualSpotOverride == nil {
-            updateCurrentSpot()
-        }
-
         startBackgroundTimer()
+
+        // Démarrer la localisation en arrière-plan pour ne pas bloquer l'UI
+        Task {
+            locationService.startUpdatingLocation()
+
+            // Ne mettre à jour le spot que si aucun spot manuel n'est défini
+            if manualSpotOverride == nil {
+                updateCurrentSpot()
+            }
+        }
     }
 
     private func stopFlight() {

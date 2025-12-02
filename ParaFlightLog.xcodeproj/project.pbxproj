@@ -9,6 +9,10 @@
 /* Begin PBXBuildFile section */
 		250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250A317D2EDDFB18004F63C8 /* StatsCache.swift */; };
 		25145BD62EDE096C0095D7A9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
+		25145C2C2EDE61D80095D7A9 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */; };
+		25145C2E2EDE61D80095D7A9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25145C2D2EDE61D80095D7A9 /* SwiftUI.framework */; };
+		25145C3B2EDE61D90095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 25145C292EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		25145C442EDF01FE0095D7A9 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6532EDBB92000C716D0 /* LocationService.swift */; };
 		2564C6582EDBB92000C716D0 /* DataController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6522EDBB92000C716D0 /* DataController.swift */; };
 		2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6542EDBB92000C716D0 /* IOSViews.swift */; };
@@ -22,6 +26,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		25145C392EDE61D90095D7A9 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 257C68CD2ECB7559005F3773 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 25145C282EDE61D80095D7A9;
+			remoteInfo = ParaFlightLogWidgetExtensionExtension;
+		};
 		257C68F12ECB7651005F3773 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 257C68CD2ECB7559005F3773 /* Project object */;
@@ -32,6 +43,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		25145C402EDE61D90095D7A9 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				25145C3B2EDE61D90095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		257C68F72ECB7651005F3773 /* Embed Watch Content */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -48,6 +70,9 @@
 /* Begin PBXFileReference section */
 		250A317D2EDDFB18004F63C8 /* StatsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCache.swift; sourceTree = "<group>"; };
 		25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParaFlightLog/ExcelImporter.swift; sourceTree = "<group>"; };
+		25145C292EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ParaFlightLogWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		25145C2D2EDE61D80095D7A9 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		2564C6522EDBB92000C716D0 /* DataController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataController.swift; sourceTree = "<group>"; };
 		2564C6532EDBB92000C716D0 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
 		2564C6542EDBB92000C716D0 /* IOSViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IOSViews.swift; sourceTree = "<group>"; };
@@ -60,7 +85,32 @@
 		C310D0CB152141398E4E5E4F /* ChartsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		25145C3C2EDE61D90095D7A9 /* Exceptions for "ParaFlightLogWidgetExtension" folder in "ParaFlightLogWidgetExtensionExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 25145C282EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension */;
+		};
+		25145C432EDF01E50095D7A9 /* Exceptions for "ParaFlightLogWatch Watch App" folder in "ParaFlightLogWidgetExtensionExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				ParaFlightLogWidget.swift,
+			);
+			target = 25145C282EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		25145C2F2EDE61D80095D7A9 /* ParaFlightLogWidgetExtension */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				25145C3C2EDE61D90095D7A9 /* Exceptions for "ParaFlightLogWidgetExtension" folder in "ParaFlightLogWidgetExtensionExtension" target */,
+			);
+			path = ParaFlightLogWidgetExtension;
+			sourceTree = "<group>";
+		};
 		257C68D72ECB7559005F3773 /* ParaFlightLog */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ParaFlightLog;
@@ -68,12 +118,24 @@
 		};
 		257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				25145C432EDF01E50095D7A9 /* Exceptions for "ParaFlightLogWatch Watch App" folder in "ParaFlightLogWidgetExtensionExtension" target */,
+			);
 			path = "ParaFlightLogWatch Watch App";
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		25145C262EDE61D80095D7A9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				25145C2E2EDE61D80095D7A9 /* SwiftUI.framework in Frameworks */,
+				25145C2C2EDE61D80095D7A9 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		257C68D22ECB7559005F3773 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -91,6 +153,15 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		25145C2A2EDE61D80095D7A9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */,
+				25145C2D2EDE61D80095D7A9 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		2564C6552EDBB92000C716D0 /* Views */ = {
 			isa = PBXGroup;
 			children = (
@@ -114,6 +185,8 @@
 				25C9798F2EDBB5DA009233B8 /* SharedModels.swift */,
 				257C68D72ECB7559005F3773 /* ParaFlightLog */,
 				257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */,
+				25145C2F2EDE61D80095D7A9 /* ParaFlightLogWidgetExtension */,
+				25145C2A2EDE61D80095D7A9 /* Frameworks */,
 				257C68D62ECB7559005F3773 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -123,6 +196,7 @@
 			children = (
 				257C68D52ECB7559005F3773 /* ParaFlightLog.app */,
 				257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */,
+				25145C292EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -130,6 +204,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		25145C282EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 25145C3D2EDE61D90095D7A9 /* Build configuration list for PBXNativeTarget "ParaFlightLogWidgetExtensionExtension" */;
+			buildPhases = (
+				25145C252EDE61D80095D7A9 /* Sources */,
+				25145C262EDE61D80095D7A9 /* Frameworks */,
+				25145C272EDE61D80095D7A9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				25145C2F2EDE61D80095D7A9 /* ParaFlightLogWidgetExtension */,
+			);
+			name = ParaFlightLogWidgetExtensionExtension;
+			packageProductDependencies = (
+			);
+			productName = ParaFlightLogWidgetExtensionExtension;
+			productReference = 25145C292EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		257C68D42ECB7559005F3773 /* ParaFlightLog */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 257C68E22ECB755A005F3773 /* Build configuration list for PBXNativeTarget "ParaFlightLog" */;
@@ -161,10 +257,12 @@
 				257C68E52ECB7650005F3773 /* Sources */,
 				257C68E62ECB7650005F3773 /* Frameworks */,
 				257C68E72ECB7650005F3773 /* Resources */,
+				25145C402EDE61D90095D7A9 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				25145C3A2EDE61D90095D7A9 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */,
@@ -186,6 +284,9 @@
 				LastSwiftUpdateCheck = 2610;
 				LastUpgradeCheck = 2610;
 				TargetAttributes = {
+					25145C282EDE61D80095D7A9 = {
+						CreatedOnToolsVersion = 26.1.1;
+					};
 					257C68D42ECB7559005F3773 = {
 						CreatedOnToolsVersion = 26.1.1;
 					};
@@ -210,11 +311,19 @@
 			targets = (
 				257C68D42ECB7559005F3773 /* ParaFlightLog */,
 				257C68E82ECB7650005F3773 /* ParaFlightLogWatch Watch App */,
+				25145C282EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		25145C272EDE61D80095D7A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		257C68D32ECB7559005F3773 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -234,6 +343,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		25145C252EDE61D80095D7A9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				25145C442EDF01FE0095D7A9 /* SharedModels.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		257C68D12ECB7559005F3773 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -260,6 +377,11 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		25145C3A2EDE61D90095D7A9 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 25145C282EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension */;
+			targetProxy = 25145C392EDE61D90095D7A9 /* PBXContainerItemProxy */;
+		};
 		257C68F22ECB7651005F3773 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 257C68E82ECB7650005F3773 /* ParaFlightLogWatch Watch App */;
@@ -268,6 +390,72 @@
 /* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
+		25145C3E2EDE61D90095D7A9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S96H22CQ8W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ParaFlightLogWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.watchkitapp.ParaFlightLogWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Debug;
+		};
+		25145C3F2EDE61D90095D7A9 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = S96H22CQ8W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ParaFlightLogWidgetExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWidgetExtension;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.watchkitapp.ParaFlightLogWidgetExtension;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 26.1;
+			};
+			name = Release;
+		};
 		257C68E02ECB755A005F3773 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -530,6 +718,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		25145C3D2EDE61D90095D7A9 /* Build configuration list for PBXNativeTarget "ParaFlightLogWidgetExtensionExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				25145C3E2EDE61D90095D7A9 /* Debug */,
+				25145C3F2EDE61D90095D7A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		257C68D02ECB7559005F3773 /* Build configuration list for PBXProject "ParaFlightLog" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

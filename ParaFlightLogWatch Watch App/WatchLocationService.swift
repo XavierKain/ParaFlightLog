@@ -45,32 +45,45 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
     // MARK: - Reverse Geocoding avec CLGeocoder
 
+    private var isGeocodingInProgress = false
+
     private func reverseGeocode(location: CLLocation) {
+        // Éviter les multiples appels simultanés
+        guard !isGeocodingInProgress else { return }
+        isGeocodingInProgress = true
+
         // CLGeocoder fonctionne sur watchOS pour le reverse geocoding
         let geocoder = CLGeocoder()
-        
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            DispatchQueue.main.async {
-                if let error = error {
+
+        // Faire le geocoding en background pour ne pas bloquer l'UI
+        Task.detached(priority: .background) { [weak self] in
+            do {
+                let placemarks = try await geocoder.reverseGeocodeLocation(location)
+
+                await MainActor.run {
+                    self?.isGeocodingInProgress = false
+
+                    guard let placemark = placemarks.first else {
+                        self?.currentSpotName = "Spot inconnu"
+                        return
+                    }
+
+                    // Priorité : locality (ville) > subLocality > administrativeArea
+                    let spotName = placemark.locality ??
+                                   placemark.subLocality ??
+                                   placemark.administrativeArea ??
+                                   placemark.name ??
+                                   "Spot inconnu"
+
+                    self?.currentSpotName = spotName
+                    print("✅ Watch spot: \(spotName)")
+                }
+            } catch {
+                await MainActor.run {
+                    self?.isGeocodingInProgress = false
                     print("❌ Watch geocoding error: \(error.localizedDescription)")
                     self?.currentSpotName = "Spot inconnu"
-                    return
                 }
-                
-                guard let placemark = placemarks?.first else {
-                    self?.currentSpotName = "Spot inconnu"
-                    return
-                }
-                
-                // Priorité : locality (ville) > subLocality > administrativeArea
-                let spotName = placemark.locality ??
-                               placemark.subLocality ??
-                               placemark.administrativeArea ??
-                               placemark.name ??
-                               "Spot inconnu"
-                
-                self?.currentSpotName = spotName
-                print("✅ Watch spot: \(spotName)")
             }
         }
     }
