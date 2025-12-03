@@ -19,29 +19,56 @@ final class DataController {
     weak var watchConnectivityManager: WatchConnectivityManager?
 
     init() {
+        // NOTE: Migration désactivée - la base de données est maintenant persistante
+        // Self.deleteOldDatabaseIfNeeded()
+
         // Configuration du schema SwiftData
         let schema = Schema([
             Wing.self,
             Flight.self
         ])
 
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: false
+        )
 
         do {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
             self.modelContainer = container
             self.modelContext = ModelContext(container)
+            print("✅ ModelContainer créé avec succès")
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
     }
 
+    /// Supprime l'ancienne base de données si elle existe (migration forcée)
+    private static func deleteOldDatabaseIfNeeded() {
+        let fileManager = FileManager.default
+
+        guard let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
+            return
+        }
+
+        let storeURL = appSupportURL.appendingPathComponent("default.store")
+
+        if fileManager.fileExists(atPath: storeURL.path) {
+            do {
+                try fileManager.removeItem(at: storeURL)
+                print("🗑️ Ancienne base de données supprimée pour migration")
+            } catch {
+                print("⚠️ Impossible de supprimer l'ancienne base: \(error)")
+            }
+        }
+    }
+
     // MARK: - Wings CRUD
 
-    /// Récupère toutes les voiles triées par date de création (plus récentes en premier)
+    /// Récupère toutes les voiles triées par ordre d'affichage personnalisé
     /// - Parameter includeArchived: Si true, inclut les voiles archivées (défaut: false)
     func fetchWings(includeArchived: Bool = false) -> [Wing] {
-        var descriptor = FetchDescriptor<Wing>(sortBy: [SortDescriptor(\.createdAt, order: .reverse)])
+        var descriptor = FetchDescriptor<Wing>(sortBy: [SortDescriptor(\.displayOrder)])
 
         // Filtrer les voiles archivées par défaut
         if !includeArchived {
@@ -71,7 +98,11 @@ final class DataController {
 
     /// Ajoute une nouvelle voile
     func addWing(name: String, size: String? = nil, type: String? = nil, color: String? = nil) {
-        let wing = Wing(name: name, size: size, type: type, color: color)
+        // Calculer le displayOrder automatiquement (dernier + 1)
+        let existingWings = fetchWings(includeArchived: true)
+        let maxOrder = existingWings.map(\.displayOrder).max() ?? -1
+
+        let wing = Wing(name: name, size: size, type: type, color: color, displayOrder: maxOrder + 1)
         modelContext.insert(wing)
         saveContext()
         // Synchronisation automatique vers la Watch

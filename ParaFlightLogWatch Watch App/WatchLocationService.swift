@@ -12,24 +12,38 @@ import MapKit
 
 @Observable
 final class WatchLocationService: NSObject, CLLocationManagerDelegate {
-    private let locationManager = CLLocationManager()
+    // Utiliser une propriété optionnelle initialisée à la demande
+    private var _locationManager: CLLocationManager?
+    
+    private var locationManager: CLLocationManager {
+        if let manager = _locationManager {
+            return manager
+        }
+        let manager = CLLocationManager()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters // Moins précis = plus rapide
+        _locationManager = manager
+        return manager
+    }
 
     var lastKnownLocation: CLLocation?
-    var currentSpotName: String = "Recherche..."
+    var currentSpotName: String = "Position..."
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
     override init() {
         super.init()
-        locationManager.delegate = self
-        locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        authorizationStatus = locationManager.authorizationStatus
+        // Ne PAS initialiser locationManager ici pour éviter le lag au démarrage
     }
 
     func requestAuthorization() {
-        locationManager.requestWhenInUseAuthorization()
+        authorizationStatus = locationManager.authorizationStatus
+        if authorizationStatus == .notDetermined {
+            locationManager.requestWhenInUseAuthorization()
+        }
     }
 
     func startUpdatingLocation() {
+        authorizationStatus = locationManager.authorizationStatus
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
             print("⚠️ Location permission not granted on Watch")
             currentSpotName = "Permission refusée"
@@ -40,7 +54,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     }
 
     func stopUpdatingLocation() {
-        locationManager.stopUpdatingLocation()
+        _locationManager?.stopUpdatingLocation()
     }
 
     // MARK: - Reverse Geocoding avec CLGeocoder

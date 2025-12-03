@@ -26,31 +26,31 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             WingsView()
                 .tabItem {
-                    Label("Voiles", systemImage: "wind")
+                    Label(NSLocalizedString("Wings", comment: ""), systemImage: "wind")
                 }
                 .tag(0)
 
             FlightsView()
                 .tabItem {
-                    Label("Vols", systemImage: "airplane")
+                    Label(NSLocalizedString("Flights", comment: ""), systemImage: "airplane")
                 }
                 .tag(1)
 
             StatsView()
                 .tabItem {
-                    Label("Stats", systemImage: "chart.bar")
+                    Label(NSLocalizedString("Stats", comment: ""), systemImage: "chart.bar")
                 }
                 .tag(2)
 
             ChartsView()
                 .tabItem {
-                    Label("Graphiques", systemImage: "chart.xyaxis.line")
+                    Label(NSLocalizedString("Charts", comment: ""), systemImage: "chart.xyaxis.line")
                 }
                 .tag(3)
 
             SettingsView()
                 .tabItem {
-                    Label("Réglages", systemImage: "gearshape")
+                    Label(NSLocalizedString("Settings", comment: ""), systemImage: "gearshape")
                 }
                 .tag(4)
         }
@@ -69,9 +69,9 @@ struct FlightsView: View {
             List {
                 if flights.isEmpty {
                     ContentUnavailableView(
-                        "Aucun vol",
+                        NSLocalizedString("No_Flights", comment: ""),
                         systemImage: "airplane.circle",
-                        description: Text("Commencez un vol depuis la Watch ou l'onglet Chrono")
+                        description: Text(NSLocalizedString("Start_Flight_From_Watch", comment: ""))
                     )
                 } else {
                     ForEach(flights) { flight in
@@ -84,7 +84,7 @@ struct FlightsView: View {
                     .onDelete(perform: deleteFlights)
                 }
             }
-            .navigationTitle("Mes vols")
+            .navigationTitle(NSLocalizedString("My_Flights", comment: ""))
             .sheet(item: $selectedFlight) { flight in
                 EditFlightView(flight: flight)
             }
@@ -171,7 +171,6 @@ struct FlightRow: View {
         case "orange": return .orange
         case "violet": return .purple
         case "noir": return .black
-        case "gris": return .gray
         default: return .gray
         }
     }
@@ -191,10 +190,6 @@ struct EditFlightView: View {
     @State private var endDate: Date
     @State private var spotName: String
     @State private var notes: String
-    @State private var isGeocodingSpot = false
-    @State private var geocodingMessage: String?
-    @State private var showingMapPicker = false
-    @State private var selectedCoordinate: CLLocationCoordinate2D?
 
     init(flight: Flight) {
         self.flight = flight
@@ -202,9 +197,6 @@ struct EditFlightView: View {
         _endDate = State(initialValue: flight.endDate)
         _spotName = State(initialValue: flight.spotName ?? "")
         _notes = State(initialValue: flight.notes ?? "")
-        if let lat = flight.latitude, let lon = flight.longitude {
-            _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
-        }
     }
 
     var calculatedDuration: Int {
@@ -256,70 +248,13 @@ struct EditFlightView: View {
                 Section("Spot") {
                     TextField("Nom du spot", text: $spotName)
 
-                    // Afficher les coordonnées si elles existent
-                    if let coord = selectedCoordinate {
+                    if let lat = flight.latitude, let lon = flight.longitude {
                         HStack {
                             Text("Coordonnées")
                             Spacer()
-                            Text("\(coord.latitude, specifier: "%.4f"), \(coord.longitude, specifier: "%.4f")")
+                            Text("\(lat, specifier: "%.4f"), \(lon, specifier: "%.4f")")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                        }
-                        
-                        // Bouton pour modifier les coordonnées sur la carte
-                        Button {
-                            showingMapPicker = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "map")
-                                Text("Modifier sur la carte")
-                            }
-                        }
-                        
-                        // Bouton pour supprimer les coordonnées
-                        Button(role: .destructive) {
-                            selectedCoordinate = nil
-                            flight.latitude = nil
-                            flight.longitude = nil
-                        } label: {
-                            HStack {
-                                Image(systemName: "trash")
-                                Text("Supprimer les coordonnées")
-                            }
-                        }
-                    } else {
-                        // Bouton pour ajouter des coordonnées via geocoding
-                        if !spotName.isEmpty {
-                            Button {
-                                geocodeSpot()
-                            } label: {
-                                HStack {
-                                    if isGeocodingSpot {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                    } else {
-                                        Image(systemName: "location.fill")
-                                    }
-                                    Text("Rechercher le lieu")
-                                }
-                            }
-                            .disabled(isGeocodingSpot)
-                        }
-                        
-                        // Bouton pour choisir sur la carte
-                        Button {
-                            showingMapPicker = true
-                        } label: {
-                            HStack {
-                                Image(systemName: "map")
-                                Text("Choisir sur la carte")
-                            }
-                        }
-
-                        if let message = geocodingMessage {
-                            Text(message)
-                                .font(.caption)
-                                .foregroundStyle(message.hasPrefix("✅") ? .green : .red)
                         }
                     }
                 }
@@ -348,12 +283,6 @@ struct EditFlightView: View {
             .onAppear {
                 selectedWing = flight.wing
             }
-            .sheet(isPresented: $showingMapPicker) {
-                MapCoordinatePicker(
-                    selectedCoordinate: $selectedCoordinate,
-                    spotName: spotName
-                )
-            }
         }
     }
 
@@ -364,204 +293,12 @@ struct EditFlightView: View {
         flight.durationSeconds = calculatedDuration
         flight.spotName = spotName.isEmpty ? nil : spotName
         flight.notes = notes.isEmpty ? nil : notes
-        flight.latitude = selectedCoordinate?.latitude
-        flight.longitude = selectedCoordinate?.longitude
 
         Task { @MainActor in
             try? modelContext.save()
         }
 
         dismiss()
-    }
-
-    private func geocodeSpot() {
-        guard !spotName.isEmpty else { return }
-
-        isGeocodingSpot = true
-        geocodingMessage = nil
-
-        let geocoder = CLGeocoder()
-        geocoder.geocodeAddressString(spotName) { placemarks, error in
-            DispatchQueue.main.async {
-                isGeocodingSpot = false
-
-                if let error = error {
-                    geocodingMessage = "❌ Impossible de trouver ce lieu"
-                    print("Geocoding error: \(error.localizedDescription)")
-                    return
-                }
-
-                guard let location = placemarks?.first?.location else {
-                    geocodingMessage = "❌ Aucun résultat trouvé"
-                    return
-                }
-
-                selectedCoordinate = location.coordinate
-                flight.latitude = location.coordinate.latitude
-                flight.longitude = location.coordinate.longitude
-                geocodingMessage = "✅ Coordonnées ajoutées"
-
-                Task { @MainActor in
-                    try? modelContext.save()
-                }
-            }
-        }
-    }
-}
-
-// MARK: - MapCoordinatePicker (Sélecteur de coordonnées sur carte)
-
-struct MapCoordinatePicker: View {
-    @Environment(\.dismiss) private var dismiss
-    @Binding var selectedCoordinate: CLLocationCoordinate2D?
-    let spotName: String
-    
-    @State private var cameraPosition: MapCameraPosition
-    @State private var markerCoordinate: CLLocationCoordinate2D?
-    @State private var searchText: String = ""
-    @State private var isSearching = false
-    
-    init(selectedCoordinate: Binding<CLLocationCoordinate2D?>, spotName: String) {
-        self._selectedCoordinate = selectedCoordinate
-        self.spotName = spotName
-        
-        // Position initiale : coordonnées existantes ou France par défaut
-        if let coord = selectedCoordinate.wrappedValue {
-            _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
-                center: coord,
-                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-            )))
-            _markerCoordinate = State(initialValue: coord)
-        } else {
-            // France par défaut
-            _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 45.9, longitude: 6.1),
-                span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)
-            )))
-        }
-        _searchText = State(initialValue: spotName)
-    }
-    
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                // Carte
-                MapReader { proxy in
-                    Map(position: $cameraPosition) {
-                        if let coord = markerCoordinate {
-                            Marker(spotName.isEmpty ? "Position" : spotName, coordinate: coord)
-                                .tint(.red)
-                        }
-                    }
-                    .mapStyle(.standard(elevation: .realistic))
-                    .onTapGesture { position in
-                        if let coordinate = proxy.convert(position, from: .local) {
-                            withAnimation {
-                                markerCoordinate = coordinate
-                            }
-                        }
-                    }
-                }
-                
-                // Instructions en bas
-                VStack {
-                    Spacer()
-                    
-                    VStack(spacing: 8) {
-                        // Barre de recherche
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundStyle(.secondary)
-                            TextField("Rechercher un lieu...", text: $searchText)
-                                .textFieldStyle(.plain)
-                                .onSubmit {
-                                    searchLocation()
-                                }
-                            if isSearching {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            } else if !searchText.isEmpty {
-                                Button {
-                                    searchLocation()
-                                } label: {
-                                    Image(systemName: "arrow.right.circle.fill")
-                                        .foregroundStyle(.blue)
-                                }
-                            }
-                        }
-                        .padding(10)
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        
-                        Text("Tapez sur la carte pour placer le marqueur")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
-                        
-                        if let coord = markerCoordinate {
-                            Text("\(coord.latitude, specifier: "%.5f"), \(coord.longitude, specifier: "%.5f")")
-                                .font(.caption)
-                                .foregroundStyle(.blue)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(.ultraThinMaterial)
-                                .clipShape(Capsule())
-                        }
-                    }
-                    .padding()
-                }
-            }
-            .navigationTitle("Choisir la position")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Valider") {
-                        selectedCoordinate = markerCoordinate
-                        dismiss()
-                    }
-                    .disabled(markerCoordinate == nil)
-                }
-            }
-            .onAppear {
-                // Si on a un nom de spot mais pas de coordonnées, rechercher automatiquement
-                if !spotName.isEmpty && markerCoordinate == nil {
-                    searchLocation()
-                }
-            }
-        }
-    }
-    
-    private func searchLocation() {
-        let query = searchText.isEmpty ? spotName : searchText
-        guard !query.isEmpty else { return }
-        
-        isSearching = true
-        
-        let geocoder = CLGeocoder()
-        geocoder.geocodeAddressString(query) { placemarks, error in
-            DispatchQueue.main.async {
-                isSearching = false
-                
-                guard let location = placemarks?.first?.location else { return }
-                
-                withAnimation {
-                    markerCoordinate = location.coordinate
-                    cameraPosition = .region(MKCoordinateRegion(
-                        center: location.coordinate,
-                        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-                    ))
-                }
-            }
-        }
     }
 }
 
@@ -724,13 +461,13 @@ struct WingRow: View {
 
     private func colorFromString(_ colorString: String) -> Color {
         switch colorString.lowercased() {
-        case "rouge": return .red
-        case "bleu": return .blue
-        case "vert": return .green
-        case "jaune": return .yellow
+        case "rouge", "red": return .red
+        case "bleu", "blue": return .blue
+        case "vert", "green": return .green
+        case "jaune", "yellow": return .yellow
         case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
+        case "violet", "purple": return .purple
+        case "noir", "black": return .black
         default: return .gray
         }
     }
@@ -752,8 +489,6 @@ struct AddWingView: View {
 
     let types = ["Soaring", "Cross", "Acro", "Débutant"]
     let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir"]
-
-
 
     var body: some View {
         NavigationStack {
@@ -1264,6 +999,7 @@ struct StatsByWingSection: View {
     let flights: [Flight]
     let wings: [Wing]
     @State private var selectedWing: Wing?
+    @State private var showingDetail = false
 
     var wingStats: [(wing: Wing, sessions: Int, hours: Int, minutes: Int)] {
         wings.compactMap { wing in
@@ -1303,7 +1039,6 @@ struct StatsByWingSection: View {
         case "orange": return .orange
         case "violet": return .purple
         case "noir": return .black
-        case "gris": return .gray
         default: return .gray
         }
     }
@@ -1353,6 +1088,7 @@ struct StatsByWingSection: View {
                     ForEach(wingStats, id: \.wing.id) { stat in
                         Button {
                             selectedWing = stat.wing
+                            showingDetail = true
                         } label: {
                             HStack(spacing: 8) {
                                 // Photo de la voile (24x24)
@@ -1449,8 +1185,10 @@ struct StatsByWingSection: View {
                 }
             }
         }
-        .sheet(item: $selectedWing) { wing in
-            WingFlightsDetailView(wing: wing, flights: flights)
+        .sheet(isPresented: $showingDetail) {
+            if let wing = selectedWing {
+                WingFlightsDetailView(wing: wing, flights: flights)
+            }
         }
     }
 }
@@ -1461,6 +1199,7 @@ struct StatsBySpotSection: View {
     @Environment(DataController.self) private var dataController
     let flights: [Flight]
     @State private var selectedSpot: String?
+    @State private var showingDetail = false
 
     var spotStats: [(spot: String, sessions: Int, hours: Int, minutes: Int)] {
         let grouped = Dictionary(grouping: flights, by: { $0.spotName ?? "Spot inconnu" })
@@ -1522,6 +1261,7 @@ struct StatsBySpotSection: View {
                     ForEach(spotStats, id: \.spot) { stat in
                         Button {
                             selectedSpot = stat.spot
+                            showingDetail = true
                         } label: {
                             HStack {
                                 Text(stat.spot)
@@ -1592,10 +1332,7 @@ struct StatsBySpotSection: View {
                 }
             }
         }
-        .sheet(isPresented: Binding(
-            get: { selectedSpot != nil },
-            set: { if !$0 { selectedSpot = nil } }
-        )) {
+        .sheet(isPresented: $showingDetail) {
             if let spot = selectedSpot {
                 SpotFlightsDetailView(spotName: spot, flights: flights)
             }
@@ -2080,13 +1817,13 @@ struct TimerView: View {
 
     private func colorFromString(_ colorString: String) -> Color {
         switch colorString.lowercased() {
-        case "rouge": return .red
-        case "bleu": return .blue
-        case "vert": return .green
-        case "jaune": return .yellow
+        case "rouge", "red": return .red
+        case "bleu", "blue": return .blue
+        case "vert", "green": return .green
+        case "jaune", "yellow": return .yellow
         case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
+        case "violet", "purple": return .purple
+        case "noir", "black": return .black
         default: return .gray
         }
     }
@@ -2181,13 +1918,13 @@ struct WingPickerSheet: View {
 
     private func colorFromString(_ colorString: String) -> Color {
         switch colorString.lowercased() {
-        case "rouge": return .red
-        case "bleu": return .blue
-        case "vert": return .green
-        case "jaune": return .yellow
+        case "rouge", "red": return .red
+        case "bleu", "blue": return .blue
+        case "vert", "green": return .green
+        case "jaune", "yellow": return .yellow
         case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
+        case "violet", "purple": return .purple
+        case "noir", "black": return .black
         default: return .gray
         }
     }
@@ -2499,342 +2236,14 @@ struct ArchivedWingsView: View {
 
     private func colorFromString(_ colorString: String) -> Color {
         switch colorString.lowercased() {
-        case "rouge": return .red
-        case "bleu": return .blue
-        case "vert": return .green
-        case "jaune": return .yellow
+        case "rouge", "red": return .red
+        case "bleu", "blue": return .blue
+        case "vert", "green": return .green
+        case "jaune", "yellow": return .yellow
         case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
+        case "violet", "purple": return .purple
+        case "noir", "black": return .black
         default: return .gray
-        }
-    }
-}
-
-// MARK: - SpotsManagementView (Gestion des spots)
-
-/// Vue pour gérer les spots détectés dans les vols
-struct SpotsManagementView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Flight.startDate, order: .reverse) private var flights: [Flight]
-    
-    @State private var selectedSpot: SpotInfo?
-    @State private var showingMapPicker = false
-    
-    /// Structure pour regrouper les infos d'un spot
-    struct SpotInfo: Identifiable, Hashable {
-        let id = UUID()
-        let name: String
-        var latitude: Double?
-        var longitude: Double?
-        var flightCount: Int
-        
-        var hasCoordinates: Bool {
-            latitude != nil && longitude != nil
-        }
-        
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(name)
-        }
-        
-        static func == (lhs: SpotInfo, rhs: SpotInfo) -> Bool {
-            lhs.name == rhs.name
-        }
-    }
-    
-    /// Extraire tous les spots uniques des vols
-    var spots: [SpotInfo] {
-        var spotDict: [String: SpotInfo] = [:]
-        
-        for flight in flights {
-            guard let spotName = flight.spotName, !spotName.isEmpty else { continue }
-            
-            if var existing = spotDict[spotName] {
-                existing.flightCount += 1
-                // Mettre à jour les coordonnées si ce vol en a
-                if existing.latitude == nil, let lat = flight.latitude, let lon = flight.longitude {
-                    existing.latitude = lat
-                    existing.longitude = lon
-                }
-                spotDict[spotName] = existing
-            } else {
-                spotDict[spotName] = SpotInfo(
-                    name: spotName,
-                    latitude: flight.latitude,
-                    longitude: flight.longitude,
-                    flightCount: 1
-                )
-            }
-        }
-        
-        return spotDict.values.sorted { $0.flightCount > $1.flightCount }
-    }
-    
-    var body: some View {
-        List {
-            if spots.isEmpty {
-                ContentUnavailableView(
-                    "Aucun spot",
-                    systemImage: "mappin.slash",
-                    description: Text("Les spots apparaîtront ici une fois que vous aurez enregistré des vols")
-                )
-            } else {
-                Section {
-                    ForEach(spots) { spot in
-                        SpotRowView(spot: spot) {
-                            selectedSpot = spot
-                            showingMapPicker = true
-                        }
-                    }
-                } header: {
-                    Text("\(spots.count) spot(s) détecté(s)")
-                } footer: {
-                    Text("Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés")
-                }
-            }
-        }
-        .navigationTitle("Spots")
-        .sheet(isPresented: $showingMapPicker) {
-            if let spot = selectedSpot {
-                SpotMapPicker(spot: spot) { coordinate in
-                    updateSpotCoordinates(spotName: spot.name, coordinate: coordinate)
-                }
-            }
-        }
-    }
-    
-    /// Met à jour les coordonnées de tous les vols avec ce nom de spot
-    private func updateSpotCoordinates(spotName: String, coordinate: CLLocationCoordinate2D) {
-        var updatedCount = 0
-        
-        for flight in flights {
-            if flight.spotName == spotName {
-                flight.latitude = coordinate.latitude
-                flight.longitude = coordinate.longitude
-                updatedCount += 1
-            }
-        }
-        
-        Task { @MainActor in
-            try? modelContext.save()
-            print("✅ Updated \(updatedCount) flights with coordinates for spot: \(spotName)")
-        }
-    }
-}
-
-/// Row pour afficher un spot
-struct SpotRowView: View {
-    let spot: SpotsManagementView.SpotInfo
-    let onMapTap: () -> Void
-    
-    var body: some View {
-        HStack(spacing: 12) {
-            // Icône
-            ZStack {
-                Circle()
-                    .fill(spot.hasCoordinates ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                    .frame(width: 40, height: 40)
-                
-                Image(systemName: spot.hasCoordinates ? "mappin.circle.fill" : "mappin.slash")
-                    .font(.title3)
-                    .foregroundStyle(spot.hasCoordinates ? .green : .orange)
-            }
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(spot.name)
-                    .font(.headline)
-                
-                HStack(spacing: 8) {
-                    Label("\(spot.flightCount) vol(s)", systemImage: "airplane")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    
-                    if spot.hasCoordinates {
-                        Text("•")
-                            .foregroundStyle(.secondary)
-                        Text("GPS ✓")
-                            .font(.caption)
-                            .foregroundStyle(.green)
-                    }
-                }
-            }
-            
-            Spacer()
-            
-            // Bouton pour ajouter/modifier les coordonnées
-            Button {
-                onMapTap()
-            } label: {
-                Image(systemName: spot.hasCoordinates ? "map" : "map.fill")
-                    .font(.title3)
-                    .foregroundStyle(.blue)
-            }
-            .buttonStyle(.plain)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-/// Picker de carte pour un spot
-struct SpotMapPicker: View {
-    @Environment(\.dismiss) private var dismiss
-    let spot: SpotsManagementView.SpotInfo
-    let onSave: (CLLocationCoordinate2D) -> Void
-    
-    @State private var cameraPosition: MapCameraPosition
-    @State private var markerCoordinate: CLLocationCoordinate2D?
-    @State private var searchText: String = ""
-    @State private var isSearching = false
-    
-    init(spot: SpotsManagementView.SpotInfo, onSave: @escaping (CLLocationCoordinate2D) -> Void) {
-        self.spot = spot
-        self.onSave = onSave
-        
-        // Position initiale
-        if let lat = spot.latitude, let lon = spot.longitude {
-            let coord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
-            _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
-                center: coord,
-                span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-            )))
-            _markerCoordinate = State(initialValue: coord)
-        } else {
-            // France par défaut
-            _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
-                center: CLLocationCoordinate2D(latitude: 45.9, longitude: 6.1),
-                span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)
-            )))
-        }
-        _searchText = State(initialValue: spot.name)
-    }
-    
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                MapReader { proxy in
-                    Map(position: $cameraPosition) {
-                        if let coord = markerCoordinate {
-                            Marker(spot.name, coordinate: coord)
-                                .tint(.red)
-                        }
-                    }
-                    .mapStyle(.standard(elevation: .realistic))
-                    .onTapGesture { position in
-                        if let coordinate = proxy.convert(position, from: .local) {
-                            withAnimation {
-                                markerCoordinate = coordinate
-                            }
-                        }
-                    }
-                }
-                
-                VStack {
-                    Spacer()
-                    
-                    VStack(spacing: 8) {
-                        // Barre de recherche
-                        HStack {
-                            Image(systemName: "magnifyingglass")
-                                .foregroundStyle(.secondary)
-                            TextField("Rechercher un lieu...", text: $searchText)
-                                .textFieldStyle(.plain)
-                                .onSubmit {
-                                    searchLocation()
-                                }
-                            if isSearching {
-                                ProgressView()
-                                    .scaleEffect(0.8)
-                            } else if !searchText.isEmpty {
-                                Button {
-                                    searchLocation()
-                                } label: {
-                                    Image(systemName: "arrow.right.circle.fill")
-                                        .foregroundStyle(.blue)
-                                }
-                            }
-                        }
-                        .padding(10)
-                        .background(.ultraThinMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                        
-                        Text("Tapez sur la carte pour placer le marqueur")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
-                        
-                        if let coord = markerCoordinate {
-                            Text("\(coord.latitude, specifier: "%.5f"), \(coord.longitude, specifier: "%.5f")")
-                                .font(.caption)
-                                .foregroundStyle(.blue)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 6)
-                                .background(.ultraThinMaterial)
-                                .clipShape(Capsule())
-                        }
-                        
-                        // Info sur le nombre de vols qui seront mis à jour
-                        Text("📍 \(spot.flightCount) vol(s) seront mis à jour")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
-                    }
-                    .padding()
-                }
-            }
-            .navigationTitle(spot.name)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") {
-                        dismiss()
-                    }
-                }
-                
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Enregistrer") {
-                        if let coord = markerCoordinate {
-                            onSave(coord)
-                        }
-                        dismiss()
-                    }
-                    .disabled(markerCoordinate == nil)
-                }
-            }
-            .onAppear {
-                // Si pas de coordonnées, rechercher automatiquement
-                if markerCoordinate == nil {
-                    searchLocation()
-                }
-            }
-        }
-    }
-    
-    private func searchLocation() {
-        guard !searchText.isEmpty else { return }
-        
-        isSearching = true
-        
-        let geocoder = CLGeocoder()
-        geocoder.geocodeAddressString(searchText) { placemarks, error in
-            DispatchQueue.main.async {
-                isSearching = false
-                
-                guard let location = placemarks?.first?.location else { return }
-                
-                withAnimation {
-                    markerCoordinate = location.coordinate
-                    cameraPosition = .region(MKCoordinateRegion(
-                        center: location.coordinate,
-                        span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-                    ))
-                }
-            }
         }
     }
 }
@@ -2872,14 +2281,6 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Spots") {
-                    NavigationLink {
-                        SpotsManagementView()
-                    } label: {
-                        Label("Gérer les spots", systemImage: "mappin.and.ellipse")
-                    }
-                }
-
                 Section("Langue") {
                     Picker("Langue de l'application", selection: Binding(
                         get: { localizationManager.currentLanguage },
@@ -2892,6 +2293,13 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.menu)
+
+                    HStack {
+                        Text("Langue actuelle")
+                        Spacer()
+                        Text("\(localizationManager.effectiveLanguage.flag) \(localizationManager.effectiveLanguage.displayName)")
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("Apple Watch") {
@@ -3100,20 +2508,8 @@ struct SettingsView: View {
         dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
         let timestamp = dateFormatter.string(from: Date()).replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "h")
 
-        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            importMessage = "❌ Erreur: impossible d'accéder aux documents"
-            showingImportSuccess = true
-            return
-        }
-
-        // Créer un dossier pour les images
-        let imagesFolder = documentsPath.appendingPathComponent("ParaFlightLog_Images_\(timestamp)")
-        try? FileManager.default.createDirectory(at: imagesFolder, withIntermediateDirectories: true)
-
-        // Générer CSV des voiles avec référence aux images
-        var wingsCSV = "ID,Nom,Taille,Type,Couleur,Archivé,Date de création,Photo\n"
-        var exportedFiles: [URL] = []
-
+        // Générer CSV des voiles
+        var wingsCSV = "ID,Nom,Taille,Type,Couleur,Archivé,Date de création\n"
         for wing in wings.sorted(by: { $0.createdAt < $1.createdAt }) {
             let id = wing.id.uuidString
             let name = wing.name.replacingOccurrences(of: ",", with: ";")
@@ -3123,15 +2519,7 @@ struct SettingsView: View {
             let archived = wing.isArchived ? "Oui" : "Non"
             let created = dateFormatter.string(from: wing.createdAt)
 
-            // Sauvegarder l'image si elle existe
-            var photoFilename = ""
-            if let photoData = wing.photoData {
-                photoFilename = "\(id).jpg"
-                let photoURL = imagesFolder.appendingPathComponent(photoFilename)
-                try? photoData.write(to: photoURL)
-            }
-
-            wingsCSV += "\(id),\(name),\(size),\(type),\(color),\(archived),\(created),\(photoFilename)\n"
+            wingsCSV += "\(id),\(name),\(size),\(type),\(color),\(archived),\(created)\n"
         }
 
         // Générer CSV des vols
@@ -3152,6 +2540,12 @@ struct SettingsView: View {
         }
 
         // Sauvegarder les fichiers
+        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+            importMessage = "❌ Erreur: impossible d'accéder aux documents"
+            showingImportSuccess = true
+            return
+        }
+
         let wingsFileName = "ParaFlightLog_Wings_\(timestamp).csv"
         let flightsFileName = "ParaFlightLog_Flights_\(timestamp).csv"
         let wingsURL = documentsPath.appendingPathComponent(wingsFileName)
@@ -3161,17 +2555,8 @@ struct SettingsView: View {
             try wingsCSV.write(to: wingsURL, atomically: true, encoding: .utf8)
             try flightsCSV.write(to: flightsURL, atomically: true, encoding: .utf8)
 
-            // Préparer les fichiers à partager
-            exportedFiles = [wingsURL, flightsURL]
-
-            // Ajouter le dossier d'images s'il contient des fichiers
-            if let imageFiles = try? FileManager.default.contentsOfDirectory(at: imagesFolder, includingPropertiesForKeys: nil),
-               !imageFiles.isEmpty {
-                exportedFiles.append(imagesFolder)
-            }
-
-            // Partager tous les fichiers
-            let activityVC = UIActivityViewController(activityItems: exportedFiles, applicationActivities: nil)
+            // Partager les deux fichiers
+            let activityVC = UIActivityViewController(activityItems: [wingsURL, flightsURL], applicationActivities: nil)
 
             // Support iPad: définir le popover
             if let popover = activityVC.popoverPresentationController {
@@ -3191,7 +2576,10 @@ struct SettingsView: View {
                     while let presented = topVC.presentedViewController {
                         topVC = presented
                     }
-                    topVC.present(activityVC, animated: true)
+                    topVC.present(activityVC, animated: true) {
+                        self.importMessage = "✅ Export réussi: \(self.wings.count) voiles et \(self.flights.count) vols"
+                        self.showingImportSuccess = true
+                    }
                 }
             }
         } catch {

@@ -17,14 +17,16 @@ struct WingDTO: Codable, Identifiable, Hashable {
     let type: String?
     let color: String?
     let photoData: Data?
+    let displayOrder: Int
 
-    init(id: UUID, name: String, size: String? = nil, type: String? = nil, color: String? = nil, photoData: Data? = nil) {
+    init(id: UUID, name: String, size: String? = nil, type: String? = nil, color: String? = nil, photoData: Data? = nil, displayOrder: Int = 0) {
         self.id = id
         self.name = name
         self.size = size
         self.type = type
         self.color = color
         self.photoData = photoData
+        self.displayOrder = displayOrder
     }
 }
 

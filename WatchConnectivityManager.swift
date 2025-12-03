@@ -148,6 +148,32 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    /// Synchronise les voiles avec la Watch (utilisé après réorganisation)
+    func syncWingsToWatch(wings: [Wing]) {
+        guard WCSession.default.activationState == .activated else {
+            print("⚠️ WCSession not activated, cannot sync wings")
+            return
+        }
+
+        // Convertir en DTO sans photos pour une synchronisation rapide
+        let wingsDTONoPhotos = wings.map { $0.toDTOWithoutPhoto() }
+
+        guard let jsonData = try? JSONEncoder().encode(wingsDTONoPhotos) else {
+            print("❌ Failed to encode wings for sync")
+            return
+        }
+
+        let base64String = jsonData.base64EncodedString()
+        let context = ["wingsData": base64String]
+
+        do {
+            try WCSession.default.updateApplicationContext(context)
+            print("✅ Synced \(wingsDTONoPhotos.count) wings to Watch (reordered)")
+        } catch {
+            print("❌ Failed to sync wings: \(error.localizedDescription)")
+        }
+    }
+
     /// Envoie la liste des voiles via transferUserInfo (alternative si updateApplicationContext échoue)
     func sendWingsViaTransfer() {
         guard let dataController = dataController else {

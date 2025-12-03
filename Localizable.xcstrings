@@ -17,6 +17,16 @@
         }
       }
     },
+    "%.5f, %.5f" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$.5f, %2$.5f"
+          }
+        }
+      }
+    },
     "%@ %@" : {
       "localizations" : {
         "en" : {
@@ -81,7 +91,21 @@
         }
       }
     },
+    "%lld %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@ %3$@"
+          }
+        }
+      }
+    },
+    "%lld spot(s) détecté(s)" : {
+
+    },
     "%lld spot%@ différent%@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -97,6 +121,9 @@
         }
       }
     },
+    "%lld vol(s)" : {
+
+    },
     "%lld vol%@" : {
       "localizations" : {
         "en" : {
@@ -109,6 +136,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%1$lld vol%2$@"
+          }
+        }
+      }
+    },
+    "%lldh" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldh"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldh"
           }
         }
       }
@@ -161,7 +204,21 @@
         }
       }
     },
+    "•" : {
+
+    },
+    "+ %lld %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "+ %1$lld %2$@ %3$@"
+          }
+        }
+      }
+    },
     "+ %lld autre%@ spot%@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -208,6 +265,9 @@
           }
         }
       }
+    },
+    "📍 %lld vol(s) seront mis à jour" : {
+
     },
     "1" : {
       "localizations" : {
@@ -289,6 +349,23 @@
         }
       }
     },
+    "Ajouter coordonnées GPS" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add GPS coordinates"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter coordonnées GPS"
+          }
+        }
+      }
+    },
     "Ajoutez d'abord une voile dans l'onglet Voiles" : {
       "localizations" : {
         "en" : {
@@ -304,6 +381,9 @@
           }
         }
       }
+    },
+    "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés" : {
+
     },
     "Ajoutez votre première voile" : {
       "localizations" : {
@@ -352,6 +432,9 @@
           }
         }
       }
+    },
+    "Annuler le vol" : {
+
     },
     "App Watch" : {
       "localizations" : {
@@ -429,6 +512,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aucun spot"
+          }
+        }
+      }
+    },
+    "Aucun spot avec coordonnées GPS" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No spot with GPS coordinates"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun spot avec coordonnées GPS"
           }
         }
       }
@@ -561,6 +660,38 @@
         }
       }
     },
+    "Carte" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Map"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carte"
+          }
+        }
+      }
+    },
+    "Carte des spots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spots map"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carte des spots"
+          }
+        }
+      }
+    },
     "Ce spot sera utilisé en priorité sur la détection GPS automatique" : {
       "localizations" : {
         "en" : {
@@ -641,6 +772,28 @@
         }
       }
     },
+    "Choisir la période" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose period"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir la période"
+          }
+        }
+      }
+    },
+    "Choisir la position" : {
+
+    },
+    "Choisir sur la carte" : {
+
+    },
     "Choisir une photo" : {
       "localizations" : {
         "en" : {
@@ -685,6 +838,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Chrono"
+          }
+        }
+      }
+    },
+    "Chronomètre" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chronometer"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chronomètre"
           }
         }
       }
@@ -749,6 +918,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Date"
+          }
+        }
+      }
+    },
+    "Date de début" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start date"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date de début"
+          }
+        }
+      }
+    },
+    "Date de fin" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End date"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date de fin"
           }
         }
       }
@@ -866,6 +1067,7 @@
       }
     },
     "durée" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -992,6 +1194,12 @@
           }
         }
       }
+    },
+    "Gérer les spots" : {
+
+    },
+    "GPS ✓" : {
+
     },
     "Graphiques" : {
       "localizations" : {
@@ -1185,6 +1393,22 @@
         }
       }
     },
+    "Lancer un vol" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a flight"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer un vol"
+          }
+        }
+      }
+    },
     "Langue" : {
       "localizations" : {
         "en" : {
@@ -1202,6 +1426,7 @@
       }
     },
     "Langue actuelle" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1232,6 +1457,9 @@
           }
         }
       }
+    },
+    "Les spots apparaîtront ici une fois que vous aurez enregistré des vols" : {
+
     },
     "Les voiles archivées apparaîtront ici" : {
       "localizations" : {
@@ -1344,6 +1572,9 @@
           }
         }
       }
+    },
+    "Modifier sur la carte" : {
+
     },
     "Nom" : {
       "localizations" : {
@@ -1538,6 +1769,7 @@
       }
     },
     "Période" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1549,6 +1781,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Période"
+          }
+        }
+      }
+    },
+    "Période personnalisée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom period"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Période personnalisée"
           }
         }
       }
@@ -1565,6 +1813,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Photo"
+          }
+        }
+      }
+    },
+    "Position indisponible" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Position unavailable"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Position indisponible"
           }
         }
       }
@@ -1600,6 +1865,29 @@
           }
         }
       }
+    },
+    "Recherche..." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching..."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche..."
+          }
+        }
+      }
+    },
+    "Rechercher le lieu" : {
+
+    },
+    "Rechercher un lieu..." : {
+
     },
     "Réglages" : {
       "localizations" : {
@@ -1664,6 +1952,9 @@
           }
         }
       }
+    },
+    "Sauvegarder" : {
+
     },
     "Sélection" : {
       "localizations" : {
@@ -1746,7 +2037,6 @@
       }
     },
     "Spots" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1922,6 +2212,9 @@
         }
       }
     },
+    "Supprimer les coordonnées" : {
+
+    },
     "Supprimer toutes les données" : {
       "localizations" : {
         "en" : {
@@ -1937,6 +2230,9 @@
           }
         }
       }
+    },
+    "Swipez vers la gauche" : {
+
     },
     "Synchroniser les voiles" : {
       "localizations" : {
@@ -1985,6 +2281,9 @@
           }
         }
       }
+    },
+    "Tapez sur la carte pour placer le marqueur" : {
+
     },
     "Temps" : {
       "localizations" : {
@@ -2050,8 +2349,10 @@
         }
       }
     },
+    "Terminer le vol ?" : {
+
+    },
     "Timeline" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2095,6 +2396,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Type"
+          }
+        }
+      }
+    },
+    "Valider" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validate"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Valider"
           }
         }
       }
@@ -2180,6 +2497,25 @@
         }
       }
     },
+    "vol" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "flight"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vol"
+          }
+        }
+      }
+    },
+    "VOL EN COURS" : {
+
+    },
     "Vol terminé !" : {
       "localizations" : {
         "en" : {
@@ -2197,6 +2533,7 @@
       }
     },
     "vol%@" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2208,6 +2545,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "vol%@"
+          }
+        }
+      }
+    },
+    "vols" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "flights"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "vols"
           }
         }
       }

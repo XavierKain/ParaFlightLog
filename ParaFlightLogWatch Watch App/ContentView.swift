@@ -10,42 +10,107 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
+    @Environment(WatchLocationService.self) private var locationService
     @State private var selectedWing: WingDTO?
     @State private var selectedTab: Int = 0
     @State private var isFlying: Bool = false
-    // Timer et startDate au niveau ContentView pour persister pendant la navigation
+    @State private var showingActiveFlightView = false
+    // Timer data stockée au niveau ContentView
     @State private var flightStartDate: Date?
-    @State private var elapsedSeconds: Int = 0
 
     var body: some View {
         TabView(selection: $selectedTab) {
             // Écran 1 : Sélection de voile
-            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab, isFlying: isFlying)
+            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab)
                 .environment(watchManager)
                 .tag(0)
 
-            // Écran 2 : Timer et contrôle du vol
-            FlightTimerView(
+            // Écran 2 : Récap voile + bouton Start
+            FlightStartView(
                 selectedWing: $selectedWing,
-                selectedTab: $selectedTab,
-                isFlying: $isFlying,
-                flightStartDate: $flightStartDate,
-                elapsedSeconds: $elapsedSeconds
+                onStartFlight: {
+                    startFlight()
+                }
             )
-                .environment(watchManager)
-                .tag(1)
+            .environment(watchManager)
+            .tag(1)
         }
         .tabViewStyle(.page)
-        // Bloquer complètement le swipe pendant le vol avec un gesture vide qui a priorité
-        .gesture(isFlying ? DragGesture().onChanged { _ in }.onEnded { _ in } : nil)
-        .onChange(of: selectedTab) { oldValue, newValue in
-            if isFlying && newValue != 1 {
-                // Forcer le retour à l'écran du chrono si un vol est en cours
-                withAnimation {
-                    selectedTab = 1
+        .fullScreenCover(isPresented: $showingActiveFlightView) {
+            // Écran 3 : Timer actif (plein écran, impossible de quitter)
+            ActiveFlightView(
+                wing: selectedWing,
+                flightStartDate: $flightStartDate,
+                onStopFlight: { duration in
+                    stopFlight(duration: duration)
+                },
+                onDiscardFlight: {
+                    discardFlight()
+                }
+            )
+            .environment(watchManager)
+            .environment(locationService)
+            .interactiveDismissDisabled(true) // Empêche de swipe down pour fermer
+        }
+        .onAppear {
+            // Pré-démarrer la localisation dès le lancement de l'app
+            // pour éviter le lag au moment du Start
+            Task.detached(priority: .background) {
+                await MainActor.run {
+                    locationService.requestAuthorization()
                 }
             }
         }
+    }
+    
+    private func startFlight() {
+        // IMPORTANT: Définir la date AVANT d'afficher le fullScreenCover
+        // pour que le timer puisse démarrer immédiatement
+        flightStartDate = Date()
+        isFlying = true
+        
+        // Démarrer la localisation en arrière-plan (ne bloque pas l'UI)
+        Task.detached(priority: .userInitiated) { [locationService] in
+            await MainActor.run {
+                locationService.startUpdatingLocation()
+            }
+        }
+        
+        // Afficher le timer immédiatement
+        showingActiveFlightView = true
+    }
+    
+    private func stopFlight(duration: Int) {
+        guard let wing = selectedWing, let start = flightStartDate else { return }
+        
+        let end = Date()
+        
+        // Créer le FlightDTO
+        let flight = FlightDTO(
+            wingId: wing.id,
+            startDate: start,
+            endDate: end,
+            durationSeconds: duration
+        )
+        
+        // Envoyer vers l'iPhone
+        watchManager.sendFlightToPhone(flight)
+        
+        // Reset
+        isFlying = false
+        showingActiveFlightView = false
+        flightStartDate = nil
+        selectedWing = nil
+        selectedTab = 0 // Revenir à la sélection de voile
+    }
+    
+    private func discardFlight() {
+        // Annuler le vol sans sauvegarder
+        isFlying = false
+        showingActiveFlightView = false
+        flightStartDate = nil
+        selectedWing = nil
+        selectedTab = 0
     }
 }
 
@@ -55,7 +120,6 @@ struct WingSelectionView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Binding var selectedWing: WingDTO?
     @Binding var selectedTab: Int
-    var isFlying: Bool = false
 
     var body: some View {
         VStack(spacing: 8) {
@@ -85,44 +149,16 @@ struct WingSelectionView: View {
                 ScrollView {
                     VStack(spacing: 4) {
                         ForEach(watchManager.wings) { wing in
-                            Button {
-                                selectedWing = wing
-                                // Auto-navigation vers l'écran timer avec animation
-                                withAnimation {
-                                    selectedTab = 1
-                                }
-                            } label: {
-                                HStack {
-                                    // Photo ou icône de la voile (avec cache)
-                                    CachedWingImage(wing: wing, size: 30)
-
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text(wing.name)
-                                            .font(.headline)
-                                        if let size = wing.size {
-                                            Text("\(size) m²")
-                                                .font(.caption2)
-                                                .foregroundStyle(.secondary)
-                                        }
-                                    }
-
-                                    Spacer()
-
-                                    if selectedWing?.id == wing.id {
-                                        Image(systemName: "checkmark.circle.fill")
-                                            .foregroundStyle(.green)
+                            WingButton(
+                                wing: wing,
+                                isSelected: selectedWing?.id == wing.id,
+                                onTap: {
+                                    selectedWing = wing
+                                    withAnimation {
+                                        selectedTab = 1
                                     }
                                 }
-                                .padding(.vertical, 6)
-                                .padding(.horizontal, 8)
-                            }
-                            .buttonStyle(.plain)
-                            .background(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .fill(selectedWing?.id == wing.id ? Color.green.opacity(0.15) : Color.gray.opacity(0.2))
                             )
-                            .disabled(isFlying) // Désactiver pendant le vol
-                            .opacity(isFlying ? 0.5 : 1.0)
                         }
                     }
                     .padding(.horizontal, 4)
@@ -132,55 +168,69 @@ struct WingSelectionView: View {
     }
 }
 
-// MARK: - FlightTimerView (Écran 2)
-
-struct FlightTimerView: View {
-    @Environment(WatchConnectivityManager.self) private var watchManager
-    @Environment(WatchLocationService.self) private var locationService
-    @Environment(\.scenePhase) private var scenePhase
-    @Binding var selectedWing: WingDTO?
-    @Binding var selectedTab: Int
-    @Binding var isFlying: Bool
-    @Binding var flightStartDate: Date?
-    @Binding var elapsedSeconds: Int
-
-    @State private var showingFlightSummary = false
-    @State private var completedFlightData: (duration: Int, wing: WingDTO)?
-    @State private var timer: Timer?
-
+/// Bouton de sélection de voile optimisé (sans icône pour performance)
+struct WingButton: View {
+    let wing: WingDTO
+    let isSelected: Bool
+    let onTap: () -> Void
+    
     var body: some View {
-        VStack(spacing: 8) {
-            // Voile sélectionnée
-            if let wing = selectedWing {
-                HStack(spacing: 6) {
-                    // Photo ou icône de la voile (avec cache)
-                    CachedWingImage(wing: wing, size: 35)
-
-                    VStack(spacing: 2) {
-                        Text(wing.name)
-                            .font(.headline)
-                            .lineLimit(1)
-                        if let size = wing.size {
-                            Text("\(size) m²")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
+        Button(action: onTap) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(wing.name)
+                        .font(.headline)
+                    if let size = wing.size {
+                        Text("\(size) m²")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
                     }
                 }
-            } else {
-                VStack(spacing: 4) {
-                    Image(systemName: "arrow.left")
-                        .font(.title3)
-                        .foregroundStyle(.orange)
-                    Text("Choisir une voile")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
+
+                Spacer()
+
+                if isSelected {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
                 }
             }
+            .padding(.vertical, 8)
+            .padding(.horizontal, 10)
+        }
+        .buttonStyle(.plain)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(isSelected ? Color.green.opacity(0.15) : Color.gray.opacity(0.2))
+        )
+    }
+}
 
-            // Spot (si vol en cours)
-            if isFlying {
+// MARK: - FlightStartView (Écran 2 - Récap + Start)
+
+struct FlightStartView: View {
+    @Environment(WatchConnectivityManager.self) private var watchManager
+    @Environment(WatchLocationService.self) private var locationService
+    @Binding var selectedWing: WingDTO?
+    let onStartFlight: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            // Voile sélectionnée
+            if let wing = selectedWing {
+                VStack(spacing: 4) {
+                    Text(wing.name)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+                        .lineLimit(1)
+                    
+                    if let size = wing.size {
+                        Text("\(size) m²")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                
+                // Localisation actuelle
                 HStack(spacing: 4) {
                     Image(systemName: "location.fill")
                         .font(.caption2)
@@ -190,104 +240,170 @@ struct FlightTimerView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                .padding(.vertical, 4)
+                .padding(.vertical, 2)
+                
+                Spacer()
+                
+                // Bouton Start
+                Button {
+                    onStartFlight()
+                } label: {
+                    Label("Start", systemImage: "play.circle.fill")
+                        .font(.title2)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                
+                Spacer()
+                
+            } else {
+                // Pas de voile sélectionnée
+                VStack(spacing: 8) {
+                    Image(systemName: "arrow.left")
+                        .font(.largeTitle)
+                        .foregroundStyle(.orange)
+                    
+                    Text("Choisir une voile")
+                        .font(.headline)
+                        .foregroundStyle(.secondary)
+                    
+                    Text("Swipez vers la gauche")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                }
+            }
+        }
+        // Supprimé: onAppear qui démarrait la localisation et causait du lag
+    }
+}
+
+// MARK: - ActiveFlightView (Écran 3 - Timer plein écran)
+
+struct ActiveFlightView: View {
+    @Environment(WatchConnectivityManager.self) private var watchManager
+    @Environment(WatchLocationService.self) private var locationService
+    
+    let wing: WingDTO?
+    @Binding var flightStartDate: Date?
+    let onStopFlight: (Int) -> Void
+    let onDiscardFlight: () -> Void
+    
+    @State private var elapsedSeconds: Int = 0
+    @State private var timer: Timer?
+    @State private var showingStopOptions = false
+    @State private var showingSummary = false
+    @State private var finalDuration: Int = 0
+
+    var body: some View {
+        VStack(spacing: 6) {
+            // Indicateur vol en cours
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(.red)
+                    .frame(width: 8, height: 8)
+                Text("VOL EN COURS")
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .fontWeight(.bold)
+            }
+            
+            // Voile
+            if let wing = wing {
+                Text(wing.name)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            
+            // Spot
+            HStack(spacing: 4) {
+                Image(systemName: "location.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.blue)
+                Text(locationService.currentSpotName)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
             }
 
-            // Chrono
+            Spacer()
+            
+            // TIMER principal
             Text(formatElapsedTime(elapsedSeconds))
-                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .font(.system(size: 44, weight: .bold, design: .rounded))
                 .monospacedDigit()
-                .foregroundStyle(isFlying ? .green : .primary)
+                .foregroundStyle(.green)
+            
+            Spacer()
 
-            // Bouton Start/Stop
+            // Bouton Stop
             Button {
-                if isFlying {
-                    stopFlight()
-                } else {
-                    startFlight()
-                }
+                showingStopOptions = true
             } label: {
-                Label(isFlying ? "Stop" : "Start", systemImage: isFlying ? "stop.circle.fill" : "play.circle.fill")
+                Label("Stop", systemImage: "stop.circle.fill")
                     .font(.title3)
             }
             .buttonStyle(.borderedProminent)
-            .tint(isFlying ? .red : .green)
-            .disabled(!isFlying && selectedWing == nil)
+            .tint(.red)
         }
-        .sheet(isPresented: $showingFlightSummary) {
-            if let data = completedFlightData {
-                FlightSummaryView(duration: data.duration, wing: data.wing)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .navigationBarBackButtonHidden(true) // Cacher le bouton retour
+        .toolbar(.hidden, for: .navigationBar) // Cacher la barre de navigation
+        .sheet(isPresented: $showingStopOptions) {
+            // Fenêtre de choix : Sauvegarder ou Annuler
+            StopFlightOptionsView(
+                duration: elapsedSeconds,
+                onSave: {
+                    finalDuration = elapsedSeconds
+                    stopTimer()
+                    locationService.stopUpdatingLocation()
+                    showingStopOptions = false
+                    showingSummary = true
+                },
+                onDiscard: {
+                    stopTimer()
+                    locationService.stopUpdatingLocation()
+                    showingStopOptions = false
+                    onDiscardFlight()
+                }
+            )
+        }
+        .sheet(isPresented: $showingSummary) {
+            FlightSummaryView(
+                duration: finalDuration,
+                wing: wing ?? WingDTO(id: UUID(), name: "Inconnue", size: nil, type: nil, color: nil, photoData: nil, displayOrder: 0)
+            ) {
+                onStopFlight(finalDuration)
             }
         }
+        .onAppear {
+            // Démarrer le timer immédiatement sans délai
+            startTimerImmediately()
+        }
         .onDisappear {
-            // Arrêter le timer si on quitte la vue
-            timer?.invalidate()
+            stopTimer()
         }
     }
-
-    // MARK: - Helpers
-
-    private func updateElapsedSeconds() {
-        guard isFlying, let start = flightStartDate else { return }
-        elapsedSeconds = Int(Date().timeIntervalSince(start))
-    }
-
-    // MARK: - Flight Control
-
-    private func startFlight() {
-        guard selectedWing != nil else { return }
-
-        // Démarrer le timer IMMÉDIATEMENT pour une réponse instantanée
-        flightStartDate = Date()
-        elapsedSeconds = 0
-        isFlying = true
-
-        timer?.invalidate()
+    
+    private func startTimerImmediately() {
+        // Calculer immédiatement le temps écoulé
+        if let start = flightStartDate {
+            elapsedSeconds = Int(Date().timeIntervalSince(start))
+        } else {
+            elapsedSeconds = 0
+        }
+        
+        // Démarrer le timer sur le RunLoop principal
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            updateElapsedSeconds()
-        }
-
-        // Démarrer la localisation de manière asynchrone pour ne pas bloquer l'UI
-        Task {
-            locationService.startUpdatingLocation()
+            if let start = flightStartDate {
+                elapsedSeconds = Int(Date().timeIntervalSince(start))
+            }
         }
     }
-
-    private func stopFlight() {
-        guard let wing = selectedWing, let start = flightStartDate else { return }
-
-        let end = Date()
-        let duration = Int(end.timeIntervalSince(start))
-
-        // Arrêter le timer
+    
+    private func stopTimer() {
         timer?.invalidate()
         timer = nil
-        
-        // Arrêter le GPS
-        locationService.stopUpdatingLocation()
-
-        // Créer le FlightDTO
-        let flight = FlightDTO(
-            wingId: wing.id,
-            startDate: start,
-            endDate: end,
-            durationSeconds: duration
-        )
-
-        // Envoyer vers l'iPhone
-        watchManager.sendFlightToPhone(flight)
-
-        // Sauvegarder les données pour le résumé
-        completedFlightData = (duration: duration, wing: wing)
-
-        // Reset l'interface
-        isFlying = false
-        elapsedSeconds = 0 // Remettre le chrono à zéro pour le prochain vol
-        flightStartDate = nil
-        selectedWing = nil
-
-        // Afficher le résumé
-        showingFlightSummary = true
     }
 
     private func formatElapsedTime(_ seconds: Int) -> String {
@@ -303,70 +419,118 @@ struct FlightTimerView: View {
     }
 }
 
-// MARK: - FlightSummaryView (Résumé après vol)
+// MARK: - StopFlightOptionsView (Choix sauvegarder/annuler)
+
+struct StopFlightOptionsView: View {
+    @Environment(\.dismiss) private var dismiss
+    let duration: Int
+    let onSave: () -> Void
+    let onDiscard: () -> Void
+    
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                // Espace pour éviter la croix et l'heure
+                Spacer()
+                    .frame(height: 10)
+                
+                Text("Terminer le vol ?")
+                    .font(.headline)
+                
+                Text(formatDuration(duration))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.blue)
+                
+                Spacer()
+                    .frame(height: 16)
+                
+                // Bouton Sauvegarder (gros, vert)
+                Button {
+                    onSave()
+                } label: {
+                    Label("Sauvegarder", systemImage: "checkmark.circle.fill")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                
+                Spacer()
+                    .frame(height: 16)
+                
+                // Bouton Annuler (avec fond visible)
+                Button(role: .destructive) {
+                    onDiscard()
+                } label: {
+                    Text("Annuler le vol")
+                        .font(.subheadline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+                
+                Spacer()
+                    .frame(height: 10)
+            }
+            .padding(.horizontal)
+        }
+        .navigationBarHidden(true)
+    }
+    
+    private func formatDuration(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        if hours > 0 {
+            return "\(hours)h\(String(format: "%02d", minutes))"
+        } else {
+            return "\(minutes)min"
+        }
+    }
+}
+
+// MARK: - FlightSummaryView (Résumé après vol - compact)
 
 struct FlightSummaryView: View {
     @Environment(\.dismiss) private var dismiss
     let duration: Int
     let wing: WingDTO
+    let onDismiss: () -> Void
 
     var body: some View {
-        GeometryReader { geometry in
-            ScrollView {
-                VStack(spacing: 6) {
-                    // Icône de succès
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 35))
-                        .foregroundStyle(.green)
-
-                    Text("Vol terminé !")
-                        .font(.caption)
-                        .fontWeight(.semibold)
-
-                    // Durée
-                    VStack(spacing: 1) {
-                        Text(formatDuration(duration))
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundStyle(.blue)
-                        Text("durée")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding(.vertical, 2)
-
-                    // Voile
-                    VStack(spacing: 3) {
-                        // Photo de la voile (avec cache)
-                        if wing.photoData != nil {
-                            CachedWingImage(wing: wing, size: 35)
-                        }
-
-                        Text(wing.name)
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                        if let size = wing.size {
-                            Text("\(size) m²")
-                                .font(.caption2)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    // Bouton fermer
-                    Button {
-                        dismiss()
-                    } label: {
-                        Text("Terminer")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
-                    .padding(.top, 2)
-                }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .frame(maxWidth: .infinity)
+        VStack(spacing: 6) {
+            // Icône + titre sur une ligne
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title2)
+                    .foregroundStyle(.green)
+                Text("Vol terminé !")
+                    .font(.headline)
             }
+
+            // Durée
+            Text(formatDuration(duration))
+                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .foregroundStyle(.blue)
+
+            // Voile (compact)
+            Text(wing.name)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            // Bouton fermer
+            Button {
+                dismiss()
+                onDismiss()
+            } label: {
+                Text("OK")
+                    .font(.headline)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
         }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
     }
 
     private func formatDuration(_ seconds: Int) -> String {

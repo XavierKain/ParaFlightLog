@@ -24,10 +24,12 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     private override init() {
         super.init()
-        // Charger les voiles sauvegardées de manière synchrone (rapide)
-        loadWingsFromLocal()
-        // Activer la session en arrière-plan pour éviter le lag
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+        // Charger les voiles de manière asynchrone pour ne pas bloquer l'UI
+        Task.detached(priority: .userInitiated) { [weak self] in
+            await self?.loadWingsAsync()
+        }
+        // Activer la session WatchConnectivity en arrière-plan
+        Task.detached(priority: .background) { [weak self] in
             self?.activateSession()
         }
     }
@@ -35,9 +37,23 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     // MARK: - Local Persistence
 
     private func saveWingsLocally() {
-        if let encoded = try? JSONEncoder().encode(wings) {
-            UserDefaults.standard.set(encoded, forKey: "savedWings")
-            print("💾 Saved \(wings.count) wings to local storage")
+        // Sauvegarder en arrière-plan
+        let wingsToSave = wings
+        Task.detached(priority: .background) {
+            if let encoded = try? JSONEncoder().encode(wingsToSave) {
+                UserDefaults.standard.set(encoded, forKey: "savedWings")
+                print("💾 Saved \(wingsToSave.count) wings to local storage")
+            }
+        }
+    }
+    
+    @MainActor
+    private func loadWingsAsync() async {
+        if let data = UserDefaults.standard.data(forKey: "savedWings"),
+           let decoded = try? JSONDecoder().decode([WingDTO].self, from: data) {
+            // Mettre à jour les wings sur le main thread
+            wings = decoded
+            print("📂 Loaded \(wings.count) wings from local storage")
         }
     }
 
@@ -46,10 +62,6 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
            let decoded = try? JSONDecoder().decode([WingDTO].self, from: data) {
             wings = decoded
             print("📂 Loaded \(wings.count) wings from local storage")
-            // Précharger les images en arrière-plan après le chargement local
-            DispatchQueue.global(qos: .userInitiated).async {
-                WatchImageCache.shared.preloadImages(for: decoded)
-            }
         }
     }
 
@@ -210,11 +222,11 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             }
 
             DispatchQueue.main.async {
-                self.wings = decodedWings
+                self.wings = decodedWings.sorted { $0.displayOrder < $1.displayOrder }
                 self.saveWingsLocally()
-                // Précharger les images en arrière-plan
-                WatchImageCache.shared.preloadImages(for: decodedWings)
-                print("✅ Successfully received and stored \(decodedWings.count) wings from iPhone")
+                // OPTIMISATION: Images désactivées pour améliorer les performances
+                // WatchImageCache.shared.preloadImages(for: self.wings)
+                print("✅ Successfully received and stored \(self.wings.count) wings from iPhone (sorted by displayOrder)")
             }
             return
         }
@@ -234,11 +246,11 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             }
 
             DispatchQueue.main.async {
-                self.wings = decodedWings
+                self.wings = decodedWings.sorted { $0.displayOrder < $1.displayOrder }
                 self.saveWingsLocally()
-                // Précharger les images en arrière-plan
-                WatchImageCache.shared.preloadImages(for: decodedWings)
-                print("✅ Successfully received and stored \(decodedWings.count) wings from iPhone (legacy)")
+                // OPTIMISATION: Images désactivées pour améliorer les performances
+                // WatchImageCache.shared.preloadImages(for: self.wings)
+                print("✅ Successfully received and stored \(self.wings.count) wings from iPhone (legacy, sorted by displayOrder)")
             }
             return
         }

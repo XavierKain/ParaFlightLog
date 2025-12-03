@@ -69,12 +69,16 @@ final class WatchImageCache {
 struct CachedWingImage: View {
     let wing: WingDTO
     let size: CGFloat
-    
+
+    // OPTIMISATION WATCH: Désactiver les images pour améliorer les performances
+    // Les images ralentissent considérablement l'app Watch
+    private let disableImages = true
+
     @State private var cachedImage: UIImage?
-    
+
     var body: some View {
         Group {
-            if let image = cachedImage {
+            if !disableImages, let image = cachedImage {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
@@ -89,13 +93,17 @@ struct CachedWingImage: View {
             }
         }
         .onAppear {
-            loadImage()
+            if !disableImages {
+                loadImage()
+            }
         }
         .onChange(of: wing.photoData) { _, _ in
-            loadImage()
+            if !disableImages {
+                loadImage()
+            }
         }
     }
-    
+
     private func loadImage() {
         // Vérifier le cache immédiatement (synchrone)
         if let cached = WatchImageCache.shared.cache[wing.id] {

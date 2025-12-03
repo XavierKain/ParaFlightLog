@@ -22,12 +22,13 @@ final class Wing {
     var photoData: Data?     // Photo de la voile stockée en Data
     var isArchived: Bool     // Voile archivée (masquée par défaut)
     var createdAt: Date
+    var displayOrder: Int    // Ordre d'affichage personnalisé (0 = premier)
 
     // Relation inverse : tous les vols effectués avec cette voile
     @Relationship(deleteRule: .cascade, inverse: \Flight.wing)
     var flights: [Flight]?
 
-    init(id: UUID = UUID(), name: String, size: String? = nil, type: String? = nil, color: String? = nil, photoData: Data? = nil, isArchived: Bool = false, createdAt: Date = Date()) {
+    init(id: UUID = UUID(), name: String, size: String? = nil, type: String? = nil, color: String? = nil, photoData: Data? = nil, isArchived: Bool = false, createdAt: Date = Date(), displayOrder: Int = 0) {
         self.id = id
         self.name = name
         self.size = size
@@ -36,11 +37,12 @@ final class Wing {
         self.photoData = photoData
         self.isArchived = isArchived
         self.createdAt = createdAt
+        self.displayOrder = displayOrder
     }
 
     /// Convertit le modèle SwiftData en DTO pour l'envoi vers la Watch
     func toDTO() -> WingDTO {
-        WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: photoData)
+        WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: photoData, displayOrder: displayOrder)
     }
 
     /// Convertit en DTO avec photo compressée pour la Watch (max 50KB)
@@ -67,12 +69,12 @@ final class Wing {
             }
         }
 
-        return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: compressedPhotoData)
+        return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: compressedPhotoData, displayOrder: displayOrder)
     }
 
     /// Convertit en DTO sans photo (fallback si la sync avec images échoue)
     func toDTOWithoutPhoto() -> WingDTO {
-        return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil)
+        return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
     }
 }
 
