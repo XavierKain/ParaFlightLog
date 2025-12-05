@@ -188,7 +188,7 @@ struct WingButton: View {
         Button(action: onTap) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(wing.name)
+                    Text(wing.shortName)
                         .font(.headline)
                     if let size = wing.size {
                         Text("\(size) m²")
@@ -228,7 +228,7 @@ struct FlightStartView: View {
             // Voile sélectionnée
             if let wing = selectedWing {
                 VStack(spacing: 4) {
-                    Text(wing.name)
+                    Text(wing.shortName)
                         .font(.title3)
                         .fontWeight(.semibold)
                         .lineLimit(1)
@@ -319,7 +319,7 @@ struct ActiveFlightView: View {
             
             // Voile
             if let wing = wing {
-                Text(wing.name)
+                Text(wing.shortName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -523,7 +523,7 @@ struct FlightSummaryView: View {
                 .foregroundStyle(.blue)
 
             // Voile (compact)
-            Text(wing.name)
+            Text(wing.shortName)
                 .font(.caption)
                 .foregroundStyle(.secondary)
 

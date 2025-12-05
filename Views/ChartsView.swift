@@ -16,13 +16,14 @@ import MapKit
 struct ChartsView: View {
     @Environment(DataController.self) private var dataController
     @Query private var flights: [Flight]
-    @Query(filter: #Predicate<Wing> { !$0.isArchived }) private var wings: [Wing]
+    @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
 
-    @State private var selectedPeriod: TimePeriod = .month
+    @State private var selectedPeriod: TimePeriod = .all
     @State private var selectedChartType: ChartType = .timeline
     @State private var showingCustomDatePicker = false
     @State private var customStartDate: Date = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
     @State private var customEndDate: Date = Date()
+    @State private var selectedWings: Set<UUID> = [] // Ensemble des IDs de voiles sélectionnées
 
     enum ChartType: String, CaseIterable {
         case timeline
@@ -39,13 +40,13 @@ struct ChartsView: View {
     }
 
     enum TimePeriod: String, CaseIterable {
+        case all
         case week
         case month
         case threeMonths
         case sixMonths
         case year
         case custom
-        case all
 
         var displayName: String {
             switch self {
@@ -72,13 +73,27 @@ struct ChartsView: View {
     }
 
     var filteredFlights: [Flight] {
+        var result = flights
+
+        // Filtre par période
         if selectedPeriod == .custom {
-            return flights.filter { $0.startDate >= customStartDate && $0.startDate <= customEndDate }
+            result = result.filter { $0.startDate >= customStartDate && $0.startDate <= customEndDate }
+        } else if let days = selectedPeriod.days {
+            let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
+            result = result.filter { $0.startDate >= cutoffDate }
         }
 
-        guard let days = selectedPeriod.days else { return flights }
-        let cutoffDate = Calendar.current.date(byAdding: .day, value: -days, to: Date()) ?? Date()
-        return flights.filter { $0.startDate >= cutoffDate }
+        // Filtre par voile (si au moins une voile est sélectionnée)
+        if !selectedWings.isEmpty {
+            result = result.filter { flight in
+                if let wingId = flight.wing?.id {
+                    return selectedWings.contains(wingId)
+                }
+                return false
+            }
+        }
+
+        return result
     }
 
     var body: some View {
@@ -112,6 +127,47 @@ struct ChartsView: View {
                                     .padding(.vertical, 6)
                                     .background(selectedPeriod == period ? Color.blue : Color(.systemGray6))
                                     .foregroundStyle(selectedPeriod == period ? .white : .primary)
+                                    .cornerRadius(16)
+                            }
+                        }
+                    }
+                    .padding(.horizontal)
+                }
+                .padding(.bottom, 8)
+
+                // Sélecteur de voiles (multi-sélection)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        // Bouton "Toutes les voiles"
+                        Button {
+                            selectedWings.removeAll()
+                        } label: {
+                            Text("Toutes")
+                                .font(.caption)
+                                .fontWeight(selectedWings.isEmpty ? .semibold : .regular)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(selectedWings.isEmpty ? Color.green : Color(.systemGray6))
+                                .foregroundStyle(selectedWings.isEmpty ? .white : .primary)
+                                .cornerRadius(16)
+                        }
+
+                        // Boutons pour chaque voile
+                        ForEach(wings) { wing in
+                            Button {
+                                if selectedWings.contains(wing.id) {
+                                    selectedWings.remove(wing.id)
+                                } else {
+                                    selectedWings.insert(wing.id)
+                                }
+                            } label: {
+                                Text(wing.name)
+                                    .font(.caption)
+                                    .fontWeight(selectedWings.contains(wing.id) ? .semibold : .regular)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(selectedWings.contains(wing.id) ? Color.blue : Color(.systemGray6))
+                                    .foregroundStyle(selectedWings.contains(wing.id) ? .white : .primary)
                                     .cornerRadius(16)
                             }
                         }
@@ -335,16 +391,8 @@ struct HeatmapChartCard: View {
                 .frame(height: 200)
             } else {
                 VStack(spacing: 12) {
-                    ForEach(spotData.prefix(10)) { spot in
+                    ForEach(spotData) { spot in
                         SpotRow(spot: spot, maxCount: maxCount)
-                    }
-
-                    if spotData.count > 10 {
-                        let remaining = spotData.count - 10
-                        Text("+ \(remaining) \(remaining > 1 ? "autres" : "autre") \(remaining > 1 ? "spots" : "spot")")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .padding(.top, 4)
                     }
                 }
                 .padding(.horizontal)
@@ -461,6 +509,7 @@ struct FlightsSpotsMapView: View {
                 flightCount: flights.count
             )
         }
+        .sorted { $0.hours < $1.hours } // Trier par heures croissantes pour que les gros spots soient dessinés en dernier (au-dessus)
     }
 
     var body: some View {
@@ -488,15 +537,17 @@ struct FlightsSpotsMapView: View {
                     ForEach(spotData) { spot in
                         Annotation(spot.name, coordinate: spot.coordinate) {
                             VStack(spacing: 4) {
-                                Circle()
-                                    .fill(Color.blue.gradient)
-                                    .frame(width: calculateBubbleSize(hours: spot.hours))
-                                    .overlay {
-                                        Text(formatSpotTime(spot.hours))
-                                            .font(.caption2)
-                                            .fontWeight(.bold)
-                                            .foregroundStyle(.white)
-                                    }
+                                ZStack {
+                                    Circle()
+                                        .fill(Color.blue.gradient)
+                                        .frame(width: calculateBubbleSize(hours: spot.hours))
+
+                                    Text(formatSpotTime(spot.hours))
+                                        .font(.caption2)
+                                        .fontWeight(.bold)
+                                        .foregroundStyle(.white)
+                                        .zIndex(1) // Texte toujours au-dessus
+                                }
                                 Text(spot.name)
                                     .font(.caption2)
                                     .foregroundStyle(.black)
@@ -504,6 +555,7 @@ struct FlightsSpotsMapView: View {
                                     .padding(.vertical, 2)
                                     .background(Color.white.opacity(0.9))
                                     .cornerRadius(4)
+                                    .shadow(color: .black.opacity(0.2), radius: 2)
                             }
                         }
                         .annotationTitles(.hidden) // Cache les titres par défaut pour éviter les doublons

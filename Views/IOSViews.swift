@@ -60,7 +60,7 @@ struct ContentView: View {
 // MARK: - FlightsView (Liste des vols avec édition)
 
 struct FlightsView: View {
-    @Environment(DataController.self) private var dataController
+    @Environment(\.modelContext) private var modelContext
     @Query(sort: \Flight.startDate, order: .reverse) private var flights: [Flight]
     @State private var selectedFlight: Flight?
 
@@ -93,7 +93,21 @@ struct FlightsView: View {
 
     private func deleteFlights(at offsets: IndexSet) {
         for index in offsets {
-            dataController.deleteFlight(flights[index])
+            let flightToDelete = flights[index]
+            // Si le vol à supprimer est celui sélectionné, réinitialiser la sélection
+            if selectedFlight?.id == flightToDelete.id {
+                selectedFlight = nil
+            }
+            // Utiliser directement le modelContext de l'environment
+            modelContext.delete(flightToDelete)
+        }
+
+        // Sauvegarder immédiatement pour persister la suppression
+        do {
+            try modelContext.save()
+            print("✅ Flight deleted and saved to database")
+        } catch {
+            print("❌ Error saving deletion: \(error)")
         }
     }
 }
@@ -1101,6 +1115,20 @@ struct WingDetailView: View {
         }
         .sheet(item: $selectedFlight) { flight in
             EditFlightView(flight: flight)
+                .onAppear {
+                    // Vérifier immédiatement si le vol a été supprimé
+                    if flight.isDeleted {
+                        selectedFlight = nil
+                    }
+                }
+        }
+        .onChange(of: allFlights.count) { oldValue, newValue in
+            // Si un vol est supprimé, fermer immédiatement la sheet
+            if let selected = selectedFlight {
+                if selected.isDeleted || !allFlights.contains(where: { $0.id == selected.id }) {
+                    selectedFlight = nil
+                }
+            }
         }
         .fullScreenCover(isPresented: $showingFullScreenPhoto) {
             if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {

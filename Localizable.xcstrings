@@ -276,16 +276,6 @@
     "•" : {
 
     },
-    "+ %lld %@ %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "+ %1$lld %2$@ %3$@"
-          }
-        }
-      }
-    },
     "+ %lld autre%@ spot%@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2558,6 +2548,9 @@
           }
         }
       }
+    },
+    "Toutes" : {
+
     },
     "Type" : {
       "localizations" : {
