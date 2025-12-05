@@ -28,6 +28,17 @@ struct WingDTO: Codable, Identifiable, Hashable {
         self.photoData = photoData
         self.displayOrder = displayOrder
     }
+
+    /// Nom raccourci pour l'affichage sur Apple Watch
+    /// Exemple: "Moustache M1 2025 18m" → "M1 2025 18m"
+    /// Pour les autres voiles, garde le nom complet
+    var shortName: String {
+        // Seulement enlever "Moustache" au début
+        if name.hasPrefix("Moustache ") {
+            return String(name.dropFirst("Moustache ".count))
+        }
+        return name
+    }
 }
 
 // MARK: - FlightDTO
