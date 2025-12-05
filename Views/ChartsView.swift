@@ -490,9 +490,9 @@ struct FlightsSpotsMapView: View {
                             VStack(spacing: 4) {
                                 Circle()
                                     .fill(Color.blue.gradient)
-                                    .frame(width: max(20, min(60, spot.hours * 10)))
+                                    .frame(width: calculateBubbleSize(hours: spot.hours))
                                     .overlay {
-                                        Text("\(Int(spot.hours))h")
+                                        Text(formatSpotTime(spot.hours))
                                             .font(.caption2)
                                             .fontWeight(.bold)
                                             .foregroundStyle(.white)
@@ -506,8 +506,10 @@ struct FlightsSpotsMapView: View {
                                     .cornerRadius(4)
                             }
                         }
+                        .annotationTitles(.hidden) // Cache les titres par défaut pour éviter les doublons
                     }
                 }
+                .mapStyle(.standard(elevation: .flat))
                 .frame(height: 400)
                 .cornerRadius(12)
             }
@@ -515,6 +517,32 @@ struct FlightsSpotsMapView: View {
         .background(Color(.systemBackground))
         .cornerRadius(12)
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+    }
+
+    /// Formate le temps de vol pour l'affichage sur la carte
+    /// - Affiche les heures si >= 1h
+    /// - Affiche les minutes si < 1h (format court "m" pour rentrer dans les bulles)
+    private func formatSpotTime(_ hours: Double) -> String {
+        if hours >= 1.0 {
+            return "\(Int(hours))h"
+        } else {
+            let minutes = Int(hours * 60)
+            return "\(minutes)m"
+        }
+    }
+
+    /// Calcule la taille de la bulle en fonction du temps de vol
+    /// - Pour < 1h : taille adaptée pour afficher les minutes (min 35px)
+    /// - Pour >= 1h : taille proportionnelle aux heures (max 60px)
+    private func calculateBubbleSize(hours: Double) -> CGFloat {
+        if hours < 1.0 {
+            // Pour les durées < 1h, on assure une taille minimum de 35px
+            // pour que "45m" rentre bien, et on augmente légèrement avec la durée
+            return max(35, 35 + CGFloat(hours) * 15)
+        } else {
+            // Pour >= 1h, on utilise la formule classique
+            return max(40, min(60, CGFloat(hours) * 10))
+        }
     }
 }
 

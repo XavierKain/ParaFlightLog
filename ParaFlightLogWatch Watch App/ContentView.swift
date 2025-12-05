@@ -53,6 +53,9 @@ struct ContentView: View {
             .interactiveDismissDisabled(true) // Empêche de swipe down pour fermer
         }
         .onAppear {
+            print("⏱️ [PERF] ContentView.onAppear() - Main view rendered")
+            print("⏱️ [PERF] Wings available: \(watchManager.wings.count)")
+
             // Pré-démarrer la localisation dès le lancement de l'app
             // pour éviter le lag au moment du Start
             Task.detached(priority: .background) {
@@ -64,20 +67,26 @@ struct ContentView: View {
     }
     
     private func startFlight() {
+        let startFlightBegin = Date()
+        print("⏱️ [PERF] startFlight() BEGIN")
+
         // IMPORTANT: Définir la date AVANT d'afficher le fullScreenCover
         // pour que le timer puisse démarrer immédiatement
         flightStartDate = Date()
         isFlying = true
-        
+
         // Démarrer la localisation en arrière-plan (ne bloque pas l'UI)
         Task.detached(priority: .userInitiated) { [locationService] in
             await MainActor.run {
                 locationService.startUpdatingLocation()
             }
         }
-        
+
         // Afficher le timer immédiatement
         showingActiveFlightView = true
+
+        let startFlightTime = Date().timeIntervalSince(startFlightBegin) * 1000
+        print("⏱️ [PERF] startFlight() END (\(String(format: "%.1f", startFlightTime))ms)")
     }
     
     private func stopFlight(duration: Int) {
@@ -122,6 +131,7 @@ struct WingSelectionView: View {
     @Binding var selectedTab: Int
 
     var body: some View {
+        let _ = print("⏱️ [PERF] WingSelectionView body evaluated - \(watchManager.wings.count) wings")
         VStack(spacing: 8) {
             Text("Sélection")
                 .font(.caption)

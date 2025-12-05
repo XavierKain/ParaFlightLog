@@ -24,6 +24,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     private override init() {
         super.init()
+        let initStart = Date()
+        print("⏱️ [PERF] WatchConnectivityManager.init() START")
+
         // Charger les voiles de manière asynchrone pour ne pas bloquer l'UI
         Task.detached(priority: .userInitiated) { [weak self] in
             await self?.loadWingsAsync()
@@ -32,6 +35,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         Task.detached(priority: .background) { [weak self] in
             self?.activateSession()
         }
+
+        let initTime = Date().timeIntervalSince(initStart) * 1000
+        print("⏱️ [PERF] WatchConnectivityManager.init() DONE (\(String(format: "%.1f", initTime))ms)")
     }
 
     // MARK: - Local Persistence
@@ -49,11 +55,18 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     
     @MainActor
     private func loadWingsAsync() async {
+        let loadStart = Date()
+        print("⏱️ [PERF] loadWingsAsync() START")
+
         if let data = UserDefaults.standard.data(forKey: "savedWings"),
            let decoded = try? JSONDecoder().decode([WingDTO].self, from: data) {
             // Mettre à jour les wings sur le main thread
             wings = decoded
-            print("📂 Loaded \(wings.count) wings from local storage")
+            let loadTime = Date().timeIntervalSince(loadStart) * 1000
+            print("⏱️ [PERF] loadWingsAsync() DONE (\(String(format: "%.1f", loadTime))ms) - Loaded \(wings.count) wings")
+        } else {
+            let loadTime = Date().timeIntervalSince(loadStart) * 1000
+            print("⏱️ [PERF] loadWingsAsync() DONE (\(String(format: "%.1f", loadTime))ms) - No wings found")
         }
     }
 
@@ -69,6 +82,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     /// Active la session WatchConnectivity
     func activateSession() {
+        let activateStart = Date()
+        print("⏱️ [PERF] activateSession() START")
+
         guard WCSession.isSupported() else {
             print("⚠️ WatchConnectivity not supported")
             return
@@ -77,7 +93,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let session = WCSession.default
         session.delegate = self
         session.activate()
-        print("🔗 WatchConnectivity session activating...")
+
+        let activateTime = Date().timeIntervalSince(activateStart) * 1000
+        print("⏱️ [PERF] activateSession() DONE (\(String(format: "%.1f", activateTime))ms) - Session activating...")
     }
 
     // MARK: - Send Flight to iPhone

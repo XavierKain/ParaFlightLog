@@ -2587,9 +2587,9 @@ struct SpotsManagementView: View {
                         }
                     }
                 } header: {
-                    Text("\(spots.count) spot(s) détecté(s)")
+                    Text(spotsCountText(spots.count))
                 } footer: {
-                    Text("Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés")
+                    Text(String(localized: "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés"))
                 }
             }
         }
@@ -2620,6 +2620,15 @@ struct SpotsManagementView: View {
             print("✅ Updated \(updatedCount) flights with coordinates for spot: \(spotName)")
         }
     }
+
+    /// Retourne le texte avec pluralisation correcte pour le nombre de spots
+    private func spotsCountText(_ count: Int) -> String {
+        if count <= 1 {
+            return String(localized: "\(count) spot détecté")
+        } else {
+            return String(localized: "\(count) spots détectés")
+        }
+    }
 }
 
 /// Row pour afficher un spot
@@ -2645,7 +2654,7 @@ struct SpotRowView: View {
                     .font(.headline)
                 
                 HStack(spacing: 8) {
-                    Label("\(spot.flightCount) vol(s)", systemImage: "airplane")
+                    Label(flightsCountText(spot.flightCount), systemImage: "airplane")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                     
@@ -2672,6 +2681,24 @@ struct SpotRowView: View {
             .buttonStyle(.plain)
         }
         .padding(.vertical, 4)
+    }
+}
+
+/// Retourne le texte avec pluralisation correcte pour le nombre de vols
+private func flightsCountText(_ count: Int) -> String {
+    if count <= 1 {
+        return String(localized: "\(count) vol")
+    } else {
+        return String(localized: "\(count) vols")
+    }
+}
+
+/// Retourne le texte avec pluralisation correcte pour le message de mise à jour des vols
+private func flightsWillBeUpdatedText(_ count: Int) -> String {
+    if count <= 1 {
+        return String(localized: "📍 \(count) vol sera mis à jour")
+    } else {
+        return String(localized: "📍 \(count) vols seront mis à jour")
     }
 }
 
@@ -2776,7 +2803,7 @@ struct SpotMapPicker: View {
                         }
                         
                         // Info sur le nombre de vols qui seront mis à jour
-                        Text("📍 \(spot.flightCount) vol(s) seront mis à jour")
+                        Text(flightsWillBeUpdatedText(spot.flightCount))
                             .font(.caption)
                             .foregroundStyle(.orange)
                             .padding(.horizontal, 12)
@@ -2852,6 +2879,7 @@ struct SettingsView: View {
     @State private var importMessage = ""
     @State private var showingDocumentPicker = false
     @State private var isImporting = false
+    @State private var showingExportView = false
 
     var body: some View {
         NavigationStack {
@@ -2942,16 +2970,22 @@ struct SettingsView: View {
                 }
 
                 Section("Données") {
+                    NavigationLink {
+                        BackupExportView(wings: wings, flights: flights)
+                    } label: {
+                        Label("Exporter backup complet", systemImage: "archivebox")
+                    }
+
                     Button {
                         showingDocumentPicker = true
                     } label: {
-                        Label("Importer depuis Excel/CSV", systemImage: "square.and.arrow.down")
+                        Label("Importer backup ou Excel", systemImage: "square.and.arrow.down")
                     }
 
                     Button {
                         exportToCSV()
                     } label: {
-                        Label("Exporter en CSV", systemImage: "square.and.arrow.up")
+                        Label("Exporter en CSV (ancien format)", systemImage: "square.and.arrow.up")
                     }
                 }
 
@@ -3062,34 +3096,60 @@ struct SettingsView: View {
     }
 
     private func importExcelFile(from url: URL) {
-        isImporting = true
+        // Détecter le type de fichier (.paraflightlog backup ou Excel/CSV)
+        let fileExtension = url.pathExtension.lowercased()
+        let isBackupFile = fileExtension == "paraflightlog"
 
-        DispatchQueue.global(qos: .userInitiated).async {
-            do {
-                // Parse le fichier en arrière-plan
-                let data = try ExcelImporter.parseExcelFile(at: url)
+        if isBackupFile {
+            // Import fichier backup .paraflightlog
+            isImporting = true
+            importMessage = "Extraction du backup..."
 
-                print("✅ Parsed \(data.flights.count) flights from file")
+            ZipBackup.importFromZip(zipURL: url, dataController: dataController, mergeMode: true) { result in
+                self.isImporting = false
 
-                // Import dans la base DOIT être sur le main thread (SwiftData requirement)
-                DispatchQueue.main.async {
-                    do {
-                        let result = try ExcelImporter.importToDatabase(data: data, dataController: self.dataController)
+                switch result {
+                case .success(let summary):
+                    self.importMessage = summary
+                    self.showingImportSuccess = true
+                    // Synchroniser les voiles vers la Watch après import
+                    self.watchManager.sendWingsToWatch()
+                case .failure(let error):
+                    self.importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
+                    self.showingImportSuccess = true
+                }
+            }
+        } else {
+            // Import Excel/CSV (existant)
+            isImporting = true
 
+            DispatchQueue.global(qos: .userInitiated).async {
+                do {
+                    // Parse le fichier en arrière-plan
+                    let data = try ExcelImporter.parseExcelFile(at: url)
+
+                    print("✅ Parsed \(data.flights.count) flights from file")
+
+                    // Import dans la base DOIT être sur le main thread (SwiftData requirement)
+                    DispatchQueue.main.async {
+                        do {
+                            let result = try ExcelImporter.importToDatabase(data: data, dataController: self.dataController)
+
+                            self.isImporting = false
+                            self.importMessage = result.summary
+                            self.showingImportSuccess = true
+                        } catch {
+                            self.isImporting = false
+                            self.importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
+                            self.showingImportSuccess = true
+                        }
+                    }
+                } catch {
+                    DispatchQueue.main.async {
                         self.isImporting = false
-                        self.importMessage = result.summary
-                        self.showingImportSuccess = true
-                    } catch {
-                        self.isImporting = false
-                        self.importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
+                        self.importMessage = "❌ Erreur de lecture:\n\(error.localizedDescription)"
                         self.showingImportSuccess = true
                     }
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.isImporting = false
-                    self.importMessage = "❌ Erreur de lecture:\n\(error.localizedDescription)"
-                    self.showingImportSuccess = true
                 }
             }
         }
@@ -3226,6 +3286,180 @@ struct SettingsView: View {
     }
 }
 
+// MARK: - BackupExportView (Vue dédiée pour l'export)
+
+struct BackupExportView: View {
+    let wings: [Wing]
+    let flights: [Flight]
+
+    @State private var exportStatus: ExportStatus = .idle
+    @State private var backupURL: URL?
+    @State private var errorMessage: String?
+    @Environment(\.dismiss) private var dismiss
+
+    enum ExportStatus {
+        case idle
+        case exporting
+        case completed
+        case failed
+    }
+
+    var body: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            // Icône et statut
+            Group {
+                switch exportStatus {
+                case .idle:
+                    Image(systemName: "archivebox")
+                        .font(.system(size: 80))
+                        .foregroundStyle(.blue)
+
+                case .exporting:
+                    ProgressView()
+                        .scaleEffect(2)
+                        .tint(.blue)
+
+                case .completed:
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 80))
+                        .foregroundStyle(.green)
+
+                case .failed:
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 80))
+                        .foregroundStyle(.red)
+                }
+            }
+            .frame(height: 100)
+
+            // Texte de statut
+            Group {
+                switch exportStatus {
+                case .idle:
+                    Text("Prêt à exporter")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    Text("\(wings.count) voiles • \(flights.count) vols")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                case .exporting:
+                    Text("Création du backup...")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    Text("Veuillez patienter")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                case .completed:
+                    Text("Backup créé !")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    Text("Prêt à partager")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                case .failed:
+                    Text("Erreur")
+                        .font(.title2)
+                        .fontWeight(.semibold)
+                    if let error = errorMessage {
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                    }
+                }
+            }
+
+            Spacer()
+
+            // Boutons d'action
+            VStack(spacing: 16) {
+                if exportStatus == .idle {
+                    Button {
+                        startExport()
+                    } label: {
+                        Label("Créer le backup", systemImage: "arrow.down.doc")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundStyle(.white)
+                            .cornerRadius(12)
+                    }
+                } else if exportStatus == .completed, let url = backupURL {
+                    Button {
+                        shareBackup(url: url)
+                    } label: {
+                        Label("Partager / Enregistrer", systemImage: "square.and.arrow.up")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.green)
+                            .foregroundStyle(.white)
+                            .cornerRadius(12)
+                    }
+                } else if exportStatus == .failed {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Text("Retour")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.gray.opacity(0.2))
+                            .foregroundStyle(.primary)
+                            .cornerRadius(12)
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.bottom, 32)
+        }
+        .navigationTitle("Export Backup")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    private func startExport() {
+        exportStatus = .exporting
+
+        ZipBackup.exportToZip(wings: Array(wings), flights: Array(flights)) { result in
+            switch result {
+            case .success(let url):
+                self.backupURL = url
+                self.exportStatus = .completed
+
+            case .failure(let error):
+                self.errorMessage = error.localizedDescription
+                self.exportStatus = .failed
+            }
+        }
+    }
+
+    private func shareBackup(url: URL) {
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController else {
+            return
+        }
+
+        let activityVC = UIActivityViewController(
+            activityItems: [url],
+            applicationActivities: nil
+        )
+
+        // Pour iPad
+        if let popover = activityVC.popoverPresentationController {
+            popover.sourceView = window
+            popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+
+        rootViewController.present(activityVC, animated: true)
+    }
+}
+
 // MARK: - DocumentPicker (Import Excel/CSV)
 
 import UniformTypeIdentifiers
@@ -3234,13 +3468,16 @@ struct DocumentPicker: UIViewControllerRepresentable {
     let onDocumentPicked: (URL) -> Void
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        // Support CSV, Excel files, and plain text
+        // Support CSV, Excel files, and .paraflightlog backup folders
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: [
             .commaSeparatedText,
             .plainText,
             .data,
+            .folder,
+            .package,
             UTType(filenameExtension: "xlsx")!,
-            UTType(filenameExtension: "xls")!
+            UTType(filenameExtension: "xls")!,
+            UTType(filenameExtension: "paraflightlog")!
         ])
         picker.allowsMultipleSelection = false
         picker.delegate = context.coordinator
@@ -3266,3 +3503,29 @@ struct DocumentPicker: UIViewControllerRepresentable {
         }
     }
 }
+
+// MARK: - ShareSheet (Pour partager des fichiers/dossiers)
+
+struct ShareSheet: UIViewControllerRepresentable {
+    let items: [Any]
+    let onComplete: (Bool) -> Void
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        let activityVC = UIActivityViewController(
+            activityItems: items,
+            applicationActivities: nil
+        )
+
+        activityVC.completionWithItemsHandler = { _, completed, _, error in
+            if let error = error {
+                print("❌ Share error: \(error)")
+            }
+            onComplete(completed)
+        }
+
+        return activityVC
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+

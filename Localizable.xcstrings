@@ -101,8 +101,21 @@
         }
       }
     },
-    "%lld spot(s) détecté(s)" : {
-
+    "%lld spot détecté" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld spot detected"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld spot détecté"
+          }
+        }
+      }
     },
     "%lld spot%@ différent%@" : {
       "extractionState" : "stale",
@@ -121,8 +134,47 @@
         }
       }
     },
-    "%lld vol(s)" : {
-
+    "%lld spots détectés" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld spots detected"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld spots détectés"
+          }
+        }
+      }
+    },
+    "%lld voiles • %lld vols" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld voiles • %2$lld vols"
+          }
+        }
+      }
+    },
+    "%lld vol" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld flight"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld vol"
+          }
+        }
+      }
     },
     "%lld vol%@" : {
       "localizations" : {
@@ -140,7 +192,24 @@
         }
       }
     },
+    "%lld vols" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld flights"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld vols"
+          }
+        }
+      }
+    },
     "%lldh" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -266,8 +335,37 @@
         }
       }
     },
-    "📍 %lld vol(s) seront mis à jour" : {
-
+    "📍 %lld vol sera mis à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 %lld flight will be updated"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 %lld vol sera mis à jour"
+          }
+        }
+      }
+    },
+    "📍 %lld vols seront mis à jour" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 %lld flights will be updated"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 %lld vols seront mis à jour"
+          }
+        }
+      }
     },
     "1" : {
       "localizations" : {
@@ -383,7 +481,20 @@
       }
     },
     "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add GPS coordinates to a spot to automatically apply them to all associated flights"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés"
+          }
+        }
+      }
     },
     "Ajoutez votre première voile" : {
       "localizations" : {
@@ -627,6 +738,9 @@
           }
         }
       }
+    },
+    "Backup créé !" : {
+
     },
     "Build" : {
       "localizations" : {
@@ -906,6 +1020,12 @@
         }
       }
     },
+    "Création du backup..." : {
+
+    },
+    "Créer le backup" : {
+
+    },
     "Date" : {
       "localizations" : {
         "en" : {
@@ -1131,7 +1251,17 @@
         }
       }
     },
+    "Erreur" : {
+
+    },
+    "Export Backup" : {
+
+    },
+    "Exporter backup complet" : {
+
+    },
     "Exporter en CSV" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1146,6 +1276,9 @@
           }
         }
       }
+    },
+    "Exporter en CSV (ancien format)" : {
+
     },
     "Fermer" : {
       "localizations" : {
@@ -1196,7 +1329,20 @@
       }
     },
     "Gérer les spots" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage Spots"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gérer les spots"
+          }
+        }
+      }
     },
     "GPS ✓" : {
 
@@ -1329,7 +1475,11 @@
         }
       }
     },
+    "Importer backup ou Excel" : {
+
+    },
     "Importer depuis Excel/CSV" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1459,7 +1609,20 @@
       }
     },
     "Les spots apparaîtront ici une fois que vous aurez enregistré des vols" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spots will appear here once you record flights"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les spots apparaîtront ici une fois que vous aurez enregistré des vols"
+          }
+        }
+      }
     },
     "Les voiles archivées apparaîtront ici" : {
       "localizations" : {
@@ -1768,6 +1931,9 @@
         }
       }
     },
+    "Partager / Enregistrer" : {
+
+    },
     "Période" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1833,6 +1999,12 @@
           }
         }
       }
+    },
+    "Prêt à exporter" : {
+
+    },
+    "Prêt à partager" : {
+
     },
     "Que voulez-vous faire ?" : {
       "localizations" : {
@@ -1952,6 +2124,9 @@
           }
         }
       }
+    },
+    "Retour" : {
+
     },
     "Sauvegarder" : {
 
@@ -2431,6 +2606,9 @@
           }
         }
       }
+    },
+    "Veuillez patienter" : {
+
     },
     "Voile" : {
       "localizations" : {
