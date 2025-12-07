@@ -19,22 +19,22 @@ struct ChartsView: View {
     @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
 
     @State private var selectedPeriod: TimePeriod = .all
-    @State private var selectedChartType: ChartType = .timeline
+    @State private var selectedChartType: ChartType = .map
     @State private var showingCustomDatePicker = false
     @State private var customStartDate: Date = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
     @State private var customEndDate: Date = Date()
     @State private var selectedWings: Set<UUID> = [] // Ensemble des IDs de voiles sélectionnées
 
     enum ChartType: String, CaseIterable {
-        case timeline
-        case heatmap
         case map
+        case heatmap
+        case timeline
 
         var displayName: String {
             switch self {
-            case .timeline: return String(localized: "Timeline")
-            case .heatmap: return String(localized: "Spots")
             case .map: return String(localized: "Carte")
+            case .heatmap: return String(localized: "Spots")
+            case .timeline: return String(localized: "Timeline")
             }
         }
     }

@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "(%@ m²)" : {
+
+    },
     "%.4f, %.4f" : {
       "localizations" : {
         "en" : {
@@ -276,6 +279,12 @@
     "•" : {
 
     },
+    "• %@ m²" : {
+
+    },
+    "• %@m²" : {
+
+    },
     "+ %lld autre%@ spot%@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -535,7 +544,20 @@
       }
     },
     "Annuler le vol" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard flight"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler le vol"
+          }
+        }
+      }
     },
     "App Watch" : {
       "localizations" : {
@@ -1630,6 +1652,9 @@
         }
       }
     },
+    "m²" : {
+
+    },
     "Mes voiles" : {
       "localizations" : {
         "en" : {
@@ -1957,6 +1982,22 @@
         }
       }
     },
+    "Permission refusée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission denied"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission refusée"
+          }
+        }
+      }
+    },
     "Photo" : {
       "localizations" : {
         "en" : {
@@ -1974,7 +2015,6 @@
       }
     },
     "Position indisponible" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1986,6 +2026,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Position indisponible"
+          }
+        }
+      }
+    },
+    "Position..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location..."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Position..."
           }
         }
       }
@@ -2119,7 +2175,20 @@
 
     },
     "Sauvegarder" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sauvegarder"
+          }
+        }
+      }
     },
     "Sélection" : {
       "localizations" : {
@@ -2197,6 +2266,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Spot"
+          }
+        }
+      }
+    },
+    "Spot inconnu" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown spot"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spot inconnu"
           }
         }
       }
@@ -2397,7 +2482,20 @@
       }
     },
     "Swipez vers la gauche" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe left"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipez vers la gauche"
+          }
+        }
+      }
     },
     "Synchroniser les voiles" : {
       "localizations" : {
@@ -2431,7 +2529,11 @@
         }
       }
     },
+    "Taille" : {
+
+    },
     "Taille (ex: 22 m²)" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2515,7 +2617,20 @@
       }
     },
     "Terminer le vol ?" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End flight?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminer le vol ?"
+          }
+        }
+      }
     },
     "Timeline" : {
       "localizations" : {
@@ -2685,7 +2800,20 @@
       }
     },
     "VOL EN COURS" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FLIGHT IN PROGRESS"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VOL EN COURS"
+          }
+        }
+      }
     },
     "Vol terminé !" : {
       "localizations" : {

@@ -22,22 +22,19 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     var isPhoneReachable: Bool = false
     var sessionActivated: Bool = false
 
+    // État de chargement pour éviter les re-renders pendant le décodage
+    var isLoading: Bool = true
+
     private override init() {
         super.init()
-        let initStart = Date()
-        print("⏱️ [PERF] WatchConnectivityManager.init() START")
+        // Charger les voiles sauvegardées localement de manière synchrone
+        // pour un affichage immédiat au lancement
+        loadWingsSync()
 
-        // Charger les voiles de manière asynchrone pour ne pas bloquer l'UI
-        Task.detached(priority: .userInitiated) { [weak self] in
-            await self?.loadWingsAsync()
-        }
         // Activer la session WatchConnectivity en arrière-plan
         Task.detached(priority: .background) { [weak self] in
             self?.activateSession()
         }
-
-        let initTime = Date().timeIntervalSince(initStart) * 1000
-        print("⏱️ [PERF] WatchConnectivityManager.init() DONE (\(String(format: "%.1f", initTime))ms)")
     }
 
     // MARK: - Local Persistence
@@ -48,89 +45,55 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         Task.detached(priority: .background) {
             if let encoded = try? JSONEncoder().encode(wingsToSave) {
                 UserDefaults.standard.set(encoded, forKey: "savedWings")
-                print("💾 Saved \(wingsToSave.count) wings to local storage")
             }
         }
     }
-    
-    @MainActor
-    private func loadWingsAsync() async {
-        let loadStart = Date()
-        print("⏱️ [PERF] loadWingsAsync() START")
 
-        if let data = UserDefaults.standard.data(forKey: "savedWings"),
-           let decoded = try? JSONDecoder().decode([WingDTO].self, from: data) {
-            // Mettre à jour les wings sur le main thread
-            wings = decoded
-            let loadTime = Date().timeIntervalSince(loadStart) * 1000
-            print("⏱️ [PERF] loadWingsAsync() DONE (\(String(format: "%.1f", loadTime))ms) - Loaded \(wings.count) wings")
-        } else {
-            let loadTime = Date().timeIntervalSince(loadStart) * 1000
-            print("⏱️ [PERF] loadWingsAsync() DONE (\(String(format: "%.1f", loadTime))ms) - No wings found")
-        }
-    }
-
-    private func loadWingsFromLocal() {
+    /// Charge les voiles de façon synchrone au démarrage
+    /// Les données locales sont petites donc c'est rapide
+    private func loadWingsSync() {
         if let data = UserDefaults.standard.data(forKey: "savedWings"),
            let decoded = try? JSONDecoder().decode([WingDTO].self, from: data) {
             wings = decoded
-            print("📂 Loaded \(wings.count) wings from local storage")
         }
+        isLoading = false
     }
 
     // MARK: - Session Activation
 
     /// Active la session WatchConnectivity
     func activateSession() {
-        let activateStart = Date()
-        print("⏱️ [PERF] activateSession() START")
-
-        guard WCSession.isSupported() else {
-            print("⚠️ WatchConnectivity not supported")
-            return
-        }
-
+        guard WCSession.isSupported() else { return }
         let session = WCSession.default
         session.delegate = self
         session.activate()
-
-        let activateTime = Date().timeIntervalSince(activateStart) * 1000
-        print("⏱️ [PERF] activateSession() DONE (\(String(format: "%.1f", activateTime))ms) - Session activating...")
     }
 
     // MARK: - Send Flight to iPhone
 
     /// Envoie un vol terminé vers l'iPhone
     func sendFlightToPhone(_ flight: FlightDTO) {
-        guard sessionActivated else {
-            print("❌ WCSession not activated")
-            return
-        }
+        guard sessionActivated else { return }
 
         // Encoder le FlightDTO en dictionnaire
         guard let data = try? JSONEncoder().encode(flight),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            print("❌ Failed to encode flight")
             return
         }
 
         let userInfo = ["flight": json]
-
         // Utiliser transferUserInfo pour envoyer en arrière-plan
         WCSession.default.transferUserInfo(userInfo)
-        print("✅ Flight sent to iPhone: \(flight.durationSeconds)s with wing \(flight.wingId)")
     }
 
     /// Envoie un vol avec réponse instantanée (nécessite que l'iPhone soit joignable)
     func sendFlightWithReply(_ flight: FlightDTO, completion: @escaping (Bool, String?) -> Void) {
         guard sessionActivated else {
-            print("❌ WCSession not activated")
             completion(false, nil)
             return
         }
 
         guard isPhoneReachable else {
-            print("⚠️ iPhone not reachable, using background transfer instead")
             sendFlightToPhone(flight)
             completion(true, nil)
             return
@@ -139,7 +102,6 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         // Encoder le FlightDTO
         guard let data = try? JSONEncoder().encode(flight),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            print("❌ Failed to encode flight")
             completion(false, nil)
             return
         }
@@ -150,44 +112,28 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         WCSession.default.sendMessage(message, replyHandler: { reply in
             let status = reply["status"] as? String
             let spotName = reply["spotName"] as? String
-            print("✅ Flight sent with reply - spot: \(spotName ?? "Unknown")")
             completion(status == "success", spotName)
-        }, errorHandler: { error in
-            print("❌ Failed to send flight with reply: \(error.localizedDescription)")
+        }, errorHandler: { [weak self] _ in
             // Fallback sur transferUserInfo
-            WCSession.default.transferUserInfo(message)
+            self?.sendFlightToPhone(flight)
             completion(false, nil)
         })
     }
 
     /// Demande à l'iPhone d'envoyer les Wings (utile si on n'a rien reçu au démarrage)
     func requestWingsFromPhone() {
-        guard sessionActivated else {
-            print("❌ WCSession not activated")
-            return
-        }
-
-        // Envoyer un message simple pour demander les Wings
+        guard sessionActivated, isPhoneReachable else { return }
         let message = ["action": "requestWings"]
-
-        if isPhoneReachable {
-            WCSession.default.sendMessage(message, replyHandler: nil, errorHandler: { error in
-                print("❌ Failed to request wings: \(error.localizedDescription)")
-            })
-        }
+        WCSession.default.sendMessage(message, replyHandler: nil, errorHandler: nil)
     }
 
     // MARK: - WCSessionDelegate
 
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        if let error = error {
-            print("❌ WCSession activation failed: \(error.localizedDescription)")
-            return
-        }
+        guard error == nil else { return }
 
         sessionActivated = (activationState == .activated)
         isPhoneReachable = session.isReachable
-        print("✅ WCSession activated (state: \(activationState.rawValue))")
 
         // Essayer de récupérer le dernier contexte disponible
         if activationState == .activated {
@@ -200,80 +146,81 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     func sessionReachabilityDidChange(_ session: WCSession) {
         isPhoneReachable = session.isReachable
-        print("📡 iPhone reachability changed: \(isPhoneReachable)")
     }
 
     // MARK: - Receive Wings from iPhone
 
     /// Reçoit le contexte mis à jour depuis l'iPhone (liste des Wings)
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        print("📥 Received application context from iPhone")
         processReceivedContext(applicationContext)
     }
 
     /// Reçoit des données via transferUserInfo (alternative)
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
-        print("📥 Received user info from iPhone")
         processReceivedContext(userInfo)
     }
 
     /// Traite le contexte reçu (extraction des Wings et langue)
     private func processReceivedContext(_ context: [String: Any]) {
-        print("🔍 Processing received context: \(context.keys)")
-
         // Extraire la langue si présente
         if context.keys.contains("language") {
             let languageCode = context["language"] as? String
             WatchLocalizationManager.shared.updateLanguage(from: languageCode)
         }
 
-        // Nouveau format : wingsData en Base64
+        // Nouveau format : wingsData en Base64 - Décoder en background
         if let base64String = context["wingsData"] as? String,
            let jsonData = Data(base64Encoded: base64String) {
 
-            let dataSizeKB = Double(jsonData.count) / 1024.0
-            print("📊 Received data size: \(String(format: "%.2f", dataSizeKB)) KB")
+            // Décoder en background pour ne pas bloquer l'UI
+            Task.detached(priority: .userInitiated) { [weak self] in
+                guard let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
+                    return
+                }
+                let sortedWings = decodedWings.sorted { $0.displayOrder < $1.displayOrder }
 
-            guard let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
-                print("❌ Failed to decode WingDTO array from Base64")
-                return
-            }
-
-            DispatchQueue.main.async {
-                self.wings = decodedWings.sorted { $0.displayOrder < $1.displayOrder }
-                self.saveWingsLocally()
-                // OPTIMISATION: Images désactivées pour améliorer les performances
-                // WatchImageCache.shared.preloadImages(for: self.wings)
-                print("✅ Successfully received and stored \(self.wings.count) wings from iPhone (sorted by displayOrder)")
+                await MainActor.run {
+                    // Ne mettre à jour que si les données ont changé
+                    // pour éviter les re-renders inutiles
+                    guard self?.wingsHaveChanged(sortedWings) == true else { return }
+                    self?.wings = sortedWings
+                    self?.saveWingsLocally()
+                }
             }
             return
         }
 
         // Ancien format (compatibilité) : wings en [[String: Any]]
         if let wingsData = context["wings"] as? [[String: Any]] {
-            print("🔍 Found \(wingsData.count) wings in context (legacy format)")
+            Task.detached(priority: .userInitiated) { [weak self] in
+                guard let jsonData = try? JSONSerialization.data(withJSONObject: wingsData),
+                      let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
+                    return
+                }
+                let sortedWings = decodedWings.sorted { $0.displayOrder < $1.displayOrder }
 
-            guard let jsonData = try? JSONSerialization.data(withJSONObject: wingsData) else {
-                print("❌ Failed to convert wings to JSON data")
-                return
+                await MainActor.run {
+                    guard self?.wingsHaveChanged(sortedWings) == true else { return }
+                    self?.wings = sortedWings
+                    self?.saveWingsLocally()
+                }
             }
-
-            guard let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
-                print("❌ Failed to decode WingDTO array")
-                return
-            }
-
-            DispatchQueue.main.async {
-                self.wings = decodedWings.sorted { $0.displayOrder < $1.displayOrder }
-                self.saveWingsLocally()
-                // OPTIMISATION: Images désactivées pour améliorer les performances
-                // WatchImageCache.shared.preloadImages(for: self.wings)
-                print("✅ Successfully received and stored \(self.wings.count) wings from iPhone (legacy, sorted by displayOrder)")
-            }
-            return
         }
+    }
 
-        print("⚠️ No valid wings data found in context")
+    /// Compare les nouvelles wings avec les existantes pour éviter les re-renders inutiles
+    private func wingsHaveChanged(_ newWings: [WingDTO]) -> Bool {
+        guard wings.count == newWings.count else { return true }
+        for (index, wing) in wings.enumerated() {
+            let newWing = newWings[index]
+            if wing.id != newWing.id ||
+               wing.name != newWing.name ||
+               wing.size != newWing.size ||
+               wing.displayOrder != newWing.displayOrder {
+                return true
+            }
+        }
+        return false
     }
 
     #if os(watchOS)

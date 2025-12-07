@@ -70,50 +70,23 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     // MARK: - Send Wings to Watch
 
     /// Envoie la liste des voiles vers la Watch
+    /// Note: Les photos sont désactivées sur Watch pour la performance,
+    /// donc on envoie toujours sans photos pour un transfert plus rapide
     func sendWingsToWatch() {
         guard let dataController = dataController else {
-            print("❌ DataController not available")
             return
         }
 
         // Si la session n'est pas activée, réessayer après 1 seconde
         guard WCSession.default.activationState == .activated else {
-            print("⚠️ WCSession not activated yet, will retry in 1 second...")
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
                 self?.sendWingsToWatch()
             }
             return
         }
 
-        let wings = dataController.fetchWings()
-
-        // Essayer d'abord avec les images compressées
-        let wingsDTOWithPhotos = wings.map { $0.toDTOForWatch() }
-
-        print("📤 Attempting to send \(wingsDTOWithPhotos.count) wings to Watch (with photos)...")
-
-        if let jsonData = try? JSONEncoder().encode(wingsDTOWithPhotos) {
-            let dataSizeKB = Double(jsonData.count) / 1024.0
-            print("📊 Encoded data size with photos: \(String(format: "%.2f", dataSizeKB)) KB")
-
-            // Si moins de 100KB, envoyer avec les photos
-            if dataSizeKB < 100 {
-                let base64String = jsonData.base64EncodedString()
-                let context = ["wingsData": base64String]
-
-                do {
-                    try WCSession.default.updateApplicationContext(context)
-                    print("✅ Sent \(wingsDTOWithPhotos.count) wings to Watch via updateApplicationContext (with photos)")
-                    return
-                } catch {
-                    print("⚠️ Failed with photos: \(error.localizedDescription), trying without...")
-                }
-            } else {
-                print("⚠️ Data too large (\(String(format: "%.0f", dataSizeKB))KB), sending without photos...")
-            }
-        }
-
-        // Fallback : envoyer sans les photos
+        // Toujours envoyer sans photos pour une performance optimale
+        // Les images sont désactivées sur Watch (disableImages = true)
         sendWingsWithoutPhotos()
     }
 
