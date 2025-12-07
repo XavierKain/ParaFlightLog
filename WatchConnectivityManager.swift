@@ -70,8 +70,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     // MARK: - Send Wings to Watch
 
     /// Envoie la liste des voiles vers la Watch
-    /// Note: Les photos sont désactivées sur Watch pour la performance,
-    /// donc on envoie toujours sans photos pour un transfert plus rapide
+    /// Utilise des miniatures très compressées (24x24 JPEG) pour les icônes
     func sendWingsToWatch() {
         guard let dataController = dataController else {
             return
@@ -85,9 +84,38 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             return
         }
 
-        // Toujours envoyer sans photos pour une performance optimale
-        // Les images sont désactivées sur Watch (disableImages = true)
-        sendWingsWithoutPhotos()
+        // Envoyer avec miniatures très compressées (~0.5-1KB par image)
+        sendWingsWithThumbnails()
+    }
+
+    /// Envoie les voiles avec miniatures compressées
+    private func sendWingsWithThumbnails() {
+        guard let dataController = dataController else { return }
+
+        let wings = dataController.fetchWings()
+        let wingsDTOWithThumbnails = wings.map { $0.toDTOWithThumbnail() }
+
+        guard let jsonData = try? JSONEncoder().encode(wingsDTOWithThumbnails) else {
+            sendWingsWithoutPhotos()
+            return
+        }
+
+        let dataSizeKB = Double(jsonData.count) / 1024.0
+
+        // Si les données dépassent 50KB, envoyer sans images
+        if dataSizeKB > 50 {
+            sendWingsWithoutPhotos()
+            return
+        }
+
+        let base64String = jsonData.base64EncodedString()
+        let context = ["wingsData": base64String]
+
+        do {
+            try WCSession.default.updateApplicationContext(context)
+        } catch {
+            sendWingsWithoutPhotos()
+        }
     }
 
     /// Envoie les voiles sans photos (fallback)
@@ -97,27 +125,17 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let wings = dataController.fetchWings()
         let wingsDTONoPhotos = wings.map { $0.toDTOWithoutPhoto() }
 
-        print("📤 Sending \(wingsDTONoPhotos.count) wings WITHOUT photos...")
-
         guard let jsonData = try? JSONEncoder().encode(wingsDTONoPhotos) else {
-            print("❌ Failed to encode wings without photos")
             return
         }
-
-        let dataSizeKB = Double(jsonData.count) / 1024.0
-        print("📊 Encoded data size without photos: \(String(format: "%.2f", dataSizeKB)) KB")
 
         let base64String = jsonData.base64EncodedString()
         let context = ["wingsData": base64String]
 
         do {
             try WCSession.default.updateApplicationContext(context)
-            print("✅ Sent \(wingsDTONoPhotos.count) wings to Watch (without photos)")
         } catch {
-            print("❌ Failed to send wings: \(error.localizedDescription)")
-            // Dernier recours : transferUserInfo
             WCSession.default.transferUserInfo(context)
-            print("📤 Fallback: using transferUserInfo")
         }
     }
 

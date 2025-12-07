@@ -34,22 +34,21 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
     override init() {
         super.init()
-        // Pré-initialiser le CLLocationManager en background dès la création
-        // Cela évite le freeze au premier appel de startUpdatingLocation
-        Task.detached(priority: .utility) { [weak self] in
-            await self?.initializeLocationManager()
-        }
+        // Initialiser le CLLocationManager immédiatement sur le main thread
+        // mais de façon synchrone pour éviter les problèmes de timing
+        initializeLocationManagerSync()
     }
 
-    /// Initialise le CLLocationManager en background
-    @MainActor
-    private func initializeLocationManager() {
+    /// Initialise le CLLocationManager de façon synchrone
+    private func initializeLocationManagerSync() {
         guard !isInitialized else { return }
         isInitialized = true
 
+        // CLLocationManager doit être créé sur le main thread
         let manager = CLLocationManager()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        // Utiliser une précision moins gourmande pour être plus rapide
+        manager.desiredAccuracy = kCLLocationAccuracyKilometer
         _locationManager = manager
         authorizationStatus = manager.authorizationStatus
     }

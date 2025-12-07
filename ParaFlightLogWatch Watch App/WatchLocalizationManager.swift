@@ -15,12 +15,19 @@ import WidgetKit
 final class WatchLocalizationManager {
     static let shared = WatchLocalizationManager()
 
+    // Flag pour éviter les effets de bord pendant l'init
+    private var isInitializing = true
+
     // Langue actuelle (nil = utiliser la langue du système)
     var currentLanguage: Language? {
         didSet {
+            // Ne pas exécuter pendant l'initialisation
+            guard !isInitializing else { return }
             saveLanguagePreference()
-            // Rafraîchir le widget pour qu'il utilise la nouvelle langue
-            WidgetCenter.shared.reloadAllTimelines()
+            // Rafraîchir le widget en background pour ne pas bloquer l'UI
+            Task.detached(priority: .background) {
+                WidgetCenter.shared.reloadAllTimelines()
+            }
         }
     }
 
@@ -46,6 +53,7 @@ final class WatchLocalizationManager {
 
     private init() {
         loadLanguagePreference()
+        isInitializing = false
     }
 
     // MARK: - Persistence
@@ -53,6 +61,9 @@ final class WatchLocalizationManager {
     private let languageKey = "watch_app_language"
 
     private func saveLanguagePreference() {
+        // Ne pas sauvegarder pendant l'initialisation
+        guard !isInitializing else { return }
+
         if let language = currentLanguage {
             UserDefaults.standard.set(language.rawValue, forKey: languageKey)
         } else {

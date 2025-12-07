@@ -118,12 +118,13 @@ struct WingSelectionView: View {
     @Binding var selectedTab: Int
 
     var body: some View {
-        VStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 2) {
             Text("Sélection")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
-                .padding(.top, -4)
+                .padding(.leading, 8)
+                .padding(.top, -8)
 
             if watchManager.wings.isEmpty {
                 VStack(spacing: 8) {
@@ -177,11 +178,14 @@ struct WingButton: View {
 
     var body: some View {
         Button(action: onTap) {
-            HStack(spacing: 8) {
+            HStack(spacing: 6) {
                 // Indicateur visuel de sélection (barre latérale)
                 RoundedRectangle(cornerRadius: 2)
                     .fill(isSelected ? Color.green : Color.clear)
                     .frame(width: 3)
+
+                // Miniature de la voile (40x40) avec fond adapté
+                CachedWingImage(wing: wing, size: 40, isSelected: isSelected)
 
                 // Contenu principal - nom et taille empilés
                 VStack(alignment: .leading, spacing: 2) {
@@ -208,8 +212,8 @@ struct WingButton: View {
                         .foregroundStyle(.green)
                 }
             }
-            .padding(.vertical, 10)
-            .padding(.horizontal, 8)
+            .padding(.vertical, 8)
+            .padding(.horizontal, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
             .contentShape(Rectangle())
         }
@@ -238,11 +242,14 @@ struct FlightStartView: View {
             // Voile sélectionnée
             if let wing = selectedWing {
                 VStack(spacing: 4) {
+                    // Image de la voile
+                    CachedWingImage(wing: wing, size: 36, showBackground: false)
+
                     Text(wing.shortName)
                         .font(.title3)
                         .fontWeight(.semibold)
                         .lineLimit(1)
-                    
+
                     if let size = wing.size {
                         Text("\(size) m²")
                             .font(.caption)
@@ -327,9 +334,10 @@ struct ActiveFlightView: View {
                     .fontWeight(.bold)
             }
             
-            // Voile + taille
+            // Voile + taille avec image
             if let wing = wing {
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
+                    CachedWingImage(wing: wing, size: 24, showBackground: false)
                     Text(wing.shortName)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -529,8 +537,9 @@ struct FlightSummaryView: View {
                 .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(.blue)
 
-            // Voile + taille
-            HStack(spacing: 4) {
+            // Voile + taille avec image
+            HStack(spacing: 6) {
+                CachedWingImage(wing: wing, size: 24, showBackground: false)
                 Text(wing.shortName)
                     .font(.caption)
                     .foregroundStyle(.secondary)
