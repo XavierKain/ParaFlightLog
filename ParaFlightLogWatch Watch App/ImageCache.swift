@@ -65,41 +65,45 @@ final class WatchImageCache {
 }
 
 /// Vue SwiftUI pour afficher une image de voile avec cache
+/// Le fond s'adapte au contexte (sélectionné ou non) pour masquer le fond blanc des images
 struct CachedWingImage: View {
     let wing: WingDTO
     let size: CGFloat
-
-    // OPTIMISATION WATCH: Désactiver les images pour améliorer les performances
-    // Les images ralentissent considérablement l'app Watch
-    private let disableImages = true
+    var isSelected: Bool = false
+    var showBackground: Bool = true
 
     @State private var cachedImage: UIImage?
 
+    // Couleur de fond qui correspond au fond du bouton
+    private var backgroundColor: Color {
+        if !showBackground {
+            return .clear
+        }
+        return isSelected ? Color.green.opacity(0.12) : Color.gray.opacity(0.15)
+    }
+
     var body: some View {
         Group {
-            if !disableImages, let image = cachedImage {
+            if let image = cachedImage {
                 Image(uiImage: image)
                     .resizable()
-                    .scaledToFill()
+                    .scaledToFit()
                     .frame(width: size, height: size)
+                    .background(backgroundColor)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
                 // Placeholder pendant le chargement ou si pas d'image
                 Image(systemName: "wind")
-                    .font(size > 30 ? .headline : .title3)
+                    .font(.system(size: size * 0.6))
                     .foregroundStyle(.blue)
                     .frame(width: size, height: size)
             }
         }
         .onAppear {
-            if !disableImages {
-                loadImage()
-            }
+            loadImage()
         }
         .onChange(of: wing.photoData) { _, _ in
-            if !disableImages {
-                loadImage()
-            }
+            loadImage()
         }
     }
 

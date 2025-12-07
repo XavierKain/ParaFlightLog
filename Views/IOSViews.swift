@@ -768,11 +768,12 @@ struct AddWingView: View {
     @State private var size: String = ""
     @State private var type: String = "Soaring"
     @State private var color: String = "Bleu"
+    @State private var customColor: String = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
 
-    let types = ["Soaring", "Cross", "Acro", "Débutant"]
-    let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir"]
+    let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
+    let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
 
 
 
@@ -835,6 +836,10 @@ struct AddWingView: View {
                             Text(color).tag(color)
                         }
                     }
+
+                    if color == "Autre..." {
+                        TextField("Couleur personnalisée", text: $customColor)
+                    }
                 }
             }
             .navigationTitle("Nouvelle voile")
@@ -871,11 +876,14 @@ struct AddWingView: View {
         )
         let maxDisplayOrder = (try? modelContext.fetch(descriptor).first?.displayOrder) ?? -1
 
+        // Utiliser la couleur personnalisée si "Autre..." est sélectionné
+        let finalColor = color == "Autre..." ? customColor : color
+
         let wing = Wing(
             name: name,
             size: size.isEmpty ? nil : size,
             type: type,
-            color: color,
+            color: finalColor.isEmpty ? nil : finalColor,
             photoData: photoData,
             displayOrder: maxDisplayOrder + 1
         )
@@ -904,18 +912,28 @@ struct EditWingView: View {
     @State private var size: String
     @State private var type: String
     @State private var color: String
+    @State private var customColor: String
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
 
-    let types = ["Soaring", "Cross", "Acro", "Débutant"]
-    let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir"]
+    let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
+    let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
 
     init(wing: Wing) {
         self.wing = wing
         _name = State(initialValue: wing.name)
         _size = State(initialValue: wing.size ?? "")
         _type = State(initialValue: wing.type ?? "Soaring")
-        _color = State(initialValue: wing.color ?? "Bleu")
+        // Si la couleur actuelle n'est pas dans la liste, utiliser "Autre..."
+        let existingColor = wing.color ?? "Bleu"
+        let standardColors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole"]
+        if standardColors.contains(existingColor) {
+            _color = State(initialValue: existingColor)
+            _customColor = State(initialValue: "")
+        } else {
+            _color = State(initialValue: "Autre...")
+            _customColor = State(initialValue: existingColor)
+        }
         _photoData = State(initialValue: wing.photoData)
     }
 
@@ -986,6 +1004,10 @@ struct EditWingView: View {
                             Text(color).tag(color)
                         }
                     }
+
+                    if color == "Autre..." {
+                        TextField("Couleur personnalisée", text: $customColor)
+                    }
                 }
             }
             .navigationTitle("Modifier la voile")
@@ -1015,10 +1037,13 @@ struct EditWingView: View {
     }
 
     private func saveWing() {
+        // Utiliser la couleur personnalisée si "Autre..." est sélectionné
+        let finalColor = color == "Autre..." ? customColor : color
+
         wing.name = name
         wing.size = size.isEmpty ? nil : size
         wing.type = type
-        wing.color = color
+        wing.color = finalColor.isEmpty ? nil : finalColor
         wing.photoData = photoData
 
         Task { @MainActor in

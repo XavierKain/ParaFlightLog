@@ -130,12 +130,14 @@ struct CircularWidgetView: View {
                 }
             }
         } else {
-            // Au repos : afficher l'icône du parapente
+            // Au repos : afficher l'icône de l'app (version circulaire)
             ZStack {
                 AccessoryWidgetBackground()
-                Image(systemName: "wind")
-                    .font(.system(size: 28, weight: .medium))
-                    .symbolRenderingMode(.hierarchical)
+                Image("WidgetIconCircular")
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: 50, height: 50)
+                    .clipShape(Circle())
             }
         }
     }
