@@ -67,7 +67,8 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         // Précision maximale pour le tracking pendant les vols
         manager.desiredAccuracy = kCLLocationAccuracyBest
         manager.distanceFilter = 5.0  // Mise à jour tous les 5 mètres
-        manager.allowsBackgroundLocationUpdates = true
+        // Note: allowsBackgroundLocationUpdates n'est pas nécessaire sur watchOS
+        // Les updates continuent automatiquement pendant que l'app est active
         _locationManager = manager
         authorizationStatus = manager.authorizationStatus
     }
