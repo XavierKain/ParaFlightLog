@@ -51,12 +51,34 @@ struct FlightDTO: Codable, Identifiable {
     let durationSeconds: Int
     let createdAt: Date
 
-    init(id: UUID = UUID(), wingId: UUID, startDate: Date, endDate: Date, durationSeconds: Int, createdAt: Date = Date()) {
+    // Nouvelles données de tracking
+    let startAltitude: Double?      // Altitude de départ (m)
+    let maxAltitude: Double?         // Altitude maximale (m)
+    let endAltitude: Double?         // Altitude d'atterrissage (m)
+    let totalDistance: Double?       // Distance totale parcourue (m)
+    let maxSpeed: Double?            // Vitesse maximale au sol (m/s)
+
+    init(id: UUID = UUID(),
+         wingId: UUID,
+         startDate: Date,
+         endDate: Date,
+         durationSeconds: Int,
+         createdAt: Date = Date(),
+         startAltitude: Double? = nil,
+         maxAltitude: Double? = nil,
+         endAltitude: Double? = nil,
+         totalDistance: Double? = nil,
+         maxSpeed: Double? = nil) {
         self.id = id
         self.wingId = wingId
         self.startDate = startDate
         self.endDate = endDate
         self.durationSeconds = durationSeconds
         self.createdAt = createdAt
+        self.startAltitude = startAltitude
+        self.maxAltitude = maxAltitude
+        self.endAltitude = endAltitude
+        self.totalDistance = totalDistance
+        self.maxSpeed = maxSpeed
     }
 }

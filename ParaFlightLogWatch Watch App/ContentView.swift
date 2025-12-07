@@ -67,31 +67,41 @@ struct ContentView: View {
         flightStartDate = Date()
         isFlying = true
 
-        // Démarrer la localisation en arrière-plan (ne bloque pas l'UI)
+        // Démarrer la localisation et le tracking en arrière-plan
         Task(priority: .userInitiated) {
             locationService.startUpdatingLocation()
+            locationService.startFlightTracking()
         }
 
         // Afficher le timer immédiatement
         showingActiveFlightView = true
     }
-    
+
     private func stopFlight(duration: Int) {
         guard let wing = selectedWing, let start = flightStartDate else { return }
-        
+
         let end = Date()
-        
-        // Créer le FlightDTO
+
+        // Récupérer les données de tracking
+        let endAltitude = locationService.stopFlightTracking()
+        let flightData = locationService.getFlightData()
+
+        // Créer le FlightDTO avec toutes les données
         let flight = FlightDTO(
             wingId: wing.id,
             startDate: start,
             endDate: end,
-            durationSeconds: duration
+            durationSeconds: duration,
+            startAltitude: flightData.startAlt,
+            maxAltitude: flightData.maxAlt,
+            endAltitude: endAltitude,
+            totalDistance: flightData.distance,
+            maxSpeed: flightData.speed
         )
-        
+
         // Envoyer vers l'iPhone
         watchManager.sendFlightToPhone(flight)
-        
+
         // Reset
         isFlying = false
         showingActiveFlightView = false
@@ -99,9 +109,10 @@ struct ContentView: View {
         selectedWing = nil
         selectedTab = 0 // Revenir à la sélection de voile
     }
-    
+
     private func discardFlight() {
         // Annuler le vol sans sauvegarder
+        locationService.stopFlightTracking()
         isFlying = false
         showingActiveFlightView = false
         flightStartDate = nil
@@ -360,14 +371,48 @@ struct ActiveFlightView: View {
                     .lineLimit(1)
             }
 
+            // Données de vol en temps réel
+            HStack(spacing: 12) {
+                // Altitude
+                VStack(spacing: 0) {
+                    Text("\(formatAltitude(locationService.currentAltitude))m")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.orange)
+                    Text("Alt")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+
+                // Distance
+                VStack(spacing: 0) {
+                    Text(formatDistance(locationService.totalDistance))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.cyan)
+                    Text("Dist")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+
+                // Vitesse max
+                VStack(spacing: 0) {
+                    Text("\(formatSpeed(locationService.maxSpeed))")
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.purple)
+                    Text("Max")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.vertical, 4)
+
             Spacer()
-            
+
             // TIMER principal
             Text(formatElapsedTime(elapsedSeconds))
                 .font(.system(size: 44, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.green)
-            
+
             Spacer()
 
             // Bouton Stop
@@ -406,7 +451,12 @@ struct ActiveFlightView: View {
         .sheet(isPresented: $showingSummary) {
             FlightSummaryView(
                 duration: finalDuration,
-                wing: wing ?? WingDTO(id: UUID(), name: "Inconnue", size: nil, type: nil, color: nil, photoData: nil, displayOrder: 0)
+                wing: wing ?? WingDTO(id: UUID(), name: "Inconnue", size: nil, type: nil, color: nil, photoData: nil, displayOrder: 0),
+                startAltitude: locationService.startAltitude,
+                maxAltitude: locationService.maxAltitude,
+                endAltitude: locationService.currentAltitude,
+                totalDistance: locationService.totalDistance,
+                maxSpeed: locationService.maxSpeed
             ) {
                 onStopFlight(finalDuration)
             }
@@ -451,6 +501,24 @@ struct ActiveFlightView: View {
         } else {
             return String(format: "%02d:%02d", minutes, secs)
         }
+    }
+
+    private func formatAltitude(_ altitude: Double?) -> String {
+        guard let alt = altitude else { return "--" }
+        return "\(Int(alt))"
+    }
+
+    private func formatDistance(_ distance: Double) -> String {
+        if distance >= 1000 {
+            return String(format: "%.1fkm", distance / 1000)
+        } else {
+            return "\(Int(distance))m"
+        }
+    }
+
+    private func formatSpeed(_ speed: Double) -> String {
+        let kmh = speed * 3.6  // Convertir m/s en km/h
+        return "\(Int(kmh))km/h"
     }
 }
 
@@ -513,59 +581,88 @@ struct StopFlightOptionsView: View {
     }
 }
 
-// MARK: - FlightSummaryView (Résumé après vol - compact)
+// MARK: - FlightSummaryView (Résumé après vol avec statistiques)
 
 struct FlightSummaryView: View {
     @Environment(\.dismiss) private var dismiss
     let duration: Int
     let wing: WingDTO
+    let startAltitude: Double?
+    let maxAltitude: Double?
+    let endAltitude: Double?
+    let totalDistance: Double
+    let maxSpeed: Double
     let onDismiss: () -> Void
 
     var body: some View {
-        VStack(spacing: 8) {
-            // Icône centrée au-dessus
-            Image(systemName: "checkmark.circle.fill")
-                .font(.title)
-                .foregroundStyle(.green)
+        ScrollView {
+            VStack(spacing: 8) {
+                // Icône centrée au-dessus
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.title)
+                    .foregroundStyle(.green)
 
-            // Titre
-            Text("Vol terminé !")
-                .font(.headline)
-
-            // Durée
-            Text(formatDuration(duration))
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-                .foregroundStyle(.blue)
-
-            // Voile + taille avec image
-            HStack(spacing: 6) {
-                CachedWingImage(wing: wing, size: 24, showBackground: false)
-                Text(wing.shortName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                if let size = wing.size {
-                    Text("• \(size) m²")
-                        .font(.caption)
-                        .foregroundStyle(.blue)
-                }
-            }
-
-            Spacer()
-
-            // Bouton fermer
-            Button {
-                dismiss()
-                onDismiss()
-            } label: {
-                Text("OK")
+                // Titre
+                Text("Vol terminé !")
                     .font(.headline)
-                    .frame(maxWidth: .infinity)
+
+                // Durée
+                Text(formatDuration(duration))
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(.blue)
+
+                // Voile + taille avec image
+                HStack(spacing: 6) {
+                    CachedWingImage(wing: wing, size: 24, showBackground: false)
+                    Text(wing.shortName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let size = wing.size {
+                        Text("• \(size) m²")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                    }
+                }
+                .padding(.bottom, 4)
+
+                // Statistiques de vol
+                VStack(spacing: 6) {
+                    // Altitudes
+                    if startAltitude != nil || maxAltitude != nil || endAltitude != nil {
+                        HStack(spacing: 8) {
+                            StatBox(label: "Départ", value: formatAlt(startAltitude), unit: "m", color: .orange)
+                            StatBox(label: "Max", value: formatAlt(maxAltitude), unit: "m", color: .red)
+                            StatBox(label: "Arrivée", value: formatAlt(endAltitude), unit: "m", color: .orange)
+                        }
+                    }
+
+                    // Distance et vitesse
+                    HStack(spacing: 8) {
+                        if totalDistance > 0 {
+                            StatBox(label: "Distance", value: formatDist(totalDistance), unit: "", color: .cyan)
+                        }
+                        if maxSpeed > 0 {
+                            StatBox(label: "Vitesse max", value: formatSpeed(maxSpeed), unit: "km/h", color: .purple)
+                        }
+                    }
+                }
+
+                // Bouton fermer
+                Button {
+                    dismiss()
+                    onDismiss()
+                } label: {
+                    Text("OK")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(.green)
+                .padding(.top, 4)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(.green)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
     }
 
     private func formatDuration(_ seconds: Int) -> String {
@@ -577,6 +674,51 @@ struct FlightSummaryView: View {
         } else {
             return "\(minutes)min"
         }
+    }
+
+    private func formatAlt(_ alt: Double?) -> String {
+        guard let altitude = alt else { return "--" }
+        return "\(Int(altitude))"
+    }
+
+    private func formatDist(_ distance: Double) -> String {
+        if distance >= 1000 {
+            return String(format: "%.1f km", distance / 1000)
+        } else {
+            return "\(Int(distance)) m"
+        }
+    }
+
+    private func formatSpeed(_ speed: Double) -> String {
+        return "\(Int(speed * 3.6))"
+    }
+}
+
+// MARK: - StatBox (Composant pour afficher une statistique)
+
+struct StatBox: View {
+    let label: String
+    let value: String
+    let unit: String
+    let color: Color
+
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(color)
+            Text(unit)
+                .font(.system(size: 8))
+                .foregroundStyle(.secondary)
+            Text(label)
+                .font(.system(size: 9))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(Color.gray.opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }
 

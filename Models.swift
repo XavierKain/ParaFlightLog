@@ -134,6 +134,13 @@ final class Flight {
     var notes: String?
     var createdAt: Date
 
+    // Données de tracking (depuis Watch)
+    var startAltitude: Double?      // Altitude de départ (m)
+    var maxAltitude: Double?         // Altitude maximale (m)
+    var endAltitude: Double?         // Altitude d'atterrissage (m)
+    var totalDistance: Double?       // Distance totale parcourue (m)
+    var maxSpeed: Double?            // Vitesse maximale au sol (m/s)
+
     // Relation : la voile utilisée pour ce vol
     var wing: Wing?
 
@@ -147,7 +154,12 @@ final class Flight {
          longitude: Double? = nil,
          flightType: String? = nil,
          notes: String? = nil,
-         createdAt: Date = Date()) {
+         createdAt: Date = Date(),
+         startAltitude: Double? = nil,
+         maxAltitude: Double? = nil,
+         endAltitude: Double? = nil,
+         totalDistance: Double? = nil,
+         maxSpeed: Double? = nil) {
         self.id = id
         self.wing = wing
         self.startDate = startDate
@@ -159,6 +171,11 @@ final class Flight {
         self.flightType = flightType
         self.notes = notes
         self.createdAt = createdAt
+        self.startAltitude = startAltitude
+        self.maxAltitude = maxAltitude
+        self.endAltitude = endAltitude
+        self.totalDistance = totalDistance
+        self.maxSpeed = maxSpeed
     }
 
     /// Durée formatée (ex: "1h23" ou "45min")

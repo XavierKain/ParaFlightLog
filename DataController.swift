@@ -193,7 +193,12 @@ final class DataController {
             spotName: spotName,
             latitude: location?.coordinate.latitude,
             longitude: location?.coordinate.longitude,
-            createdAt: dto.createdAt
+            createdAt: dto.createdAt,
+            startAltitude: dto.startAltitude,
+            maxAltitude: dto.maxAltitude,
+            endAltitude: dto.endAltitude,
+            totalDistance: dto.totalDistance,
+            maxSpeed: dto.maxSpeed
         )
 
         modelContext.insert(flight)

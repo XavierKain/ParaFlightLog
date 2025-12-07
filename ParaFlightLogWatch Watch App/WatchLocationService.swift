@@ -32,6 +32,15 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     var currentSpotName: String = String(localized: "Position...")
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
+    // Données de tracking pour le vol en cours
+    var isTracking: Bool = false
+    var startAltitude: Double?
+    var maxAltitude: Double?
+    var currentAltitude: Double?
+    var totalDistance: Double = 0.0
+    var maxSpeed: Double = 0.0
+    private var previousLocation: CLLocation?
+
     override init() {
         super.init()
         // Initialiser le CLLocationManager immédiatement sur le main thread
@@ -47,8 +56,10 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         // CLLocationManager doit être créé sur le main thread
         let manager = CLLocationManager()
         manager.delegate = self
-        // Utiliser une précision moins gourmande pour être plus rapide
-        manager.desiredAccuracy = kCLLocationAccuracyKilometer
+        // Précision maximale pour le tracking pendant les vols
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+        manager.distanceFilter = 5.0  // Mise à jour tous les 5 mètres
+        manager.allowsBackgroundLocationUpdates = true
         _locationManager = manager
         authorizationStatus = manager.authorizationStatus
     }
@@ -71,6 +82,32 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
     func stopUpdatingLocation() {
         _locationManager?.stopUpdatingLocation()
+    }
+
+    // MARK: - Flight Tracking
+
+    /// Démarre le tracking des données de vol
+    func startFlightTracking() {
+        isTracking = true
+        startAltitude = nil
+        maxAltitude = nil
+        currentAltitude = nil
+        totalDistance = 0.0
+        maxSpeed = 0.0
+        previousLocation = nil
+    }
+
+    /// Arrête le tracking et retourne l'altitude finale
+    func stopFlightTracking() -> Double? {
+        isTracking = false
+        let endAltitude = currentAltitude
+        previousLocation = nil
+        return endAltitude
+    }
+
+    /// Retourne les données du vol en cours
+    func getFlightData() -> (startAlt: Double?, maxAlt: Double?, endAlt: Double?, distance: Double, speed: Double) {
+        return (startAltitude, maxAltitude, currentAltitude, totalDistance, maxSpeed)
     }
 
     // MARK: - Reverse Geocoding avec CLGeocoder
@@ -124,6 +161,48 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         lastKnownLocation = location
+
+        // Mise à jour des données de tracking si un vol est en cours
+        if isTracking {
+            let altitude = location.altitude
+
+            // Altitude actuelle
+            currentAltitude = altitude
+
+            // Altitude de départ (première mesure)
+            if startAltitude == nil {
+                startAltitude = altitude
+            }
+
+            // Altitude max
+            if let max = maxAltitude {
+                if altitude > max {
+                    maxAltitude = altitude
+                }
+            } else {
+                maxAltitude = altitude
+            }
+
+            // Distance et vitesse
+            if let previous = previousLocation {
+                // Distance parcourue depuis la dernière position
+                let distance = location.distance(from: previous)
+                if distance > 0 && distance < 100 {  // Filtrer les valeurs aberrantes (> 100m entre 2 points)
+                    totalDistance += distance
+                }
+
+                // Vitesse (location.speed est en m/s, -1 si invalide)
+                let speed = location.speed
+                if speed > 0 && speed < 100 {  // Filtrer les vitesses aberrantes (< 360 km/h)
+                    if speed > maxSpeed {
+                        maxSpeed = speed
+                    }
+                }
+            }
+
+            previousLocation = location
+        }
+
         reverseGeocode(location: location)
     }
 
