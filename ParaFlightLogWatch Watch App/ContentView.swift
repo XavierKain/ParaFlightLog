@@ -96,7 +96,8 @@ struct ContentView: View {
             maxAltitude: flightData.maxAlt,
             endAltitude: endAltitude,
             totalDistance: flightData.distance,
-            maxSpeed: flightData.speed
+            maxSpeed: flightData.speed,
+            maxGForce: flightData.maxGForce > 1.0 ? flightData.maxGForce : nil
         )
 
         // Envoyer vers l'iPhone
@@ -402,6 +403,16 @@ struct ActiveFlightView: View {
                         .font(.system(size: 9))
                         .foregroundStyle(.secondary)
                 }
+
+                // G-force actuel
+                VStack(spacing: 0) {
+                    Text(String(format: "%.1f", locationService.currentGForce))
+                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .foregroundStyle(.green)
+                    Text("G")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                }
             }
             .padding(.vertical, 4)
 
@@ -456,7 +467,8 @@ struct ActiveFlightView: View {
                 maxAltitude: locationService.maxAltitude,
                 endAltitude: locationService.currentAltitude,
                 totalDistance: locationService.totalDistance,
-                maxSpeed: locationService.maxSpeed
+                maxSpeed: locationService.maxSpeed,
+                maxGForce: locationService.maxGForce
             ) {
                 onStopFlight(finalDuration)
             }
@@ -592,6 +604,7 @@ struct FlightSummaryView: View {
     let endAltitude: Double?
     let totalDistance: Double
     let maxSpeed: Double
+    let maxGForce: Double
     let onDismiss: () -> Void
 
     var body: some View {
@@ -643,6 +656,13 @@ struct FlightSummaryView: View {
                         }
                         if maxSpeed > 0 {
                             StatBox(label: "Vitesse max", value: formatSpeed(maxSpeed), unit: "km/h", color: .purple)
+                        }
+                    }
+
+                    // G-Force max
+                    if maxGForce > 1.0 {
+                        HStack(spacing: 8) {
+                            StatBox(label: "G-Force max", value: String(format: "%.1f", maxGForce), unit: "G", color: .green)
                         }
                     }
                 }

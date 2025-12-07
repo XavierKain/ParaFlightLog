@@ -8,6 +8,7 @@
 
 import Foundation
 import CoreLocation
+import CoreMotion
 import MapKit
 
 @Observable
@@ -15,6 +16,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     // CLLocationManager initialisé en background pour éviter le lag
     private var _locationManager: CLLocationManager?
     private var isInitialized = false
+
+    // CoreMotion pour le tracking du G-force
+    private var motionManager: CMMotionManager?
+    private var gForceBuffer: [Double] = []  // Buffer pour moyenne mobile
+    private let gForceBufferSize = 3  // Fenêtre de 3 échantillons pour filtrage
 
     private var locationManager: CLLocationManager {
         if let manager = _locationManager {
@@ -39,6 +45,8 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     var currentAltitude: Double?
     var totalDistance: Double = 0.0
     var maxSpeed: Double = 0.0
+    var currentGForce: Double = 1.0  // G-force actuel (1.0 = immobile)
+    var maxGForce: Double = 1.0      // G-force max pendant le vol
     private var previousLocation: CLLocation?
 
     override init() {
@@ -94,7 +102,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         currentAltitude = nil
         totalDistance = 0.0
         maxSpeed = 0.0
+        currentGForce = 1.0
+        maxGForce = 1.0
         previousLocation = nil
+        gForceBuffer = []
+        startMotionUpdates()
     }
 
     /// Arrête le tracking et retourne l'altitude finale
@@ -102,12 +114,79 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         isTracking = false
         let endAltitude = currentAltitude
         previousLocation = nil
+        stopMotionUpdates()
         return endAltitude
     }
 
     /// Retourne les données du vol en cours
-    func getFlightData() -> (startAlt: Double?, maxAlt: Double?, endAlt: Double?, distance: Double, speed: Double) {
-        return (startAltitude, maxAltitude, currentAltitude, totalDistance, maxSpeed)
+    func getFlightData() -> (startAlt: Double?, maxAlt: Double?, endAlt: Double?, distance: Double, speed: Double, maxGForce: Double) {
+        return (startAltitude, maxAltitude, currentAltitude, totalDistance, maxSpeed, maxGForce)
+    }
+
+    // MARK: - Motion Tracking (G-Force)
+
+    /// Démarre les mises à jour du capteur de mouvement
+    private func startMotionUpdates() {
+        // Créer le motion manager si nécessaire
+        if motionManager == nil {
+            motionManager = CMMotionManager()
+        }
+
+        guard let motionManager = motionManager,
+              motionManager.isDeviceMotionAvailable else {
+            print("⚠️ Device motion not available")
+            return
+        }
+
+        // Configurer l'intervalle de mise à jour (10 Hz = 0.1s)
+        motionManager.deviceMotionUpdateInterval = 0.1
+
+        // Démarrer les mises à jour sur la queue principale
+        motionManager.startDeviceMotionUpdates(to: .main) { [weak self] motion, error in
+            guard let self = self, let motion = motion, error == nil else {
+                return
+            }
+
+            // Calculer le G-force total
+            let gravity = motion.gravity
+            let userAccel = motion.userAcceleration
+
+            // Accélération totale = accélération utilisateur + gravité
+            let totalAccelX = userAccel.x + gravity.x
+            let totalAccelY = userAccel.y + gravity.y
+            let totalAccelZ = userAccel.z + gravity.z
+
+            // Magnitude du vecteur d'accélération totale
+            let magnitude = sqrt(totalAccelX * totalAccelX +
+                               totalAccelY * totalAccelY +
+                               totalAccelZ * totalAccelZ)
+
+            // Filtrer les valeurs aberrantes (> 10G)
+            guard magnitude <= 10.0 else {
+                return
+            }
+
+            // Ajouter au buffer pour moyenne mobile
+            self.gForceBuffer.append(magnitude)
+            if self.gForceBuffer.count > self.gForceBufferSize {
+                self.gForceBuffer.removeFirst()
+            }
+
+            // Calculer la moyenne mobile
+            let averageGForce = self.gForceBuffer.reduce(0.0, +) / Double(self.gForceBuffer.count)
+            self.currentGForce = averageGForce
+
+            // Mettre à jour le max
+            if averageGForce > self.maxGForce {
+                self.maxGForce = averageGForce
+            }
+        }
+    }
+
+    /// Arrête les mises à jour du capteur de mouvement
+    private func stopMotionUpdates() {
+        motionManager?.stopDeviceMotionUpdates()
+        gForceBuffer = []
     }
 
     // MARK: - Reverse Geocoding avec CLGeocoder

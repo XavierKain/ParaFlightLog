@@ -57,6 +57,7 @@ struct FlightDTO: Codable, Identifiable {
     let endAltitude: Double?         // Altitude d'atterrissage (m)
     let totalDistance: Double?       // Distance totale parcourue (m)
     let maxSpeed: Double?            // Vitesse maximale au sol (m/s)
+    let maxGForce: Double?           // G-force maximale (G)
 
     init(id: UUID = UUID(),
          wingId: UUID,
@@ -68,7 +69,8 @@ struct FlightDTO: Codable, Identifiable {
          maxAltitude: Double? = nil,
          endAltitude: Double? = nil,
          totalDistance: Double? = nil,
-         maxSpeed: Double? = nil) {
+         maxSpeed: Double? = nil,
+         maxGForce: Double? = nil) {
         self.id = id
         self.wingId = wingId
         self.startDate = startDate
@@ -80,5 +82,6 @@ struct FlightDTO: Codable, Identifiable {
         self.endAltitude = endAltitude
         self.totalDistance = totalDistance
         self.maxSpeed = maxSpeed
+        self.maxGForce = maxGForce
     }
 }

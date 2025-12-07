@@ -30,6 +30,9 @@
         }
       }
     },
+    "%@" : {
+
+    },
     "%@ %@" : {
       "localizations" : {
         "en" : {
@@ -77,6 +80,9 @@
           }
         }
       }
+    },
+    "%@m" : {
+
     },
     "%lld" : {
       "localizations" : {
@@ -526,6 +532,9 @@
           }
         }
       }
+    },
+    "Alt" : {
+
     },
     "Annuler" : {
       "localizations" : {
@@ -1185,6 +1194,9 @@
         }
       }
     },
+    "Dist" : {
+
+    },
     "Données" : {
       "localizations" : {
         "en" : {
@@ -1326,6 +1338,9 @@
           }
         }
       }
+    },
+    "G" : {
+
     },
     "Générer des données de test" : {
       "localizations" : {
@@ -1656,6 +1671,9 @@
       }
     },
     "m²" : {
+
+    },
+    "Max" : {
 
     },
     "Mes voiles" : {

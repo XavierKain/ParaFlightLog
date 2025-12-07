@@ -198,7 +198,8 @@ final class DataController {
             maxAltitude: dto.maxAltitude,
             endAltitude: dto.endAltitude,
             totalDistance: dto.totalDistance,
-            maxSpeed: dto.maxSpeed
+            maxSpeed: dto.maxSpeed,
+            maxGForce: dto.maxGForce
         )
 
         modelContext.insert(flight)

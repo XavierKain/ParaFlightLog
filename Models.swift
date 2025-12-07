@@ -140,6 +140,7 @@ final class Flight {
     var endAltitude: Double?         // Altitude d'atterrissage (m)
     var totalDistance: Double?       // Distance totale parcourue (m)
     var maxSpeed: Double?            // Vitesse maximale au sol (m/s)
+    var maxGForce: Double?           // G-force maximale (G)
 
     // Relation : la voile utilisée pour ce vol
     var wing: Wing?
@@ -159,7 +160,8 @@ final class Flight {
          maxAltitude: Double? = nil,
          endAltitude: Double? = nil,
          totalDistance: Double? = nil,
-         maxSpeed: Double? = nil) {
+         maxSpeed: Double? = nil,
+         maxGForce: Double? = nil) {
         self.id = id
         self.wing = wing
         self.startDate = startDate
@@ -176,6 +178,7 @@ final class Flight {
         self.endAltitude = endAltitude
         self.totalDistance = totalDistance
         self.maxSpeed = maxSpeed
+        self.maxGForce = maxGForce
     }
 
     /// Durée formatée (ex: "1h23" ou "45min")
