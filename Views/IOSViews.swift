@@ -160,10 +160,17 @@ struct FlightRow: View {
                         .foregroundStyle(.blue)
                 }
 
-                if let wingName = flight.wing?.name {
-                    Text(wingName)
-                        .font(.body)
-                        .fontWeight(.medium)
+                if let wing = flight.wing {
+                    HStack(spacing: 4) {
+                        Text(wing.name)
+                            .font(.body)
+                            .fontWeight(.medium)
+                        if let size = wing.size {
+                            Text("(\(size) m²)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
                 }
 
                 if let spotName = flight.spotName {
@@ -801,7 +808,19 @@ struct AddWingView: View {
 
                 Section("Informations") {
                     TextField("Nom", text: $name)
-                    TextField("Taille (ex: 22 m²)", text: $size)
+                    HStack {
+                        TextField("Taille", text: $size)
+                            .keyboardType(.decimalPad)
+                            .onChange(of: size) { _, newValue in
+                                // Filtrer pour ne garder que les chiffres et le point/virgule
+                                let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
+                                if filtered != newValue {
+                                    size = filtered
+                                }
+                            }
+                        Text("m²")
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("Caractéristiques") {
@@ -940,7 +959,19 @@ struct EditWingView: View {
 
                 Section("Informations") {
                     TextField("Nom", text: $name)
-                    TextField("Taille (ex: 22 m²)", text: $size)
+                    HStack {
+                        TextField("Taille", text: $size)
+                            .keyboardType(.decimalPad)
+                            .onChange(of: size) { _, newValue in
+                                // Filtrer pour ne garder que les chiffres et le point/virgule
+                                let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
+                                if filtered != newValue {
+                                    size = filtered
+                                }
+                            }
+                        Text("m²")
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 Section("Caractéristiques") {
@@ -1401,12 +1432,18 @@ struct StatsByWingSection: View {
                                         }
                                 }
 
-                                Text(abbreviateWingName(stat.wing.name))
-                                    .font(.body)
-                                    .foregroundStyle(.primary)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .lineLimit(2)
-                                    .fixedSize(horizontal: false, vertical: true)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(abbreviateWingName(stat.wing.name))
+                                        .font(.body)
+                                        .foregroundStyle(.primary)
+                                        .lineLimit(1)
+                                    if let size = stat.wing.size {
+                                        Text("\(size) m²")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
 
                                 Text("\(stat.sessions)")
                                     .font(.body)
@@ -1449,9 +1486,13 @@ struct StatsByWingSection: View {
                                 let maxHours = Double(maxMinutes) / 60.0
                                 let scaledHours = (hours / maxHours) * 0.85 * maxHours
 
+                                let wingLabel = stat.wing.size != nil
+                                    ? "\(abbreviateWingName(stat.wing.name)) (\(stat.wing.size!) m²)"
+                                    : abbreviateWingName(stat.wing.name)
+
                                 BarMark(
                                     x: .value("Heures", scaledHours),
-                                    y: .value("Voile", abbreviateWingName(stat.wing.name))
+                                    y: .value("Voile", wingLabel)
                                 )
                                 .foregroundStyle(.blue.gradient)
                                 .annotation(position: .trailing, alignment: .leading) {
@@ -1655,26 +1696,7 @@ struct WingFlightsDetailView: View {
             List {
                 Section {
                     ForEach(wingFlights) { flight in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(flight.dateFormatted)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-
-                                Spacer()
-
-                                Text(flight.durationFormatted)
-                                    .font(.headline)
-                                    .foregroundStyle(.blue)
-                            }
-
-                            if let spot = flight.spotName {
-                                Label(spot, systemImage: "location.fill")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 4)
+                        FlightRow(flight: flight)
                     }
                 }
             }
@@ -1715,26 +1737,7 @@ struct SpotFlightsDetailView: View {
             List {
                 Section {
                     ForEach(spotFlights) { flight in
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text(flight.dateFormatted)
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-
-                                Spacer()
-
-                                Text(flight.durationFormatted)
-                                    .font(.headline)
-                                    .foregroundStyle(.blue)
-                            }
-
-                            if let wingName = flight.wing?.name {
-                                Label(wingName, systemImage: "wind")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 4)
+                        FlightRow(flight: flight)
                     }
                 }
             }

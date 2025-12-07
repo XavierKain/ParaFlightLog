@@ -53,40 +53,27 @@ struct ContentView: View {
             .interactiveDismissDisabled(true) // Empêche de swipe down pour fermer
         }
         .onAppear {
-            print("⏱️ [PERF] ContentView.onAppear() - Main view rendered")
-            print("⏱️ [PERF] Wings available: \(watchManager.wings.count)")
-
             // Pré-démarrer la localisation dès le lancement de l'app
             // pour éviter le lag au moment du Start
-            Task.detached(priority: .background) {
-                await MainActor.run {
-                    locationService.requestAuthorization()
-                }
+            Task(priority: .background) {
+                locationService.requestAuthorization()
             }
         }
     }
     
     private func startFlight() {
-        let startFlightBegin = Date()
-        print("⏱️ [PERF] startFlight() BEGIN")
-
         // IMPORTANT: Définir la date AVANT d'afficher le fullScreenCover
         // pour que le timer puisse démarrer immédiatement
         flightStartDate = Date()
         isFlying = true
 
         // Démarrer la localisation en arrière-plan (ne bloque pas l'UI)
-        Task.detached(priority: .userInitiated) { [locationService] in
-            await MainActor.run {
-                locationService.startUpdatingLocation()
-            }
+        Task(priority: .userInitiated) {
+            locationService.startUpdatingLocation()
         }
 
         // Afficher le timer immédiatement
         showingActiveFlightView = true
-
-        let startFlightTime = Date().timeIntervalSince(startFlightBegin) * 1000
-        print("⏱️ [PERF] startFlight() END (\(String(format: "%.1f", startFlightTime))ms)")
     }
     
     private func stopFlight(duration: Int) {
@@ -131,12 +118,12 @@ struct WingSelectionView: View {
     @Binding var selectedTab: Int
 
     var body: some View {
-        let _ = print("⏱️ [PERF] WingSelectionView body evaluated - \(watchManager.wings.count) wings")
-        VStack(spacing: 8) {
+        VStack(spacing: 4) {
             Text("Sélection")
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(.secondary)
                 .textCase(.uppercase)
+                .padding(.top, -4)
 
             if watchManager.wings.isEmpty {
                 VStack(spacing: 8) {
@@ -157,15 +144,19 @@ struct WingSelectionView: View {
                 .padding()
             } else {
                 ScrollView {
-                    VStack(spacing: 4) {
+                    LazyVStack(spacing: 6) {
                         ForEach(watchManager.wings) { wing in
                             WingButton(
                                 wing: wing,
                                 isSelected: selectedWing?.id == wing.id,
                                 onTap: {
+                                    // Sélectionner immédiatement pour voir la surbrillance
                                     selectedWing = wing
-                                    withAnimation {
-                                        selectedTab = 1
+                                    // Petit délai pour voir l'effet de sélection avant le scroll
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                                        withAnimation {
+                                            selectedTab = 1
+                                        }
                                     }
                                 }
                             )
@@ -178,39 +169,58 @@ struct WingSelectionView: View {
     }
 }
 
-/// Bouton de sélection de voile optimisé (sans icône pour performance)
+/// Bouton de sélection de voile optimisé et moderne
 struct WingButton: View {
     let wing: WingDTO
     let isSelected: Bool
     let onTap: () -> Void
-    
+
     var body: some View {
         Button(action: onTap) {
-            HStack {
+            HStack(spacing: 8) {
+                // Indicateur visuel de sélection (barre latérale)
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(isSelected ? Color.green : Color.clear)
+                    .frame(width: 3)
+
+                // Contenu principal - nom et taille empilés
                 VStack(alignment: .leading, spacing: 2) {
                     Text(wing.shortName)
-                        .font(.headline)
+                        .font(.system(.body, design: .rounded))
+                        .fontWeight(isSelected ? .semibold : .regular)
+                        .foregroundStyle(.primary)
+                        .lineLimit(1)
+
                     if let size = wing.size {
                         Text("\(size) m²")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(.system(.caption2, design: .rounded))
+                            .fontWeight(.medium)
+                            .foregroundStyle(.blue)
                     }
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
 
+                // Icône de sélection
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20))
                         .foregroundStyle(.green)
                 }
             }
-            .padding(.vertical, 8)
-            .padding(.horizontal, 10)
+            .padding(.vertical, 10)
+            .padding(.horizontal, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background(
-            RoundedRectangle(cornerRadius: 8)
-                .fill(isSelected ? Color.green.opacity(0.15) : Color.gray.opacity(0.2))
+            RoundedRectangle(cornerRadius: 10)
+                .fill(isSelected ? Color.green.opacity(0.12) : Color.gray.opacity(0.15))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .strokeBorder(isSelected ? Color.green.opacity(0.3) : Color.clear, lineWidth: 1.5)
         )
     }
 }
@@ -317,11 +327,18 @@ struct ActiveFlightView: View {
                     .fontWeight(.bold)
             }
             
-            // Voile
+            // Voile + taille
             if let wing = wing {
-                Text(wing.shortName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(wing.shortName)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let size = wing.size {
+                        Text("• \(size)m²")
+                            .font(.caption)
+                            .foregroundStyle(.blue)
+                    }
+                }
             }
             
             // Spot
@@ -436,54 +453,44 @@ struct StopFlightOptionsView: View {
     let duration: Int
     let onSave: () -> Void
     let onDiscard: () -> Void
-    
+
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                // Espace pour éviter la croix et l'heure
-                Spacer()
-                    .frame(height: 10)
-                
-                Text("Terminer le vol ?")
-                    .font(.headline)
-                
-                Text(formatDuration(duration))
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(.blue)
-                
-                Spacer()
-                    .frame(height: 16)
-                
-                // Bouton Sauvegarder (gros, vert)
-                Button {
-                    onSave()
-                } label: {
-                    Label("Sauvegarder", systemImage: "checkmark.circle.fill")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-                
-                Spacer()
-                    .frame(height: 16)
-                
-                // Bouton Annuler (avec fond visible)
-                Button(role: .destructive) {
-                    onDiscard()
-                } label: {
-                    Text("Annuler le vol")
-                        .font(.subheadline)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .tint(.red)
-                
-                Spacer()
-                    .frame(height: 10)
+        VStack(spacing: 8) {
+            // Titre en haut
+            Text("Terminer le vol ?")
+                .font(.headline)
+
+            // Durée
+            Text(formatDuration(duration))
+                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .foregroundStyle(.blue)
+
+            Spacer()
+
+            // Bouton Sauvegarder (vert)
+            Button {
+                onSave()
+            } label: {
+                Label("Sauvegarder", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
             }
-            .padding(.horizontal)
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+
+            // Bouton Annuler (rouge)
+            Button(role: .destructive) {
+                onDiscard()
+            } label: {
+                Text("Annuler le vol")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .navigationBarHidden(true)
     }
     
@@ -507,25 +514,34 @@ struct FlightSummaryView: View {
     let onDismiss: () -> Void
 
     var body: some View {
-        VStack(spacing: 6) {
-            // Icône + titre sur une ligne
-            HStack(spacing: 6) {
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.green)
-                Text("Vol terminé !")
-                    .font(.headline)
-            }
+        VStack(spacing: 8) {
+            // Icône centrée au-dessus
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title)
+                .foregroundStyle(.green)
+
+            // Titre
+            Text("Vol terminé !")
+                .font(.headline)
 
             // Durée
             Text(formatDuration(duration))
-                .font(.system(size: 26, weight: .bold, design: .rounded))
+                .font(.system(size: 28, weight: .bold, design: .rounded))
                 .foregroundStyle(.blue)
 
-            // Voile (compact)
-            Text(wing.shortName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            // Voile + taille
+            HStack(spacing: 4) {
+                Text(wing.shortName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                if let size = wing.size {
+                    Text("• \(size) m²")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                }
+            }
+
+            Spacer()
 
             // Bouton fermer
             Button {
@@ -539,8 +555,8 @@ struct FlightSummaryView: View {
             .buttonStyle(.borderedProminent)
             .tint(.green)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
     }
 
     private func formatDuration(_ seconds: Int) -> String {

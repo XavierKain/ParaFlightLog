@@ -50,7 +50,6 @@ final class WatchImageCache {
                     }
                 }
             }
-            print("🖼️ Preloaded \(wings.filter { $0.photoData != nil }.count) wing images")
         }
     }
     

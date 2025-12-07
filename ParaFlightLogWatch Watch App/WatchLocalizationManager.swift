@@ -58,18 +58,14 @@ final class WatchLocalizationManager {
         } else {
             UserDefaults.standard.removeObject(forKey: languageKey)
         }
-        UserDefaults.standard.synchronize()
-        print("💾 Watch: Saved language preference: \(currentLanguage?.rawValue ?? "system")")
     }
 
     private func loadLanguagePreference() {
         if let languageCode = UserDefaults.standard.string(forKey: languageKey),
            let language = Language(rawValue: languageCode) {
             currentLanguage = language
-            print("📂 Watch: Loaded language preference: \(language.rawValue)")
         } else {
             currentLanguage = nil
-            print("📂 Watch: No saved language, using system default")
         }
     }
 
@@ -80,13 +76,9 @@ final class WatchLocalizationManager {
         if let code = languageCode, let language = Language(rawValue: code) {
             if currentLanguage != language {
                 currentLanguage = language
-                print("🌐 Watch: Language updated to \(language.displayName) from iPhone")
             }
-        } else {
-            if currentLanguage != nil {
-                currentLanguage = nil
-                print("🌐 Watch: Language reset to system default from iPhone")
-            }
+        } else if currentLanguage != nil {
+            currentLanguage = nil
         }
     }
 

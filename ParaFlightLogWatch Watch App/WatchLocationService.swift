@@ -12,27 +12,46 @@ import MapKit
 
 @Observable
 final class WatchLocationService: NSObject, CLLocationManagerDelegate {
-    // Utiliser une propriété optionnelle initialisée à la demande
+    // CLLocationManager initialisé en background pour éviter le lag
     private var _locationManager: CLLocationManager?
-    
+    private var isInitialized = false
+
     private var locationManager: CLLocationManager {
         if let manager = _locationManager {
             return manager
         }
+        // Fallback synchrone si pas encore initialisé
         let manager = CLLocationManager()
         manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters // Moins précis = plus rapide
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
         _locationManager = manager
         return manager
     }
 
     var lastKnownLocation: CLLocation?
-    var currentSpotName: String = "Position..."
+    var currentSpotName: String = String(localized: "Position...")
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
     override init() {
         super.init()
-        // Ne PAS initialiser locationManager ici pour éviter le lag au démarrage
+        // Pré-initialiser le CLLocationManager en background dès la création
+        // Cela évite le freeze au premier appel de startUpdatingLocation
+        Task.detached(priority: .utility) { [weak self] in
+            await self?.initializeLocationManager()
+        }
+    }
+
+    /// Initialise le CLLocationManager en background
+    @MainActor
+    private func initializeLocationManager() {
+        guard !isInitialized else { return }
+        isInitialized = true
+
+        let manager = CLLocationManager()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        _locationManager = manager
+        authorizationStatus = manager.authorizationStatus
     }
 
     func requestAuthorization() {
@@ -45,11 +64,9 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     func startUpdatingLocation() {
         authorizationStatus = locationManager.authorizationStatus
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
-            print("⚠️ Location permission not granted on Watch")
-            currentSpotName = "Permission refusée"
+            currentSpotName = String(localized: "Permission refusée")
             return
         }
-
         locationManager.startUpdatingLocation()
     }
 
@@ -60,43 +77,44 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     // MARK: - Reverse Geocoding avec CLGeocoder
 
     private var isGeocodingInProgress = false
+    private var lastGeocodedSpot: String?
 
     private func reverseGeocode(location: CLLocation) {
         // Éviter les multiples appels simultanés
         guard !isGeocodingInProgress else { return }
         isGeocodingInProgress = true
 
-        // CLGeocoder fonctionne sur watchOS pour le reverse geocoding
         let geocoder = CLGeocoder()
 
         // Faire le geocoding en background pour ne pas bloquer l'UI
-        Task.detached(priority: .background) { [weak self] in
+        Task.detached(priority: .utility) { [weak self] in
             do {
                 let placemarks = try await geocoder.reverseGeocodeLocation(location)
+                let placemark = placemarks.first
+
+                // Calculer le nom du spot en background
+                let unknownSpot = String(localized: "Spot inconnu")
+                let spotName = placemark?.locality ??
+                               placemark?.subLocality ??
+                               placemark?.administrativeArea ??
+                               placemark?.name ??
+                               unknownSpot
 
                 await MainActor.run {
                     self?.isGeocodingInProgress = false
-
-                    guard let placemark = placemarks.first else {
-                        self?.currentSpotName = "Spot inconnu"
-                        return
+                    // Ne mettre à jour que si le nom change (évite les re-renders inutiles)
+                    if self?.lastGeocodedSpot != spotName {
+                        self?.lastGeocodedSpot = spotName
+                        self?.currentSpotName = spotName
                     }
-
-                    // Priorité : locality (ville) > subLocality > administrativeArea
-                    let spotName = placemark.locality ??
-                                   placemark.subLocality ??
-                                   placemark.administrativeArea ??
-                                   placemark.name ??
-                                   "Spot inconnu"
-
-                    self?.currentSpotName = spotName
-                    print("✅ Watch spot: \(spotName)")
                 }
             } catch {
                 await MainActor.run {
                     self?.isGeocodingInProgress = false
-                    print("❌ Watch geocoding error: \(error.localizedDescription)")
-                    self?.currentSpotName = "Spot inconnu"
+                    let unknownSpot = String(localized: "Spot inconnu")
+                    if self?.currentSpotName != unknownSpot {
+                        self?.currentSpotName = unknownSpot
+                    }
                 }
             }
         }
@@ -106,21 +124,18 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
-
         lastKnownLocation = location
-        print("📍 Watch location: \(location.coordinate.latitude), \(location.coordinate.longitude)")
-
-        // Reverse geocoding avec MapKit
         reverseGeocode(location: location)
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("❌ Watch location error: \(error.localizedDescription)")
-        currentSpotName = "Position indisponible"
+        let unavailable = String(localized: "Position indisponible")
+        if currentSpotName != unavailable {
+            currentSpotName = unavailable
+        }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
-        print("🔐 Watch authorization status: \(authorizationStatus.rawValue)")
     }
 }
