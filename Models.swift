@@ -77,20 +77,14 @@ final class Wing {
     }
 
     /// Convertit en DTO avec miniature pour la Watch (48x48 max)
-    /// Envoie le PNG original si petit, sinon redimensionne en préservant la transparence
+    /// Supprime le fond blanc et redimensionne en préservant la transparence
     func toDTOWithThumbnail() -> WingDTO {
         // Pas de photo = pas de miniature
         guard let originalData = photoData else {
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
-        // Si l'image originale est petite (< 10KB), l'envoyer telle quelle
-        // Cela préserve parfaitement la transparence des PNG
-        if originalData.count < 10 * 1024 {
-            return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: originalData, displayOrder: displayOrder)
-        }
-
-        // Pour les images plus grandes, redimensionner
+        // Pour les images, toujours traiter pour supprimer le fond blanc
         guard let image = UIImage(data: originalData) else {
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
@@ -112,10 +106,68 @@ final class Wing {
             image.draw(in: CGRect(origin: .zero, size: newSize))
         }
 
+        // Supprimer le fond blanc de l'image redimensionnée
+        let processedImage = resizedImage.removeWhiteBackground() ?? resizedImage
+
         // Toujours encoder en PNG pour préserver la transparence
-        let thumbnailData = resizedImage.pngData()
+        let thumbnailData = processedImage.pngData()
 
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)
+    }
+}
+
+// MARK: - UIImage Extension pour supprimer le fond blanc
+
+extension UIImage {
+    /// Supprime le fond blanc/gris clair d'une image en le rendant transparent
+    /// Utilise un seuil de tolérance pour capturer les blancs légèrement grisés
+    func removeWhiteBackground(tolerance: CGFloat = 0.92) -> UIImage? {
+        guard let cgImage = self.cgImage else { return nil }
+
+        let width = cgImage.width
+        let height = cgImage.height
+
+        // Créer un contexte bitmap avec canal alpha
+        let colorSpace = CGColorSpaceCreateDeviceRGB()
+        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
+
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo.rawValue
+        ) else { return nil }
+
+        // Dessiner l'image originale
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        guard let pixelBuffer = context.data else { return nil }
+
+        let pixels = pixelBuffer.bindMemory(to: UInt8.self, capacity: width * height * 4)
+
+        // Parcourir tous les pixels et rendre transparents ceux qui sont blancs/gris clair
+        for y in 0..<height {
+            for x in 0..<width {
+                let offset = (y * width + x) * 4
+                let red = CGFloat(pixels[offset]) / 255.0
+                let green = CGFloat(pixels[offset + 1]) / 255.0
+                let blue = CGFloat(pixels[offset + 2]) / 255.0
+
+                // Si le pixel est blanc ou presque blanc (R, G, B tous >= tolerance)
+                if red >= tolerance && green >= tolerance && blue >= tolerance {
+                    // Rendre transparent
+                    pixels[offset + 3] = 0  // Alpha = 0
+                }
+            }
+        }
+
+        // Créer une nouvelle image à partir du contexte modifié
+        guard let newCGImage = context.makeImage() else { return nil }
+
+        return UIImage(cgImage: newCGImage, scale: self.scale, orientation: self.imageOrientation)
     }
 }
 
@@ -134,6 +186,14 @@ final class Flight {
     var notes: String?
     var createdAt: Date
 
+    // Données de tracking (depuis Watch)
+    var startAltitude: Double?      // Altitude de départ (m)
+    var maxAltitude: Double?         // Altitude maximale (m)
+    var endAltitude: Double?         // Altitude d'atterrissage (m)
+    var totalDistance: Double?       // Distance totale parcourue (m)
+    var maxSpeed: Double?            // Vitesse maximale au sol (m/s)
+    var maxGForce: Double?           // G-force maximale (G)
+
     // Relation : la voile utilisée pour ce vol
     var wing: Wing?
 
@@ -147,7 +207,13 @@ final class Flight {
          longitude: Double? = nil,
          flightType: String? = nil,
          notes: String? = nil,
-         createdAt: Date = Date()) {
+         createdAt: Date = Date(),
+         startAltitude: Double? = nil,
+         maxAltitude: Double? = nil,
+         endAltitude: Double? = nil,
+         totalDistance: Double? = nil,
+         maxSpeed: Double? = nil,
+         maxGForce: Double? = nil) {
         self.id = id
         self.wing = wing
         self.startDate = startDate
@@ -159,6 +225,12 @@ final class Flight {
         self.flightType = flightType
         self.notes = notes
         self.createdAt = createdAt
+        self.startAltitude = startAltitude
+        self.maxAltitude = maxAltitude
+        self.endAltitude = endAltitude
+        self.totalDistance = totalDistance
+        self.maxSpeed = maxSpeed
+        self.maxGForce = maxGForce
     }
 
     /// Durée formatée (ex: "1h23" ou "45min")

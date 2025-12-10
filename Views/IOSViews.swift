@@ -178,9 +178,43 @@ struct FlightRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+
+                // Statistiques de vol (altitude, distance, vitesse, G-force)
+                if flight.maxAltitude != nil || flight.totalDistance != nil || flight.maxSpeed != nil || flight.maxGForce != nil {
+                    HStack(spacing: 8) {
+                        if let maxAlt = flight.maxAltitude {
+                            Label("\(Int(maxAlt))m", systemImage: "arrow.up")
+                                .font(.caption2)
+                                .foregroundStyle(.orange)
+                        }
+                        if let distance = flight.totalDistance {
+                            Label(formatDistance(distance), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                                .font(.caption2)
+                                .foregroundStyle(.cyan)
+                        }
+                        if let speed = flight.maxSpeed {
+                            Label("\(Int(speed * 3.6))km/h", systemImage: "speedometer")
+                                .font(.caption2)
+                                .foregroundStyle(.purple)
+                        }
+                        if let gForce = flight.maxGForce {
+                            Label(String(format: "%.1fG", gForce), systemImage: "waveform.path.ecg")
+                                .font(.caption2)
+                                .foregroundStyle(.green)
+                        }
+                    }
+                }
             }
         }
         .padding(.vertical, 4)
+    }
+
+    private func formatDistance(_ distance: Double) -> String {
+        if distance >= 1000 {
+            return String(format: "%.1fkm", distance / 1000)
+        } else {
+            return "\(Int(distance))m"
+        }
     }
 
     private func colorFromString(_ colorString: String) -> Color {
@@ -217,6 +251,14 @@ struct EditFlightView: View {
     @State private var showingMapPicker = false
     @State private var selectedCoordinate: CLLocationCoordinate2D?
 
+    // Statistiques de vol
+    @State private var startAltitude: String
+    @State private var maxAltitude: String
+    @State private var endAltitude: String
+    @State private var totalDistance: String
+    @State private var maxSpeed: String
+    @State private var maxGForce: String
+
     init(flight: Flight) {
         self.flight = flight
         _startDate = State(initialValue: flight.startDate)
@@ -226,6 +268,14 @@ struct EditFlightView: View {
         if let lat = flight.latitude, let lon = flight.longitude {
             _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
         }
+
+        // Initialiser les statistiques
+        _startAltitude = State(initialValue: flight.startAltitude != nil ? String(format: "%.0f", flight.startAltitude!) : "")
+        _maxAltitude = State(initialValue: flight.maxAltitude != nil ? String(format: "%.0f", flight.maxAltitude!) : "")
+        _endAltitude = State(initialValue: flight.endAltitude != nil ? String(format: "%.0f", flight.endAltitude!) : "")
+        _totalDistance = State(initialValue: flight.totalDistance != nil ? String(format: "%.0f", flight.totalDistance!) : "")
+        _maxSpeed = State(initialValue: flight.maxSpeed != nil ? String(format: "%.1f", flight.maxSpeed! * 3.6) : "")
+        _maxGForce = State(initialValue: flight.maxGForce != nil ? String(format: "%.1f", flight.maxGForce!) : "")
     }
 
     var calculatedDuration: Int {
@@ -345,6 +395,62 @@ struct EditFlightView: View {
                     }
                 }
 
+                Section("Statistiques de vol") {
+                    HStack {
+                        Label("Altitude départ", systemImage: "arrow.up.circle")
+                        Spacer()
+                        TextField("m", text: $startAltitude)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+
+                    HStack {
+                        Label("Altitude max", systemImage: "arrow.up")
+                        Spacer()
+                        TextField("m", text: $maxAltitude)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+
+                    HStack {
+                        Label("Altitude atterrissage", systemImage: "arrow.down.circle")
+                        Spacer()
+                        TextField("m", text: $endAltitude)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+
+                    HStack {
+                        Label("Distance", systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                        Spacer()
+                        TextField("m", text: $totalDistance)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+
+                    HStack {
+                        Label("Vitesse max", systemImage: "speedometer")
+                        Spacer()
+                        TextField("km/h", text: $maxSpeed)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+
+                    HStack {
+                        Label("G-Force max", systemImage: "waveform.path.ecg")
+                        Spacer()
+                        TextField("G", text: $maxGForce)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 80)
+                    }
+                }
+
                 Section("Notes") {
                     TextEditor(text: $notes)
                         .frame(minHeight: 100)
@@ -387,6 +493,14 @@ struct EditFlightView: View {
         flight.notes = notes.isEmpty ? nil : notes
         flight.latitude = selectedCoordinate?.latitude
         flight.longitude = selectedCoordinate?.longitude
+
+        // Sauvegarder les statistiques
+        flight.startAltitude = Double(startAltitude)
+        flight.maxAltitude = Double(maxAltitude)
+        flight.endAltitude = Double(endAltitude)
+        flight.totalDistance = Double(totalDistance)
+        flight.maxSpeed = Double(maxSpeed).map { $0 / 3.6 } // Convertir km/h en m/s
+        flight.maxGForce = Double(maxGForce)
 
         Task { @MainActor in
             try? modelContext.save()
@@ -2390,6 +2504,90 @@ struct FlightSummaryView: View {
                         .cornerRadius(12)
                     }
 
+                    // Statistiques de vol
+                    if flight.maxAltitude != nil || flight.totalDistance != nil || flight.maxSpeed != nil || flight.maxGForce != nil {
+                        VStack(spacing: 12) {
+                            if let maxAlt = flight.maxAltitude {
+                                HStack {
+                                    Image(systemName: "arrow.up")
+                                        .font(.title3)
+                                        .foregroundStyle(.orange)
+                                        .frame(width: 30)
+
+                                    Text("Altitude max")
+                                        .font(.headline)
+
+                                    Spacer()
+
+                                    Text("\(Int(maxAlt)) m")
+                                        .font(.body)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+
+                            if let distance = flight.totalDistance {
+                                HStack {
+                                    Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
+                                        .font(.title3)
+                                        .foregroundStyle(.cyan)
+                                        .frame(width: 30)
+
+                                    Text("Distance")
+                                        .font(.headline)
+
+                                    Spacer()
+
+                                    Text(formatDistance(distance))
+                                        .font(.body)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.cyan)
+                                }
+                            }
+
+                            if let speed = flight.maxSpeed {
+                                HStack {
+                                    Image(systemName: "speedometer")
+                                        .font(.title3)
+                                        .foregroundStyle(.purple)
+                                        .frame(width: 30)
+
+                                    Text("Vitesse max")
+                                        .font(.headline)
+
+                                    Spacer()
+
+                                    Text("\(Int(speed * 3.6)) km/h")
+                                        .font(.body)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.purple)
+                                }
+                            }
+
+                            if let gForce = flight.maxGForce {
+                                HStack {
+                                    Image(systemName: "waveform.path.ecg")
+                                        .font(.title3)
+                                        .foregroundStyle(.green)
+                                        .frame(width: 30)
+
+                                    Text("G-Force max")
+                                        .font(.headline)
+
+                                    Spacer()
+
+                                    Text(String(format: "%.1f G", gForce))
+                                        .font(.body)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.green)
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    }
+
                     // Date et heure
                     HStack {
                         Image(systemName: "calendar")
@@ -2440,6 +2638,14 @@ struct FlightSummaryView: View {
                     }
                 }
             }
+        }
+    }
+
+    private func formatDistance(_ distance: Double) -> String {
+        if distance >= 1000 {
+            return String(format: "%.1f km", distance / 1000)
+        } else {
+            return "\(Int(distance)) m"
         }
     }
 }

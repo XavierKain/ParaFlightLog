@@ -30,6 +30,9 @@
         }
       }
     },
+    "%@" : {
+
+    },
     "%@ %@" : {
       "localizations" : {
         "en" : {
@@ -78,6 +81,9 @@
         }
       }
     },
+    "%@m" : {
+
+    },
     "%lld" : {
       "localizations" : {
         "en" : {
@@ -103,6 +109,12 @@
           }
         }
       }
+    },
+    "%lld km/h" : {
+
+    },
+    "%lld m" : {
+
     },
     "%lld spot détecté" : {
       "localizations" : {
@@ -259,6 +271,12 @@
           }
         }
       }
+    },
+    "%lldkm/h" : {
+
+    },
+    "%lldm" : {
+
     },
     "%lldmin" : {
       "localizations" : {
@@ -526,6 +544,18 @@
           }
         }
       }
+    },
+    "Alt" : {
+
+    },
+    "Altitude atterrissage" : {
+
+    },
+    "Altitude départ" : {
+
+    },
+    "Altitude max" : {
+
     },
     "Annuler" : {
       "localizations" : {
@@ -1185,6 +1215,12 @@
         }
       }
     },
+    "Dist" : {
+
+    },
+    "Distance" : {
+
+    },
     "Données" : {
       "localizations" : {
         "en" : {
@@ -1326,6 +1362,12 @@
           }
         }
       }
+    },
+    "G" : {
+
+    },
+    "G-Force max" : {
+
     },
     "Générer des données de test" : {
       "localizations" : {
@@ -1558,6 +1600,9 @@
         }
       }
     },
+    "km/h" : {
+
+    },
     "Lancer un vol" : {
       "localizations" : {
         "en" : {
@@ -1655,7 +1700,13 @@
         }
       }
     },
+    "m" : {
+
+    },
     "m²" : {
+
+    },
+    "Max" : {
 
     },
     "Mes voiles" : {
@@ -2353,6 +2404,9 @@
         }
       }
     },
+    "Statistiques de vol" : {
+
+    },
     "Stats" : {
       "localizations" : {
         "en" : {
@@ -2719,6 +2773,9 @@
       }
     },
     "Veuillez patienter" : {
+
+    },
+    "Vitesse max" : {
 
     },
     "Voile" : {

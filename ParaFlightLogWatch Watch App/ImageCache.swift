@@ -85,11 +85,11 @@ struct CachedWingImage: View {
     var body: some View {
         Group {
             if let image = cachedImage {
+                // Afficher l'image originale (le fond blanc est supprimé côté iPhone)
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
                     .frame(width: size, height: size)
-                    .background(backgroundColor)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
                 // Placeholder pendant le chargement ou si pas d'image
