@@ -52,7 +52,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
 
         var context = WCSession.default.applicationContext
-        
+
         if let code = languageCode {
             context["language"] = code
         } else {
@@ -64,6 +64,27 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             print("🌐 Sent language to Watch: \(languageCode ?? "system")")
         } catch {
             print("❌ Failed to send language: \(error.localizedDescription)")
+        }
+    }
+
+    // MARK: - Send Watch Settings
+
+    /// Envoie les paramètres Watch vers la Watch
+    func sendWatchSettings(autoWaterLock: Bool, allowSessionDismiss: Bool) {
+        guard WCSession.default.activationState == .activated else {
+            print("⚠️ WCSession not activated, cannot send watch settings")
+            return
+        }
+
+        var context = WCSession.default.applicationContext
+        context["watchAutoWaterLock"] = autoWaterLock
+        context["watchAllowSessionDismiss"] = allowSessionDismiss
+
+        do {
+            try WCSession.default.updateApplicationContext(context)
+            print("⚙️ Sent watch settings: autoWaterLock=\(autoWaterLock), allowDismiss=\(allowSessionDismiss)")
+        } catch {
+            print("❌ Failed to send watch settings: \(error.localizedDescription)")
         }
     }
 
@@ -109,7 +130,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
 
         let base64String = jsonData.base64EncodedString()
-        let context = ["wingsData": base64String]
+        // IMPORTANT: Préserver le contexte existant (settings, langue, etc.)
+        var context = WCSession.default.applicationContext
+        context["wingsData"] = base64String
 
         do {
             try WCSession.default.updateApplicationContext(context)
@@ -130,7 +153,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
 
         let base64String = jsonData.base64EncodedString()
-        let context = ["wingsData": base64String]
+        // IMPORTANT: Préserver le contexte existant (settings, langue, etc.)
+        var context = WCSession.default.applicationContext
+        context["wingsData"] = base64String
 
         do {
             try WCSession.default.updateApplicationContext(context)
@@ -155,7 +180,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
 
         let base64String = jsonData.base64EncodedString()
-        let context = ["wingsData": base64String]
+        // IMPORTANT: Préserver le contexte existant (settings, langue, etc.)
+        var context = WCSession.default.applicationContext
+        context["wingsData"] = base64String
 
         do {
             try WCSession.default.updateApplicationContext(context)
@@ -211,13 +238,18 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         isWatchAppInstalled = session.isWatchAppInstalled
         isWatchReachable = session.isReachable
 
-        // Envoyer automatiquement les voiles et la langue à l'activation
+        // Envoyer automatiquement les voiles, la langue et les paramètres Watch à l'activation
         if activationState == .activated {
             sendWingsToWatch()
-            
+
             // Envoyer la langue courante
             let languageCode = LocalizationManager.shared.currentLanguage?.rawValue
             sendLanguageToWatch(languageCode)
+
+            // Envoyer les paramètres Watch
+            let autoWaterLock = UserDefaults.standard.bool(forKey: "watchAutoWaterLock")
+            let allowDismiss = UserDefaults.standard.object(forKey: "watchAllowSessionDismiss") as? Bool ?? true
+            sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: allowDismiss)
         }
     }
 

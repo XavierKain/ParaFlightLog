@@ -35,7 +35,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     }
 
     var lastKnownLocation: CLLocation?
-    var currentSpotName: String = String(localized: "Position...")
+    var currentSpotName: String = String(localized: "Searching...")
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
     // Données de tracking pour le vol en cours
@@ -48,6 +48,14 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     var currentGForce: Double = 1.0  // G-force actuel (1.0 = immobile)
     var maxGForce: Double = 1.0      // G-force max pendant le vol
     private var previousLocation: CLLocation?
+
+    // Nom du spot verrouillé pendant le vol (pour éviter qu'il change)
+    private var lockedSpotName: String?
+
+    // Trace GPS du vol en cours
+    private var gpsTrackPoints: [GPSTrackPoint] = []
+    private var lastTrackPointTime: Date?
+    private let trackPointInterval: TimeInterval = 5.0  // Un point toutes les 5 secondes
 
     override init() {
         super.init()
@@ -107,6 +115,25 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         maxGForce = 1.0
         previousLocation = nil
         gForceBuffer = []
+
+        // Verrouiller le nom du spot actuel seulement s'il ne s'agit pas de "Searching..."
+        // Sinon, on attendra la première vraie localisation
+        let searchingText = String(localized: "Searching...")
+        let unknownSpot = String(localized: "Spot inconnu")
+        let unavailable = String(localized: "Position indisponible")
+
+        if currentSpotName != searchingText &&
+           currentSpotName != unknownSpot &&
+           currentSpotName != unavailable {
+            lockedSpotName = currentSpotName
+        } else {
+            lockedSpotName = nil  // On attendra la première vraie position
+        }
+
+        // Reset de la trace GPS
+        gpsTrackPoints = []
+        lastTrackPointTime = nil
+
         startMotionUpdates()
     }
 
@@ -115,6 +142,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         isTracking = false
         let endAltitude = currentAltitude
         previousLocation = nil
+        lockedSpotName = nil  // Déverrouiller le nom du spot
         stopMotionUpdates()
         return endAltitude
     }
@@ -122,6 +150,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     /// Retourne les données du vol en cours
     func getFlightData() -> (startAlt: Double?, maxAlt: Double?, endAlt: Double?, distance: Double, speed: Double, maxGForce: Double) {
         return (startAltitude, maxAltitude, currentAltitude, totalDistance, maxSpeed, maxGForce)
+    }
+
+    /// Retourne la trace GPS du vol
+    func getGPSTrack() -> [GPSTrackPoint] {
+        return gpsTrackPoints
     }
 
     // MARK: - Motion Tracking (G-Force)
@@ -196,6 +229,15 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private var lastGeocodedSpot: String?
 
     private func reverseGeocode(location: CLLocation) {
+        // Si un vol est en cours et qu'on a un spot verrouillé, ne pas changer le nom
+        if isTracking, let locked = lockedSpotName {
+            // Garder le nom verrouillé pendant le vol
+            if currentSpotName != locked {
+                currentSpotName = locked
+            }
+            return
+        }
+
         // Éviter les multiples appels simultanés
         guard !isGeocodingInProgress else { return }
         isGeocodingInProgress = true
@@ -218,6 +260,20 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
                 await MainActor.run {
                     self?.isGeocodingInProgress = false
+
+                    // Si un vol est en cours et qu'on n'a pas encore de spot verrouillé,
+                    // verrouiller le premier spot valide obtenu
+                    if let self = self, self.isTracking && self.lockedSpotName == nil {
+                        self.lockedSpotName = spotName
+                        self.currentSpotName = spotName
+                        self.lastGeocodedSpot = spotName
+                        print("🔒 Spot verrouillé pendant le vol: \(spotName)")
+                        return
+                    }
+
+                    // Ne pas modifier si un vol est en cours (spot déjà verrouillé)
+                    guard self?.isTracking != true else { return }
+
                     // Ne mettre à jour que si le nom change (évite les re-renders inutiles)
                     if self?.lastGeocodedSpot != spotName {
                         self?.lastGeocodedSpot = spotName
@@ -227,6 +283,8 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             } catch {
                 await MainActor.run {
                     self?.isGeocodingInProgress = false
+                    // Ne pas modifier si un vol est en cours
+                    guard self?.isTracking != true else { return }
                     let unknownSpot = String(localized: "Spot inconnu")
                     if self?.currentSpotName != unknownSpot {
                         self?.currentSpotName = unknownSpot
@@ -281,6 +339,20 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             }
 
             previousLocation = location
+
+            // Ajouter un point à la trace GPS (tous les X secondes)
+            let now = Date()
+            if lastTrackPointTime == nil || now.timeIntervalSince(lastTrackPointTime!) >= trackPointInterval {
+                let trackPoint = GPSTrackPoint(
+                    timestamp: now,
+                    latitude: location.coordinate.latitude,
+                    longitude: location.coordinate.longitude,
+                    altitude: altitude,
+                    speed: location.speed > 0 ? location.speed : nil
+                )
+                gpsTrackPoints.append(trackPoint)
+                lastTrackPointTime = now
+            }
         }
 
         reverseGeocode(location: location)

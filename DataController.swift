@@ -184,6 +184,13 @@ final class DataController {
             return
         }
 
+        // Encoder la trace GPS si présente
+        var gpsTrackData: Data? = nil
+        if let gpsTrack = dto.gpsTrack, !gpsTrack.isEmpty {
+            gpsTrackData = try? JSONEncoder().encode(gpsTrack)
+            print("📍 GPS track with \(gpsTrack.count) points")
+        }
+
         let flight = Flight(
             id: dto.id,
             wing: wing,
@@ -199,7 +206,8 @@ final class DataController {
             endAltitude: dto.endAltitude,
             totalDistance: dto.totalDistance,
             maxSpeed: dto.maxSpeed,
-            maxGForce: dto.maxGForce
+            maxGForce: dto.maxGForce,
+            gpsTrackData: gpsTrackData
         )
 
         modelContext.insert(flight)
