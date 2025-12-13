@@ -1,8 +1,365 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "(\\(size) m²)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "(\\(size) m²)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(\\(size) m²)"
+          }
+        }
+      }
+    },
     "(%@ m²)" : {
 
+    },
+    "\\(count) spot détecté" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(count) spot détecté"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(count) spot détecté"
+          }
+        }
+      }
+    },
+    "\\(count) spots détectés" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(count) spots détectés"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(count) spots détectés"
+          }
+        }
+      }
+    },
+    "\\(count) vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(count) vol"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(count) vol"
+          }
+        }
+      }
+    },
+    "\\(count) vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(count) vols"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(count) vols"
+          }
+        }
+      }
+    },
+    "\\(dataController.formatHours(hours)) de vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(dataController.formatHours(hours)) de vol"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(dataController.formatHours(hours)) de vol"
+          }
+        }
+      }
+    },
+    "\\(flights.count)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(flights.count)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(flights.count)"
+          }
+        }
+      }
+    },
+    "\\(formatAltitude(locationService.currentAltitude))m" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(formatAltitude(locationService.currentAltitude))m"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(formatAltitude(locationService.currentAltitude))m"
+          }
+        }
+      }
+    },
+    "\\(formatSpeed(locationService.maxSpeed))" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(formatSpeed(locationService.maxSpeed))"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(formatSpeed(locationService.maxSpeed))"
+          }
+        }
+      }
+    },
+    "\\(hours)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(hours)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(hours)"
+          }
+        }
+      }
+    },
+    "\\(Int(maxAlt)) m" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(Int(maxAlt)) m"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(Int(maxAlt)) m"
+          }
+        }
+      }
+    },
+    "\\(Int(speed * 3.6)) km/h" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(Int(speed * 3.6)) km/h"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(Int(speed * 3.6)) km/h"
+          }
+        }
+      }
+    },
+    "\\(language.flag) \\(language.displayName)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(language.flag) \\(language.displayName)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(language.flag) \\(language.displayName)"
+          }
+        }
+      }
+    },
+    "\\(minutes)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(minutes)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(minutes)"
+          }
+        }
+      }
+    },
+    "\\(size) m²" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(size) m²"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(size) m²"
+          }
+        }
+      }
+    },
+    "\\(spot.count)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(spot.count)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(spot.count)"
+          }
+        }
+      }
+    },
+    "\\(stat.sessions)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(stat.sessions)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(stat.sessions)"
+          }
+        }
+      }
+    },
+    "\\(totalFlights)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(totalFlights)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(totalFlights)"
+          }
+        }
+      }
+    },
+    "\\(track.count) points GPS enregistrés" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(track.count) points GPS enregistrés"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(track.count) points GPS enregistrés"
+          }
+        }
+      }
+    },
+    "\\(wings.count)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(wings.count)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(wings.count)"
+          }
+        }
+      }
+    },
+    "\\(wings.count) voiles • \\(flights.count) vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "\\(wings.count) voiles • \\(flights.count) vols"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(wings.count) voiles • \\(flights.count) vols"
+          }
+        }
+      }
     },
     "%.4f, %.4f" : {
       "localizations" : {
@@ -65,6 +422,15 @@
         }
       }
     },
+    "%@ G" : {
+
+    },
+    "%@ km/h" : {
+
+    },
+    "%@ m" : {
+
+    },
     "%@ m²" : {
       "localizations" : {
         "en" : {
@@ -114,6 +480,9 @@
 
     },
     "%lld m" : {
+
+    },
+    "%lld points GPS enregistrés" : {
 
     },
     "%lld spot détecté" : {
@@ -295,7 +664,54 @@
       }
     },
     "•" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "•"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "•"
+          }
+        }
+      }
+    },
+    "• \\(size) m²" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "• \\(size) m²"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "• \\(size) m²"
+          }
+        }
+      }
+    },
+    "• \\(size)m²" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "• \\(size)m²"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "• \\(size)m²"
+          }
+        }
+      }
     },
     "• %@ m²" : {
 
@@ -348,6 +764,40 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "⚠️ La fin doit être après le début"
+          }
+        }
+      }
+    },
+    "📍 \\(count) vol sera mis à jour" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "📍 \\(count) vol sera mis à jour"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 \\(count) vol sera mis à jour"
+          }
+        }
+      }
+    },
+    "📍 \\(count) vols seront mis à jour" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "📍 \\(count) vols seront mis à jour"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 \\(count) vols seront mis à jour"
           }
         }
       }
@@ -428,6 +878,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "À propos"
+          }
+        }
+      }
+    },
+    "Active le Water Lock au début d'un vol pour éviter les touches accidentelles" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enables Water Lock at flight start to prevent accidental touches"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Active le Water Lock au début d'un vol pour éviter les touches accidentelles"
           }
         }
       }
@@ -546,16 +1012,116 @@
       }
     },
     "Alt" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alt"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alt"
+          }
+        }
+      }
+    },
+    "Alt. arrivée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Landing alt."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alt. arrivée"
+          }
+        }
+      }
+    },
+    "Alt. départ" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Takeoff alt."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alt. départ"
+          }
+        }
+      }
+    },
+    "Alt. max" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max alt."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alt. max"
+          }
+        }
+      }
     },
     "Altitude atterrissage" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Landing altitude"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altitude atterrissage"
+          }
+        }
+      }
     },
     "Altitude départ" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Takeoff altitude"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altitude départ"
+          }
+        }
+      }
     },
     "Altitude max" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max altitude"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altitude max"
+          }
+        }
+      }
     },
     "Annuler" : {
       "localizations" : {
@@ -649,6 +1215,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ARRÊTER LE VOL"
+          }
+        }
+      }
+    },
+    "Arrivée" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Landing"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrivée"
           }
         }
       }
@@ -781,8 +1363,37 @@
         }
       }
     },
+    "Autoriser l'annulation de vol" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow flight cancellation"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autoriser l'annulation de vol"
+          }
+        }
+      }
+    },
     "Backup créé !" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup created!"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup créé !"
+          }
+        }
+      }
     },
     "Build" : {
       "localizations" : {
@@ -860,6 +1471,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ce spot sera utilisé en priorité sur la détection GPS automatique"
+          }
+        }
+      }
+    },
+    "Ces paramètres sont synchronisés automatiquement avec votre Apple Watch." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These settings are automatically synced with your Apple Watch."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ces paramètres sont synchronisés automatiquement avec votre Apple Watch."
           }
         }
       }
@@ -948,7 +1575,20 @@
 
     },
     "Choisir sur la carte" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose on map"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir sur la carte"
+          }
+        }
+      }
     },
     "Choisir une photo" : {
       "localizations" : {
@@ -1066,7 +1706,20 @@
 
     },
     "Création du backup..." : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creating backup..."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Création du backup..."
+          }
+        }
+      }
     },
     "Créer le backup" : {
 
@@ -1135,6 +1788,22 @@
         }
       }
     },
+    "Début" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Début"
+          }
+        }
+      }
+    },
     "Début du vol" : {
       "localizations" : {
         "en" : {
@@ -1183,6 +1852,54 @@
         }
       }
     },
+    "Départ" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Takeoff"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Départ"
+          }
+        }
+      }
+    },
+    "Dernier vol" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest flight"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernier vol"
+          }
+        }
+      }
+    },
+    "Détail du vol" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight details"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Détail du vol"
+          }
+        }
+      }
+    },
     "Détails" : {
       "localizations" : {
         "en" : {
@@ -1216,10 +1933,36 @@
       }
     },
     "Dist" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dist"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dist"
+          }
+        }
+      }
     },
     "Distance" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distance"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distance"
+          }
+        }
+      }
     },
     "Données" : {
       "localizations" : {
@@ -1286,6 +2029,22 @@
         }
       }
     },
+    "Durée du vol" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight duration"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durée du vol"
+          }
+        }
+      }
+    },
     "Enregistrer" : {
       "localizations" : {
         "en" : {
@@ -1303,7 +2062,20 @@
       }
     },
     "Erreur" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erreur"
+          }
+        }
+      }
     },
     "Export Backup" : {
 
@@ -1347,6 +2119,22 @@
         }
       }
     },
+    "Fin" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fin"
+          }
+        }
+      }
+    },
     "Fin du vol" : {
       "localizations" : {
         "en" : {
@@ -1363,11 +2151,69 @@
         }
       }
     },
+    "Flying" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flying"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En vol"
+          }
+        }
+      }
+    },
     "G" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G"
+          }
+        }
+      }
+    },
+    "G-Force" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G-Force"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G-Force"
+          }
+        }
+      }
     },
     "G-Force max" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max G-Force"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G-Force max"
+          }
+        }
+      }
     },
     "Générer des données de test" : {
       "localizations" : {
@@ -1402,7 +2248,20 @@
       }
     },
     "GPS ✓" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPS ✓"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPS ✓"
+          }
+        }
+      }
     },
     "Graphiques" : {
       "localizations" : {
@@ -1600,9 +2459,6 @@
         }
       }
     },
-    "km/h" : {
-
-    },
     "Lancer un vol" : {
       "localizations" : {
         "en" : {
@@ -1700,14 +2556,37 @@
         }
       }
     },
-    "m" : {
-
-    },
     "m²" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "m²"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "m²"
+          }
+        }
+      }
     },
     "Max" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max"
+          }
+        }
+      }
     },
     "Mes voiles" : {
       "localizations" : {
@@ -1806,7 +2685,20 @@
       }
     },
     "Modifier sur la carte" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit on map"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier sur la carte"
+          }
+        }
+      }
     },
     "Nom" : {
       "localizations" : {
@@ -1952,6 +2844,22 @@
         }
       }
     },
+    "Options Apple Watch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Watch options"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Options Apple Watch"
+          }
+        }
+      }
+    },
     "Oui" : {
       "localizations" : {
         "en" : {
@@ -2000,8 +2908,41 @@
         }
       }
     },
+    "ParaFlightLog" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "needs_review",
+            "value" : "ParaFlightLog"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ParaFlightLog"
+          }
+        }
+      }
+    },
     "Partager / Enregistrer" : {
 
+    },
+    "Pas de coordonnées" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No coordinates"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de coordonnées"
+          }
+        }
+      }
     },
     "Période" : {
       "extractionState" : "stale",
@@ -2032,6 +2973,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Période personnalisée"
+          }
+        }
+      }
+    },
+    "Permet d'annuler un vol en cours sans le sauvegarder" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allows canceling an ongoing flight without saving it"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permet d'annuler un vol en cours sans le sauvegarder"
           }
         }
       }
@@ -2085,6 +3042,7 @@
       }
     },
     "Position..." : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2101,10 +3059,36 @@
       }
     },
     "Prêt à exporter" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to export"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prêt à exporter"
+          }
+        }
+      }
     },
     "Prêt à partager" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to share"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prêt à partager"
+          }
+        }
+      }
     },
     "Que voulez-vous faire ?" : {
       "localizations" : {
@@ -2156,7 +3140,20 @@
       }
     },
     "Rechercher le lieu" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search location"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher le lieu"
+          }
+        }
+      }
     },
     "Rechercher un lieu..." : {
 
@@ -2226,7 +3223,20 @@
       }
     },
     "Retour" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retour"
+          }
+        }
+      }
     },
     "Sauvegarder" : {
       "localizations" : {
@@ -2240,6 +3250,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sauvegarder"
+          }
+        }
+      }
+    },
+    "Searching..." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching..."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche..."
           }
         }
       }
@@ -2405,7 +3431,20 @@
       }
     },
     "Statistiques de vol" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight statistics"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Statistiques de vol"
+          }
+        }
+      }
     },
     "Stats" : {
       "localizations" : {
@@ -2454,6 +3493,25 @@
           }
         }
       }
+    },
+    "Supprimer ce vol" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this flight"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer ce vol"
+          }
+        }
+      }
+    },
+    "Supprimer ce vol ?" : {
+
     },
     "Supprimer définitivement" : {
       "localizations" : {
@@ -2520,7 +3578,20 @@
       }
     },
     "Supprimer les coordonnées" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete coordinates"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer les coordonnées"
+          }
+        }
+      }
     },
     "Supprimer toutes les données" : {
       "localizations" : {
@@ -2607,7 +3678,20 @@
       }
     },
     "Tapez sur la carte pour placer le marqueur" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap on the map to place the marker"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tapez sur la carte pour placer le marqueur"
+          }
+        }
+      }
     },
     "Temps" : {
       "localizations" : {
@@ -2722,7 +3806,20 @@
       }
     },
     "Toutes" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toutes"
+          }
+        }
+      }
     },
     "Type" : {
       "localizations" : {
@@ -2756,6 +3853,22 @@
         }
       }
     },
+    "Verrouillage automatique" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto water lock"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verrouillage automatique"
+          }
+        }
+      }
+    },
     "Version" : {
       "localizations" : {
         "en" : {
@@ -2773,10 +3886,52 @@
       }
     },
     "Veuillez patienter" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please wait"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veuillez patienter"
+          }
+        }
+      }
+    },
+    "Vitesse" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speed"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitesse"
+          }
+        }
+      }
     },
     "Vitesse max" : {
-
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max speed"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vitesse max"
+          }
+        }
+      }
     },
     "Voile" : {
       "localizations" : {
@@ -2860,6 +4015,7 @@
       }
     },
     "VOL EN COURS" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -2936,6 +4092,22 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vols"
+          }
+        }
+      }
+    },
+    "Vols précédents" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous flights"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vols précédents"
           }
         }
       }

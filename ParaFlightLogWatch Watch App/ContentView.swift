@@ -12,11 +12,15 @@ struct ContentView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(WatchLocationService.self) private var locationService
     @State private var selectedWing: WingDTO?
+    @State private var activeFlightWing: WingDTO? // Voile capturée au démarrage du vol
     @State private var selectedTab: Int = 0
     @State private var isFlying: Bool = false
     @State private var showingActiveFlightView = false
     // Timer data stockée au niveau ContentView
     @State private var flightStartDate: Date?
+
+    // Référence au WorkoutManager pour le Water Lock
+    private let workoutManager = WorkoutManager.shared
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -38,8 +42,9 @@ struct ContentView: View {
         .tabViewStyle(.page)
         .fullScreenCover(isPresented: $showingActiveFlightView) {
             // Écran 3 : Timer actif (plein écran, impossible de quitter)
+            // Utiliser activeFlightWing qui a été capturé au démarrage du vol
             ActiveFlightView(
-                wing: selectedWing,
+                wing: activeFlightWing,
                 flightStartDate: $flightStartDate,
                 onStopFlight: { duration in
                     stopFlight(duration: duration)
@@ -57,12 +62,18 @@ struct ContentView: View {
             // pour éviter le lag au moment du Start
             Task(priority: .background) {
                 locationService.requestAuthorization()
+                // Demander l'autorisation HealthKit au lancement
+                await workoutManager.requestAuthorization()
             }
         }
     }
     
     private func startFlight() {
-        // IMPORTANT: Définir la date AVANT d'afficher le fullScreenCover
+        // IMPORTANT: Capturer la voile AVANT tout le reste
+        // pour qu'elle soit disponible dans le fullScreenCover
+        activeFlightWing = selectedWing
+
+        // Définir la date AVANT d'afficher le fullScreenCover
         // pour que le timer puisse démarrer immédiatement
         flightStartDate = Date()
         isFlying = true
@@ -71,6 +82,13 @@ struct ContentView: View {
         Task(priority: .userInitiated) {
             locationService.startUpdatingLocation()
             locationService.startFlightTracking()
+
+            // Démarrer la session workout pour permettre le Water Lock
+            // Le WorkoutManager s'occupe d'activer le Water Lock si le setting est activé
+            if WatchSettings.shared.autoWaterLockEnabled {
+                print("🔍 Starting workout session for Water Lock...")
+                await workoutManager.startWorkoutSession()
+            }
         }
 
         // Afficher le timer immédiatement
@@ -78,15 +96,17 @@ struct ContentView: View {
     }
 
     private func stopFlight(duration: Int) {
-        guard let wing = selectedWing, let start = flightStartDate else { return }
+        // Utiliser activeFlightWing qui a été capturé au démarrage
+        guard let wing = activeFlightWing, let start = flightStartDate else { return }
 
         let end = Date()
 
-        // Récupérer les données de tracking
+        // Récupérer les données de tracking et la trace GPS AVANT d'arrêter le tracking
+        let gpsTrack = locationService.getGPSTrack()
         let endAltitude = locationService.stopFlightTracking()
         let flightData = locationService.getFlightData()
 
-        // Créer le FlightDTO avec toutes les données
+        // Créer le FlightDTO avec toutes les données y compris la trace GPS
         let flight = FlightDTO(
             wingId: wing.id,
             startDate: start,
@@ -97,16 +117,23 @@ struct ContentView: View {
             endAltitude: endAltitude,
             totalDistance: flightData.distance,
             maxSpeed: flightData.speed,
-            maxGForce: flightData.maxGForce > 1.0 ? flightData.maxGForce : nil
+            maxGForce: flightData.maxGForce > 1.0 ? flightData.maxGForce : nil,
+            gpsTrack: gpsTrack.isEmpty ? nil : gpsTrack
         )
 
         // Envoyer vers l'iPhone
         watchManager.sendFlightToPhone(flight)
 
+        // Arrêter la session workout si active
+        Task {
+            await workoutManager.stopWorkoutSession()
+        }
+
         // Reset
         isFlying = false
         showingActiveFlightView = false
         flightStartDate = nil
+        activeFlightWing = nil
         selectedWing = nil
         selectedTab = 0 // Revenir à la sélection de voile
     }
@@ -114,9 +141,16 @@ struct ContentView: View {
     private func discardFlight() {
         // Annuler le vol sans sauvegarder
         locationService.stopFlightTracking()
+
+        // Arrêter la session workout si active
+        Task {
+            await workoutManager.stopWorkoutSession()
+        }
+
         isFlying = false
         showingActiveFlightView = false
         flightStartDate = nil
+        activeFlightWing = nil
         selectedWing = nil
         selectedTab = 0
     }
@@ -318,160 +352,185 @@ struct FlightStartView: View {
 
 // MARK: - ActiveFlightView (Écran 3 - Timer plein écran)
 
+/// État de la sheet (options ou résumé)
+private enum FlightSheetState: Identifiable {
+    case stopOptions
+    case summary
+
+    var id: Int {
+        switch self {
+        case .stopOptions: return 0
+        case .summary: return 1
+        }
+    }
+}
+
 struct ActiveFlightView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(WatchLocationService.self) private var locationService
-    
+
     let wing: WingDTO?
     @Binding var flightStartDate: Date?
     let onStopFlight: (Int) -> Void
     let onDiscardFlight: () -> Void
-    
+
     @State private var elapsedSeconds: Int = 0
     @State private var timer: Timer?
-    @State private var showingStopOptions = false
-    @State private var showingSummary = false
+    @State private var sheetState: FlightSheetState?
     @State private var finalDuration: Int = 0
 
     var body: some View {
-        VStack(spacing: 6) {
-            // Indicateur vol en cours
+        VStack(spacing: 2) {
+            // Indicateur vol en cours (collé en haut)
             HStack(spacing: 4) {
                 Circle()
                     .fill(.red)
                     .frame(width: 8, height: 8)
-                Text("VOL EN COURS")
+                Text("Flying")
                     .font(.caption2)
                     .foregroundStyle(.red)
                     .fontWeight(.bold)
             }
-            
+            .padding(.top, -4) // Remonter encore plus haut
+
             // Voile + taille avec image
-            if let wing = wing {
-                HStack(spacing: 6) {
-                    CachedWingImage(wing: wing, size: 24, showBackground: false)
+            HStack(spacing: 6) {
+                if let wing = wing {
+                    CachedWingImage(wing: wing, size: 22, showBackground: false)
                     Text(wing.shortName)
-                        .font(.caption)
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                     if let size = wing.size {
                         Text("• \(size)m²")
-                            .font(.caption)
+                            .font(.system(size: 12))
                             .foregroundStyle(.blue)
                     }
+                } else {
+                    // Placeholder invisible pour maintenir le layout
+                    Color.clear.frame(height: 22)
                 }
             }
-            
+
             // Spot
             HStack(spacing: 4) {
                 Image(systemName: "location.fill")
-                    .font(.caption2)
+                    .font(.system(size: 11))
                     .foregroundStyle(.blue)
                 Text(locationService.currentSpotName)
-                    .font(.caption2)
+                    .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
 
-            // Données de vol en temps réel
-            HStack(spacing: 12) {
+            // Données de vol en temps réel (taille augmentée: 20 pour valeurs, 12 pour labels)
+            HStack(spacing: 10) {
                 // Altitude
                 VStack(spacing: 0) {
                     Text("\(formatAltitude(locationService.currentAltitude))m")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
                         .foregroundStyle(.orange)
-                    Text("Alt")
-                        .font(.system(size: 9))
+                    Text(String(localized: "Alt"))
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
 
                 // Distance
                 VStack(spacing: 0) {
                     Text(formatDistance(locationService.totalDistance))
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
                         .foregroundStyle(.cyan)
-                    Text("Dist")
-                        .font(.system(size: 9))
+                    Text(String(localized: "Dist"))
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
 
                 // Vitesse max
                 VStack(spacing: 0) {
                     Text("\(formatSpeed(locationService.maxSpeed))")
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
                         .foregroundStyle(.purple)
-                    Text("Max")
-                        .font(.system(size: 9))
+                    Text(String(localized: "Max"))
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
 
                 // G-force actuel
                 VStack(spacing: 0) {
                     Text(String(format: "%.1f", locationService.currentGForce))
-                        .font(.system(size: 16, weight: .semibold, design: .rounded))
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
                         .foregroundStyle(.green)
                     Text("G")
-                        .font(.system(size: 9))
+                        .font(.system(size: 12))
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(.vertical, 4)
+            .padding(.vertical, 2)
 
             Spacer()
+                .frame(maxHeight: 2)
 
             // TIMER principal
             Text(formatElapsedTime(elapsedSeconds))
-                .font(.system(size: 44, weight: .bold, design: .rounded))
+                .font(.system(size: 40, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(.green)
 
             Spacer()
+                .frame(maxHeight: 4)
 
             // Bouton Stop
             Button {
-                showingStopOptions = true
+                sheetState = .stopOptions
             } label: {
                 Label("Stop", systemImage: "stop.circle.fill")
-                    .font(.title3)
+                    .font(.body)
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
         }
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
+        .background(Color.black) // Fond noir opaque
         .navigationBarBackButtonHidden(true) // Cacher le bouton retour
         .toolbar(.hidden, for: .navigationBar) // Cacher la barre de navigation
-        .sheet(isPresented: $showingStopOptions) {
-            // Fenêtre de choix : Sauvegarder ou Annuler
-            StopFlightOptionsView(
-                duration: elapsedSeconds,
-                onSave: {
-                    finalDuration = elapsedSeconds
-                    stopTimer()
-                    locationService.stopUpdatingLocation()
-                    showingStopOptions = false
-                    showingSummary = true
-                },
-                onDiscard: {
-                    stopTimer()
-                    locationService.stopUpdatingLocation()
-                    showingStopOptions = false
-                    onDiscardFlight()
+        .sheet(item: $sheetState) { state in
+            // Une seule sheet avec contenu dynamique pour éviter le flash
+            Group {
+                switch state {
+                case .stopOptions:
+                    StopFlightOptionsView(
+                        duration: elapsedSeconds,
+                        onSave: {
+                            finalDuration = elapsedSeconds
+                            stopTimer()
+                            locationService.stopUpdatingLocation()
+                            // Transition directe vers le summary sans fermer la sheet
+                            sheetState = .summary
+                        },
+                        onDiscard: {
+                            stopTimer()
+                            locationService.stopUpdatingLocation()
+                            sheetState = nil
+                            onDiscardFlight()
+                        }
+                    )
+                case .summary:
+                    FlightSummaryView(
+                        duration: finalDuration,
+                        wing: wing ?? WingDTO(id: UUID(), name: "Inconnue", size: nil, type: nil, color: nil, photoData: nil, displayOrder: 0),
+                        startAltitude: locationService.startAltitude,
+                        maxAltitude: locationService.maxAltitude,
+                        endAltitude: locationService.currentAltitude,
+                        totalDistance: locationService.totalDistance,
+                        maxSpeed: locationService.maxSpeed,
+                        maxGForce: locationService.maxGForce
+                    ) {
+                        sheetState = nil
+                        onStopFlight(finalDuration)
+                    }
                 }
-            )
-        }
-        .sheet(isPresented: $showingSummary) {
-            FlightSummaryView(
-                duration: finalDuration,
-                wing: wing ?? WingDTO(id: UUID(), name: "Inconnue", size: nil, type: nil, color: nil, photoData: nil, displayOrder: 0),
-                startAltitude: locationService.startAltitude,
-                maxAltitude: locationService.maxAltitude,
-                endAltitude: locationService.currentAltitude,
-                totalDistance: locationService.totalDistance,
-                maxSpeed: locationService.maxSpeed,
-                maxGForce: locationService.maxGForce
-            ) {
-                onStopFlight(finalDuration)
             }
+            .presentationBackground(.black)
         }
         .onAppear {
             // Démarrer le timer immédiatement sans délai
@@ -542,6 +601,11 @@ struct StopFlightOptionsView: View {
     let onSave: () -> Void
     let onDiscard: () -> Void
 
+    // Vérifier si l'annulation est autorisée
+    private var canDismiss: Bool {
+        WatchSettings.shared.allowSessionDismiss
+    }
+
     var body: some View {
         VStack(spacing: 8) {
             // Titre en haut
@@ -566,16 +630,18 @@ struct StopFlightOptionsView: View {
             .buttonStyle(.borderedProminent)
             .tint(.green)
 
-            // Bouton Annuler (rouge)
-            Button(role: .destructive) {
-                onDiscard()
-            } label: {
-                Text("Annuler le vol")
-                    .font(.caption)
-                    .frame(maxWidth: .infinity)
+            // Bouton Annuler (rouge) - seulement si autorisé
+            if canDismiss {
+                Button(role: .destructive) {
+                    onDiscard()
+                } label: {
+                    Text("Annuler le vol")
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .tint(.red)
             }
-            .buttonStyle(.bordered)
-            .tint(.red)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
@@ -609,53 +675,53 @@ struct FlightSummaryView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 8) {
-                // Icône centrée au-dessus
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.title)
-                    .foregroundStyle(.green)
-
-                // Titre
-                Text("Vol terminé !")
-                    .font(.headline)
+            VStack(spacing: 6) {
+                // Icône + titre sur une ligne pour gagner de l'espace
+                HStack(spacing: 6) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.title3)
+                        .foregroundStyle(.green)
+                    Text("Vol terminé !")
+                        .font(.headline)
+                }
+                .padding(.top, -8) // Remonter vers le haut
 
                 // Durée
                 Text(formatDuration(duration))
-                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .font(.system(size: 26, weight: .bold, design: .rounded))
                     .foregroundStyle(.blue)
 
                 // Voile + taille avec image
                 HStack(spacing: 6) {
-                    CachedWingImage(wing: wing, size: 24, showBackground: false)
+                    CachedWingImage(wing: wing, size: 20, showBackground: false)
                     Text(wing.shortName)
-                        .font(.caption)
+                        .font(.caption2)
                         .foregroundStyle(.secondary)
                     if let size = wing.size {
                         Text("• \(size) m²")
-                            .font(.caption)
+                            .font(.caption2)
                             .foregroundStyle(.blue)
                     }
                 }
-                .padding(.bottom, 4)
 
                 // Statistiques de vol
                 VStack(spacing: 6) {
                     // Altitudes
                     if startAltitude != nil || maxAltitude != nil || endAltitude != nil {
                         HStack(spacing: 8) {
-                            StatBox(label: "Départ", value: formatAlt(startAltitude), unit: "m", color: .orange)
-                            StatBox(label: "Max", value: formatAlt(maxAltitude), unit: "m", color: .red)
-                            StatBox(label: "Arrivée", value: formatAlt(endAltitude), unit: "m", color: .orange)
+                            StatBox(label: String(localized: "Départ"), value: formatAlt(startAltitude), unit: "m", color: .orange)
+                            StatBox(label: String(localized: "Max"), value: formatAlt(maxAltitude), unit: "m", color: .red)
+                            StatBox(label: String(localized: "Arrivée"), value: formatAlt(endAltitude), unit: "m", color: .orange)
                         }
                     }
 
                     // Distance et vitesse
                     HStack(spacing: 8) {
                         if totalDistance > 0 {
-                            StatBox(label: "Distance", value: formatDist(totalDistance), unit: "", color: .cyan)
+                            StatBox(label: String(localized: "Distance"), value: formatDist(totalDistance), unit: "", color: .cyan)
                         }
                         if maxSpeed > 0 {
-                            StatBox(label: "Vitesse max", value: formatSpeed(maxSpeed), unit: "km/h", color: .purple)
+                            StatBox(label: String(localized: "Vitesse max"), value: formatSpeed(maxSpeed), unit: "km/h", color: .purple)
                         }
                     }
 
@@ -683,6 +749,8 @@ struct FlightSummaryView: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 6)
         }
+        .navigationBarHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 
     private func formatDuration(_ seconds: Int) -> String {

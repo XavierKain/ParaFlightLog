@@ -8,6 +8,26 @@
 
 import Foundation
 
+// MARK: - GPSTrackPoint
+/// Point GPS pour la trace du vol
+struct GPSTrackPoint: Codable, Identifiable {
+    let id: UUID
+    let timestamp: Date
+    let latitude: Double
+    let longitude: Double
+    let altitude: Double?
+    let speed: Double?       // Vitesse en m/s
+
+    init(id: UUID = UUID(), timestamp: Date = Date(), latitude: Double, longitude: Double, altitude: Double? = nil, speed: Double? = nil) {
+        self.id = id
+        self.timestamp = timestamp
+        self.latitude = latitude
+        self.longitude = longitude
+        self.altitude = altitude
+        self.speed = speed
+    }
+}
+
 // MARK: - WingDTO
 /// DTO pour transférer les voiles de l'iPhone vers la Watch
 struct WingDTO: Codable, Identifiable, Hashable {
@@ -59,6 +79,9 @@ struct FlightDTO: Codable, Identifiable {
     let maxSpeed: Double?            // Vitesse maximale au sol (m/s)
     let maxGForce: Double?           // G-force maximale (G)
 
+    // Trace GPS du vol
+    let gpsTrack: [GPSTrackPoint]?
+
     init(id: UUID = UUID(),
          wingId: UUID,
          startDate: Date,
@@ -70,7 +93,8 @@ struct FlightDTO: Codable, Identifiable {
          endAltitude: Double? = nil,
          totalDistance: Double? = nil,
          maxSpeed: Double? = nil,
-         maxGForce: Double? = nil) {
+         maxGForce: Double? = nil,
+         gpsTrack: [GPSTrackPoint]? = nil) {
         self.id = id
         self.wingId = wingId
         self.startDate = startDate
@@ -83,5 +107,6 @@ struct FlightDTO: Codable, Identifiable {
         self.totalDistance = totalDistance
         self.maxSpeed = maxSpeed
         self.maxGForce = maxGForce
+        self.gpsTrack = gpsTrack
     }
 }

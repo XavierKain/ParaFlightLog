@@ -160,13 +160,16 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         processReceivedContext(userInfo)
     }
 
-    /// Traite le contexte reçu (extraction des Wings et langue)
+    /// Traite le contexte reçu (extraction des Wings, langue et settings)
     private func processReceivedContext(_ context: [String: Any]) {
         // Extraire la langue si présente
         if context.keys.contains("language") {
             let languageCode = context["language"] as? String
             WatchLocalizationManager.shared.updateLanguage(from: languageCode)
         }
+
+        // Extraire les paramètres Watch si présents
+        WatchSettings.shared.updateFromContext(context)
 
         // Nouveau format : wingsData en Base64 - Décoder en background
         if let base64String = context["wingsData"] as? String,

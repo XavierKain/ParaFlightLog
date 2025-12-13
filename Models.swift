@@ -194,6 +194,9 @@ final class Flight {
     var maxSpeed: Double?            // Vitesse maximale au sol (m/s)
     var maxGForce: Double?           // G-force maximale (G)
 
+    // Trace GPS du vol (stockée en JSON)
+    var gpsTrackData: Data?
+
     // Relation : la voile utilisée pour ce vol
     var wing: Wing?
 
@@ -213,7 +216,8 @@ final class Flight {
          endAltitude: Double? = nil,
          totalDistance: Double? = nil,
          maxSpeed: Double? = nil,
-         maxGForce: Double? = nil) {
+         maxGForce: Double? = nil,
+         gpsTrackData: Data? = nil) {
         self.id = id
         self.wing = wing
         self.startDate = startDate
@@ -231,6 +235,18 @@ final class Flight {
         self.totalDistance = totalDistance
         self.maxSpeed = maxSpeed
         self.maxGForce = maxGForce
+        self.gpsTrackData = gpsTrackData
+    }
+
+    /// Décoder la trace GPS
+    var gpsTrack: [GPSTrackPoint]? {
+        guard let data = gpsTrackData else { return nil }
+        return try? JSONDecoder().decode([GPSTrackPoint].self, from: data)
+    }
+
+    /// Encoder et sauvegarder la trace GPS
+    func setGPSTrack(_ points: [GPSTrackPoint]) {
+        gpsTrackData = try? JSONEncoder().encode(points)
     }
 
     /// Durée formatée (ex: "1h23" ou "45min")
