@@ -12,10 +12,9 @@ struct ContentView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(WatchLocationService.self) private var locationService
     @State private var selectedWing: WingDTO?
-    @State private var activeFlightWing: WingDTO? // Voile capturée au démarrage du vol
+    @State private var activeFlightWing: WingDTO? // Voile capturée au démarrage - sert aussi de trigger pour fullScreenCover
     @State private var selectedTab: Int = 0
     @State private var isFlying: Bool = false
-    @State private var showingActiveFlightView = false
     // Timer data stockée au niveau ContentView
     @State private var flightStartDate: Date?
 
@@ -40,11 +39,11 @@ struct ContentView: View {
             .tag(1)
         }
         .tabViewStyle(.page)
-        .fullScreenCover(isPresented: $showingActiveFlightView) {
+        // Utiliser fullScreenCover(item:) pour que SwiftUI capture la valeur au moment de la présentation
+        .fullScreenCover(item: $activeFlightWing) { wing in
             // Écran 3 : Timer actif (plein écran, impossible de quitter)
-            // Utiliser activeFlightWing qui a été capturé au démarrage du vol
             ActiveFlightView(
-                wing: activeFlightWing,
+                wing: wing,
                 flightStartDate: $flightStartDate,
                 onStopFlight: { duration in
                     stopFlight(duration: duration)
@@ -58,41 +57,40 @@ struct ContentView: View {
             .interactiveDismissDisabled(true) // Empêche de swipe down pour fermer
         }
         .onAppear {
-            // Pré-démarrer la localisation dès le lancement de l'app
-            // pour éviter le lag au moment du Start
+            // Demander l'autorisation HealthKit au lancement
+            // (la localisation est déjà démarrée dans l'App)
             Task(priority: .background) {
-                locationService.requestAuthorization()
-                // Demander l'autorisation HealthKit au lancement
                 await workoutManager.requestAuthorization()
             }
         }
     }
     
     private func startFlight() {
-        // IMPORTANT: Capturer la voile AVANT tout le reste
-        // pour qu'elle soit disponible dans le fullScreenCover
-        activeFlightWing = selectedWing
+        guard let wing = selectedWing else { return }
+
+        // PRÉCHARGER L'IMAGE DE FAÇON SYNCHRONE avant d'afficher le vol
+        WatchImageCache.shared.preloadImageSync(for: wing)
 
         // Définir la date AVANT d'afficher le fullScreenCover
-        // pour que le timer puisse démarrer immédiatement
         flightStartDate = Date()
         isFlying = true
 
-        // Démarrer la localisation et le tracking en arrière-plan
-        Task(priority: .userInitiated) {
+        // Assigner activeFlightWing déclenche automatiquement le fullScreenCover(item:)
+        // SwiftUI passe cette valeur directement au closure, donc pas de problème de timing
+        activeFlightWing = wing
+
+        // Démarrer les services après un court délai pour laisser l'UI se rendre
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
             locationService.startUpdatingLocation()
             locationService.startFlightTracking()
 
             // Démarrer la session workout pour permettre le Water Lock
-            // Le WorkoutManager s'occupe d'activer le Water Lock si le setting est activé
             if WatchSettings.shared.autoWaterLockEnabled {
-                print("🔍 Starting workout session for Water Lock...")
-                await workoutManager.startWorkoutSession()
+                Task {
+                    await workoutManager.startWorkoutSession()
+                }
             }
         }
-
-        // Afficher le timer immédiatement
-        showingActiveFlightView = true
     }
 
     private func stopFlight(duration: Int) {
@@ -129,11 +127,10 @@ struct ContentView: View {
             await workoutManager.stopWorkoutSession()
         }
 
-        // Reset
+        // Reset - mettre activeFlightWing à nil ferme le fullScreenCover
         isFlying = false
-        showingActiveFlightView = false
         flightStartDate = nil
-        activeFlightWing = nil
+        activeFlightWing = nil  // Ferme le fullScreenCover
         selectedWing = nil
         selectedTab = 0 // Revenir à la sélection de voile
     }
@@ -147,10 +144,10 @@ struct ContentView: View {
             await workoutManager.stopWorkoutSession()
         }
 
+        // Reset - mettre activeFlightWing à nil ferme le fullScreenCover
         isFlying = false
-        showingActiveFlightView = false
         flightStartDate = nil
-        activeFlightWing = nil
+        activeFlightWing = nil  // Ferme le fullScreenCover
         selectedWing = nil
         selectedTab = 0
     }
@@ -352,31 +349,18 @@ struct FlightStartView: View {
 
 // MARK: - ActiveFlightView (Écran 3 - Timer plein écran)
 
-/// État de la sheet (options ou résumé)
-private enum FlightSheetState: Identifiable {
-    case stopOptions
-    case summary
-
-    var id: Int {
-        switch self {
-        case .stopOptions: return 0
-        case .summary: return 1
-        }
-    }
-}
-
 struct ActiveFlightView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(WatchLocationService.self) private var locationService
 
-    let wing: WingDTO?
+    let wing: WingDTO  // Non-optional car fullScreenCover(item:) garantit une valeur
     @Binding var flightStartDate: Date?
     let onStopFlight: (Int) -> Void
     let onDiscardFlight: () -> Void
 
     @State private var elapsedSeconds: Int = 0
     @State private var timer: Timer?
-    @State private var sheetState: FlightSheetState?
+    @State private var showingStopSheet: Bool = false
     @State private var finalDuration: Int = 0
 
     var body: some View {
@@ -395,19 +379,14 @@ struct ActiveFlightView: View {
 
             // Voile + taille avec image
             HStack(spacing: 6) {
-                if let wing = wing {
-                    CachedWingImage(wing: wing, size: 22, showBackground: false)
-                    Text(wing.shortName)
+                CachedWingImage(wing: wing, size: 22, showBackground: false)
+                Text(wing.shortName)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                if let size = wing.size {
+                    Text("• \(size)m²")
                         .font(.system(size: 12))
-                        .foregroundStyle(.secondary)
-                    if let size = wing.size {
-                        Text("• \(size)m²")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.blue)
-                    }
-                } else {
-                    // Placeholder invisible pour maintenir le layout
-                    Color.clear.frame(height: 22)
+                        .foregroundStyle(.blue)
                 }
             }
 
@@ -480,7 +459,7 @@ struct ActiveFlightView: View {
 
             // Bouton Stop
             Button {
-                sheetState = .stopOptions
+                showingStopSheet = true
             } label: {
                 Label("Stop", systemImage: "stop.circle.fill")
                     .font(.body)
@@ -493,43 +472,34 @@ struct ActiveFlightView: View {
         .background(Color.black) // Fond noir opaque
         .navigationBarBackButtonHidden(true) // Cacher le bouton retour
         .toolbar(.hidden, for: .navigationBar) // Cacher la barre de navigation
-        .sheet(item: $sheetState) { state in
-            // Une seule sheet avec contenu dynamique pour éviter le flash
-            Group {
-                switch state {
-                case .stopOptions:
-                    StopFlightOptionsView(
-                        duration: elapsedSeconds,
-                        onSave: {
-                            finalDuration = elapsedSeconds
-                            stopTimer()
-                            locationService.stopUpdatingLocation()
-                            // Transition directe vers le summary sans fermer la sheet
-                            sheetState = .summary
-                        },
-                        onDiscard: {
-                            stopTimer()
-                            locationService.stopUpdatingLocation()
-                            sheetState = nil
-                            onDiscardFlight()
-                        }
-                    )
-                case .summary:
-                    FlightSummaryView(
-                        duration: finalDuration,
-                        wing: wing ?? WingDTO(id: UUID(), name: "Inconnue", size: nil, type: nil, color: nil, photoData: nil, displayOrder: 0),
-                        startAltitude: locationService.startAltitude,
-                        maxAltitude: locationService.maxAltitude,
-                        endAltitude: locationService.currentAltitude,
-                        totalDistance: locationService.totalDistance,
-                        maxSpeed: locationService.maxSpeed,
-                        maxGForce: locationService.maxGForce
-                    ) {
-                        sheetState = nil
-                        onStopFlight(finalDuration)
-                    }
+        .sheet(isPresented: $showingStopSheet) {
+            // Utiliser une vue conteneur qui gère la transition interne sans flash
+            StopFlightContainerView(
+                duration: elapsedSeconds,
+                wing: wing,
+                startAltitude: locationService.startAltitude,
+                maxAltitude: locationService.maxAltitude,
+                endAltitude: locationService.currentAltitude,
+                totalDistance: locationService.totalDistance,
+                maxSpeed: locationService.maxSpeed,
+                maxGForce: locationService.maxGForce,
+                onSave: { duration in
+                    finalDuration = duration
+                    stopTimer()
+                    locationService.stopUpdatingLocation()
+                },
+                onDiscard: {
+                    stopTimer()
+                    locationService.stopUpdatingLocation()
+                    showingStopSheet = false
+                    onDiscardFlight()
+                },
+                onDismiss: {
+                    // Fermer le fullScreenCover en premier - la sheet disparaît avec
+                    // Ne pas mettre showingStopSheet = false, sinon on voit l'écran de vol
+                    onStopFlight(finalDuration)
                 }
-            }
+            )
             .presentationBackground(.black)
         }
         .onAppear {
@@ -659,6 +629,61 @@ struct StopFlightOptionsView: View {
     }
 }
 
+// MARK: - StopFlightContainerView (Conteneur pour la transition sans flash)
+
+/// Vue conteneur qui gère la transition options → summary sans fermer la sheet
+struct StopFlightContainerView: View {
+    let duration: Int
+    let wing: WingDTO
+    let startAltitude: Double?
+    let maxAltitude: Double?
+    let endAltitude: Double?
+    let totalDistance: Double
+    let maxSpeed: Double
+    let maxGForce: Double
+    let onSave: (Int) -> Void
+    let onDiscard: () -> Void
+    let onDismiss: () -> Void
+
+    @State private var showingSummary: Bool = false
+    @State private var savedDuration: Int = 0
+
+    var body: some View {
+        ZStack {
+            if !showingSummary {
+                StopFlightOptionsView(
+                    duration: duration,
+                    onSave: {
+                        savedDuration = duration
+                        onSave(duration)
+                        // Transition fade + move from bottom (comme fullScreenCover/sheet)
+                        withAnimation(.easeOut(duration: 0.3)) {
+                            showingSummary = true
+                        }
+                    },
+                    onDiscard: onDiscard
+                )
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+
+            if showingSummary {
+                FlightSummaryView(
+                    duration: savedDuration,
+                    wing: wing,
+                    startAltitude: startAltitude,
+                    maxAltitude: maxAltitude,
+                    endAltitude: endAltitude,
+                    totalDistance: totalDistance,
+                    maxSpeed: maxSpeed,
+                    maxGForce: maxGForce,
+                    onDismiss: onDismiss
+                )
+                .transition(.opacity.combined(with: .move(edge: .bottom)))
+            }
+        }
+    }
+}
+
 // MARK: - FlightSummaryView (Résumé après vol avec statistiques)
 
 struct FlightSummaryView: View {
@@ -735,7 +760,8 @@ struct FlightSummaryView: View {
 
                 // Bouton fermer
                 Button {
-                    dismiss()
+                    // Ne pas appeler dismiss() - onDismiss ferme le fullScreenCover
+                    // ce qui fait disparaître la sheet automatiquement
                     onDismiss()
                 } label: {
                     Text("OK")

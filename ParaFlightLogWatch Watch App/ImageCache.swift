@@ -62,6 +62,16 @@ final class WatchImageCache {
     func removeImage(for wingId: UUID) {
         cache.removeValue(forKey: wingId)
     }
+
+    /// Précharge une image de façon synchrone (pour éviter le lag au premier vol)
+    func preloadImageSync(for wing: WingDTO) {
+        guard let data = wing.photoData,
+              cache[wing.id] == nil else { return }
+
+        if let image = UIImage(data: data) {
+            cache[wing.id] = image
+        }
+    }
 }
 
 /// Vue SwiftUI pour afficher une image de voile avec cache

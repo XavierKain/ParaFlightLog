@@ -22,6 +22,12 @@ struct ParaFlightLogWatch_Watch_AppApp: App {
                 .environment(locationService)
                 .environment(localizationManager)
                 .environment(\.locale, localizationManager.locale)
+                .onAppear {
+                    // Démarrer la localisation dès le lancement de l'app
+                    // pour que le spot soit affiché sur FlightStartView
+                    locationService.requestAuthorization()
+                    locationService.startUpdatingLocation()
+                }
         }
     }
 }

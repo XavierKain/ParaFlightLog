@@ -119,7 +119,7 @@ final class WorkoutManager: NSObject {
     /// Arrête la session workout
     func stopWorkoutSession() async {
         guard let session = workoutSession, let builder = workoutBuilder else {
-            print("⚠️ No active workout session to stop")
+            // Pas de session active - c'est normal si autoWaterLockEnabled était false
             return
         }
 

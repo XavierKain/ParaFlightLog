@@ -656,6 +656,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accède à vos données de santé pour enregistrer vos sessions de vol.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de vos vols.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -693,6 +694,7 @@
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accède à vos données de santé pour enregistrer vos sessions de vol.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de vos vols.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog;
 				LD_RUNPATH_SEARCH_PATHS = (
