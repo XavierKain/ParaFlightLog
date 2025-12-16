@@ -10,7 +10,7 @@
       "type": "Soaring",
       "sizes": ["13", "15", "18", "22"],
       "color": "Pétrole",
-      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-moustache-m1.jpg",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/ParaFlightLog/WingLibrary/images/ozone-moustache-m1.jpg",
       "trimSpeed": 36
     },
     {
@@ -21,7 +21,7 @@
       "type": "Soaring",
       "sizes": ["13", "15", "18", "22"],
       "color": "Pétrole",
-      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-moustache-m1.jpg",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/ParaFlightLog/WingLibrary/images/ozone-moustache-m1.jpg",
       "trimSpeed": 36
     },
     {
@@ -32,7 +32,7 @@
       "type": "Soaring",
       "sizes": ["15", "18", "21"],
       "color": "Bleu",
-      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-moustache-m2.jpg",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/ParaFlightLog/WingLibrary/images/ozone-moustache-m2.jpg",
       "trimSpeed": 37
     },
     {
@@ -43,7 +43,7 @@
       "type": "Thermique",
       "sizes": ["18", "20", "22", "24", "26", "28"],
       "color": "Bleu",
-      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-chili-5.jpg",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/ParaFlightLog/WingLibrary/images/ozone-chili-5.jpg",
       "trimSpeed": 39
     },
     {
@@ -54,7 +54,7 @@
       "type": "Thermique",
       "sizes": ["21", "23", "25", "27"],
       "color": "Bleu",
-      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-arak.jpg",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/ParaFlightLog/WingLibrary/images/ozone-arak.jpg",
       "trimSpeed": 38
     },
     {
@@ -65,7 +65,7 @@
       "type": "Soaring",
       "sizes": ["18", "21", "24"],
       "color": "Bleu",
-      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-prop.jpg",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/ParaFlightLog/WingLibrary/images/ozone-prop.jpg",
       "trimSpeed": 36
     },
     {
@@ -76,7 +76,7 @@
       "type": "Speedflying",
       "sizes": ["12", "14", "15", "17"],
       "color": "Bleu",
-      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-line.jpg",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/ParaFlightLog/WingLibrary/images/ozone-line.jpg",
       "trimSpeed": 45
     },
     {
