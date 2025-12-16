@@ -1363,6 +1363,9 @@
         }
       }
     },
+    "Aucune voile trouvée" : {
+
+    },
     "Autoriser l'annulation de vol" : {
       "localizations" : {
         "en" : {
@@ -1395,6 +1398,12 @@
         }
       }
     },
+    "Bibliothèque" : {
+
+    },
+    "Bibliothèque de voiles" : {
+
+    },
     "Build" : {
       "localizations" : {
         "en" : {
@@ -1410,6 +1419,12 @@
           }
         }
       }
+    },
+    "Calcul en cours..." : {
+
+    },
+    "Calculer l'estimation" : {
+
     },
     "Caractéristiques" : {
       "localizations" : {
@@ -1554,6 +1569,12 @@
           }
         }
       }
+    },
+    "Chargement de la bibliothèque..." : {
+
+    },
+    "Choisir depuis la bibliothèque" : {
+
     },
     "Choisir la période" : {
       "localizations" : {
@@ -2077,6 +2098,15 @@
         }
       }
     },
+    "Essayez d'autres filtres ou une recherche différente" : {
+
+    },
+    "Estimation du vent" : {
+
+    },
+    "Estimation non calculée" : {
+
+    },
     "Export Backup" : {
 
     },
@@ -2101,6 +2131,12 @@
       }
     },
     "Exporter en CSV (ancien format)" : {
+
+    },
+    "Exporter GPX" : {
+
+    },
+    "Exporter JSON" : {
 
     },
     "Fermer" : {
@@ -2166,6 +2202,9 @@
           }
         }
       }
+    },
+    "Fourchette: %@" : {
+
     },
     "G" : {
       "localizations" : {
@@ -2459,6 +2498,15 @@
         }
       }
     },
+    "kg" : {
+
+    },
+    "km/h" : {
+
+    },
+    "kn" : {
+
+    },
     "Lancer un vol" : {
       "localizations" : {
         "en" : {
@@ -2523,6 +2571,9 @@
           }
         }
       }
+    },
+    "Le poids équipé (pilote + sellette + équipement) permet d'améliorer l'estimation du vent." : {
+
     },
     "Les spots apparaîtront ici une fois que vous aurez enregistré des vols" : {
       "localizations" : {
@@ -2699,6 +2750,9 @@
           }
         }
       }
+    },
+    "Noeuds (kn)" : {
+
     },
     "Nom" : {
       "localizations" : {
@@ -3025,6 +3079,12 @@
         }
       }
     },
+    "Pilote" : {
+
+    },
+    "Poids équipé" : {
+
+    },
     "Position indisponible" : {
       "localizations" : {
         "en" : {
@@ -3158,6 +3218,9 @@
     "Rechercher un lieu..." : {
 
     },
+    "Rechercher une voile..." : {
+
+    },
     "Réglages" : {
       "localizations" : {
         "en" : {
@@ -3286,6 +3349,12 @@
         }
       }
     },
+    "Sélectionner sans taille" : {
+
+    },
+    "Sélectionner une taille :" : {
+
+    },
     "Sélectionner une voile" : {
       "localizations" : {
         "en" : {
@@ -3301,6 +3370,9 @@
           }
         }
       }
+    },
+    "Sélectionnez une voile préenregistrée pour remplir automatiquement les informations." : {
+
     },
     "session%@" : {
       "localizations" : {
@@ -3805,6 +3877,9 @@
         }
       }
     },
+    "Tous les types" : {
+
+    },
     "Toutes" : {
       "localizations" : {
         "en" : {
@@ -3820,6 +3895,9 @@
           }
         }
       }
+    },
+    "Toutes les marques" : {
+
     },
     "Type" : {
       "localizations" : {
@@ -3840,6 +3918,9 @@
     "Un vol de %@ a été interrompu. Voulez-vous le sauvegarder ?" : {
 
     },
+    "Unité de vent" : {
+
+    },
     "Valider" : {
       "localizations" : {
         "en" : {
@@ -3852,6 +3933,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Valider"
+          }
+        }
+      }
+    },
+    "Vent de %@ (%lld°)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Vent de %1$@ (%2$lld°)"
           }
         }
       }

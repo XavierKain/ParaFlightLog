@@ -1,0 +1,171 @@
+{
+  "version": "1.0.0",
+  "lastUpdated": "2025-12-16",
+  "wings": [
+    {
+      "id": "ozone-moustache-m1-2025",
+      "brand": "Ozone",
+      "model": "Moustache M1",
+      "year": 2025,
+      "type": "Soaring",
+      "sizes": ["13", "15", "18", "22"],
+      "color": "Pétrole",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-moustache-m1.jpg",
+      "trimSpeed": 36
+    },
+    {
+      "id": "ozone-moustache-m1-2024",
+      "brand": "Ozone",
+      "model": "Moustache M1",
+      "year": 2024,
+      "type": "Soaring",
+      "sizes": ["13", "15", "18", "22"],
+      "color": "Pétrole",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-moustache-m1.jpg",
+      "trimSpeed": 36
+    },
+    {
+      "id": "ozone-moustache-m2",
+      "brand": "Ozone",
+      "model": "Moustache M2",
+      "year": null,
+      "type": "Soaring",
+      "sizes": ["15", "18", "21"],
+      "color": "Bleu",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-moustache-m2.jpg",
+      "trimSpeed": 37
+    },
+    {
+      "id": "ozone-chili-5",
+      "brand": "Ozone",
+      "model": "Chili 5",
+      "year": null,
+      "type": "Thermique",
+      "sizes": ["18", "20", "22", "24", "26", "28"],
+      "color": "Bleu",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-chili-5.jpg",
+      "trimSpeed": 39
+    },
+    {
+      "id": "ozone-arak",
+      "brand": "Ozone",
+      "model": "ARAK",
+      "year": null,
+      "type": "Thermique",
+      "sizes": ["21", "23", "25", "27"],
+      "color": "Bleu",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-arak.jpg",
+      "trimSpeed": 38
+    },
+    {
+      "id": "ozone-prop",
+      "brand": "Ozone",
+      "model": "Prop",
+      "year": null,
+      "type": "Soaring",
+      "sizes": ["18", "21", "24"],
+      "color": "Bleu",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-prop.jpg",
+      "trimSpeed": 36
+    },
+    {
+      "id": "ozone-line",
+      "brand": "Ozone",
+      "model": "Line",
+      "year": null,
+      "type": "Speedflying",
+      "sizes": ["12", "14", "15", "17"],
+      "color": "Bleu",
+      "imageURL": "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/WingLibrary/images/ozone-line.jpg",
+      "trimSpeed": 45
+    },
+    {
+      "id": "niviuk-koyot-5",
+      "brand": "Niviuk",
+      "model": "Koyot 5",
+      "year": null,
+      "type": "Soaring",
+      "sizes": ["22", "24", "26", "28", "30"],
+      "color": "Orange",
+      "imageURL": null,
+      "trimSpeed": 37
+    },
+    {
+      "id": "niviuk-hook-6",
+      "brand": "Niviuk",
+      "model": "Hook 6",
+      "year": null,
+      "type": "Thermique",
+      "sizes": ["21", "23", "25", "27", "29"],
+      "color": "Orange",
+      "imageURL": null,
+      "trimSpeed": 38
+    },
+    {
+      "id": "advance-epsilon-10",
+      "brand": "Advance",
+      "model": "Epsilon 10",
+      "year": null,
+      "type": "Thermique",
+      "sizes": ["23", "25", "27", "29", "31"],
+      "color": "Rouge",
+      "imageURL": null,
+      "trimSpeed": 38
+    },
+    {
+      "id": "advance-pi-3",
+      "brand": "Advance",
+      "model": "Pi 3",
+      "year": null,
+      "type": "Soaring",
+      "sizes": ["19", "21", "23"],
+      "color": "Rouge",
+      "imageURL": null,
+      "trimSpeed": 36
+    },
+    {
+      "id": "gin-atlas-2",
+      "brand": "Gin",
+      "model": "Atlas 2",
+      "year": null,
+      "type": "Thermique",
+      "sizes": ["S", "MS", "M", "ML", "L"],
+      "color": "Jaune",
+      "imageURL": null,
+      "trimSpeed": 38
+    },
+    {
+      "id": "gin-bolero-7",
+      "brand": "Gin",
+      "model": "Bolero 7",
+      "year": null,
+      "type": "Soaring",
+      "sizes": ["XS", "S", "M", "L", "XL"],
+      "color": "Jaune",
+      "imageURL": null,
+      "trimSpeed": 37
+    },
+    {
+      "id": "nova-ion-7",
+      "brand": "Nova",
+      "model": "Ion 7",
+      "year": null,
+      "type": "Thermique",
+      "sizes": ["XXS", "XS", "S", "M", "L", "XL"],
+      "color": "Vert",
+      "imageURL": null,
+      "trimSpeed": 38
+    },
+    {
+      "id": "nova-prion-5",
+      "brand": "Nova",
+      "model": "Prion 5",
+      "year": null,
+      "type": "Soaring",
+      "sizes": ["XS", "S", "M", "L"],
+      "color": "Vert",
+      "imageURL": null,
+      "trimSpeed": 36
+    }
+  ]
+}

@@ -24,6 +24,8 @@
 		3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
 		D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 362EAB42550846EE9491A703 /* ZipBackup.swift */; };
 		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
+		F1A2B3C4D5E6F7A8B9C0D1E2 /* WingLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F7A8B9C0D1E3 /* WingLibrary.swift */; };
+		F1A2B3C4D5E6F7A8B9C0D1E4 /* WindEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A2B3C4D5E6F7A8B9C0D1E5 /* WindEstimator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +87,8 @@
 		362EAB42550846EE9491A703 /* ZipBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipBackup.swift; sourceTree = "<group>"; };
 		38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		C310D0CB152141398E4E5E4F /* ChartsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
+		F1A2B3C4D5E6F7A8B9C0D1E3 /* WingLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WingLibrary.swift; sourceTree = "<group>"; };
+		F1A2B3C4D5E6F7A8B9C0D1E5 /* WindEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindEstimator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -176,6 +180,8 @@
 				2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */,
 				25C9798F2EDBB5DA009233B8 /* SharedModels.swift */,
 				362EAB42550846EE9491A703 /* ZipBackup.swift */,
+				F1A2B3C4D5E6F7A8B9C0D1E3 /* WingLibrary.swift */,
+				F1A2B3C4D5E6F7A8B9C0D1E5 /* WindEstimator.swift */,
 				257C68D72ECB7559005F3773 /* ParaFlightLog */,
 				257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */,
 				25145C2F2EDE61D80095D7A9 /* ParaFlightLogWidgetExtension */,
@@ -357,6 +363,8 @@
 				2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */,
 				D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */,
 				E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */,
+				F1A2B3C4D5E6F7A8B9C0D1E2 /* WingLibrary.swift in Sources */,
+				F1A2B3C4D5E6F7A8B9C0D1E4 /* WindEstimator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

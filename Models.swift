@@ -194,6 +194,13 @@ final class Flight {
     var maxSpeed: Double?            // Vitesse maximale au sol (m/s)
     var maxGForce: Double?           // G-force maximale (G)
 
+    // Estimation du vent (calculée)
+    var windSpeed: Double?           // Vitesse moyenne du vent (m/s)
+    var windSpeedMin: Double?        // Fourchette basse (m/s)
+    var windSpeedMax: Double?        // Fourchette haute (m/s)
+    var windDirection: Double?       // Direction du vent (degrés, 0-360, d'où il vient)
+    var windConfidence: Double?      // Indice de confiance (0.0 - 1.0)
+
     // Trace GPS du vol (stockée en JSON)
     var gpsTrackData: Data?
 

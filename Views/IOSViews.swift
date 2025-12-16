@@ -389,6 +389,8 @@ struct FlightDetailView: View {
     @Environment(\.modelContext) private var modelContext
     let flight: Flight
     @State private var showingEditSheet = false
+    @State private var showingExportSheet = false
+    @State private var exportURL: URL?
 
     // Calcul de la région pour afficher toute la trace GPS
     private var mapRegion: MKCoordinateRegion {
@@ -543,6 +545,11 @@ struct FlightDetailView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
 
+                        // Estimation du vent
+                        if flight.windSpeed != nil || flight.gpsTrack?.count ?? 0 >= 12 {
+                            WindEstimationCard(flight: flight)
+                        }
+
                         // Date et heure
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
@@ -658,17 +665,85 @@ struct FlightDetailView: View {
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingEditSheet = true
+                    Menu {
+                        Button {
+                            showingEditSheet = true
+                        } label: {
+                            Label("Modifier", systemImage: "pencil")
+                        }
+
+                        if flight.gpsTrack != nil && !flight.gpsTrack!.isEmpty {
+                            Button {
+                                exportFlightGPX()
+                            } label: {
+                                Label("Exporter GPX", systemImage: "square.and.arrow.up")
+                            }
+
+                            Button {
+                                exportFlightJSON()
+                            } label: {
+                                Label("Exporter JSON", systemImage: "doc.text")
+                            }
+                        }
                     } label: {
-                        Label("Modifier", systemImage: "pencil")
+                        Image(systemName: "ellipsis.circle")
                     }
                 }
             }
             .sheet(isPresented: $showingEditSheet) {
                 EditFlightView(flight: flight)
             }
+            .sheet(isPresented: $showingExportSheet) {
+                if let url = exportURL {
+                    ShareSheet(items: [url]) { _ in
+                        showingExportSheet = false
+                    }
+                }
+            }
         }
+    }
+
+    private func exportFlightGPX() {
+        guard let track = flight.gpsTrack, !track.isEmpty else { return }
+
+        let gpx = FlightExporter.exportToGPX(flight: flight, track: track)
+        let fileName = "ParaFlightLog_\(formatDateForFilename(flight.startDate)).gpx"
+
+        if let url = saveToTempFile(content: gpx, fileName: fileName) {
+            exportURL = url
+            showingExportSheet = true
+        }
+    }
+
+    private func exportFlightJSON() {
+        guard let track = flight.gpsTrack else { return }
+
+        let json = FlightExporter.exportToJSON(flight: flight, track: track)
+        let fileName = "ParaFlightLog_\(formatDateForFilename(flight.startDate)).json"
+
+        if let url = saveToTempFile(content: json, fileName: fileName) {
+            exportURL = url
+            showingExportSheet = true
+        }
+    }
+
+    private func saveToTempFile(content: String, fileName: String) -> URL? {
+        let tempDir = FileManager.default.temporaryDirectory
+        let fileURL = tempDir.appendingPathComponent(fileName)
+
+        do {
+            try content.write(to: fileURL, atomically: true, encoding: .utf8)
+            return fileURL
+        } catch {
+            print("❌ Erreur sauvegarde fichier: \(error)")
+            return nil
+        }
+    }
+
+    private func formatDateForFilename(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HHmmss"
+        return formatter.string(from: date)
     }
 
     private func formatDistance(_ distance: Double) -> String {
@@ -704,6 +779,325 @@ struct DetailStatCard: View {
         .padding(.vertical, 12)
         .background(color.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+// MARK: - WindEstimationCard
+
+struct WindEstimationCard: View {
+    let flight: Flight
+    @State private var isCalculating = false
+    @Environment(\.modelContext) private var modelContext
+
+    private var windUnit: String {
+        UserDefaults.standard.string(forKey: "windUnit") ?? "knots"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Label("Estimation du vent", systemImage: "wind")
+                    .font(.headline)
+                Spacer()
+                if let confidence = flight.windConfidence {
+                    ConfidenceBadge(confidence: confidence)
+                }
+            }
+
+            if let windSpeed = flight.windSpeed, windSpeed > 0 {
+                // Affichage du vent calculé
+                HStack(spacing: 20) {
+                    // Boussole du vent
+                    if let direction = flight.windDirection {
+                        WindCompassView(direction: direction)
+                            .frame(width: 70, height: 70)
+                    }
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        // Vitesse moyenne
+                        HStack(spacing: 4) {
+                            Text(formatWindSpeed(windSpeed))
+                                .font(.title)
+                                .fontWeight(.bold)
+                            Text(windUnit == "knots" ? "kn" : "km/h")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        // Direction
+                        if let direction = flight.windDirection {
+                            let cardinal = directionToCardinal(direction)
+                            Text("Vent de \(cardinal) (\(Int(direction))°)")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        // Fourchette
+                        if let min = flight.windSpeedMin, let max = flight.windSpeedMax {
+                            Text("Fourchette: \(formatWindRange(min: min, max: max))")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } else if isCalculating {
+                HStack {
+                    ProgressView()
+                    Text("Calcul en cours...")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                // Pas encore calculé
+                VStack(spacing: 8) {
+                    Text("Estimation non calculée")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    Button {
+                        calculateWind()
+                    } label: {
+                        Label("Calculer l'estimation", systemImage: "arrow.clockwise")
+                            .font(.subheadline)
+                    }
+                    .buttonStyle(.bordered)
+                }
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private func calculateWind() {
+        isCalculating = true
+        Task {
+            flight.calculateWindEstimation()
+            try? modelContext.save()
+            await MainActor.run {
+                isCalculating = false
+            }
+        }
+    }
+
+    private func formatWindSpeed(_ speed: Double) -> String {
+        let value = windUnit == "knots" ? speed * 1.94384 : speed * 3.6
+        return String(Int(value.rounded()))
+    }
+
+    private func formatWindRange(min: Double, max: Double) -> String {
+        let (minVal, maxVal) = windUnit == "knots"
+            ? (Int((min * 1.94384).rounded()), Int((max * 1.94384).rounded()))
+            : (Int((min * 3.6).rounded()), Int((max * 3.6).rounded()))
+        let unit = windUnit == "knots" ? "kn" : "km/h"
+        return "\(minVal)-\(maxVal) \(unit)"
+    }
+
+    private func directionToCardinal(_ degrees: Double) -> String {
+        let directions = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"]
+        let index = Int((degrees + 22.5) / 45.0) % 8
+        return directions[index]
+    }
+}
+
+// MARK: - WindCompassView
+
+struct WindCompassView: View {
+    let direction: Double  // Direction d'où vient le vent (degrés)
+
+    var body: some View {
+        ZStack {
+            // Cercle de fond
+            Circle()
+                .stroke(Color.gray.opacity(0.3), lineWidth: 2)
+
+            // Points cardinaux
+            ForEach(["N", "E", "S", "O"], id: \.self) { dir in
+                Text(dir)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .position(positionForDirection(dir, in: 70))
+            }
+
+            // Flèche du vent (pointe vers où va le vent)
+            Image(systemName: "arrow.down")
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(.teal)
+                .rotationEffect(.degrees(direction))
+        }
+    }
+
+    private func positionForDirection(_ dir: String, in size: CGFloat) -> CGPoint {
+        let center = size / 2
+        let radius = size / 2 - 10
+        let angle: Double
+        switch dir {
+        case "N": angle = -90
+        case "E": angle = 0
+        case "S": angle = 90
+        case "O": angle = 180
+        default: angle = 0
+        }
+        let radians = angle * .pi / 180
+        return CGPoint(
+            x: center + cos(radians) * radius,
+            y: center + sin(radians) * radius
+        )
+    }
+}
+
+// MARK: - ConfidenceBadge
+
+struct ConfidenceBadge: View {
+    let confidence: Double
+
+    var color: Color {
+        switch confidence {
+        case 0.7...: return .green
+        case 0.4..<0.7: return .orange
+        default: return .red
+        }
+    }
+
+    var text: String {
+        switch confidence {
+        case 0.7...: return "Fiable"
+        case 0.4..<0.7: return "Approximatif"
+        default: return "Incertain"
+        }
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(color.opacity(0.2))
+            .foregroundStyle(color)
+            .clipShape(Capsule())
+    }
+}
+
+// MARK: - FlightExporter
+
+struct FlightExporter {
+    /// Exporte un vol au format GPX
+    static func exportToGPX(flight: Flight, track: [GPSTrackPoint]) -> String {
+        let dateFormatter = ISO8601DateFormatter()
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        var gpx = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <gpx version="1.1" creator="ParaFlightLog"
+             xmlns="http://www.topografix.com/GPX/1/1"
+             xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+             xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
+          <metadata>
+            <name>\(escapeXML(flight.spotName ?? "Vol ParaFlightLog"))</name>
+            <time>\(dateFormatter.string(from: flight.startDate))</time>
+          </metadata>
+          <trk>
+            <name>\(escapeXML(flight.wing?.name ?? "Vol")) - \(flight.durationFormatted)</name>
+            <trkseg>
+
+        """
+
+        for point in track {
+            var trkpt = "      <trkpt lat=\"\(point.latitude)\" lon=\"\(point.longitude)\">"
+            if let altitude = point.altitude {
+                trkpt += "\n        <ele>\(altitude)</ele>"
+            }
+            trkpt += "\n        <time>\(dateFormatter.string(from: point.timestamp))</time>"
+            if let speed = point.speed {
+                trkpt += "\n        <extensions><speed>\(speed)</speed></extensions>"
+            }
+            trkpt += "\n      </trkpt>\n"
+            gpx += trkpt
+        }
+
+        gpx += """
+            </trkseg>
+          </trk>
+        </gpx>
+        """
+
+        return gpx
+    }
+
+    /// Exporte un vol au format JSON complet
+    static func exportToJSON(flight: Flight, track: [GPSTrackPoint]) -> String {
+        let dateFormatter = ISO8601DateFormatter()
+
+        var json: [String: Any] = [
+            "id": flight.id.uuidString,
+            "startDate": dateFormatter.string(from: flight.startDate),
+            "endDate": dateFormatter.string(from: flight.endDate),
+            "durationSeconds": flight.durationSeconds
+        ]
+
+        if let spotName = flight.spotName { json["spotName"] = spotName }
+        if let lat = flight.latitude { json["latitude"] = lat }
+        if let lon = flight.longitude { json["longitude"] = lon }
+        if let notes = flight.notes { json["notes"] = notes }
+
+        // Wing info
+        if let wing = flight.wing {
+            json["wing"] = [
+                "id": wing.id.uuidString,
+                "name": wing.name,
+                "size": wing.size as Any,
+                "type": wing.type as Any
+            ]
+        }
+
+        // Tracking data
+        if let alt = flight.startAltitude { json["startAltitude"] = alt }
+        if let alt = flight.maxAltitude { json["maxAltitude"] = alt }
+        if let alt = flight.endAltitude { json["endAltitude"] = alt }
+        if let dist = flight.totalDistance { json["totalDistance"] = dist }
+        if let speed = flight.maxSpeed { json["maxSpeed"] = speed }
+        if let gForce = flight.maxGForce { json["maxGForce"] = gForce }
+
+        // Wind estimation
+        if let wind = flight.windSpeed {
+            json["windEstimation"] = [
+                "speed": wind,
+                "speedMin": flight.windSpeedMin as Any,
+                "speedMax": flight.windSpeedMax as Any,
+                "direction": flight.windDirection as Any,
+                "confidence": flight.windConfidence as Any
+            ]
+        }
+
+        // GPS Track
+        let trackData = track.map { point -> [String: Any] in
+            var p: [String: Any] = [
+                "timestamp": dateFormatter.string(from: point.timestamp),
+                "latitude": point.latitude,
+                "longitude": point.longitude
+            ]
+            if let alt = point.altitude { p["altitude"] = alt }
+            if let speed = point.speed { p["speed"] = speed }
+            return p
+        }
+        json["gpsTrack"] = trackData
+
+        // Convert to JSON string
+        if let jsonData = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]),
+           let jsonString = String(data: jsonData, encoding: .utf8) {
+            return jsonString
+        }
+
+        return "{}"
+    }
+
+    private static func escapeXML(_ string: String) -> String {
+        string
+            .replacingOccurrences(of: "&", with: "&amp;")
+            .replacingOccurrences(of: "<", with: "&lt;")
+            .replacingOccurrences(of: ">", with: "&gt;")
+            .replacingOccurrences(of: "\"", with: "&quot;")
+            .replacingOccurrences(of: "'", with: "&apos;")
     }
 }
 
@@ -1525,19 +1919,43 @@ struct AddWingView: View {
     @State private var customColor: String = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
+    @State private var showingLibraryPicker = false
+    @State private var isLoadingImage = false
 
     let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
     let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
 
-
-
     var body: some View {
         NavigationStack {
             Form {
+                // Section bibliothèque
+                Section {
+                    Button {
+                        showingLibraryPicker = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "books.vertical")
+                                .foregroundStyle(.blue)
+                            Text("Choisir depuis la bibliothèque")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Bibliothèque")
+                } footer: {
+                    Text("Sélectionnez une voile préenregistrée pour remplir automatiquement les informations.")
+                }
+
                 Section("Photo") {
                     HStack {
                         Spacer()
-                        if let photoData = photoData, let uiImage = UIImage(data: photoData) {
+                        if isLoadingImage {
+                            ProgressView()
+                                .frame(width: 120, height: 120)
+                        } else if let photoData = photoData, let uiImage = UIImage(data: photoData) {
                             Image(uiImage: uiImage)
                                 .resizable()
                                 .scaledToFill()
@@ -1616,6 +2034,46 @@ struct AddWingView: View {
                 Task {
                     if let data = try? await newValue?.loadTransferable(type: Data.self) {
                         photoData = data
+                    }
+                }
+            }
+            .sheet(isPresented: $showingLibraryPicker) {
+                WingLibraryPickerView { selectedWing, selectedSize in
+                    applyLibraryWing(selectedWing, size: selectedSize)
+                    showingLibraryPicker = false
+                }
+            }
+        }
+    }
+
+    private func applyLibraryWing(_ libraryWing: WingLibraryItem, size selectedSize: String?) {
+        // Remplir les champs avec les données de la bibliothèque
+        name = libraryWing.fullName
+        if let selectedSize = selectedSize {
+            size = selectedSize
+        }
+        type = libraryWing.type
+        if let wingColor = libraryWing.color {
+            if colors.contains(wingColor) {
+                color = wingColor
+            } else {
+                color = "Autre..."
+                customColor = wingColor
+            }
+        }
+
+        // Télécharger l'image si disponible
+        if libraryWing.imageURL != nil {
+            isLoadingImage = true
+            Task {
+                if let imageData = await WingLibraryManager.shared.downloadImage(for: libraryWing) {
+                    await MainActor.run {
+                        photoData = imageData
+                        isLoadingImage = false
+                    }
+                } else {
+                    await MainActor.run {
+                        isLoadingImage = false
                     }
                 }
             }
@@ -3907,6 +4365,43 @@ struct SettingsView: View {
                     Text("Options Apple Watch")
                 } footer: {
                     Text("Ces paramètres sont synchronisés automatiquement avec votre Apple Watch.")
+                }
+
+                Section {
+                    HStack {
+                        Text("Poids équipé")
+                        Spacer()
+                        TextField("kg", text: Binding(
+                            get: {
+                                let weight = UserDefaults.standard.double(forKey: "pilotWeight")
+                                return weight > 0 ? String(Int(weight)) : ""
+                            },
+                            set: { newValue in
+                                if let weight = Double(newValue) {
+                                    UserDefaults.standard.set(weight, forKey: "pilotWeight")
+                                } else if newValue.isEmpty {
+                                    UserDefaults.standard.removeObject(forKey: "pilotWeight")
+                                }
+                            }
+                        ))
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.trailing)
+                        .frame(width: 60)
+                        Text("kg")
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Picker("Unité de vent", selection: Binding(
+                        get: { UserDefaults.standard.string(forKey: "windUnit") ?? "knots" },
+                        set: { UserDefaults.standard.set($0, forKey: "windUnit") }
+                    )) {
+                        Text("Noeuds (kn)").tag("knots")
+                        Text("km/h").tag("kmh")
+                    }
+                } header: {
+                    Text("Pilote")
+                } footer: {
+                    Text("Le poids équipé (pilote + sellette + équipement) permet d'améliorer l'estimation du vent.")
                 }
 
                 Section("Données") {
