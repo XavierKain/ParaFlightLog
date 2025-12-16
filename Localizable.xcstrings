@@ -3837,6 +3837,9 @@
         }
       }
     },
+    "Un vol de %@ a été interrompu. Voulez-vous le sauvegarder ?" : {
+
+    },
     "Valider" : {
       "localizations" : {
         "en" : {
@@ -4030,6 +4033,9 @@
           }
         }
       }
+    },
+    "Vol en cours récupéré" : {
+
     },
     "Vol terminé !" : {
       "localizations" : {

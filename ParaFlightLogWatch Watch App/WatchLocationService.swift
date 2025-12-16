@@ -57,6 +57,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private var lastTrackPointTime: Date?
     private let trackPointInterval: TimeInterval = 5.0  // Un point toutes les 5 secondes
 
+    // Limite de points GPS en mémoire pour éviter les crashes sur vols longs
+    // 600 points * 5 secondes = 50 minutes de vol
+    // Au-delà, on garde un point sur 2 pour les anciens
+    private let maxGPSPointsInMemory = 600
+
     override init() {
         super.init()
         // Initialiser le CLLocationManager immédiatement sur le main thread
@@ -155,6 +160,31 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     /// Retourne la trace GPS du vol
     func getGPSTrack() -> [GPSTrackPoint] {
         return gpsTrackPoints
+    }
+
+    /// Compacte la trace GPS pour économiser la mémoire
+    /// Garde un point sur 2 dans la première moitié du tableau
+    private func compactGPSTrack() {
+        let count = gpsTrackPoints.count
+        guard count > maxGPSPointsInMemory / 2 else { return }
+
+        // Garder un point sur 2 pour la première moitié (les anciens)
+        // Garder tous les points pour la deuxième moitié (les récents)
+        let halfCount = count / 2
+        var compacted: [GPSTrackPoint] = []
+
+        // Première moitié : un point sur 2
+        for i in stride(from: 0, to: halfCount, by: 2) {
+            compacted.append(gpsTrackPoints[i])
+        }
+
+        // Deuxième moitié : tous les points
+        for i in halfCount..<count {
+            compacted.append(gpsTrackPoints[i])
+        }
+
+        gpsTrackPoints = compacted
+        print("📍 GPS track compacted: \(count) → \(compacted.count) points")
     }
 
     // MARK: - Motion Tracking (G-Force)
@@ -325,11 +355,21 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             if let previous = previousLocation {
                 // Distance parcourue depuis la dernière position
                 let distance = location.distance(from: previous)
-                if distance > 0 && distance < 100 {  // Filtrer les valeurs aberrantes (> 100m entre 2 points)
+
+                // Filtres pour éviter le bruit GPS :
+                // 1. Distance minimale de 3m (le GPS peut fluctuer de 1-3m à l'arrêt)
+                // 2. Distance maximale de 100m entre 2 points (éviter les sauts GPS)
+                // 3. Précision horizontale acceptable (< 20m)
+                // 4. Vitesse GPS cohérente (> 0.5 m/s = 1.8 km/h, sinon considéré à l'arrêt)
+                let hasGoodAccuracy = location.horizontalAccuracy > 0 && location.horizontalAccuracy < 20
+                let isMoving = location.speed > 0.5  // Plus de 1.8 km/h
+                let isValidDistance = distance >= 3 && distance < 100
+
+                if isValidDistance && hasGoodAccuracy && isMoving {
                     totalDistance += distance
                 }
 
-                // Vitesse (location.speed est en m/s, -1 si invalide)
+                // Vitesse max (location.speed est en m/s, -1 si invalide)
                 let speed = location.speed
                 if speed > 0 && speed < 100 {  // Filtrer les vitesses aberrantes (< 360 km/h)
                     if speed > maxSpeed {
@@ -352,6 +392,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
                 )
                 gpsTrackPoints.append(trackPoint)
                 lastTrackPointTime = now
+
+                // Limiter le nombre de points en mémoire pour éviter les crashes
+                if gpsTrackPoints.count > maxGPSPointsInMemory {
+                    compactGPSTrack()
+                }
             }
         }
 

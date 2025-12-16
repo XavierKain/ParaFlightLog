@@ -18,8 +18,14 @@ struct ContentView: View {
     // Timer data stockée au niveau ContentView
     @State private var flightStartDate: Date?
 
+    // Alerte de récupération de session
+    @State private var showingRecoveryAlert: Bool = false
+    @State private var recoveredDuration: Int = 0
+
     // Référence au WorkoutManager pour le Water Lock
     private let workoutManager = WorkoutManager.shared
+    // Référence au FlightSessionManager pour la persistance
+    private let sessionManager = FlightSessionManager.shared
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -62,6 +68,74 @@ struct ContentView: View {
             Task(priority: .background) {
                 await workoutManager.requestAuthorization()
             }
+
+            // Vérifier s'il y a une session à récupérer après un crash
+            checkForRecoverableSession()
+        }
+        .alert("Vol en cours récupéré", isPresented: $showingRecoveryAlert) {
+            Button("Sauvegarder") {
+                saveRecoveredFlight()
+            }
+            Button("Annuler", role: .destructive) {
+                sessionManager.discardSession()
+            }
+        } message: {
+            Text("Un vol de \(formatRecoveredDuration(recoveredDuration)) a été interrompu. Voulez-vous le sauvegarder ?")
+        }
+    }
+
+    /// Vérifie s'il y a une session de vol à récupérer après un crash
+    private func checkForRecoverableSession() {
+        guard sessionManager.hasRecoverableSession,
+              let duration = sessionManager.recoveredFlightDuration else {
+            return
+        }
+
+        // Ne pas afficher si l'utilisateur est déjà en vol
+        guard !isFlying else { return }
+
+        recoveredDuration = duration
+        showingRecoveryAlert = true
+    }
+
+    /// Sauvegarde le vol récupéré
+    private func saveRecoveredFlight() {
+        guard let data = sessionManager.getRecoveredFlightData() else {
+            sessionManager.discardSession()
+            return
+        }
+
+        let flight = FlightDTO(
+            wingId: data.wingId,
+            startDate: data.startDate,
+            endDate: Date(),
+            durationSeconds: recoveredDuration,
+            startAltitude: data.startAltitude,
+            maxAltitude: data.maxAltitude,
+            endAltitude: data.endAltitude,
+            totalDistance: data.totalDistance,
+            maxSpeed: data.maxSpeed,
+            maxGForce: data.maxGForce > 1.0 ? data.maxGForce : nil,
+            gpsTrack: data.gpsTrack.isEmpty ? nil : data.gpsTrack
+        )
+
+        // Envoyer vers l'iPhone
+        watchManager.sendFlightToPhone(flight)
+
+        // Nettoyer la session
+        sessionManager.endSession()
+
+        print("✅ Recovered flight saved: \(recoveredDuration) seconds")
+    }
+
+    /// Formate la durée récupérée pour l'affichage
+    private func formatRecoveredDuration(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        if hours > 0 {
+            return "\(hours)h\(String(format: "%02d", minutes))"
+        } else {
+            return "\(minutes) min"
         }
     }
     
@@ -74,6 +148,9 @@ struct ContentView: View {
         // Définir la date AVANT d'afficher le fullScreenCover
         flightStartDate = Date()
         isFlying = true
+
+        // Démarrer la session de persistance pour sauvegarder automatiquement
+        sessionManager.startSession(wing: wing, spotName: locationService.currentSpotName)
 
         // Assigner activeFlightWing déclenche automatiquement le fullScreenCover(item:)
         // SwiftUI passe cette valeur directement au closure, donc pas de problème de timing
@@ -122,6 +199,9 @@ struct ContentView: View {
         // Envoyer vers l'iPhone
         watchManager.sendFlightToPhone(flight)
 
+        // Terminer la session de persistance (vol sauvegardé)
+        sessionManager.endSession()
+
         // Arrêter la session workout si active
         Task {
             await workoutManager.stopWorkoutSession()
@@ -138,6 +218,9 @@ struct ContentView: View {
     private func discardFlight() {
         // Annuler le vol sans sauvegarder
         locationService.stopFlightTracking()
+
+        // Annuler la session de persistance
+        sessionManager.discardSession()
 
         // Arrêter la session workout si active
         Task {
@@ -518,13 +601,36 @@ struct ActiveFlightView: View {
         } else {
             elapsedSeconds = 0
         }
-        
+
+        // Compteur pour la mise à jour périodique du sessionManager (toutes les 10 secondes)
+        var updateCounter = 0
+
         // Démarrer le timer sur le RunLoop principal
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
             if let start = flightStartDate {
                 elapsedSeconds = Int(Date().timeIntervalSince(start))
             }
+
+            // Mettre à jour les données dans le sessionManager toutes les 10 secondes
+            updateCounter += 1
+            if updateCounter >= 10 {
+                updateCounter = 0
+                updateSessionData()
+            }
         }
+    }
+
+    /// Met à jour les données de vol dans le FlightSessionManager
+    private func updateSessionData() {
+        FlightSessionManager.shared.updateSession(
+            startAltitude: locationService.startAltitude,
+            maxAltitude: locationService.maxAltitude,
+            currentAltitude: locationService.currentAltitude,
+            totalDistance: locationService.totalDistance,
+            maxSpeed: locationService.maxSpeed,
+            maxGForce: locationService.maxGForce,
+            gpsTrackPoints: locationService.getGPSTrack()
+        )
     }
     
     private func stopTimer() {
