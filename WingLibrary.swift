@@ -58,7 +58,7 @@ final class WingLibraryManager {
 
     // URL du fichier JSON distant (à configurer)
     // Pour le moment, on utilise un JSON local embarqué comme fallback
-    private let remoteURL = "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/main/ParaFlightLog/WingLibrary/wings.json"
+    private let remoteURL = "https://raw.githubusercontent.com/XavierKain/ParaFlightLog/new-features2/ParaFlightLog/WingLibrary/wings.json"
 
     // Cache local
     private let cacheKey = "wingLibraryCache"

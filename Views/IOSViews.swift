@@ -839,6 +839,18 @@ struct WindEstimationCard: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+
+                    Spacer()
+
+                    // Bouton recalculer
+                    Button {
+                        calculateWind()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.title3)
+                            .foregroundStyle(.blue)
+                    }
+                    .buttonStyle(.plain)
                 }
             } else if isCalculating {
                 HStack {
