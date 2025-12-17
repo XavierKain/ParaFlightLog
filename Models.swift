@@ -108,10 +108,15 @@ final class Wing {
 
         // Supprimer le fond blanc de l'image redimensionnée
         let processedImage = resizedImage.removeWhiteBackground() ?? resizedImage
+        print("🖼️ Image traitée pour \(name): \(processedImage.size) - transparence appliquée")
 
         // Toujours encoder en PNG pour préserver la transparence
-        let thumbnailData = processedImage.pngData()
+        guard let thumbnailData = processedImage.pngData() else {
+            print("❌ Impossible de convertir en PNG pour \(name)")
+            return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
+        }
 
+        print("✅ Miniature PNG créée pour \(name): \(thumbnailData.count) bytes")
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)
     }
 }

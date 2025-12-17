@@ -371,11 +371,18 @@ struct WindEstimator {
 extension Flight {
     /// Calcule et stocke l'estimation du vent pour ce vol
     func calculateWindEstimation() {
-        guard let track = gpsTrack, !track.isEmpty else { return }
+        guard let track = gpsTrack, !track.isEmpty else {
+            print("⚠️ Pas de trace GPS pour ce vol")
+            return
+        }
+
+        print("🌬️ Calcul du vent avec \(track.count) points GPS")
 
         let wingType = wing?.type
         let wingSize = wing?.size.flatMap { Double($0) }
         let pilotWeight = UserDefaults.standard.double(forKey: "pilotWeight")
+
+        print("📊 Paramètres: type=\(wingType ?? "nil"), taille=\(wingSize ?? 0), poids=\(pilotWeight)")
 
         if let estimation = WindEstimator.estimate(
             from: track,
@@ -383,11 +390,14 @@ extension Flight {
             wingSize: wingSize,
             pilotWeight: pilotWeight > 0 ? pilotWeight : nil
         ) {
+            print("✅ Estimation: \(estimation.speed) m/s, direction \(estimation.direction)°, confiance \(estimation.confidence)")
             windSpeed = estimation.speed
             windSpeedMin = estimation.speedMin
             windSpeedMax = estimation.speedMax
             windDirection = estimation.direction
             windConfidence = estimation.confidence
+        } else {
+            print("❌ Impossible d'estimer le vent")
         }
     }
 

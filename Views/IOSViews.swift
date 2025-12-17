@@ -4393,10 +4393,16 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    // Bouton pour forcer la sync des voiles
+                    Button {
+                        watchManager.sendWingsToWatch()
+                    } label: {
+                        Label("Resynchroniser les voiles", systemImage: "arrow.triangle.2.circlepath")
+                    }
                 } header: {
                     Text("Options Apple Watch")
                 } footer: {
-                    Text("Ces paramètres sont synchronisés automatiquement avec votre Apple Watch.")
+                    Text("Ces paramètres sont synchronisés automatiquement avec votre Apple Watch. Utilisez le bouton de resynchronisation si les images des voiles ne s'affichent pas correctement.")
                 }
 
                 Section {

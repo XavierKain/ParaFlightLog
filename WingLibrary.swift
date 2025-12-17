@@ -401,6 +401,8 @@ struct WingLibraryRow: View {
 
     @State private var selectedSize: String?
     @State private var isExpanded = false
+    @State private var wingImage: UIImage?
+    @State private var isLoadingImage = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -411,13 +413,26 @@ struct WingLibraryRow: View {
                 }
             } label: {
                 HStack(spacing: 12) {
-                    // Icône type
-                    Image(systemName: wingTypeIcon(wing.type))
-                        .font(.title2)
-                        .foregroundStyle(wingTypeColor(wing.type))
-                        .frame(width: 40, height: 40)
-                        .background(wingTypeColor(wing.type).opacity(0.15))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    // Image de la voile (détourée) ou icône par défaut
+                    Group {
+                        if let image = wingImage {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 50, height: 50)
+                        } else if isLoadingImage {
+                            ProgressView()
+                                .frame(width: 50, height: 50)
+                        } else {
+                            Image(systemName: wingTypeIcon(wing.type))
+                                .font(.title2)
+                                .foregroundStyle(wingTypeColor(wing.type))
+                                .frame(width: 50, height: 50)
+                                .background(wingTypeColor(wing.type).opacity(0.15))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                        }
+                    }
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(wing.fullName)
@@ -491,6 +506,36 @@ struct WingLibraryRow: View {
             }
         }
         .padding(.vertical, 4)
+        .onAppear {
+            loadWingImage()
+        }
+    }
+
+    private func loadWingImage() {
+        guard let urlString = wing.imageURL, let url = URL(string: urlString) else { return }
+
+        isLoadingImage = true
+        Task {
+            do {
+                let (data, _) = try await URLSession.shared.data(from: url)
+                if let image = UIImage(data: data) {
+                    // Appliquer le détourage du fond blanc
+                    let processedImage = image.removeWhiteBackground() ?? image
+                    await MainActor.run {
+                        wingImage = processedImage
+                        isLoadingImage = false
+                    }
+                } else {
+                    await MainActor.run {
+                        isLoadingImage = false
+                    }
+                }
+            } catch {
+                await MainActor.run {
+                    isLoadingImage = false
+                }
+            }
+        }
     }
 
     private func wingTypeIcon(_ type: String) -> String {

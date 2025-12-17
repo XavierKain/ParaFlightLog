@@ -2507,6 +2507,9 @@
     "kn" : {
 
     },
+    "L'estimation du vent nécessite une trace GPS enregistrée depuis l'Apple Watch" : {
+
+    },
     "Lancer un vol" : {
       "localizations" : {
         "en" : {
@@ -3897,6 +3900,9 @@
       }
     },
     "Toutes les marques" : {
+
+    },
+    "Trace GPS non disponible" : {
 
     },
     "Type" : {
