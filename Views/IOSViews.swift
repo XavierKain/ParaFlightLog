@@ -793,6 +793,11 @@ struct WindEstimationCard: View {
         UserDefaults.standard.string(forKey: "windUnit") ?? "knots"
     }
 
+    private var hasGPSTrack: Bool {
+        guard let track = flight.gpsTrack else { return false }
+        return !track.isEmpty
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
@@ -859,8 +864,22 @@ struct WindEstimationCard: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
+            } else if !hasGPSTrack {
+                // Pas de trace GPS
+                VStack(spacing: 8) {
+                    Image(systemName: "location.slash")
+                        .font(.title2)
+                        .foregroundStyle(.secondary)
+                    Text("Trace GPS non disponible")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Text("L'estimation du vent nécessite une trace GPS enregistrée depuis l'Apple Watch")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                }
             } else {
-                // Pas encore calculé
+                // Pas encore calculé mais trace GPS disponible
                 VStack(spacing: 8) {
                     Text("Estimation non calculée")
                         .font(.subheadline)
@@ -4252,6 +4271,7 @@ struct SettingsView: View {
     @State private var showingDocumentPicker = false
     @State private var isImporting = false
     @State private var showingExportView = false
+    @FocusState private var isWeightFieldFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -4399,6 +4419,7 @@ struct SettingsView: View {
                         .keyboardType(.numberPad)
                         .multilineTextAlignment(.trailing)
                         .frame(width: 60)
+                        .focused($isWeightFieldFocused)
                         Text("kg")
                             .foregroundStyle(.secondary)
                     }
@@ -4467,6 +4488,14 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Réglages")
+            .toolbar {
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("OK") {
+                        isWeightFieldFocused = false
+                    }
+                }
+            }
             .sheet(isPresented: $showingDocumentPicker) {
                 DocumentPicker { url in
                     importExcelFile(from: url)

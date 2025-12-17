@@ -227,31 +227,27 @@ final class WingLibraryManager {
     /// Données par défaut si rien d'autre n'est disponible
     private func loadDefaultWings() {
         wings = [
-            // Ozone
-            WingLibraryItem(id: "ozone-moustache-m1-2025", brand: "Ozone", model: "Moustache M1", year: 2025, type: "Soaring", sizes: ["13", "15", "18", "22"], color: "Pétrole", imageURL: nil, trimSpeed: 36),
-            WingLibraryItem(id: "ozone-moustache-m1-2024", brand: "Ozone", model: "Moustache M1", year: 2024, type: "Soaring", sizes: ["13", "15", "18", "22"], color: "Pétrole", imageURL: nil, trimSpeed: 36),
-            WingLibraryItem(id: "ozone-moustache-m2", brand: "Ozone", model: "Moustache M2", year: nil, type: "Soaring", sizes: ["15", "18", "21"], color: "Bleu", imageURL: nil, trimSpeed: 37),
-            WingLibraryItem(id: "ozone-chili-5", brand: "Ozone", model: "Chili 5", year: nil, type: "Thermique", sizes: ["18", "20", "22", "24", "26", "28"], color: "Bleu", imageURL: nil, trimSpeed: 39),
-            WingLibraryItem(id: "ozone-arak", brand: "Ozone", model: "ARAK", year: nil, type: "Thermique", sizes: ["21", "23", "25", "27"], color: "Bleu", imageURL: nil, trimSpeed: 38),
-            WingLibraryItem(id: "ozone-prop", brand: "Ozone", model: "Prop", year: nil, type: "Soaring", sizes: ["18", "21", "24"], color: "Bleu", imageURL: nil, trimSpeed: 36),
-            WingLibraryItem(id: "ozone-line", brand: "Ozone", model: "Line", year: nil, type: "Speedflying", sizes: ["12", "14", "15", "17"], color: "Bleu", imageURL: nil, trimSpeed: 45),
+            // Flare
+            WingLibraryItem(id: "flare-moustache-m1-2025", brand: "Flare", model: "Moustache M1", year: 2025, type: "Soaring", sizes: ["13", "15", "18", "22"], color: "Pétrole", imageURL: nil, trimSpeed: 36),
+            WingLibraryItem(id: "flare-moustache-m1-2024", brand: "Flare", model: "Moustache M1", year: 2024, type: "Soaring", sizes: ["13", "15", "18", "22"], color: "Pétrole", imageURL: nil, trimSpeed: 36),
+            WingLibraryItem(id: "flare-moustache-m2", brand: "Flare", model: "Moustache M2", year: nil, type: "Soaring", sizes: ["15", "18", "21"], color: "Bleu", imageURL: nil, trimSpeed: 37),
+            WingLibraryItem(id: "flare-arak", brand: "Flare", model: "ARAK", year: nil, type: "Thermique", sizes: ["21", "23", "25", "27"], color: "Bleu", imageURL: nil, trimSpeed: 38),
+            WingLibraryItem(id: "flare-prop", brand: "Flare", model: "Prop", year: nil, type: "Soaring", sizes: ["18", "21", "24"], color: "Bleu", imageURL: nil, trimSpeed: 36),
+            WingLibraryItem(id: "flare-line", brand: "Flare", model: "Line", year: nil, type: "Speedflying", sizes: ["12", "14", "15", "17"], color: "Bleu", imageURL: nil, trimSpeed: 45),
 
-            // Niviuk
-            WingLibraryItem(id: "niviuk-koyot-5", brand: "Niviuk", model: "Koyot 5", year: nil, type: "Soaring", sizes: ["22", "24", "26", "28", "30"], color: "Orange", imageURL: nil, trimSpeed: 37),
-            WingLibraryItem(id: "niviuk-hook-6", brand: "Niviuk", model: "Hook 6", year: nil, type: "Thermique", sizes: ["21", "23", "25", "27", "29"], color: "Orange", imageURL: nil, trimSpeed: 38),
-
-            // Advance
-            WingLibraryItem(id: "advance-epsilon-10", brand: "Advance", model: "Epsilon 10", year: nil, type: "Thermique", sizes: ["23", "25", "27", "29", "31"], color: "Rouge", imageURL: nil, trimSpeed: 38),
-            WingLibraryItem(id: "advance-pi-3", brand: "Advance", model: "Pi 3", year: nil, type: "Soaring", sizes: ["19", "21", "23"], color: "Rouge", imageURL: nil, trimSpeed: 36),
-
-            // Gin
-            WingLibraryItem(id: "gin-atlas-2", brand: "Gin", model: "Atlas 2", year: nil, type: "Thermique", sizes: ["S", "MS", "M", "ML", "L"], color: "Jaune", imageURL: nil, trimSpeed: 38),
-            WingLibraryItem(id: "gin-bolero-7", brand: "Gin", model: "Bolero 7", year: nil, type: "Soaring", sizes: ["XS", "S", "M", "L", "XL"], color: "Jaune", imageURL: nil, trimSpeed: 37),
-
-            // Nova
-            WingLibraryItem(id: "nova-ion-7", brand: "Nova", model: "Ion 7", year: nil, type: "Thermique", sizes: ["XXS", "XS", "S", "M", "L", "XL"], color: "Vert", imageURL: nil, trimSpeed: 38),
-            WingLibraryItem(id: "nova-prion-5", brand: "Nova", model: "Prion 5", year: nil, type: "Soaring", sizes: ["XS", "S", "M", "L"], color: "Vert", imageURL: nil, trimSpeed: 36)
+            // Skywalk
+            WingLibraryItem(id: "skywalk-chili-5", brand: "Skywalk", model: "Chili 5", year: nil, type: "Thermique", sizes: ["18", "20", "22", "24", "26", "28"], color: "Bleu", imageURL: nil, trimSpeed: 39)
         ]
+    }
+
+    /// Vide le cache pour forcer le rechargement
+    func clearCache() {
+        UserDefaults.standard.removeObject(forKey: cacheKey)
+        UserDefaults.standard.removeObject(forKey: cacheVersionKey)
+        UserDefaults.standard.removeObject(forKey: cacheDateKey)
+        wings = []
+        lastUpdated = nil
+        print("🗑️ Cache de la bibliothèque vidé")
     }
 }
 
