@@ -249,8 +249,26 @@ struct WindEstimator {
         let minSpeed = minEntry.value
         let tailWindDirection = Double(maxEntry.key) * 45  // Direction où on va le plus vite
 
-        // Estimation du vent
-        // Vent = (vitesse max - vitesse min) / 2
+        // Calculer la vitesse de trim ajustée en fonction du poids
+        // La charge alaire affecte la vitesse de trim
+        let baseTrimSpeed = (trimSpeeds[wingType ?? ""] ?? defaultTrimSpeed) / 3.6  // en m/s
+        var adjustedTrimSpeed = baseTrimSpeed
+
+        if let weight = pilotWeight, weight > 0, let size = wingSize, size > 0 {
+            // Charge alaire = poids / surface
+            let wingLoading = weight / size
+            // Charge alaire de référence (typiquement 4.5-5.5 kg/m²)
+            let referenceLoading = 5.0
+            // Ajustement: +/- 3% par kg/m² d'écart
+            let loadingDelta = wingLoading - referenceLoading
+            let speedAdjustment = 1.0 + (loadingDelta * 0.03)
+            adjustedTrimSpeed = baseTrimSpeed * speedAdjustment
+            print("📊 Charge alaire: \(String(format: "%.1f", wingLoading)) kg/m², vitesse trim ajustée: \(String(format: "%.1f", adjustedTrimSpeed * 3.6)) km/h")
+        }
+
+        // Estimation du vent basée sur la différence de vitesses
+        // En théorie: vitesse_sol = vitesse_air ± vitesse_vent
+        // Donc: vent ≈ (vit_max - vit_min) / 2
         let windSpeed = (maxSpeed - minSpeed) / 2
 
         // Direction du vent = opposé de la direction de vitesse max
@@ -258,15 +276,24 @@ struct WindEstimator {
         var windDirection = tailWindDirection + 180
         if windDirection >= 360 { windDirection -= 360 }
 
+        // Méthode alternative avec trim speed ajusté:
+        // Si on connaît la vitesse air (trim), on peut affiner l'estimation
+        // vitesse_air = (vit_max + vit_min) / 2 devrait être proche du trim
+        let estimatedAirSpeed = (maxSpeed + minSpeed) / 2
+        let trimDelta = abs(estimatedAirSpeed - adjustedTrimSpeed)
+
+        print("📊 Vitesse air estimée: \(String(format: "%.1f", estimatedAirSpeed * 3.6)) km/h, trim attendu: \(String(format: "%.1f", adjustedTrimSpeed * 3.6)) km/h")
+
         // Calcul de l'incertitude basée sur la variance des mesures
         let allSpeeds = segments.map { $0.groundSpeed }
         let meanSpeed = allSpeeds.reduce(0, +) / Double(allSpeeds.count)
         let variance = allSpeeds.map { pow($0 - meanSpeed, 2) }.reduce(0, +) / Double(allSpeeds.count)
         let stdDev = sqrt(variance)
 
-        // Fourchette basée sur l'écart-type
-        let speedMin = max(0, windSpeed - stdDev * 0.5)
-        let speedMax = windSpeed + stdDev * 0.5
+        // Fourchette basée sur l'écart-type et l'incertitude du trim
+        let trimUncertainty = trimDelta * 0.3  // 30% de l'écart au trim
+        let speedMin = max(0, windSpeed - stdDev * 0.5 - trimUncertainty)
+        let speedMax = windSpeed + stdDev * 0.5 + trimUncertainty
 
         // Calcul du niveau de confiance
         var confidence = calculateConfidence(
@@ -276,15 +303,20 @@ struct WindEstimator {
             variance: variance
         )
 
-        // Ajuster la confiance si on n'a pas le poids pilote
-        if pilotWeight == nil {
+        // Ajuster la confiance si la vitesse air estimée est loin du trim
+        if trimDelta > 3 {  // Plus de 3 m/s d'écart
+            confidence *= 0.8
+        }
+
+        // Bonus de confiance si on a le poids pilote (meilleur ajustement du trim)
+        if pilotWeight != nil && wingSize != nil {
+            confidence *= 1.1  // +10% de confiance
+        } else if pilotWeight == nil {
             confidence *= 0.9
         }
 
         // Vérification de plausibilité
-        // La vitesse sol max ne devrait pas dépasser trim + vent
-        let trimSpeed = (trimSpeeds[wingType ?? ""] ?? defaultTrimSpeed) / 3.6  // en m/s
-        let maxExpectedGroundSpeed = trimSpeed + windSpeed + 5  // +5 m/s de marge
+        let maxExpectedGroundSpeed = adjustedTrimSpeed + windSpeed + 5  // +5 m/s de marge
 
         if maxSpeed > maxExpectedGroundSpeed * 1.5 {
             confidence *= 0.7  // Réduire la confiance si les données semblent incohérentes
@@ -379,7 +411,13 @@ extension Flight {
         print("🌬️ Calcul du vent avec \(track.count) points GPS")
 
         let wingType = wing?.type
-        let wingSize = wing?.size.flatMap { Double($0) }
+        // Parser la taille de la voile (peut être "18", "18m²", etc.)
+        var wingSize: Double? = nil
+        if let sizeStr = wing?.size {
+            // Extraire les chiffres de la chaîne
+            let digits = sizeStr.filter { $0.isNumber || $0 == "." || $0 == "," }
+            wingSize = Double(digits.replacingOccurrences(of: ",", with: "."))
+        }
         let pilotWeight = UserDefaults.standard.double(forKey: "pilotWeight")
 
         print("📊 Paramètres: type=\(wingType ?? "nil"), taille=\(wingSize ?? 0), poids=\(pilotWeight)")
