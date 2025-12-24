@@ -77,14 +77,14 @@ final class Wing {
     }
 
     /// Convertit en DTO avec miniature pour la Watch (48x48 max)
-    /// Supprime le fond blanc et redimensionne en préservant la transparence
+    /// Redimensionne simplement l'image en préservant la transparence existante
+    /// (pas de traitement du fond blanc car les images sont déjà détourées)
     func toDTOWithThumbnail() -> WingDTO {
         // Pas de photo = pas de miniature
         guard let originalData = photoData else {
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
-        // Pour les images, toujours traiter pour supprimer le fond blanc
         guard let image = UIImage(data: originalData) else {
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
@@ -94,7 +94,7 @@ final class Wing {
         let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
         let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
 
-        // Utiliser UIGraphicsImageRenderer avec format non-opaque pour la transparence
+        // Utiliser UIGraphicsImageRenderer avec format non-opaque pour préserver la transparence
         let format = UIGraphicsImageRendererFormat()
         format.opaque = false
         format.scale = 1.0  // Éviter le scale retina pour garder la taille exacte
@@ -106,11 +106,9 @@ final class Wing {
             image.draw(in: CGRect(origin: .zero, size: newSize))
         }
 
-        // Supprimer le fond blanc de l'image redimensionnée
-        let processedImage = resizedImage.removeWhiteBackground() ?? resizedImage
-
-        // Toujours encoder en PNG pour préserver la transparence
-        let thumbnailData = processedImage.pngData()
+        // Encoder en PNG pour préserver la transparence existante
+        // (pas de removeWhiteBackground car les images sont déjà détourées)
+        let thumbnailData = resizedImage.pngData()
 
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)
     }

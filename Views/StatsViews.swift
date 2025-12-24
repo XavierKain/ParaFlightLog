@@ -100,8 +100,14 @@ struct StatsByWingSection: View {
     let wings: [Wing]
     @State private var selectedWing: Wing?
 
-    var wingStats: [(wing: Wing, sessions: Int, hours: Int, minutes: Int)] {
-        wings.compactMap { wing in
+    // Cache des stats par voile - calculé une fois à l'init
+    private let wingStats: [(wing: Wing, sessions: Int, hours: Int, minutes: Int)]
+
+    init(flights: [Flight], wings: [Wing]) {
+        self.flights = flights
+        self.wings = wings
+        // Pré-calculer les stats dès l'init
+        self.wingStats = wings.compactMap { wing in
             let wingFlights = flights.filter { $0.wing?.id == wing.id }
             guard !wingFlights.isEmpty else { return nil }
 
@@ -305,10 +311,14 @@ struct StatsBySpotSection: View {
     let flights: [Flight]
     @State private var selectedSpot: String?
 
-    var spotStats: [(spot: String, sessions: Int, hours: Int, minutes: Int)] {
-        let grouped = Dictionary(grouping: flights, by: { $0.spotName ?? "Spot inconnu" })
+    // Cache des stats par spot - calculé une fois à l'init
+    private let spotStats: [(spot: String, sessions: Int, hours: Int, minutes: Int)]
 
-        return grouped.map { spot, spotFlights in
+    init(flights: [Flight]) {
+        self.flights = flights
+        // Pré-calculer les stats dès l'init
+        let grouped = Dictionary(grouping: flights, by: { $0.spotName ?? "Spot inconnu" })
+        self.spotStats = grouped.map { spot, spotFlights in
             let totalSeconds = spotFlights.reduce(0) { $0 + $1.durationSeconds }
             return (
                 spot: spot,

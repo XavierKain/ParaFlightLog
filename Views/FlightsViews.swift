@@ -100,25 +100,14 @@ struct FlightsView: View {
                                             }
                                     }
 
-                                    // Bouton "Charger plus" si nécessaire
+                                    // Infinite scroll : charger plus automatiquement
                                     if hasMoreFlights {
-                                        Button {
-                                            loadMoreFlights()
-                                        } label: {
-                                            HStack {
-                                                Text("Charger \(min(pageSize, remainingFlightsCount)) vols supplémentaires")
-                                                    .font(.subheadline)
-                                                Text("(\(remainingFlightsCount) restants)")
-                                                    .font(.caption)
-                                                    .foregroundStyle(.secondary)
-                                            }
+                                        ProgressView()
                                             .frame(maxWidth: .infinity)
                                             .padding()
-                                            .background(Color(.systemGray6))
-                                            .cornerRadius(12)
-                                        }
-                                        .padding(.horizontal, 16)
-                                        .padding(.top, 8)
+                                            .onAppear {
+                                                loadMoreFlights()
+                                            }
                                     }
                                 }
                             }

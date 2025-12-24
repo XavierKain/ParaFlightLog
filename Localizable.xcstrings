@@ -21,6 +21,9 @@
     "(%@ m²)" : {
 
     },
+    "(%lld restants)" : {
+
+    },
     "\\(count) spot détecté" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1554,6 +1557,9 @@
           }
         }
       }
+    },
+    "Charger %lld vols supplémentaires" : {
+
     },
     "Choisir la période" : {
       "localizations" : {

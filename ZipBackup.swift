@@ -172,7 +172,7 @@ struct ZipBackup {
 
                 let metadataData = try Data(contentsOf: metadataURL)
                 let metadata = try JSONDecoder().decode(BackupMetadata.self, from: metadataData)
-                print("📦 Importing backup from \(metadata.exportDate): \(metadata.wingsCount) wings, \(metadata.flightsCount) flights")
+                logInfo("Importing backup from \(metadata.exportDate): \(metadata.wingsCount) wings, \(metadata.flightsCount) flights", category: .dataController)
 
                 // 2. Parser wings.csv
                 let wingsURL = extractedDir.appendingPathComponent("wings.csv")

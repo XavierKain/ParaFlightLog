@@ -45,7 +45,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     func requestLocation(completion: @escaping (CLLocation?) -> Void) {
         // Vérifier les permissions
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
-            print("⚠️ Location permission not granted")
+            logWarning("Location permission not granted", category: .location)
             completion(nil)
             return
         }
@@ -57,7 +57,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     /// Démarre le suivi de position en continu (utile pendant un vol)
     func startUpdatingLocation() {
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
-            print("⚠️ Location permission not granted")
+            logWarning("Location permission not granted", category: .location)
             return
         }
 
@@ -78,20 +78,20 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     func reverseGeocode(location: CLLocation, completion: @escaping (String?) -> Void) {
         geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
             if let error = error {
-                print("❌ Reverse geocoding error: \(error.localizedDescription)")
+                logError("Reverse geocoding error: \(error.localizedDescription)", category: .location)
                 completion(nil)
                 return
             }
 
             guard let placemark = placemarks?.first else {
-                print("⚠️ No placemark found")
+                logWarning("No placemark found", category: .location)
                 completion(nil)
                 return
             }
 
             // Stratégie : locality > subLocality > administrativeArea
             let spotName = self?.extractSpotName(from: placemark)
-            print("✅ Spot found: \(spotName ?? "Unknown")")
+            logDebug("Spot found: \(spotName ?? "Unknown")", category: .location)
             completion(spotName)
         }
     }
@@ -123,7 +123,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         guard let location = locations.last else { return }
 
         lastKnownLocation = location
-        print("📍 Location updated: \(location.coordinate.latitude), \(location.coordinate.longitude)")
+        logDebug("Location updated: \(location.coordinate.latitude), \(location.coordinate.longitude)", category: .location)
 
         // Si on a un completion handler en attente, l'appeler
         if let completion = locationCompletionHandler {
@@ -133,7 +133,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        print("❌ Location error: \(error.localizedDescription)")
+        logError("Location error: \(error.localizedDescription)", category: .location)
 
         // Appeler le completion handler avec nil
         if let completion = locationCompletionHandler {
@@ -144,11 +144,11 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
-        print("🔐 Authorization status changed: \(authorizationStatus.rawValue)")
+        logInfo("Authorization status changed: \(authorizationStatus.rawValue)", category: .location)
 
         // Si l'autorisation vient d'être accordée, on peut démarrer la localisation
         if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
-            print("✅ Location authorized")
+            logInfo("Location authorized", category: .location)
         }
     }
 }
