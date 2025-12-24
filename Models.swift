@@ -100,14 +100,13 @@ final class Wing {
         format.scale = 1.0  // Éviter le scale retina pour garder la taille exacte
 
         let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
-        let resizedImage = renderer.image { context in
-            // Effacer avec transparent (pas de couleur de fond)
-            context.cgContext.clear(CGRect(origin: .zero, size: newSize))
+        let resizedImage = renderer.image { _ in
+            // Dessiner directement l'image - le format non-opaque préserve la transparence
+            // NE PAS utiliser clear() car cela peut corrompre les pixels transparents des PNG
             image.draw(in: CGRect(origin: .zero, size: newSize))
         }
 
         // Encoder en PNG pour préserver la transparence existante
-        // (pas de removeWhiteBackground car les images sont déjà détourées)
         let thumbnailData = resizedImage.pngData()
 
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)
