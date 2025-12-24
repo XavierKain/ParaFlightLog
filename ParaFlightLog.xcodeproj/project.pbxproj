@@ -24,6 +24,11 @@
 		3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
 		D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 362EAB42550846EE9491A703 /* ZipBackup.swift */; };
 		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
+		AA0000012EEBB00000000001 /* FlightsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000002EEBB00000000001 /* FlightsViews.swift */; };
+		AA0000032EEBB00000000002 /* WingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022EEBB00000000002 /* WingsViews.swift */; };
+		AA0000052EEBB00000000003 /* StatsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000042EEBB00000000003 /* StatsViews.swift */; };
+		AA0000072EEBB00000000004 /* TimerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000062EEBB00000000004 /* TimerViews.swift */; };
+		AA0000092EEBB00000000005 /* SettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000082EEBB00000000005 /* SettingsViews.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -85,6 +90,11 @@
 		362EAB42550846EE9491A703 /* ZipBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipBackup.swift; sourceTree = "<group>"; };
 		38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		C310D0CB152141398E4E5E4F /* ChartsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
+		AA0000002EEBB00000000001 /* FlightsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightsViews.swift; sourceTree = "<group>"; };
+		AA0000022EEBB00000000002 /* WingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WingsViews.swift; sourceTree = "<group>"; };
+		AA0000042EEBB00000000003 /* StatsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsViews.swift; sourceTree = "<group>"; };
+		AA0000062EEBB00000000004 /* TimerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerViews.swift; sourceTree = "<group>"; };
+		AA0000082EEBB00000000005 /* SettingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -159,6 +169,11 @@
 			children = (
 				2564C6542EDBB92000C716D0 /* IOSViews.swift */,
 				C310D0CB152141398E4E5E4F /* ChartsView.swift */,
+				AA0000002EEBB00000000001 /* FlightsViews.swift */,
+				AA0000022EEBB00000000002 /* WingsViews.swift */,
+				AA0000042EEBB00000000003 /* StatsViews.swift */,
+				AA0000062EEBB00000000004 /* TimerViews.swift */,
+				AA0000082EEBB00000000005 /* SettingsViews.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -357,6 +372,11 @@
 				2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */,
 				D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */,
 				E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */,
+				AA0000012EEBB00000000001 /* FlightsViews.swift in Sources */,
+				AA0000032EEBB00000000002 /* WingsViews.swift in Sources */,
+				AA0000052EEBB00000000003 /* StatsViews.swift in Sources */,
+				AA0000072EEBB00000000004 /* TimerViews.swift in Sources */,
+				AA0000092EEBB00000000005 /* SettingsViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
