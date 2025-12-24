@@ -190,23 +190,21 @@ struct StatsByWingSection: View {
                             selectedWing = stat.wing
                         } label: {
                             HStack(spacing: 8) {
-                                // Photo de la voile (24x24)
-                                if let photoData = stat.wing.photoData, let uiImage = UIImage(data: photoData) {
-                                    Image(uiImage: uiImage)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 24, height: 24)
-                                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                                } else {
+                                // Photo de la voile avec cache (24x24)
+                                CachedImage(
+                                    data: stat.wing.photoData,
+                                    key: stat.wing.id.uuidString,
+                                    size: CGSize(width: 24, height: 24)
+                                ) {
                                     RoundedRectangle(cornerRadius: 4)
                                         .fill(colorFromString(stat.wing.color ?? "Gris").opacity(0.3))
-                                        .frame(width: 24, height: 24)
                                         .overlay {
                                             Image(systemName: "wind")
                                                 .font(.system(size: 10))
                                                 .foregroundStyle(colorFromString(stat.wing.color ?? "Gris"))
                                         }
                                 }
+                                .clipShape(RoundedRectangle(cornerRadius: 4))
 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(abbreviateWingName(stat.wing.name))

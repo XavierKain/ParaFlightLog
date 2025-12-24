@@ -26,6 +26,10 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     private var syncRetryCount = 0
     private var isSyncing = false
 
+    // Debouncing pour éviter les syncs trop fréquentes
+    private var pendingSyncWorkItem: DispatchWorkItem?
+    private let syncDebounceInterval: TimeInterval = 0.5
+
     private override init() {
         super.init()
         // Note: La session sera activée après injection du dataController
@@ -94,10 +98,26 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     // MARK: - Send Wings to Watch
 
-    /// Envoie la liste des voiles vers la Watch
+    /// Envoie la liste des voiles vers la Watch avec debouncing
     /// Utilise des miniatures très compressées pour les icônes
     /// Implémente un système de retry avec backoff exponentiel
     func sendWingsToWatch() {
+        // Annuler toute sync en attente (debouncing)
+        pendingSyncWorkItem?.cancel()
+
+        // Créer un nouveau work item avec délai
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.performWingsSync()
+        }
+
+        pendingSyncWorkItem = workItem
+
+        // Programmer la sync après le délai de debounce
+        DispatchQueue.main.asyncAfter(deadline: .now() + syncDebounceInterval, execute: workItem)
+    }
+
+    /// Exécute réellement la synchronisation des voiles
+    private func performWingsSync() {
         guard dataController != nil else {
             logWarning("DataController not available for wing sync", category: .watchSync)
             return

@@ -9,6 +9,7 @@
 import Foundation
 import SwiftData
 import CoreLocation
+import UIKit  // Pour ImageCacheManager
 
 @Observable
 final class DataController {
@@ -118,6 +119,9 @@ final class DataController {
 
     /// Supprime une voile (les vols associés seront supprimés en cascade)
     func deleteWing(_ wing: Wing) {
+        // Invalider le cache d'image avant suppression
+        ImageCacheManager.shared.invalidate(key: wing.id.uuidString)
+
         modelContext.delete(wing)
         saveContext()
 

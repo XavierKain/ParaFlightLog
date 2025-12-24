@@ -121,25 +121,25 @@ struct WingRow: View {
     let wing: Wing
     @Environment(DataController.self) private var dataController
 
+    private let thumbnailSize = CGSize(width: 60, height: 60)
+
     var body: some View {
         HStack(spacing: 12) {
-            // Photo de la voile ou icône par défaut
-            if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 60, height: 60)
-                    .clipShape(RoundedRectangle(cornerRadius: 8))
-            } else {
+            // Photo de la voile avec cache ou icône par défaut
+            CachedImage(
+                data: wing.photoData,
+                key: wing.id.uuidString,
+                size: thumbnailSize
+            ) {
                 RoundedRectangle(cornerRadius: 8)
                     .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
-                    .frame(width: 60, height: 60)
                     .overlay {
                         Image(systemName: "wind")
                             .font(.title2)
                             .foregroundStyle(colorFromString(wing.color ?? "Gris"))
                     }
             }
+            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(wing.name)
@@ -471,6 +471,9 @@ struct EditWingView: View {
         wing.type = type
         wing.color = finalColor.isEmpty ? nil : finalColor
         wing.photoData = photoData
+
+        // Invalider le cache d'image si la photo a changé
+        ImageCacheManager.shared.invalidate(key: wing.id.uuidString)
 
         Task { @MainActor in
             try? modelContext.save()

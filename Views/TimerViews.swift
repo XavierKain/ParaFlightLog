@@ -63,22 +63,20 @@ struct TimerView: View {
                                 } label: {
                                     HStack(spacing: 12) {
                                         if let wing = selectedWing {
-                                            // Photo miniature
-                                            if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
-                                                Image(uiImage: uiImage)
-                                                    .resizable()
-                                                    .scaledToFill()
-                                                    .frame(width: 50, height: 50)
-                                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                                            } else {
+                                            // Photo miniature avec cache
+                                            CachedImage(
+                                                data: wing.photoData,
+                                                key: wing.id.uuidString,
+                                                size: CGSize(width: 50, height: 50)
+                                            ) {
                                                 RoundedRectangle(cornerRadius: 8)
                                                     .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
-                                                    .frame(width: 50, height: 50)
                                                     .overlay {
                                                         Image(systemName: "wind")
                                                             .foregroundStyle(colorFromString(wing.color ?? "Gris"))
                                                     }
                                             }
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
 
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(wing.name)
@@ -134,22 +132,20 @@ struct TimerView: View {
                         // Afficher la voile sélectionnée pendant le vol
                         if let wing = selectedWing {
                             VStack(spacing: 8) {
-                                if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
-                                    Image(uiImage: uiImage)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 80, height: 80)
-                                        .clipShape(Circle())
-                                } else {
+                                CachedImage(
+                                    data: wing.photoData,
+                                    key: wing.id.uuidString,
+                                    size: CGSize(width: 80, height: 80)
+                                ) {
                                     Circle()
                                         .fill(.blue.opacity(0.2))
-                                        .frame(width: 80, height: 80)
                                         .overlay {
                                             Image(systemName: "wind")
                                                 .font(.largeTitle)
                                                 .foregroundStyle(.blue)
                                         }
                                 }
+                                .clipShape(Circle())
 
                                 Text(wing.name)
                                     .font(.title2)
@@ -407,22 +403,20 @@ struct WingPickerSheet: View {
                         dismiss()
                     } label: {
                         HStack(spacing: 12) {
-                            // Photo de la voile
-                            if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 50, height: 50)
-                                    .clipShape(RoundedRectangle(cornerRadius: 8))
-                            } else {
+                            // Photo de la voile avec cache
+                            CachedImage(
+                                data: wing.photoData,
+                                key: wing.id.uuidString,
+                                size: CGSize(width: 50, height: 50)
+                            ) {
                                 RoundedRectangle(cornerRadius: 8)
                                     .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
-                                    .frame(width: 50, height: 50)
                                     .overlay {
                                         Image(systemName: "wind")
                                             .foregroundStyle(colorFromString(wing.color ?? "Gris"))
                                     }
                             }
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
 
                             VStack(alignment: .leading, spacing: 4) {
                                 Text(wing.name)

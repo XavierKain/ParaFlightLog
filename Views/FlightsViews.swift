@@ -239,12 +239,15 @@ struct LatestFlightCard: View {
                 HStack {
                     if let wing = flight.wing {
                         HStack(spacing: 8) {
-                            if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
-                                Image(uiImage: uiImage)
-                                    .resizable()
-                                    .scaledToFill()
-                                    .frame(width: 32, height: 32)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                            if wing.photoData != nil {
+                                CachedImage(
+                                    data: wing.photoData,
+                                    key: wing.id.uuidString,
+                                    size: CGSize(width: 32, height: 32)
+                                ) {
+                                    EmptyView()
+                                }
+                                .clipShape(RoundedRectangle(cornerRadius: 6))
                             }
                             VStack(alignment: .leading, spacing: 0) {
                                 Text(wing.name)
@@ -559,21 +562,20 @@ struct FlightDetailView: View {
                     VStack(spacing: 12) {
                         if let wing = flight.wing {
                             HStack(spacing: 12) {
-                                if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
-                                    Image(uiImage: uiImage)
-                                        .resizable()
-                                        .scaledToFill()
-                                        .frame(width: 50, height: 50)
-                                        .clipShape(RoundedRectangle(cornerRadius: 10))
-                                } else {
+                                CachedImage(
+                                    data: wing.photoData,
+                                    key: wing.id.uuidString,
+                                    size: CGSize(width: 50, height: 50)
+                                ) {
                                     RoundedRectangle(cornerRadius: 10)
                                         .fill(Color.blue.opacity(0.2))
-                                        .frame(width: 50, height: 50)
                                         .overlay {
                                             Image(systemName: "wind")
                                                 .foregroundStyle(.blue)
                                         }
                                 }
+                                .clipShape(RoundedRectangle(cornerRadius: 10))
+
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text("Voile")
                                         .font(.caption)
@@ -696,26 +698,26 @@ struct DetailStatCard: View {
 struct FlightRow: View {
     let flight: Flight
 
+    private let thumbnailSize = CGSize(width: 40, height: 40)
+
     var body: some View {
         HStack(spacing: 12) {
-            // Photo de la voile (40x40)
+            // Photo de la voile avec cache (40x40)
             if let wing = flight.wing {
-                if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .frame(width: 40, height: 40)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
-                } else {
+                CachedImage(
+                    data: wing.photoData,
+                    key: wing.id.uuidString,
+                    size: thumbnailSize
+                ) {
                     RoundedRectangle(cornerRadius: 6)
                         .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
-                        .frame(width: 40, height: 40)
                         .overlay {
                             Image(systemName: "wind")
                                 .font(.caption)
                                 .foregroundStyle(colorFromString(wing.color ?? "Gris"))
                         }
                 }
+                .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
                 // Pas de voile associée
                 RoundedRectangle(cornerRadius: 6)
