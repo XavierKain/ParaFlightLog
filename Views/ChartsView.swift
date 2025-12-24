@@ -25,6 +25,10 @@ struct ChartsView: View {
     @State private var customEndDate: Date = Date()
     @State private var selectedWings: Set<UUID> = [] // Ensemble des IDs de voiles sélectionnées
 
+    // Mémorisation des vols filtrés pour éviter recalculs inutiles
+    @State private var cachedFilteredFlights: [Flight] = []
+    @State private var lastFilterHash: Int = 0
+
     enum ChartType: String, CaseIterable {
         case map
         case heatmap
@@ -72,7 +76,32 @@ struct ChartsView: View {
         }
     }
 
+    /// Hash des paramètres de filtrage pour détecter les changements
+    private var currentFilterHash: Int {
+        var hasher = Hasher()
+        hasher.combine(flights.count)
+        hasher.combine(flights.first?.id)
+        hasher.combine(flights.last?.id)
+        hasher.combine(selectedPeriod)
+        hasher.combine(selectedWings)
+        if selectedPeriod == .custom {
+            hasher.combine(customStartDate)
+            hasher.combine(customEndDate)
+        }
+        return hasher.finalize()
+    }
+
+    /// Vols filtrés avec mémorisation - utilise le cache si les paramètres n'ont pas changé
     var filteredFlights: [Flight] {
+        let hash = currentFilterHash
+        if hash == lastFilterHash && !cachedFilteredFlights.isEmpty {
+            return cachedFilteredFlights
+        }
+        return computeFilteredFlights()
+    }
+
+    /// Calcule les vols filtrés (appelé uniquement quand nécessaire)
+    private func computeFilteredFlights() -> [Flight] {
         var result = flights
 
         // Filtre par période
@@ -94,6 +123,15 @@ struct ChartsView: View {
         }
 
         return result
+    }
+
+    /// Met à jour le cache des vols filtrés
+    private func updateFilterCache() {
+        let hash = currentFilterHash
+        if hash != lastFilterHash {
+            cachedFilteredFlights = computeFilteredFlights()
+            lastFilterHash = hash
+        }
     }
 
     var body: some View {
@@ -194,6 +232,28 @@ struct ChartsView: View {
             .background(Color(.systemGroupedBackground))
             .sheet(isPresented: $showingCustomDatePicker) {
                 CustomDateRangePicker(startDate: $customStartDate, endDate: $customEndDate)
+            }
+            .onAppear {
+                updateFilterCache()
+            }
+            .onChange(of: flights.count) { _, _ in
+                updateFilterCache()
+            }
+            .onChange(of: selectedPeriod) { _, _ in
+                updateFilterCache()
+            }
+            .onChange(of: selectedWings) { _, _ in
+                updateFilterCache()
+            }
+            .onChange(of: customStartDate) { _, _ in
+                if selectedPeriod == .custom {
+                    updateFilterCache()
+                }
+            }
+            .onChange(of: customEndDate) { _, _ in
+                if selectedPeriod == .custom {
+                    updateFilterCache()
+                }
             }
         }
     }

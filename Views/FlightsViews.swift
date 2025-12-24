@@ -21,14 +21,29 @@ struct FlightsView: View {
     @State private var flightToDelete: Flight?
     @State private var showingDeleteConfirmation = false
 
+    // Pagination: nombre de vols affichés
+    @State private var displayedFlightsCount: Int = 20
+    private let pageSize: Int = 15
+
     // Dernier vol (le plus récent)
     private var latestFlight: Flight? {
         flights.first
     }
 
-    // Autres vols (tous sauf le dernier)
+    // Autres vols paginés (tous sauf le dernier, limités au nombre affiché)
     private var olderFlights: [Flight] {
-        Array(flights.dropFirst())
+        let allOlder = Array(flights.dropFirst())
+        return Array(allOlder.prefix(displayedFlightsCount - 1))
+    }
+
+    // Vérifie s'il reste des vols à charger
+    private var hasMoreFlights: Bool {
+        flights.count > displayedFlightsCount
+    }
+
+    // Nombre de vols restants à charger
+    private var remainingFlightsCount: Int {
+        max(0, flights.count - displayedFlightsCount)
     }
 
     var body: some View {
@@ -59,7 +74,7 @@ struct FlightsView: View {
                                 }
                         }
 
-                        // Vols précédents
+                        // Vols précédents avec lazy loading
                         if !olderFlights.isEmpty {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text("Vols précédents")
@@ -67,24 +82,15 @@ struct FlightsView: View {
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal)
 
-                                // Utiliser un List pour permettre swipe-to-delete
-                                List {
+                                // Utiliser LazyVStack pour le lazy loading
+                                LazyVStack(spacing: 8) {
                                     ForEach(olderFlights) { flight in
                                         FlightRow(flight: flight)
                                             .contentShape(Rectangle())
                                             .onTapGesture {
                                                 showingFlightDetail = flight
                                             }
-                                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                                            .listRowSeparator(.hidden)
-                                            .listRowBackground(Color.clear)
-                                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                                Button(role: .destructive) {
-                                                    deleteFlight(flight)
-                                                } label: {
-                                                    Label("Supprimer", systemImage: "trash")
-                                                }
-                                            }
+                                            .padding(.horizontal, 16)
                                             .contextMenu {
                                                 Button(role: .destructive) {
                                                     deleteFlight(flight)
@@ -93,10 +99,28 @@ struct FlightsView: View {
                                                 }
                                             }
                                     }
+
+                                    // Bouton "Charger plus" si nécessaire
+                                    if hasMoreFlights {
+                                        Button {
+                                            loadMoreFlights()
+                                        } label: {
+                                            HStack {
+                                                Text("Charger \(min(pageSize, remainingFlightsCount)) vols supplémentaires")
+                                                    .font(.subheadline)
+                                                Text("(\(remainingFlightsCount) restants)")
+                                                    .font(.caption)
+                                                    .foregroundStyle(.secondary)
+                                            }
+                                            .frame(maxWidth: .infinity)
+                                            .padding()
+                                            .background(Color(.systemGray6))
+                                            .cornerRadius(12)
+                                        }
+                                        .padding(.horizontal, 16)
+                                        .padding(.top, 8)
+                                    }
                                 }
-                                .listStyle(.plain)
-                                .frame(height: CGFloat(olderFlights.count) * 110) // Hauteur approximative par row
-                                .scrollDisabled(true) // Le scroll est géré par le ScrollView parent
                             }
                         }
                     }
@@ -116,6 +140,13 @@ struct FlightsView: View {
                 }
                 Button("Annuler", role: .cancel) {}
             }
+        }
+    }
+
+    /// Charge plus de vols (pagination)
+    private func loadMoreFlights() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            displayedFlightsCount += pageSize
         }
     }
 
