@@ -3,74 +3,123 @@
 //  ParaFlightLogWatch Watch App
 //
 //  Cache d'images pour éviter le décodage répété des Data -> UIImage
+//  Utilise NSCache pour une gestion automatique de la mémoire
 //  Target: Watch only
 //
 
 import SwiftUI
 import WatchKit
 
+/// Wrapper pour stocker UIImage dans NSCache (qui nécessite des objets NSObject)
+private final class ImageWrapper: NSObject {
+    let image: UIImage
+    init(_ image: UIImage) {
+        self.image = image
+    }
+}
+
+/// Wrapper pour utiliser UUID comme clé dans NSCache
+private final class UUIDKey: NSObject {
+    let uuid: UUID
+    init(_ uuid: UUID) {
+        self.uuid = uuid
+    }
+
+    override var hash: Int {
+        return uuid.hashValue
+    }
+
+    override func isEqual(_ object: Any?) -> Bool {
+        guard let other = object as? UUIDKey else { return false }
+        return uuid == other.uuid
+    }
+}
+
 /// Cache singleton pour les images des voiles
+/// Utilise NSCache pour une gestion automatique de la mémoire avec limite
 final class WatchImageCache {
     static let shared = WatchImageCache()
 
-    fileprivate var cache: [UUID: UIImage] = [:]
+    // NSCache gère automatiquement l'éviction des éléments en cas de pression mémoire
+    private let cache = NSCache<UUIDKey, ImageWrapper>()
     private let queue = DispatchQueue(label: "com.paraflightlog.imagecache", qos: .userInitiated)
 
-    private init() {}
+    // Configuration du cache
+    private let maxCacheCount = 20  // Maximum 20 images en cache (suffisant pour les voiles)
+    private let maxCacheCostMB = 10 // Maximum ~10 MB de mémoire
+
+    private init() {
+        // Configurer les limites du cache
+        cache.countLimit = maxCacheCount
+        cache.totalCostLimit = maxCacheCostMB * 1024 * 1024  // Convertir en bytes
+    }
     
     /// Récupère une image du cache ou la décode si nécessaire
     func image(for wingId: UUID, data: Data?) -> UIImage? {
+        let key = UUIDKey(wingId)
+
         // Vérifier le cache d'abord (synchrone pour la lecture)
-        if let cached = cache[wingId] {
-            return cached
+        if let cached = cache.object(forKey: key) {
+            return cached.image
         }
-        
+
         // Pas de données, pas d'image
         guard let data = data else { return nil }
-        
+
         // Décoder l'image
         guard let image = UIImage(data: data) else { return nil }
-        
-        // Mettre en cache
-        cache[wingId] = image
-        
+
+        // Mettre en cache avec le coût = taille en bytes de l'image
+        let cost = data.count
+        cache.setObject(ImageWrapper(image), forKey: key, cost: cost)
+
         return image
     }
-    
+
     /// Précharge les images en arrière-plan
     func preloadImages(for wings: [WingDTO]) {
         queue.async { [weak self] in
+            guard let self = self else { return }
             for wing in wings {
                 guard let data = wing.photoData else { continue }
-                if self?.cache[wing.id] == nil {
+                let key = UUIDKey(wing.id)
+                if self.cache.object(forKey: key) == nil {
                     if let image = UIImage(data: data) {
+                        let cost = data.count
                         DispatchQueue.main.async {
-                            self?.cache[wing.id] = image
+                            self.cache.setObject(ImageWrapper(image), forKey: key, cost: cost)
                         }
                     }
                 }
             }
         }
     }
-    
+
     /// Vide le cache
     func clearCache() {
-        cache.removeAll()
+        cache.removeAllObjects()
     }
-    
+
     /// Supprime une image du cache
     func removeImage(for wingId: UUID) {
-        cache.removeValue(forKey: wingId)
+        cache.removeObject(forKey: UUIDKey(wingId))
     }
 
     /// Précharge une image de façon synchrone (pour éviter le lag au premier vol)
     func preloadImageSync(for wing: WingDTO) {
-        guard let data = wing.photoData,
-              cache[wing.id] == nil else { return }
+        guard let data = wing.photoData else { return }
+        let key = UUIDKey(wing.id)
+        guard cache.object(forKey: key) == nil else { return }
 
         if let image = UIImage(data: data) {
-            cache[wing.id] = image
+            let cost = data.count
+            cache.setObject(ImageWrapper(image), forKey: key, cost: cost)
         }
+    }
+
+    /// Vérifie si une image est en cache (pour accès direct depuis les vues)
+    func cachedImage(for wingId: UUID) -> UIImage? {
+        return cache.object(forKey: UUIDKey(wingId))?.image
     }
 }
 
@@ -119,7 +168,7 @@ struct CachedWingImage: View {
 
     private func loadImage() {
         // Vérifier le cache immédiatement (synchrone)
-        if let cached = WatchImageCache.shared.cache[wing.id] {
+        if let cached = WatchImageCache.shared.cachedImage(for: wing.id) {
             cachedImage = cached
             return
         }
@@ -128,9 +177,9 @@ struct CachedWingImage: View {
         guard let data = wing.photoData else { return }
 
         Task.detached(priority: .userInitiated) {
-            if let image = UIImage(data: data) {
+            // Utiliser la méthode image(for:data:) qui gère le cache automatiquement
+            if let image = WatchImageCache.shared.image(for: wing.id, data: data) {
                 await MainActor.run {
-                    WatchImageCache.shared.cache[wing.id] = image
                     cachedImage = image
                 }
             }

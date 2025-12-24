@@ -11,16 +11,14 @@ import SwiftData
 
 @main
 struct ParaFlightLogApp: App {
-    // Services
+    // Services - DataController et LocationService sont des instances propres à l'app
     @State private var dataController = DataController()
-    @State private var watchConnectivityManager = WatchConnectivityManager.shared
     @State private var locationService = LocationService()
-    @State private var localizationManager = LocalizationManager.shared
 
-    init() {
-        // L'initialisation sera faite dans IOSRootView.onAppear
-        // car on a besoin des instances @State créées, pas de nouvelles instances
-    }
+    // Singletons - on utilise directement les instances partagées sans les stocker en @State
+    // Cela évite la création de doubles instances et les memory leaks potentiels
+    private var watchConnectivityManager: WatchConnectivityManager { WatchConnectivityManager.shared }
+    private var localizationManager: LocalizationManager { LocalizationManager.shared }
 
     var body: some Scene {
         WindowGroup {

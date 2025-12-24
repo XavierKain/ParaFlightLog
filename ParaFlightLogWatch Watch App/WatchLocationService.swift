@@ -58,9 +58,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private let trackPointInterval: TimeInterval = 5.0  // Un point toutes les 5 secondes
 
     // Limite de points GPS en mémoire pour éviter les crashes sur vols longs
-    // 600 points * 5 secondes = 50 minutes de vol
-    // Au-delà, on garde un point sur 2 pour les anciens
-    private let maxGPSPointsInMemory = 600
+    // 500 points max * 5 secondes = ~42 minutes de vol détaillé
+    // La compaction démarre à 400 points pour garder de la marge
+    // Après compaction, on peut stocker ~2h de vol avec résolution dégradée progressive
+    private let maxGPSPointsInMemory = 500
+    private let compactionThreshold = 400  // Déclencher la compaction à 80% de la limite
 
     override init() {
         super.init()
@@ -163,28 +165,33 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     }
 
     /// Compacte la trace GPS pour économiser la mémoire
-    /// Garde un point sur 2 dans la première moitié du tableau
+    /// Stratégie : garder 1 point sur 2 dans la première moitié (anciens points)
+    /// et tous les points dans la deuxième moitié (points récents = plus de précision)
     private func compactGPSTrack() {
         let count = gpsTrackPoints.count
-        guard count > maxGPSPointsInMemory / 2 else { return }
 
-        // Garder un point sur 2 pour la première moitié (les anciens)
-        // Garder tous les points pour la deuxième moitié (les récents)
-        let halfCount = count / 2
+        // Ne pas compacter si on est en dessous du seuil
+        guard count >= compactionThreshold else { return }
+
+        // Réserver la capacité pour éviter les réallocations
         var compacted: [GPSTrackPoint] = []
+        compacted.reserveCapacity(count / 2 + count / 4)  // ~75% du tableau original
 
-        // Première moitié : un point sur 2
+        let halfCount = count / 2
+
+        // Première moitié : un point sur 2 (résolution réduite pour les anciens)
         for i in stride(from: 0, to: halfCount, by: 2) {
             compacted.append(gpsTrackPoints[i])
         }
 
-        // Deuxième moitié : tous les points
+        // Deuxième moitié : tous les points (pleine résolution pour les récents)
         for i in halfCount..<count {
             compacted.append(gpsTrackPoints[i])
         }
 
+        let previousCount = count
         gpsTrackPoints = compacted
-        print("📍 GPS track compacted: \(count) → \(compacted.count) points")
+        print("📍 GPS track compacted: \(previousCount) → \(compacted.count) points (saved \(previousCount - compacted.count) points)")
     }
 
     // MARK: - Motion Tracking (G-Force)
@@ -394,7 +401,8 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
                 lastTrackPointTime = now
 
                 // Limiter le nombre de points en mémoire pour éviter les crashes
-                if gpsTrackPoints.count > maxGPSPointsInMemory {
+                // Compacter proactivement à 80% de la limite pour garder de la marge
+                if gpsTrackPoints.count >= compactionThreshold {
                     compactGPSTrack()
                 }
             }

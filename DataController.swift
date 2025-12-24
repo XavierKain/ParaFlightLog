@@ -18,6 +18,9 @@ final class DataController {
     // Référence au WatchConnectivityManager pour la synchronisation automatique
     weak var watchConnectivityManager: WatchConnectivityManager?
 
+    // Cache des statistiques - invalidé automatiquement lors des modifications de vols
+    let statsCache = StatsCache()
+
     init() {
         // NOTE: Migration désactivée - la base de données est maintenant persistante
         // Self.deleteOldDatabaseIfNeeded()
@@ -37,6 +40,10 @@ final class DataController {
             let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
             self.modelContainer = container
             self.modelContext = ModelContext(container)
+
+            // Configurer le cache de statistiques
+            statsCache.dataController = self
+
             print("✅ ModelContainer créé avec succès")
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
@@ -113,6 +120,10 @@ final class DataController {
     func deleteWing(_ wing: Wing) {
         modelContext.delete(wing)
         saveContext()
+
+        // Invalider le cache de stats (les vols associés sont supprimés en cascade)
+        statsCache.invalidate()
+
         // Synchronisation automatique vers la Watch
         syncWingsToWatch()
     }
@@ -149,6 +160,10 @@ final class DataController {
     func permanentlyDeleteWing(_ wing: Wing) {
         modelContext.delete(wing)
         saveContext()
+
+        // Invalider le cache de stats (les vols associés sont supprimés en cascade)
+        statsCache.invalidate()
+
         // Synchronisation automatique vers la Watch
         syncWingsToWatch()
     }
@@ -212,6 +227,10 @@ final class DataController {
 
         modelContext.insert(flight)
         saveContext()
+
+        // Invalider le cache de stats après ajout d'un vol
+        statsCache.invalidate()
+
         print("✅ Flight saved: \(flight.durationFormatted) with \(wing.name)")
     }
 
@@ -231,6 +250,10 @@ final class DataController {
 
         modelContext.insert(flight)
         saveContext()
+
+        // Invalider le cache de stats après ajout d'un vol
+        statsCache.invalidate()
+
         print("✅ Flight saved: \(flight.durationFormatted) at \(spotName ?? "Unknown")")
     }
 
@@ -238,6 +261,9 @@ final class DataController {
     func deleteFlight(_ flight: Flight) {
         modelContext.delete(flight)
         saveContext()
+
+        // Invalider le cache de stats après suppression d'un vol
+        statsCache.invalidate()
     }
 
     // MARK: - Stats
