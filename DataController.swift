@@ -44,7 +44,7 @@ final class DataController {
             // Configurer le cache de statistiques
             statsCache.dataController = self
 
-            print("✅ ModelContainer créé avec succès")
+            logInfo("ModelContainer created successfully", category: .dataController)
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
@@ -63,9 +63,9 @@ final class DataController {
         if fileManager.fileExists(atPath: storeURL.path) {
             do {
                 try fileManager.removeItem(at: storeURL)
-                print("🗑️ Ancienne base de données supprimée pour migration")
+                logInfo("Old database deleted for migration", category: .dataController)
             } catch {
-                print("⚠️ Impossible de supprimer l'ancienne base: \(error)")
+                logWarning("Could not delete old database: \(error)", category: .dataController)
             }
         }
     }
@@ -85,7 +85,7 @@ final class DataController {
         do {
             return try modelContext.fetch(descriptor)
         } catch {
-            print("❌ Error fetching wings: \(error)")
+            logError("Error fetching wings: \(error)", category: .dataController)
             return []
         }
     }
@@ -98,7 +98,7 @@ final class DataController {
         do {
             return try modelContext.fetch(descriptor)
         } catch {
-            print("❌ Error fetching archived wings: \(error)")
+            logError("Error fetching archived wings: \(error)", category: .dataController)
             return []
         }
     }
@@ -174,7 +174,7 @@ final class DataController {
         do {
             return try modelContext.fetch(descriptor).first
         } catch {
-            print("❌ Error finding wing: \(error)")
+            logError("Error finding wing: \(error)", category: .dataController)
             return nil
         }
     }
@@ -187,7 +187,7 @@ final class DataController {
         do {
             return try modelContext.fetch(descriptor)
         } catch {
-            print("❌ Error fetching flights: \(error)")
+            logError("Error fetching flights: \(error)", category: .dataController)
             return []
         }
     }
@@ -195,7 +195,7 @@ final class DataController {
     /// Ajoute un nouveau vol à partir d'un FlightDTO (reçu de la Watch)
     func addFlight(from dto: FlightDTO, location: CLLocation?, spotName: String?) {
         guard let wing = findWing(byId: dto.wingId) else {
-            print("❌ Wing not found for flight: \(dto.wingId)")
+            logError("Wing not found for flight: \(dto.wingId)", category: .flight)
             return
         }
 
@@ -203,7 +203,7 @@ final class DataController {
         var gpsTrackData: Data? = nil
         if let gpsTrack = dto.gpsTrack, !gpsTrack.isEmpty {
             gpsTrackData = try? JSONEncoder().encode(gpsTrack)
-            print("📍 GPS track with \(gpsTrack.count) points")
+            logDebug("GPS track with \(gpsTrack.count) points", category: .flight)
         }
 
         let flight = Flight(
@@ -231,7 +231,7 @@ final class DataController {
         // Invalider le cache de stats après ajout d'un vol
         statsCache.invalidate()
 
-        print("✅ Flight saved: \(flight.durationFormatted) with \(wing.name)")
+        logInfo("Flight saved: \(flight.durationFormatted) with \(wing.name)", category: .flight)
     }
 
     /// Ajoute un vol directement (pour les vols créés depuis l'iPhone)
@@ -254,7 +254,7 @@ final class DataController {
         // Invalider le cache de stats après ajout d'un vol
         statsCache.invalidate()
 
-        print("✅ Flight saved: \(flight.durationFormatted) at \(spotName ?? "Unknown")")
+        logInfo("Flight saved: \(flight.durationFormatted) at \(spotName ?? "Unknown")", category: .flight)
     }
 
     /// Supprime un vol
@@ -344,7 +344,7 @@ final class DataController {
         do {
             try modelContext.save()
         } catch {
-            print("❌ Error saving context: \(error)")
+            logError("Error saving context: \(error)", category: .dataController)
         }
     }
 

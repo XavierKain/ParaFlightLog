@@ -58,9 +58,9 @@ private struct IOSRootView: View {
                     locationService.requestAuthorization()
 
                     // Forcer l'envoi des voiles à la Watch après activation
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+                    DispatchQueue.main.asyncAfter(deadline: .now() + WatchSyncConstants.initialSyncDelay) {
                         watchManager.sendWingsToWatch()
-                        print("🔄 Manually triggered wing sync to Watch")
+                        logInfo("Manually triggered wing sync to Watch", category: .watchSync)
                     }
 
                     hasInitialized = true

@@ -22,6 +22,10 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     weak var dataController: DataController?
     weak var locationService: LocationService?
 
+    // État de synchronisation avec retry robuste
+    private var syncRetryCount = 0
+    private var isSyncing = false
+
     private override init() {
         super.init()
         // Note: La session sera activée après injection du dataController
@@ -32,14 +36,14 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     /// Active la session WatchConnectivity
     func activateSession() {
         guard WCSession.isSupported() else {
-            print("⚠️ WatchConnectivity not supported on this device")
+            logWarning("WatchConnectivity not supported on this device", category: .watchSync)
             return
         }
 
         let session = WCSession.default
         session.delegate = self
         session.activate()
-        print("🔗 WatchConnectivity session activating...")
+        logInfo("WatchConnectivity session activating...", category: .watchSync)
     }
 
     // MARK: - Send Language to Watch
@@ -47,7 +51,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     /// Envoie la langue sélectionnée vers la Watch
     func sendLanguageToWatch(_ languageCode: String?) {
         guard WCSession.default.activationState == .activated else {
-            print("⚠️ WCSession not activated, cannot send language")
+            logWarning("WCSession not activated, cannot send language", category: .watchSync)
             return
         }
 
@@ -61,9 +65,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
         do {
             try WCSession.default.updateApplicationContext(context)
-            print("🌐 Sent language to Watch: \(languageCode ?? "system")")
+            logInfo("Sent language to Watch: \(languageCode ?? "system")", category: .watchSync)
         } catch {
-            print("❌ Failed to send language: \(error.localizedDescription)")
+            logError("Failed to send language: \(error.localizedDescription)", category: .watchSync)
         }
     }
 
@@ -72,63 +76,111 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     /// Envoie les paramètres Watch vers la Watch
     func sendWatchSettings(autoWaterLock: Bool, allowSessionDismiss: Bool) {
         guard WCSession.default.activationState == .activated else {
-            print("⚠️ WCSession not activated, cannot send watch settings")
+            logWarning("WCSession not activated, cannot send watch settings", category: .watchSync)
             return
         }
 
         var context = WCSession.default.applicationContext
-        context["watchAutoWaterLock"] = autoWaterLock
-        context["watchAllowSessionDismiss"] = allowSessionDismiss
+        context[UserDefaultsKeys.watchAutoWaterLock] = autoWaterLock
+        context[UserDefaultsKeys.watchAllowSessionDismiss] = allowSessionDismiss
 
         do {
             try WCSession.default.updateApplicationContext(context)
-            print("⚙️ Sent watch settings: autoWaterLock=\(autoWaterLock), allowDismiss=\(allowSessionDismiss)")
+            logInfo("Sent watch settings: autoWaterLock=\(autoWaterLock), allowDismiss=\(allowSessionDismiss)", category: .watchSync)
         } catch {
-            print("❌ Failed to send watch settings: \(error.localizedDescription)")
+            logError("Failed to send watch settings: \(error.localizedDescription)", category: .watchSync)
         }
     }
 
     // MARK: - Send Wings to Watch
 
     /// Envoie la liste des voiles vers la Watch
-    /// Utilise des miniatures très compressées (24x24 JPEG) pour les icônes
+    /// Utilise des miniatures très compressées pour les icônes
+    /// Implémente un système de retry avec backoff exponentiel
     func sendWingsToWatch() {
-        guard let dataController = dataController else {
+        guard dataController != nil else {
+            logWarning("DataController not available for wing sync", category: .watchSync)
             return
         }
 
-        // Si la session n'est pas activée, réessayer après 1 seconde
-        guard WCSession.default.activationState == .activated else {
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
-                self?.sendWingsToWatch()
-            }
+        // Éviter les syncs multiples en parallèle
+        guard !isSyncing else {
+            logDebug("Wing sync already in progress, skipping", category: .watchSync)
             return
         }
+
+        // Si la session n'est pas activée, réessayer avec backoff exponentiel
+        guard WCSession.default.activationState == .activated else {
+            scheduleRetry()
+            return
+        }
+
+        // Reset du compteur de retry et lancement de la sync
+        syncRetryCount = 0
+        isSyncing = true
 
         // Envoyer avec miniatures très compressées (~0.5-1KB par image)
         sendWingsWithThumbnails()
     }
 
-    /// Envoie les voiles avec miniatures compressées
+    /// Planifie un retry avec backoff exponentiel
+    private func scheduleRetry() {
+        guard syncRetryCount < WatchSyncConstants.maxRetryAttempts else {
+            logError("Max retry attempts (\(WatchSyncConstants.maxRetryAttempts)) reached for wing sync", category: .watchSync)
+            syncRetryCount = 0
+            isSyncing = false
+            return
+        }
+
+        syncRetryCount += 1
+        let delay = WatchSyncConstants.retryDelay * pow(WatchSyncConstants.backoffMultiplier, Double(syncRetryCount - 1))
+
+        logDebug("Scheduling wing sync retry #\(syncRetryCount) in \(String(format: "%.1f", delay))s", category: .watchSync)
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+            self?.sendWingsToWatch()
+        }
+    }
+
+    /// Envoie les voiles avec miniatures compressées (en background pour ne pas bloquer l'UI)
     private func sendWingsWithThumbnails() {
-        guard let dataController = dataController else { return }
+        guard let dataController = dataController else {
+            isSyncing = false
+            return
+        }
 
         let wings = dataController.fetchWings()
-        let wingsDTOWithThumbnails = wings.map { $0.toDTOWithThumbnail() }
 
-        guard let jsonData = try? JSONEncoder().encode(wingsDTOWithThumbnails) else {
-            sendWingsWithoutPhotos()
-            return
+        // Traiter les images en background pour ne pas bloquer le main thread
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let wingsDTOWithThumbnails = wings.map { $0.toDTOWithThumbnail() }
+
+            guard let jsonData = try? JSONEncoder().encode(wingsDTOWithThumbnails) else {
+                await MainActor.run {
+                    self?.sendWingsWithoutPhotos()
+                }
+                return
+            }
+
+            let dataSizeKB = Double(jsonData.count) / 1024.0
+
+            // Si les données dépassent la limite, envoyer sans images
+            if dataSizeKB > WatchSyncConstants.maxContextSizeKB {
+                logWarning("Wings data too large (\(String(format: "%.1f", dataSizeKB))KB), sending without photos", category: .watchSync)
+                await MainActor.run {
+                    self?.sendWingsWithoutPhotos()
+                }
+                return
+            }
+
+            await MainActor.run {
+                self?.finishSendingWings(jsonData: jsonData, withPhotos: true)
+            }
         }
+    }
 
-        let dataSizeKB = Double(jsonData.count) / 1024.0
-
-        // Si les données dépassent 50KB, envoyer sans images
-        if dataSizeKB > 50 {
-            sendWingsWithoutPhotos()
-            return
-        }
-
+    /// Finalise l'envoi des voiles (doit être appelé sur le main thread)
+    private func finishSendingWings(jsonData: Data, withPhotos: Bool) {
         let base64String = jsonData.base64EncodedString()
         // IMPORTANT: Préserver le contexte existant (settings, langue, etc.)
         var context = WCSession.default.applicationContext
@@ -136,38 +188,45 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
         do {
             try WCSession.default.updateApplicationContext(context)
+            let dataSizeKB = Double(jsonData.count) / 1024.0
+            logInfo("Wings synced to Watch (\(String(format: "%.1f", dataSizeKB))KB, photos: \(withPhotos))", category: .watchSync)
+            isSyncing = false
         } catch {
-            sendWingsWithoutPhotos()
+            logError("Failed to sync wings: \(error.localizedDescription)", category: .watchSync)
+            if withPhotos {
+                sendWingsWithoutPhotos()
+            } else {
+                // Dernier recours : transferUserInfo
+                WCSession.default.transferUserInfo(context)
+                logInfo("Wings sent via transferUserInfo as fallback", category: .watchSync)
+                isSyncing = false
+            }
         }
     }
 
     /// Envoie les voiles sans photos (fallback)
     private func sendWingsWithoutPhotos() {
-        guard let dataController = dataController else { return }
+        guard let dataController = dataController else {
+            isSyncing = false
+            return
+        }
 
         let wings = dataController.fetchWings()
         let wingsDTONoPhotos = wings.map { $0.toDTOWithoutPhoto() }
 
         guard let jsonData = try? JSONEncoder().encode(wingsDTONoPhotos) else {
+            logError("Failed to encode wings without photos", category: .watchSync)
+            isSyncing = false
             return
         }
 
-        let base64String = jsonData.base64EncodedString()
-        // IMPORTANT: Préserver le contexte existant (settings, langue, etc.)
-        var context = WCSession.default.applicationContext
-        context["wingsData"] = base64String
-
-        do {
-            try WCSession.default.updateApplicationContext(context)
-        } catch {
-            WCSession.default.transferUserInfo(context)
-        }
+        finishSendingWings(jsonData: jsonData, withPhotos: false)
     }
 
     /// Synchronise les voiles avec la Watch (utilisé après réorganisation)
     func syncWingsToWatch(wings: [Wing]) {
         guard WCSession.default.activationState == .activated else {
-            print("⚠️ WCSession not activated, cannot sync wings")
+            logWarning("WCSession not activated, cannot sync wings", category: .watchSync)
             return
         }
 
@@ -175,7 +234,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let wingsDTONoPhotos = wings.map { $0.toDTOWithoutPhoto() }
 
         guard let jsonData = try? JSONEncoder().encode(wingsDTONoPhotos) else {
-            print("❌ Failed to encode wings for sync")
+            logError("Failed to encode wings for sync", category: .watchSync)
             return
         }
 
@@ -186,23 +245,23 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
         do {
             try WCSession.default.updateApplicationContext(context)
-            print("✅ Synced \(wingsDTONoPhotos.count) wings to Watch (reordered)")
+            logInfo("Synced \(wingsDTONoPhotos.count) wings to Watch (reordered)", category: .watchSync)
         } catch {
-            print("❌ Failed to sync wings: \(error.localizedDescription)")
+            logError("Failed to sync wings: \(error.localizedDescription)", category: .watchSync)
         }
     }
 
     /// Envoie la liste des voiles via transferUserInfo (alternative si updateApplicationContext échoue)
     func sendWingsViaTransfer() {
         guard let dataController = dataController else {
-            print("❌ DataController not available")
+            logError("DataController not available", category: .watchSync)
             return
         }
 
         // Si la session n'est pas activée, réessayer après 1 seconde
         guard WCSession.default.activationState == .activated else {
-            print("⚠️ WCSession not activated yet for transfer, will retry in 1 second...")
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+            logWarning("WCSession not activated yet for transfer, will retry...", category: .watchSync)
+            DispatchQueue.main.asyncAfter(deadline: .now() + WatchSyncConstants.retryDelay) { [weak self] in
                 self?.sendWingsViaTransfer()
             }
             return
@@ -212,10 +271,10 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         // Sans photos pour le transfer
         let wingsDTO = wings.map { $0.toDTOWithoutPhoto() }
 
-        print("📤 Attempting to transfer \(wingsDTO.count) wings to Watch (without photos)...")
+        logDebug("Attempting to transfer \(wingsDTO.count) wings to Watch (without photos)...", category: .watchSync)
 
         guard let jsonData = try? JSONEncoder().encode(wingsDTO) else {
-            print("❌ Failed to encode wings")
+            logError("Failed to encode wings", category: .watchSync)
             return
         }
 
@@ -223,18 +282,18 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let userInfo = ["wingsData": base64String]
 
         WCSession.default.transferUserInfo(userInfo)
-        print("✅ Transferred \(wingsDTO.count) wings to Watch via transferUserInfo")
+        logInfo("Transferred \(wingsDTO.count) wings to Watch via transferUserInfo", category: .watchSync)
     }
 
     // MARK: - WCSessionDelegate
 
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if let error = error {
-            print("❌ WCSession activation failed: \(error.localizedDescription)")
+            logError("WCSession activation failed: \(error.localizedDescription)", category: .watchSync)
             return
         }
 
-        print("✅ WCSession activated (state: \(activationState.rawValue))")
+        logInfo("WCSession activated (state: \(activationState.rawValue))", category: .watchSync)
         isWatchAppInstalled = session.isWatchAppInstalled
         isWatchReachable = session.isReachable
 
@@ -247,38 +306,38 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             sendLanguageToWatch(languageCode)
 
             // Envoyer les paramètres Watch
-            let autoWaterLock = UserDefaults.standard.bool(forKey: "watchAutoWaterLock")
-            let allowDismiss = UserDefaults.standard.object(forKey: "watchAllowSessionDismiss") as? Bool ?? true
+            let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+            let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
             sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: allowDismiss)
         }
     }
 
     func sessionDidBecomeInactive(_ session: WCSession) {
-        print("⏸️ WCSession became inactive")
+        logDebug("WCSession became inactive", category: .watchSync)
     }
 
     func sessionDidDeactivate(_ session: WCSession) {
-        print("🔌 WCSession deactivated - reactivating...")
+        logInfo("WCSession deactivated - reactivating...", category: .watchSync)
         session.activate()
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
         isWatchReachable = session.isReachable
-        print("📡 Watch reachability changed: \(isWatchReachable)")
+        logDebug("Watch reachability changed: \(isWatchReachable)", category: .watchSync)
     }
 
     // MARK: - Receive Flight from Watch
 
     /// Reçoit un vol depuis la Watch via transferUserInfo
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
-        print("📥 Received data from Watch")
+        logInfo("Received data from Watch", category: .watchSync)
 
         // Vérifier si c'est un vol
         if let flightData = userInfo["flight"] as? [String: Any],
            let jsonData = try? JSONSerialization.data(withJSONObject: flightData),
            let flightDTO = try? JSONDecoder().decode(FlightDTO.self, from: jsonData) {
 
-            print("✅ Received flight: \(flightDTO.durationSeconds)s with wing \(flightDTO.wingId)")
+            logInfo("Received flight: \(flightDTO.durationSeconds)s with wing \(flightDTO.wingId)", category: .flight)
 
             // Obtenir la position GPS + reverse geocoding
             locationService?.requestLocation { [weak self] location in
@@ -304,16 +363,16 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             return
         }
 
-        print("⚠️ Received userInfo is not a flight - ignoring")
+        logWarning("Received userInfo is not a flight - ignoring", category: .watchSync)
     }
 
     /// Reçoit un message instantané depuis la Watch (alternative plus rapide)
     func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-        print("📨 Received instant message from Watch: \(message.keys)")
+        logDebug("Received instant message from Watch: \(message.keys)", category: .watchSync)
 
         // Vérifier si c'est une demande de synchronisation des voiles
         if let action = message["action"] as? String, action == "requestWings" {
-            print("📥 Watch requested wings sync")
+            logInfo("Watch requested wings sync", category: .watchSync)
             DispatchQueue.main.async { [weak self] in
                 self?.sendWingsToWatch()
             }
@@ -353,11 +412,11 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     /// Reçoit un message sans réponse attendue
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
-        print("📨 Received message from Watch (no reply): \(message.keys)")
+        logDebug("Received message from Watch (no reply): \(message.keys)", category: .watchSync)
 
         // Vérifier si c'est une demande de synchronisation des voiles
         if let action = message["action"] as? String, action == "requestWings" {
-            print("📥 Watch requested wings sync")
+            logInfo("Watch requested wings sync", category: .watchSync)
             DispatchQueue.main.async { [weak self] in
                 self?.sendWingsToWatch()
             }

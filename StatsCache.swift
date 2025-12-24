@@ -40,7 +40,7 @@ final class StatsCache {
     /// Calcule toutes les statistiques en arrière-plan
     func refreshCache() {
         guard let dataController = dataController else {
-            print("⚠️ DataController not available for stats cache")
+            logWarning("DataController not available for stats cache", category: .stats)
             return
         }
 
@@ -89,7 +89,7 @@ final class StatsCache {
                 self.isValid = true
                 self.isLoading = false
 
-                print("✅ Stats cache refreshed: \(count) flights, \(String(format: "%.2f", hours))h total")
+                logDebug("Stats cache refreshed: \(count) flights, \(String(format: "%.2f", hours))h total", category: .stats)
             }
         }
     }
@@ -98,7 +98,7 @@ final class StatsCache {
     func invalidate() {
         isValid = false
         lastUpdate = nil
-        print("🔄 Stats cache invalidated")
+        logDebug("Stats cache invalidated", category: .stats)
     }
 
     /// Rafraîchit le cache seulement s'il n'est pas valide
