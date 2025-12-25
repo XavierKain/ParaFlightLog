@@ -26,35 +26,42 @@ struct ContentView: View {
     // Conserver l'onglet sélectionné lors du changement de langue
     @State private var selectedTab: Int = 0
 
+    // Labels des onglets calculés dynamiquement
+    private var wingsLabel: String { "Voiles".localized }
+    private var flightsLabel: String { "Vols".localized }
+    private var statsLabel: String { "Stats".localized }
+    private var chartsLabel: String { "Graphiques".localized }
+    private var settingsLabel: String { "Réglages".localized }
+
     var body: some View {
         TabView(selection: $selectedTab) {
             WingsView()
                 .tabItem {
-                    Label(String(localized: "Voiles"), systemImage: "wind")
+                    Label(wingsLabel, systemImage: "wind")
                 }
                 .tag(0)
 
             FlightsView()
                 .tabItem {
-                    Label(String(localized: "Vols"), systemImage: "airplane")
+                    Label(flightsLabel, systemImage: "airplane")
                 }
                 .tag(1)
 
             StatsView()
                 .tabItem {
-                    Label(String(localized: "Stats"), systemImage: "chart.bar")
+                    Label(statsLabel, systemImage: "chart.bar")
                 }
                 .tag(2)
 
             ChartsView()
                 .tabItem {
-                    Label(String(localized: "Graphiques"), systemImage: "chart.xyaxis.line")
+                    Label(chartsLabel, systemImage: "chart.xyaxis.line")
                 }
                 .tag(3)
 
             SettingsView()
                 .tabItem {
-                    Label(String(localized: "Réglages"), systemImage: "gearshape")
+                    Label(settingsLabel, systemImage: "gearshape")
                 }
                 .tag(4)
         }

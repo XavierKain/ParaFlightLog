@@ -15,6 +15,9 @@ struct ParaFlightLogWatch_Watch_AppApp: App {
     @State private var locationService = WatchLocationService()
     @State private var localizationManager = WatchLocalizationManager.shared
 
+    // Référence au WorkoutManager pour le pré-chargement
+    private let workoutManager = WorkoutManager.shared
+
     var body: some Scene {
         WindowGroup {
             ContentView()
@@ -27,6 +30,11 @@ struct ParaFlightLogWatch_Watch_AppApp: App {
                     // pour que le spot soit affiché sur FlightStartView
                     locationService.requestAuthorization()
                     locationService.startUpdatingLocation()
+
+                    // Pré-charger HealthKit en arrière-plan pour éviter le lag au premier vol
+                    Task(priority: .background) {
+                        _ = await workoutManager.requestAuthorization()
+                    }
                 }
         }
     }

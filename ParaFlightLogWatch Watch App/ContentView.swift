@@ -63,17 +63,6 @@ struct ContentView: View {
             .interactiveDismissDisabled(true) // Empêche de swipe down pour fermer
         }
         .onAppear {
-            // Demander l'autorisation HealthKit au lancement avec priorité élevée
-            // pour éviter le lag au premier vol
-            Task(priority: .userInitiated) {
-                await workoutManager.requestAuthorization()
-                // Pré-initialiser la session workout si autoWaterLock est activé
-                // pour que le premier vol démarre instantanément
-                if WatchSettings.shared.autoWaterLockEnabled {
-                    await workoutManager.prepareWorkoutSession()
-                }
-            }
-
             // Vérifier s'il y a une session à récupérer après un crash
             checkForRecoverableSession()
         }
