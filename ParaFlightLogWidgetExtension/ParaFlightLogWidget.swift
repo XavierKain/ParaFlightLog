@@ -79,7 +79,8 @@ struct FlightWidgetProvider: TimelineProvider {
             wingName: nil
         )
 
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: Date())!
+        let now = Date()
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: now) ?? now.addingTimeInterval(15 * 60)
         let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
         completion(timeline)
     }

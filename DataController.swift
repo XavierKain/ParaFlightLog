@@ -22,6 +22,9 @@ final class DataController {
     // Cache des statistiques - invalidé automatiquement lors des modifications de vols
     let statsCache = StatsCache()
 
+    // Indique si on utilise une base in-memory (fallback après erreur)
+    private(set) var isUsingFallbackDatabase: Bool = false
+
     init() {
         // NOTE: Migration désactivée - la base de données est maintenant persistante
         // Self.deleteOldDatabaseIfNeeded()
@@ -47,7 +50,37 @@ final class DataController {
 
             logInfo("ModelContainer created successfully", category: .dataController)
         } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+            // Fallback: utiliser une base de données in-memory
+            // Les données ne seront pas persistées, mais l'app ne crashera pas
+            logError("Could not create ModelContainer: \(error). Using in-memory fallback.", category: .dataController)
+
+            let fallbackConfiguration = ModelConfiguration(
+                schema: schema,
+                isStoredInMemoryOnly: true
+            )
+
+            do {
+                let fallbackContainer = try ModelContainer(for: schema, configurations: [fallbackConfiguration])
+                self.modelContainer = fallbackContainer
+                self.modelContext = ModelContext(fallbackContainer)
+                self.isUsingFallbackDatabase = true
+
+                // Configurer le cache de statistiques
+                statsCache.dataController = self
+
+                logWarning("Using in-memory database - data will not persist", category: .dataController)
+            } catch {
+                // Dernier recours: créer un container minimal
+                // Ce cas ne devrait jamais arriver en pratique
+                logError("Critical: Could not create fallback container: \(error)", category: .dataController)
+                // Force le container in-memory sans configuration
+                // swiftlint:disable:next force_try
+                let minimalContainer = try! ModelContainer(for: schema)
+                self.modelContainer = minimalContainer
+                self.modelContext = ModelContext(minimalContainer)
+                self.isUsingFallbackDatabase = true
+                statsCache.dataController = self
+            }
         }
     }
 

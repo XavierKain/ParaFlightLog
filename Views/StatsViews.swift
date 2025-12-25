@@ -149,6 +149,15 @@ struct StatsByWingSection: View {
         }
     }
 
+    /// Crée le label pour une voile dans le graphique
+    private func wingChartLabel(for wing: Wing) -> String {
+        if let size = wing.size {
+            return "\(abbreviateWingName(wing.name)) (\(size) m²)"
+        } else {
+            return abbreviateWingName(wing.name)
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Par voile")
@@ -265,10 +274,7 @@ struct StatsByWingSection: View {
                                 let maxMinutes = (wingStats.first?.hours ?? 1) * 60 + (wingStats.first?.minutes ?? 0)
                                 let maxHours = Double(maxMinutes) / 60.0
                                 let scaledHours = (hours / maxHours) * 0.85 * maxHours
-
-                                let wingLabel = stat.wing.size != nil
-                                    ? "\(abbreviateWingName(stat.wing.name)) (\(stat.wing.size!) m²)"
-                                    : abbreviateWingName(stat.wing.name)
+                                let wingLabel = wingChartLabel(for: stat.wing)
 
                                 BarMark(
                                     x: .value("Heures", scaledHours),

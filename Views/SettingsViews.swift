@@ -994,16 +994,25 @@ struct DocumentPicker: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
         // Support CSV, Excel files, and .paraflightlog backup folders
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [
+        // Construire la liste des types supportés (éviter les force unwraps)
+        var contentTypes: [UTType] = [
             .commaSeparatedText,
             .plainText,
             .data,
             .folder,
-            .package,
-            UTType(filenameExtension: "xlsx")!,
-            UTType(filenameExtension: "xls")!,
-            UTType(filenameExtension: "paraflightlog")!
-        ])
+            .package
+        ]
+        // Ajouter les types personnalisés s'ils existent
+        if let xlsxType = UTType(filenameExtension: "xlsx") {
+            contentTypes.append(xlsxType)
+        }
+        if let xlsType = UTType(filenameExtension: "xls") {
+            contentTypes.append(xlsType)
+        }
+        if let backupType = UTType(filenameExtension: "paraflightlog") {
+            contentTypes.append(backupType)
+        }
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: contentTypes)
         picker.allowsMultipleSelection = false
         picker.delegate = context.coordinator
         return picker

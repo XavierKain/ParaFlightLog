@@ -53,6 +53,16 @@ final class WatchImageCache {
         cache.countLimit = maxCacheCount
         cache.totalCostLimit = maxCacheCostMB * 1024 * 1024  // Convertir en bytes
     }
+
+    /// Calcule le coût mémoire réel d'une UIImage (en bytes)
+    /// Le coût est basé sur la taille en pixels × 4 bytes par pixel (RGBA)
+    private func memoryCost(for image: UIImage) -> Int {
+        guard let cgImage = image.cgImage else {
+            // Fallback: estimation basée sur la taille logique
+            return Int(image.size.width * image.size.height * 4 * image.scale * image.scale)
+        }
+        return cgImage.width * cgImage.height * 4  // 4 bytes par pixel (RGBA)
+    }
     
     /// Récupère une image du cache ou la décode si nécessaire
     func image(for wingId: UUID, data: Data?) -> UIImage? {
@@ -69,8 +79,8 @@ final class WatchImageCache {
         // Décoder l'image
         guard let image = UIImage(data: data) else { return nil }
 
-        // Mettre en cache avec le coût = taille en bytes de l'image
-        let cost = data.count
+        // Mettre en cache avec le coût = taille mémoire réelle de l'UIImage
+        let cost = memoryCost(for: image)
         cache.setObject(ImageWrapper(image), forKey: key, cost: cost)
 
         return image
@@ -85,7 +95,7 @@ final class WatchImageCache {
                 let key = UUIDKey(wing.id)
                 if self.cache.object(forKey: key) == nil {
                     if let image = UIImage(data: data) {
-                        let cost = data.count
+                        let cost = self.memoryCost(for: image)
                         DispatchQueue.main.async {
                             self.cache.setObject(ImageWrapper(image), forKey: key, cost: cost)
                         }
@@ -112,7 +122,7 @@ final class WatchImageCache {
         guard cache.object(forKey: key) == nil else { return }
 
         if let image = UIImage(data: data) {
-            let cost = data.count
+            let cost = memoryCost(for: image)
             cache.setObject(ImageWrapper(image), forKey: key, cost: cost)
         }
     }

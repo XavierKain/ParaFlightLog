@@ -846,13 +846,37 @@ struct EditFlightView: View {
             _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
         }
 
-        // Initialiser les statistiques
-        _startAltitude = State(initialValue: flight.startAltitude != nil ? String(format: "%.0f", flight.startAltitude!) : "")
-        _maxAltitude = State(initialValue: flight.maxAltitude != nil ? String(format: "%.0f", flight.maxAltitude!) : "")
-        _endAltitude = State(initialValue: flight.endAltitude != nil ? String(format: "%.0f", flight.endAltitude!) : "")
-        _totalDistance = State(initialValue: flight.totalDistance != nil ? String(format: "%.0f", flight.totalDistance!) : "")
-        _maxSpeed = State(initialValue: flight.maxSpeed != nil ? String(format: "%.1f", flight.maxSpeed! * 3.6) : "")
-        _maxGForce = State(initialValue: flight.maxGForce != nil ? String(format: "%.1f", flight.maxGForce!) : "")
+        // Initialiser les statistiques (avec if let pour éviter les force unwraps)
+        if let alt = flight.startAltitude {
+            _startAltitude = State(initialValue: String(format: "%.0f", alt))
+        } else {
+            _startAltitude = State(initialValue: "")
+        }
+        if let alt = flight.maxAltitude {
+            _maxAltitude = State(initialValue: String(format: "%.0f", alt))
+        } else {
+            _maxAltitude = State(initialValue: "")
+        }
+        if let alt = flight.endAltitude {
+            _endAltitude = State(initialValue: String(format: "%.0f", alt))
+        } else {
+            _endAltitude = State(initialValue: "")
+        }
+        if let dist = flight.totalDistance {
+            _totalDistance = State(initialValue: String(format: "%.0f", dist))
+        } else {
+            _totalDistance = State(initialValue: "")
+        }
+        if let speed = flight.maxSpeed {
+            _maxSpeed = State(initialValue: String(format: "%.1f", speed * 3.6))
+        } else {
+            _maxSpeed = State(initialValue: "")
+        }
+        if let gforce = flight.maxGForce {
+            _maxGForce = State(initialValue: String(format: "%.1f", gforce))
+        } else {
+            _maxGForce = State(initialValue: "")
+        }
     }
 
     var calculatedDuration: Int {
