@@ -3447,6 +3447,7 @@
       }
     },
     "Stats" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

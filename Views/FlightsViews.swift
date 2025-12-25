@@ -85,23 +85,19 @@ struct FlightsView: View {
                                 // Utiliser LazyVStack pour le lazy loading
                                 LazyVStack(spacing: 8) {
                                     ForEach(olderFlights) { flight in
-                                        SwipeToDeleteRow(
-                                            onDelete: { deleteFlight(flight) }
-                                        ) {
-                                            FlightRow(flight: flight)
-                                                .contentShape(Rectangle())
-                                                .onTapGesture {
-                                                    showingFlightDetail = flight
-                                                }
-                                        }
-                                        .padding(.horizontal, 16)
-                                        .contextMenu {
-                                            Button(role: .destructive) {
-                                                deleteFlight(flight)
-                                            } label: {
-                                                Label("Supprimer", systemImage: "trash")
+                                        FlightRow(flight: flight)
+                                            .contentShape(Rectangle())
+                                            .onTapGesture {
+                                                showingFlightDetail = flight
                                             }
-                                        }
+                                            .padding(.horizontal, 16)
+                                            .contextMenu {
+                                                Button(role: .destructive) {
+                                                    deleteFlight(flight)
+                                                } label: {
+                                                    Label("Supprimer", systemImage: "trash")
+                                                }
+                                            }
                                     }
 
                                     // Infinite scroll : charger plus automatiquement
@@ -1319,72 +1315,3 @@ struct MapCoordinatePicker: View {
     }
 }
 
-// MARK: - SwipeToDeleteRow (Composant swipe pour supprimer)
-
-struct SwipeToDeleteRow<Content: View>: View {
-    let onDelete: () -> Void
-    @ViewBuilder let content: Content
-
-    @State private var offset: CGFloat = 0
-    @State private var showingDeleteConfirmation = false
-
-    private let deleteThreshold: CGFloat = -80
-    private let deleteButtonWidth: CGFloat = 80
-
-    var body: some View {
-        ZStack(alignment: .trailing) {
-            // Bouton de suppression (visible quand on swipe)
-            if offset < 0 {
-                Button(role: .destructive) {
-                    showingDeleteConfirmation = true
-                } label: {
-                    Image(systemName: "trash.fill")
-                        .foregroundStyle(.white)
-                        .frame(width: deleteButtonWidth, height: .infinity)
-                        .background(Color.red)
-                }
-            }
-
-            // Contenu principal
-            content
-                .background(Color(.systemBackground))
-                .offset(x: offset)
-                .gesture(
-                    DragGesture()
-                        .onChanged { value in
-                            // Seulement permettre le swipe vers la gauche
-                            if value.translation.width < 0 {
-                                offset = max(value.translation.width, -deleteButtonWidth)
-                            } else if offset < 0 {
-                                // Permettre de revenir vers la droite
-                                offset = min(0, offset + value.translation.width)
-                            }
-                        }
-                        .onEnded { value in
-                            withAnimation(.easeOut(duration: 0.2)) {
-                                if offset < deleteThreshold {
-                                    // Garder ouvert pour montrer le bouton
-                                    offset = -deleteButtonWidth
-                                } else {
-                                    // Fermer
-                                    offset = 0
-                                }
-                            }
-                        }
-                )
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .confirmationDialog("Supprimer ce vol ?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
-            Button("Supprimer", role: .destructive) {
-                withAnimation {
-                    onDelete()
-                }
-            }
-            Button("Annuler", role: .cancel) {
-                withAnimation {
-                    offset = 0
-                }
-            }
-        }
-    }
-}
