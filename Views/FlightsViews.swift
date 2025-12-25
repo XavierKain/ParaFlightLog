@@ -48,87 +48,89 @@ struct FlightsView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                if flights.isEmpty {
-                    ContentUnavailableView(
-                        "Aucun vol",
-                        systemImage: "airplane.circle",
-                        description: Text("Commencez un vol depuis la Watch ou l'onglet Chrono")
-                    )
-                    .padding(.top, 100)
-                } else {
-                    VStack(spacing: 20) {
-                        // Dernier vol en grand
-                        if let latest = latestFlight {
-                            LatestFlightCard(flight: latest)
-                                .onTapGesture {
-                                    showingFlightDetail = latest
-                                }
-                                .contextMenu {
-                                    Button(role: .destructive) {
-                                        flightToDelete = latest
-                                        showingDeleteConfirmation = true
-                                    } label: {
-                                        Label("Supprimer", systemImage: "trash")
-                                    }
-                                }
-                        }
-
-                        // Vols précédents avec lazy loading
-                        if !olderFlights.isEmpty {
-                            VStack(alignment: .leading, spacing: 12) {
-                                Text("Vols précédents")
-                                    .font(.headline)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.horizontal)
-
-                                // Utiliser LazyVStack pour le lazy loading
-                                LazyVStack(spacing: 8) {
-                                    ForEach(olderFlights) { flight in
-                                        FlightRow(flight: flight)
-                                            .contentShape(Rectangle())
-                                            .onTapGesture {
-                                                showingFlightDetail = flight
-                                            }
-                                            .padding(.horizontal, 16)
-                                            .contextMenu {
-                                                Button(role: .destructive) {
-                                                    deleteFlight(flight)
-                                                } label: {
-                                                    Label("Supprimer", systemImage: "trash")
-                                                }
-                                            }
-                                    }
-
-                                    // Infinite scroll : charger plus automatiquement
-                                    if hasMoreFlights {
-                                        ProgressView()
-                                            .frame(maxWidth: .infinity)
-                                            .padding()
-                                            .onAppear {
-                                                loadMoreFlights()
-                                            }
-                                    }
+            if flights.isEmpty {
+                ContentUnavailableView(
+                    "Aucun vol",
+                    systemImage: "airplane.circle",
+                    description: Text("Commencez un vol depuis la Watch ou l'onglet Chrono")
+                )
+                .padding(.top, 100)
+            } else {
+                List {
+                    // Dernier vol en grand (featured)
+                    if let latest = latestFlight {
+                        LatestFlightCard(flight: latest)
+                            .onTapGesture {
+                                showingFlightDetail = latest
+                            }
+                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button(role: .destructive) {
+                                    deleteFlight(latest)
+                                } label: {
+                                    Label("Supprimer", systemImage: "trash")
                                 }
                             }
+                    }
+
+                    // Section vols précédents
+                    if !olderFlights.isEmpty {
+                        Section {
+                            ForEach(olderFlights) { flight in
+                                FlightRow(flight: flight)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        showingFlightDetail = flight
+                                    }
+                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                        Button(role: .destructive) {
+                                            deleteFlight(flight)
+                                        } label: {
+                                            Label("Supprimer", systemImage: "trash")
+                                        }
+                                    }
+                            }
+                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+
+                            // Infinite scroll : charger plus automatiquement
+                            if hasMoreFlights {
+                                ProgressView()
+                                    .frame(maxWidth: .infinity)
+                                    .padding()
+                                    .onAppear {
+                                        loadMoreFlights()
+                                    }
+                                    .listRowBackground(Color.clear)
+                                    .listRowSeparator(.hidden)
+                            }
+                        } header: {
+                            Text("Vols précédents")
+                                .font(.headline)
+                                .foregroundStyle(.secondary)
+                                .textCase(nil)
                         }
                     }
-                    .padding(.vertical)
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+            }
+        }
+        .navigationTitle(String(localized: "Mes vols"))
+        .id(localizationManager.currentLanguage) // Force re-render quand la langue change
+        .sheet(item: $showingFlightDetail) { flight in
+            FlightDetailView(flight: flight)
+        }
+        .confirmationDialog("Supprimer ce vol ?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+            Button("Supprimer", role: .destructive) {
+                if let flight = flightToDelete {
+                    deleteFlight(flight)
                 }
             }
-            .navigationTitle(String(localized: "Mes vols"))
-            .id(localizationManager.currentLanguage) // Force re-render quand la langue change
-            .sheet(item: $showingFlightDetail) { flight in
-                FlightDetailView(flight: flight)
-            }
-            .confirmationDialog("Supprimer ce vol ?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
-                Button("Supprimer", role: .destructive) {
-                    if let flight = flightToDelete {
-                        deleteFlight(flight)
-                    }
-                }
-                Button("Annuler", role: .cancel) {}
-            }
+            Button("Annuler", role: .cancel) {}
         }
     }
 
