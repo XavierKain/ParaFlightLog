@@ -32,7 +32,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         loadWingsSync()
 
         // Activer la session WatchConnectivity en arrière-plan
-        Task.detached(priority: .background) { [weak self] in
+        Task { @MainActor [weak self] in
             self?.activateSession()
         }
     }
@@ -176,18 +176,19 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
            let jsonData = Data(base64Encoded: base64String) {
 
             // Décoder en background pour ne pas bloquer l'UI
-            Task.detached(priority: .userInitiated) { [weak self] in
+            Task.detached(priority: .userInitiated) {
                 guard let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
                     return
                 }
                 let sortedWings = decodedWings.sorted { $0.displayOrder < $1.displayOrder }
 
-                await MainActor.run {
+                await MainActor.run { [weak self] in
+                    guard let self = self else { return }
                     // Ne mettre à jour que si les données ont changé
                     // pour éviter les re-renders inutiles
-                    guard self?.wingsHaveChanged(sortedWings) == true else { return }
-                    self?.wings = sortedWings
-                    self?.saveWingsLocally()
+                    guard self.wingsHaveChanged(sortedWings) else { return }
+                    self.wings = sortedWings
+                    self.saveWingsLocally()
                 }
             }
             return
@@ -195,17 +196,18 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
         // Ancien format (compatibilité) : wings en [[String: Any]]
         if let wingsData = context["wings"] as? [[String: Any]] {
-            Task.detached(priority: .userInitiated) { [weak self] in
+            Task.detached(priority: .userInitiated) {
                 guard let jsonData = try? JSONSerialization.data(withJSONObject: wingsData),
                       let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
                     return
                 }
                 let sortedWings = decodedWings.sorted { $0.displayOrder < $1.displayOrder }
 
-                await MainActor.run {
-                    guard self?.wingsHaveChanged(sortedWings) == true else { return }
-                    self?.wings = sortedWings
-                    self?.saveWingsLocally()
+                await MainActor.run { [weak self] in
+                    guard let self = self else { return }
+                    guard self.wingsHaveChanged(sortedWings) else { return }
+                    self.wings = sortedWings
+                    self.saveWingsLocally()
                 }
             }
         }

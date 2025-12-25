@@ -26,12 +26,10 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         if let manager = _locationManager {
             return manager
         }
-        // Fallback synchrone si pas encore initialisé
-        let manager = CLLocationManager()
-        manager.delegate = self
-        manager.desiredAccuracy = kCLLocationAccuracyHundredMeters
-        _locationManager = manager
-        return manager
+        // Fallback synchrone si pas encore initialisé - créer et sauvegarder immédiatement
+        initializeLocationManagerSync()
+        // _locationManager est maintenant garanti d'être initialisé
+        return _locationManager!
     }
 
     var lastKnownLocation: CLLocation?
@@ -52,10 +50,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     // Nom du spot verrouillé pendant le vol (pour éviter qu'il change)
     private var lockedSpotName: String?
 
-    // Trace GPS du vol en cours
+    // Trace GPS du vol en cours - protégé par gpsQueue pour thread safety
     private var gpsTrackPoints: [GPSTrackPoint] = []
     private var lastTrackPointTime: Date?
     private let trackPointInterval: TimeInterval = 5.0  // Un point toutes les 5 secondes
+    private let gpsQueue = DispatchQueue(label: "com.paraflightlog.gpstrack", qos: .userInitiated)
 
     // Limite de points GPS en mémoire pour éviter les crashes sur vols longs
     // 500 points max * 5 secondes = ~42 minutes de vol détaillé
@@ -137,9 +136,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             lockedSpotName = nil  // On attendra la première vraie position
         }
 
-        // Reset de la trace GPS
-        gpsTrackPoints = []
-        lastTrackPointTime = nil
+        // Reset de la trace GPS (thread-safe)
+        gpsQueue.sync {
+            gpsTrackPoints = []
+            lastTrackPointTime = nil
+        }
 
         startMotionUpdates()
     }
@@ -159,15 +160,16 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         return (startAltitude, maxAltitude, currentAltitude, totalDistance, maxSpeed, maxGForce)
     }
 
-    /// Retourne la trace GPS du vol
+    /// Retourne la trace GPS du vol (thread-safe)
     func getGPSTrack() -> [GPSTrackPoint] {
-        return gpsTrackPoints
+        return gpsQueue.sync { gpsTrackPoints }
     }
 
-    /// Compacte la trace GPS pour économiser la mémoire
+    /// Compacte la trace GPS pour économiser la mémoire (version interne - appelée depuis gpsQueue)
     /// Stratégie : garder 1 point sur 2 dans la première moitié (anciens points)
     /// et tous les points dans la deuxième moitié (points récents = plus de précision)
-    private func compactGPSTrack() {
+    /// ATTENTION: Cette méthode doit être appelée depuis gpsQueue.sync {}
+    private func compactGPSTrackInternal() {
         let count = gpsTrackPoints.count
 
         // Ne pas compacter si on est en dessous du seuil
@@ -189,9 +191,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             compacted.append(gpsTrackPoints[i])
         }
 
-        let previousCount = count
         gpsTrackPoints = compacted
-        print("📍 GPS track compacted: \(previousCount) → \(compacted.count) points (saved \(previousCount - compacted.count) points)")
     }
 
     // MARK: - Motion Tracking (G-Force)
@@ -282,7 +282,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         let geocoder = CLGeocoder()
 
         // Faire le geocoding en background pour ne pas bloquer l'UI
-        Task.detached(priority: .utility) { [weak self] in
+        Task.detached(priority: .utility) {
             do {
                 let placemarks = try await geocoder.reverseGeocodeLocation(location)
                 let placemark = placemarks.first
@@ -295,36 +295,37 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
                                placemark?.name ??
                                unknownSpot
 
-                await MainActor.run {
-                    self?.isGeocodingInProgress = false
+                await MainActor.run { [weak self] in
+                    guard let self = self else { return }
+                    self.isGeocodingInProgress = false
 
                     // Si un vol est en cours et qu'on n'a pas encore de spot verrouillé,
                     // verrouiller le premier spot valide obtenu
-                    if let self = self, self.isTracking && self.lockedSpotName == nil {
+                    if self.isTracking && self.lockedSpotName == nil {
                         self.lockedSpotName = spotName
                         self.currentSpotName = spotName
                         self.lastGeocodedSpot = spotName
-                        print("🔒 Spot verrouillé pendant le vol: \(spotName)")
                         return
                     }
 
                     // Ne pas modifier si un vol est en cours (spot déjà verrouillé)
-                    guard self?.isTracking != true else { return }
+                    guard !self.isTracking else { return }
 
                     // Ne mettre à jour que si le nom change (évite les re-renders inutiles)
-                    if self?.lastGeocodedSpot != spotName {
-                        self?.lastGeocodedSpot = spotName
-                        self?.currentSpotName = spotName
+                    if self.lastGeocodedSpot != spotName {
+                        self.lastGeocodedSpot = spotName
+                        self.currentSpotName = spotName
                     }
                 }
             } catch {
-                await MainActor.run {
-                    self?.isGeocodingInProgress = false
+                await MainActor.run { [weak self] in
+                    guard let self = self else { return }
+                    self.isGeocodingInProgress = false
                     // Ne pas modifier si un vol est en cours
-                    guard self?.isTracking != true else { return }
+                    guard !self.isTracking else { return }
                     let unknownSpot = String(localized: "Spot inconnu")
-                    if self?.currentSpotName != unknownSpot {
-                        self?.currentSpotName = unknownSpot
+                    if self.currentSpotName != unknownSpot {
+                        self.currentSpotName = unknownSpot
                     }
                 }
             }
@@ -387,23 +388,26 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
             previousLocation = location
 
-            // Ajouter un point à la trace GPS (tous les X secondes)
+            // Ajouter un point à la trace GPS (tous les X secondes) - thread-safe
             let now = Date()
-            if lastTrackPointTime == nil || now.timeIntervalSince(lastTrackPointTime!) >= trackPointInterval {
-                let trackPoint = GPSTrackPoint(
-                    timestamp: now,
-                    latitude: location.coordinate.latitude,
-                    longitude: location.coordinate.longitude,
-                    altitude: altitude,
-                    speed: location.speed > 0 ? location.speed : nil
-                )
-                gpsTrackPoints.append(trackPoint)
-                lastTrackPointTime = now
+            gpsQueue.sync {
+                let shouldAddPoint = lastTrackPointTime == nil || now.timeIntervalSince(lastTrackPointTime!) >= trackPointInterval
+                if shouldAddPoint {
+                    let trackPoint = GPSTrackPoint(
+                        timestamp: now,
+                        latitude: location.coordinate.latitude,
+                        longitude: location.coordinate.longitude,
+                        altitude: altitude,
+                        speed: location.speed > 0 ? location.speed : nil
+                    )
+                    gpsTrackPoints.append(trackPoint)
+                    lastTrackPointTime = now
 
-                // Limiter le nombre de points en mémoire pour éviter les crashes
-                // Compacter proactivement à 80% de la limite pour garder de la marge
-                if gpsTrackPoints.count >= compactionThreshold {
-                    compactGPSTrack()
+                    // Limiter le nombre de points en mémoire pour éviter les crashes
+                    // Compacter proactivement à 80% de la limite pour garder de la marge
+                    if gpsTrackPoints.count >= compactionThreshold {
+                        compactGPSTrackInternal()
+                    }
                 }
             }
         }

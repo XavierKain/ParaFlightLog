@@ -440,6 +440,7 @@ struct ActiveFlightView: View {
     @State private var timer: Timer?
     @State private var showingStopSheet: Bool = false
     @State private var finalDuration: Int = 0
+    @State private var timerUpdateCounter: Int = 0
 
     var body: some View {
         VStack(spacing: 2) {
@@ -597,19 +598,18 @@ struct ActiveFlightView: View {
             elapsedSeconds = 0
         }
 
-        // Compteur pour la mise à jour périodique du sessionManager (toutes les 10 secondes)
-        var updateCounter = 0
-
         // Démarrer le timer sur le RunLoop principal
+        // Note: pas besoin de weak self car SwiftUI Views sont des structs
+        // Le timer est stocké dans @State et invalidé dans onDisappear
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
             if let start = flightStartDate {
                 elapsedSeconds = Int(Date().timeIntervalSince(start))
             }
 
             // Mettre à jour les données dans le sessionManager toutes les 10 secondes
-            updateCounter += 1
-            if updateCounter >= 10 {
-                updateCounter = 0
+            timerUpdateCounter += 1
+            if timerUpdateCounter >= 10 {
+                timerUpdateCounter = 0
                 updateSessionData()
             }
         }

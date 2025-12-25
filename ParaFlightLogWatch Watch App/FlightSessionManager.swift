@@ -59,8 +59,15 @@ final class FlightSessionManager {
     private let saveInterval: TimeInterval = 30.0  // Sauvegarde toutes les 30 secondes
     private var saveTimer: Timer?
 
-    // Session en cours
-    private(set) var activeSession: FlightSession?
+    // Queue pour synchroniser l'accès à activeSession (thread safety)
+    private let sessionQueue = DispatchQueue(label: "com.paraflightlog.flightsession", qos: .userInitiated)
+
+    // Session en cours - accès synchronisé via sessionQueue
+    private var _activeSession: FlightSession?
+    private(set) var activeSession: FlightSession? {
+        get { sessionQueue.sync { _activeSession } }
+        set { sessionQueue.sync { _activeSession = newValue } }
+    }
 
     // Limite de points GPS pour éviter les problèmes mémoire
     // 500 points * 5 secondes = ~42 minutes de vol

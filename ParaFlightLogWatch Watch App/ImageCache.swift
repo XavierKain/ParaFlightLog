@@ -175,13 +175,16 @@ struct CachedWingImage: View {
 
         // Si pas en cache, décoder en arrière-plan pour ne pas bloquer l'UI
         guard let data = wing.photoData else { return }
+        let wingId = wing.id
 
         Task.detached(priority: .userInitiated) {
-            // Utiliser la méthode image(for:data:) qui gère le cache automatiquement
-            if let image = WatchImageCache.shared.image(for: wing.id, data: data) {
-                await MainActor.run {
-                    cachedImage = image
-                }
+            // Décoder l'image en arrière-plan
+            guard let image = UIImage(data: data) else { return }
+
+            await MainActor.run {
+                // Mettre en cache et afficher
+                _ = WatchImageCache.shared.image(for: wingId, data: data)
+                cachedImage = image
             }
         }
     }
