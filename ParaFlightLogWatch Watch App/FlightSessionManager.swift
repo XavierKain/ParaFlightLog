@@ -92,7 +92,7 @@ final class FlightSessionManager {
         // Démarrer la sauvegarde périodique
         startPeriodicSave()
 
-        print("📝 Flight session started and saved")
+        watchLogInfo("Flight session started and saved", category: .session)
     }
 
     /// Met à jour les données de la session en cours
@@ -137,7 +137,7 @@ final class FlightSessionManager {
         stopPeriodicSave()
         clearSavedSession()
         activeSession = nil
-        print("✅ Flight session ended and cleared")
+        watchLogInfo("Flight session ended and cleared", category: .session)
     }
 
     /// Annule la session (vol annulé par l'utilisateur)
@@ -145,7 +145,7 @@ final class FlightSessionManager {
         stopPeriodicSave()
         clearSavedSession()
         activeSession = nil
-        print("🗑️ Flight session discarded")
+        watchLogInfo("Flight session discarded", category: .session)
     }
 
     // MARK: - Persistence
@@ -159,16 +159,16 @@ final class FlightSessionManager {
         do {
             let data = try JSONEncoder().encode(session)
             UserDefaults.standard.set(data, forKey: sessionKey)
-            print("💾 Flight session saved (\(session.gpsTrackPoints.count) GPS points)")
+            watchLogDebug("Flight session saved (\(session.gpsTrackPoints.count) GPS points)", category: .session)
         } catch {
-            print("❌ Failed to save flight session: \(error)")
+            watchLogError("Failed to save flight session: \(error)", category: .session)
         }
     }
 
     /// Charge une session sauvegardée (pour récupération après crash)
     private func loadSavedSession() {
         guard let data = UserDefaults.standard.data(forKey: sessionKey) else {
-            print("📭 No saved flight session found")
+            watchLogDebug("No saved flight session found", category: .session)
             return
         }
 
@@ -182,16 +182,14 @@ final class FlightSessionManager {
 
             if session.isActive && sessionAge < maxAge {
                 activeSession = session
-                print("🔄 Recovered flight session from \(session.lastSaveDate)")
-                print("   Duration so far: \(Int(sessionAge / 60)) minutes")
-                print("   GPS points: \(session.gpsTrackPoints.count)")
+                watchLogInfo("Recovered flight session from \(session.lastSaveDate), duration: \(Int(sessionAge / 60)) min, GPS points: \(session.gpsTrackPoints.count)", category: .session)
             } else {
                 // Session trop vieille, la supprimer
                 clearSavedSession()
-                print("🗑️ Cleared expired session (age: \(Int(sessionAge / 60)) min)")
+                watchLogInfo("Cleared expired session (age: \(Int(sessionAge / 60)) min)", category: .session)
             }
         } catch {
-            print("❌ Failed to load flight session: \(error)")
+            watchLogError("Failed to load flight session: \(error)", category: .session)
             clearSavedSession()
         }
     }

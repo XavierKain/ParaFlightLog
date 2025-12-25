@@ -44,23 +44,17 @@ final class WatchSettings {
 
     /// Met à jour les paramètres depuis un contexte reçu de l'iPhone
     func updateFromContext(_ context: [String: Any]) {
-        print("📲 WatchSettings.updateFromContext called with: \(context)")
+        watchLogDebug("updateFromContext called", category: .settings)
 
         if let autoWaterLock = context["watchAutoWaterLock"] as? Bool {
-            print("   🔧 Setting autoWaterLockEnabled to: \(autoWaterLock)")
             autoWaterLockEnabled = autoWaterLock
-        } else {
-            print("   ⚠️ No watchAutoWaterLock found in context")
         }
 
         if let allowDismiss = context["watchAllowSessionDismiss"] as? Bool {
-            print("   🔧 Setting allowSessionDismiss to: \(allowDismiss)")
             allowSessionDismiss = allowDismiss
-        } else {
-            print("   ⚠️ No watchAllowSessionDismiss found in context")
         }
 
-        print("   ✅ Final values: autoWaterLock=\(autoWaterLockEnabled), allowDismiss=\(allowSessionDismiss)")
+        watchLogDebug("Settings updated: autoWaterLock=\(autoWaterLockEnabled), allowDismiss=\(allowSessionDismiss)", category: .settings)
     }
 
     // MARK: - Water Lock Control

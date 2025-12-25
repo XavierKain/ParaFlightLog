@@ -113,8 +113,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             let status = reply["status"] as? String
             let spotName = reply["spotName"] as? String
             completion(status == "success", spotName)
-        }, errorHandler: { [weak self] _ in
+        }, errorHandler: { [weak self] error in
             // Fallback sur transferUserInfo
+            watchLogWarning("sendMessage failed, using transferUserInfo: \(error.localizedDescription)", category: .watchSync)
             self?.sendFlightToPhone(flight)
             completion(false, nil)
         })
@@ -124,13 +125,18 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     func requestWingsFromPhone() {
         guard sessionActivated, isPhoneReachable else { return }
         let message = ["action": "requestWings"]
-        WCSession.default.sendMessage(message, replyHandler: nil, errorHandler: nil)
+        WCSession.default.sendMessage(message, replyHandler: nil) { error in
+            watchLogWarning("requestWingsFromPhone failed: \(error.localizedDescription)", category: .watchSync)
+        }
     }
 
     // MARK: - WCSessionDelegate
 
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
-        guard error == nil else { return }
+        if let error = error {
+            watchLogError("WCSession activation failed: \(error.localizedDescription)", category: .watchSync)
+            return
+        }
 
         sessionActivated = (activationState == .activated)
         isPhoneReachable = session.isReachable

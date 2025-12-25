@@ -205,7 +205,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
         guard let motionManager = motionManager,
               motionManager.isDeviceMotionAvailable else {
-            print("⚠️ Device motion not available")
+            watchLogWarning("Device motion not available", category: .location)
             return
         }
 

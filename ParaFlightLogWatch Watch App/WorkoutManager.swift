@@ -26,7 +26,7 @@ final class WorkoutManager: NSObject {
 
         // Vérifier si HealthKit est disponible
         guard HKHealthStore.isHealthDataAvailable() else {
-            print("⚠️ HealthKit not available on this device")
+            watchLogWarning("HealthKit not available on this device", category: .workout)
             return
         }
 
@@ -53,10 +53,10 @@ final class WorkoutManager: NSObject {
             await MainActor.run {
                 isAuthorized = true
             }
-            print("✅ HealthKit authorization granted")
+            watchLogInfo("HealthKit authorization granted", category: .workout)
             return true
         } catch {
-            print("❌ HealthKit authorization failed: \(error.localizedDescription)")
+            watchLogError("HealthKit authorization failed: \(error.localizedDescription)", category: .workout)
             return false
         }
     }
@@ -66,25 +66,25 @@ final class WorkoutManager: NSObject {
     /// Pré-initialise la session workout en avance pour éviter le lag au premier vol
     /// Cette méthode crée la configuration mais ne démarre pas la session
     func prepareWorkoutSession() async {
-        guard let healthStore = healthStore else { return }
+        guard healthStore != nil else { return }
 
         // Pré-créer la configuration pour que le premier startWorkoutSession soit instantané
         // La première création de HKWorkoutConfiguration peut prendre du temps
         _ = HKWorkoutConfiguration()
 
-        print("✅ Workout session pre-initialized")
+        watchLogDebug("Workout session pre-initialized", category: .workout)
     }
 
     /// Démarre une session workout pour permettre le Water Lock
     func startWorkoutSession() async {
         guard let healthStore = healthStore else {
-            print("⚠️ HealthStore not available")
+            watchLogWarning("HealthStore not available", category: .workout)
             return
         }
 
         // Si une session est déjà active, ne rien faire
         guard workoutSession == nil else {
-            print("⚠️ Workout session already active")
+            watchLogDebug("Workout session already active", category: .workout)
             return
         }
 
@@ -111,20 +111,20 @@ final class WorkoutManager: NSObject {
                 self.isWorkoutActive = true
             }
 
-            print("✅ Workout session started")
+            watchLogInfo("Workout session started", category: .workout)
 
             // Maintenant on peut activer le Water Lock
             await MainActor.run {
                 if WatchSettings.shared.autoWaterLockEnabled {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        print("🔒 Activating Water Lock with workout session...")
+                        watchLogDebug("Activating Water Lock with workout session", category: .workout)
                         WKInterfaceDevice.current().enableWaterLock()
                     }
                 }
             }
 
         } catch {
-            print("❌ Failed to start workout session: \(error.localizedDescription)")
+            watchLogError("Failed to start workout session: \(error.localizedDescription)", category: .workout)
         }
     }
 
@@ -142,9 +142,9 @@ final class WorkoutManager: NSObject {
             try await builder.endCollection(at: Date())
             // Optionnel: sauvegarder le workout (on peut skip pour parapente)
             // try await builder.finishWorkout()
-            print("✅ Workout session ended")
+            watchLogInfo("Workout session ended", category: .workout)
         } catch {
-            print("❌ Failed to end workout session: \(error.localizedDescription)")
+            watchLogError("Failed to end workout session: \(error.localizedDescription)", category: .workout)
         }
 
         await MainActor.run {

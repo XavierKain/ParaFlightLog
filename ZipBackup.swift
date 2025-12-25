@@ -25,9 +25,10 @@ struct ZipBackup {
         let imagesCount: Int
 
         static func create(wingsCount: Int, flightsCount: Int, imagesCount: Int) -> BackupMetadata {
-            BackupMetadata(
+            let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+            return BackupMetadata(
                 version: "1.0",
-                appVersion: "1.0.0", // TODO: Get from bundle
+                appVersion: appVersion,
                 exportDate: Date(),
                 wingsCount: wingsCount,
                 flightsCount: flightsCount,

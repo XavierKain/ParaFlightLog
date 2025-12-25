@@ -119,7 +119,7 @@ struct ContentView: View {
         // Nettoyer la session
         sessionManager.endSession()
 
-        print("✅ Recovered flight saved: \(recoveredDuration) seconds")
+        watchLogInfo("Recovered flight saved: \(recoveredDuration) seconds", category: .flight)
     }
 
     /// Formate la durée récupérée pour l'affichage

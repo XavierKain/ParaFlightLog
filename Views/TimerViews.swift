@@ -263,6 +263,11 @@ struct TimerView: View {
                 startBackgroundTimer()
             }
         }
+        .onDisappear {
+            // Invalider le timer pour éviter les fuites mémoire
+            backgroundTask?.invalidate()
+            backgroundTask = nil
+        }
     }
 
     private func startBackgroundTimer() {
