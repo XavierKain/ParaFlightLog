@@ -63,6 +63,18 @@ final class WorkoutManager: NSObject {
 
     // MARK: - Workout Session
 
+    /// Pré-initialise la session workout en avance pour éviter le lag au premier vol
+    /// Cette méthode crée la configuration mais ne démarre pas la session
+    func prepareWorkoutSession() async {
+        guard let healthStore = healthStore else { return }
+
+        // Pré-créer la configuration pour que le premier startWorkoutSession soit instantané
+        // La première création de HKWorkoutConfiguration peut prendre du temps
+        _ = HKWorkoutConfiguration()
+
+        print("✅ Workout session pre-initialized")
+    }
+
     /// Démarre une session workout pour permettre le Water Lock
     func startWorkoutSession() async {
         guard let healthStore = healthStore else {

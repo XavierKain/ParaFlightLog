@@ -63,10 +63,15 @@ struct ContentView: View {
             .interactiveDismissDisabled(true) // Empêche de swipe down pour fermer
         }
         .onAppear {
-            // Demander l'autorisation HealthKit au lancement
-            // (la localisation est déjà démarrée dans l'App)
-            Task(priority: .background) {
+            // Demander l'autorisation HealthKit au lancement avec priorité élevée
+            // pour éviter le lag au premier vol
+            Task(priority: .userInitiated) {
                 await workoutManager.requestAuthorization()
+                // Pré-initialiser la session workout si autoWaterLock est activé
+                // pour que le premier vol démarre instantanément
+                if WatchSettings.shared.autoWaterLockEnabled {
+                    await workoutManager.prepareWorkoutSession()
+                }
             }
 
             // Vérifier s'il y a une session à récupérer après un crash
@@ -152,21 +157,22 @@ struct ContentView: View {
         // Démarrer la session de persistance pour sauvegarder automatiquement
         sessionManager.startSession(wing: wing, spotName: locationService.currentSpotName)
 
+        // Démarrer la session workout EN ARRIÈRE-PLAN IMMÉDIATEMENT
+        // pour ne pas bloquer l'affichage du vol
+        if WatchSettings.shared.autoWaterLockEnabled {
+            Task.detached(priority: .high) { [workoutManager] in
+                await workoutManager.startWorkoutSession()
+            }
+        }
+
         // Assigner activeFlightWing déclenche automatiquement le fullScreenCover(item:)
         // SwiftUI passe cette valeur directement au closure, donc pas de problème de timing
         activeFlightWing = wing
 
-        // Démarrer les services après un court délai pour laisser l'UI se rendre
+        // Démarrer les services de localisation après un court délai
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
             locationService.startUpdatingLocation()
             locationService.startFlightTracking()
-
-            // Démarrer la session workout pour permettre le Water Lock
-            if WatchSettings.shared.autoWaterLockEnabled {
-                Task {
-                    await workoutManager.startWorkoutSession()
-                }
-            }
         }
     }
 

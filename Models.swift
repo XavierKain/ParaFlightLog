@@ -77,8 +77,7 @@ final class Wing {
     }
 
     /// Convertit en DTO avec miniature pour la Watch (48x48 max)
-    /// Redimensionne simplement l'image en préservant la transparence existante
-    /// (pas de traitement du fond blanc car les images sont déjà détourées)
+    /// Les images détourées sont redimensionnées en préservant leur transparence exacte
     func toDTOWithThumbnail() -> WingDTO {
         // Pas de photo = pas de miniature
         guard let originalData = photoData else {
@@ -94,19 +93,40 @@ final class Wing {
         let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
         let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
 
-        // Utiliser UIGraphicsImageRenderer avec format non-opaque pour préserver la transparence
-        let format = UIGraphicsImageRendererFormat()
-        format.opaque = false
-        format.scale = 1.0  // Éviter le scale retina pour garder la taille exacte
-
-        let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
-        let resizedImage = renderer.image { _ in
-            // Dessiner directement l'image - le format non-opaque préserve la transparence
-            // NE PAS utiliser clear() car cela peut corrompre les pixels transparents des PNG
-            image.draw(in: CGRect(origin: .zero, size: newSize))
+        // Redimensionner l'image en préservant la transparence
+        // On utilise directement CGImage pour éviter les problèmes de prémultiplication alpha
+        guard let cgImage = image.cgImage else {
+            return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
-        // Encoder en PNG pour préserver la transparence existante
+        let width = Int(newSize.width)
+        let height = Int(newSize.height)
+
+        // Créer un contexte bitmap avec canal alpha prémultiplié
+        guard let context = CGContext(
+            data: nil,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(),
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else {
+            return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
+        }
+
+        // Activer l'interpolation de haute qualité
+        context.interpolationQuality = .high
+
+        // Dessiner l'image redimensionnée
+        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+
+        // Créer l'image résultante
+        guard let resizedCGImage = context.makeImage() else {
+            return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
+        }
+
+        let resizedImage = UIImage(cgImage: resizedCGImage)
         let thumbnailData = resizedImage.pngData()
 
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)

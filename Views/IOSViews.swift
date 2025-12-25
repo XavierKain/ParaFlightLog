@@ -30,33 +30,34 @@ struct ContentView: View {
         TabView(selection: $selectedTab) {
             WingsView()
                 .tabItem {
-                    Label("Voiles", systemImage: "wind")
+                    Label(String(localized: "Voiles"), systemImage: "wind")
                 }
                 .tag(0)
 
             FlightsView()
                 .tabItem {
-                    Label("Vols", systemImage: "airplane")
+                    Label(String(localized: "Vols"), systemImage: "airplane")
                 }
                 .tag(1)
 
             StatsView()
                 .tabItem {
-                    Label("Stats", systemImage: "chart.bar")
+                    Label(String(localized: "Stats"), systemImage: "chart.bar")
                 }
                 .tag(2)
 
             ChartsView()
                 .tabItem {
-                    Label("Graphiques", systemImage: "chart.xyaxis.line")
+                    Label(String(localized: "Graphiques"), systemImage: "chart.xyaxis.line")
                 }
                 .tag(3)
 
             SettingsView()
                 .tabItem {
-                    Label("Réglages", systemImage: "gearshape")
+                    Label(String(localized: "Réglages"), systemImage: "gearshape")
                 }
                 .tag(4)
         }
+        .id(localizationManager.currentLanguage) // Force re-render de tout le TabView quand la langue change
     }
 }

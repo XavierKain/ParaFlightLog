@@ -82,15 +82,16 @@ struct FlightsView: View {
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal)
 
-                                // Utiliser LazyVStack pour le lazy loading
-                                LazyVStack(spacing: 8) {
+                                // Utiliser List pour supporter le swipe-to-delete natif
+                                List {
                                     ForEach(olderFlights) { flight in
                                         FlightRow(flight: flight)
                                             .contentShape(Rectangle())
                                             .onTapGesture {
                                                 showingFlightDetail = flight
                                             }
-                                            .padding(.horizontal, 16)
+                                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                            .listRowSeparator(.hidden)
                                             .contextMenu {
                                                 Button(role: .destructive) {
                                                     deleteFlight(flight)
@@ -98,6 +99,11 @@ struct FlightsView: View {
                                                     Label("Supprimer", systemImage: "trash")
                                                 }
                                             }
+                                    }
+                                    .onDelete { indexSet in
+                                        for index in indexSet {
+                                            deleteFlight(olderFlights[index])
+                                        }
                                     }
 
                                     // Infinite scroll : charger plus automatiquement
@@ -108,8 +114,11 @@ struct FlightsView: View {
                                             .onAppear {
                                                 loadMoreFlights()
                                             }
+                                            .listRowSeparator(.hidden)
                                     }
                                 }
+                                .listStyle(.plain)
+                                .scrollContentBackground(.hidden)
                             }
                         }
                     }
