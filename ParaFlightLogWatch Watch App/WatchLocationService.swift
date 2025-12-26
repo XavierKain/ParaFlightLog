@@ -267,6 +267,9 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
     private var isGeocodingInProgress = false
     private var lastGeocodedSpot: String?
+    private var lastGeocodingTime: Date?
+    // Rate limiting : 1 requête toutes les 5 secondes (12 req/min, bien sous la limite Apple de 50/min)
+    private let geocodingMinInterval: TimeInterval = 5.0
 
     private func reverseGeocode(location: CLLocation) {
         // Si un vol est en cours et qu'on a un spot verrouillé, ne pas changer le nom
@@ -278,9 +281,19 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             return
         }
 
+        // Rate limiting : éviter le throttling Apple (50 req/60s)
+        // On limite à 1 requête toutes les 30 secondes
+        if let lastTime = lastGeocodingTime {
+            let elapsed = Date().timeIntervalSince(lastTime)
+            if elapsed < geocodingMinInterval {
+                return
+            }
+        }
+
         // Éviter les multiples appels simultanés
         guard !isGeocodingInProgress else { return }
         isGeocodingInProgress = true
+        lastGeocodingTime = Date()
 
         // Faire le geocoding en background pour ne pas bloquer l'UI
         Task.detached(priority: .utility) { [weak self] in

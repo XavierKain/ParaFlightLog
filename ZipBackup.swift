@@ -14,7 +14,7 @@ import UniformTypeIdentifiers
 
 // MARK: - Metadata Structure (défini hors de ZipBackup pour éviter l'isolation MainActor implicite)
 
-struct BackupMetadata: Codable, Sendable {
+struct BackupMetadata: Sendable {
     let version: String
     let appVersion: String
     let exportDate: Date
@@ -31,6 +31,33 @@ struct BackupMetadata: Codable, Sendable {
             flightsCount: flightsCount,
             imagesCount: imagesCount
         )
+    }
+}
+
+// Conformances Codable nonisolated pour permettre l'encodage/décodage en background
+extension BackupMetadata: Codable {
+    nonisolated init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        version = try container.decode(String.self, forKey: .version)
+        appVersion = try container.decode(String.self, forKey: .appVersion)
+        exportDate = try container.decode(Date.self, forKey: .exportDate)
+        wingsCount = try container.decode(Int.self, forKey: .wingsCount)
+        flightsCount = try container.decode(Int.self, forKey: .flightsCount)
+        imagesCount = try container.decode(Int.self, forKey: .imagesCount)
+    }
+
+    nonisolated func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(version, forKey: .version)
+        try container.encode(appVersion, forKey: .appVersion)
+        try container.encode(exportDate, forKey: .exportDate)
+        try container.encode(wingsCount, forKey: .wingsCount)
+        try container.encode(flightsCount, forKey: .flightsCount)
+        try container.encode(imagesCount, forKey: .imagesCount)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case version, appVersion, exportDate, wingsCount, flightsCount, imagesCount
     }
 }
 

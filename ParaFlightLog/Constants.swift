@@ -21,7 +21,7 @@ enum AppConstants {
 
 // MARK: - Watch Sync Configuration
 
-enum WatchSyncConstants {
+enum WatchSyncConstants: Sendable {
     /// Délai avant retry de synchronisation (secondes)
     static let retryDelay: TimeInterval = 1.0
 
