@@ -55,7 +55,7 @@ struct ExcelImporter {
             let columns = parseCSVLine(line)
 
             guard columns.count >= 4 else {
-                print("⚠️ Ligne \(index + 2) ignorée: nombre de colonnes insuffisant")
+                logWarning("Ligne \(index + 2) ignorée: nombre de colonnes insuffisant", category: .dataImport)
                 continue
             }
 
@@ -78,13 +78,13 @@ struct ExcelImporter {
             }
 
             guard let flightDate = date else {
-                print("⚠️ Ligne \(index + 2): date invalide '\(dateString)'")
+                logWarning("Ligne \(index + 2): date invalide '\(dateString)'", category: .dataImport)
                 continue
             }
 
             // Parser la durée (format: "1h30", "45min", "2h", etc.)
             guard let duration = parseDuration(durationString) else {
-                print("⚠️ Ligne \(index + 2): durée invalide '\(durationString)'")
+                logWarning("Ligne \(index + 2): durée invalide '\(durationString)'", category: .dataImport)
                 continue
             }
 
@@ -140,7 +140,7 @@ struct ExcelImporter {
                 guard let hours = Int(components[0]),
                       let minutes = Int(components[1]),
                       let seconds = Int(components[2]) else {
-                    print("⚠️ Failed to parse duration components: \(components)")
+                    logWarning("Failed to parse duration H:MM:SS: \(components)", category: .dataImport)
                     return nil
                 }
                 return hours * 3600 + minutes * 60 + seconds
@@ -148,7 +148,7 @@ struct ExcelImporter {
                 // Format H:MM (sans secondes)
                 guard let hours = Int(components[0]),
                       let minutes = Int(components[1]) else {
-                    print("⚠️ Failed to parse duration components: \(components)")
+                    logWarning("Failed to parse duration H:MM: \(components)", category: .dataImport)
                     return nil
                 }
                 return hours * 3600 + minutes * 60
@@ -179,7 +179,7 @@ struct ExcelImporter {
             return minutes * 60
         }
 
-        print("⚠️ Could not parse duration: '\(duration)'")
+        logWarning("Could not parse duration: '\(duration)'", category: .dataImport)
         return nil
     }
 

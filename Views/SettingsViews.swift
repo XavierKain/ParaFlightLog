@@ -347,12 +347,16 @@ struct SpotMapPicker: View {
 
         isSearching = true
 
-        let geocoder = CLGeocoder()
-        geocoder.geocodeAddressString(searchText) { placemarks, error in
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = searchText
+        let search = MKLocalSearch(request: request)
+
+        search.start { response, error in
             DispatchQueue.main.async {
                 isSearching = false
 
-                guard let location = placemarks?.first?.location else { return }
+                guard let mapItem = response?.mapItems.first else { return }
+                let location = mapItem.location
 
                 withAnimation {
                     markerCoordinate = location.coordinate

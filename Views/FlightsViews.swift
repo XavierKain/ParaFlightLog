@@ -1156,8 +1156,11 @@ struct EditFlightView: View {
         isGeocodingSpot = true
         geocodingMessage = nil
 
-        let geocoder = CLGeocoder()
-        geocoder.geocodeAddressString(spotName) { placemarks, error in
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = spotName
+        let search = MKLocalSearch(request: request)
+
+        search.start { response, error in
             DispatchQueue.main.async {
                 isGeocodingSpot = false
 
@@ -1167,10 +1170,11 @@ struct EditFlightView: View {
                     return
                 }
 
-                guard let location = placemarks?.first?.location else {
+                guard let mapItem = response?.mapItems.first else {
                     geocodingMessage = "❌ Aucun résultat trouvé"
                     return
                 }
+                let location = mapItem.location
 
                 selectedCoordinate = location.coordinate
                 flight.latitude = location.coordinate.latitude
@@ -1322,12 +1326,16 @@ struct MapCoordinatePicker: View {
 
         isSearching = true
 
-        let geocoder = CLGeocoder()
-        geocoder.geocodeAddressString(query) { placemarks, error in
+        let request = MKLocalSearch.Request()
+        request.naturalLanguageQuery = query
+        let search = MKLocalSearch(request: request)
+
+        search.start { response, error in
             DispatchQueue.main.async {
                 isSearching = false
 
-                guard let location = placemarks?.first?.location else { return }
+                guard let mapItem = response?.mapItems.first else { return }
+                let location = mapItem.location
 
                 withAnimation {
                     markerCoordinate = location.coordinate

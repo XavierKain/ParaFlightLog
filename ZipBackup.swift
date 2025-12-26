@@ -12,30 +12,29 @@ import Foundation
 import SwiftData
 import UniformTypeIdentifiers
 
-struct ZipBackup {
+// MARK: - Metadata Structure (défini hors de ZipBackup pour éviter l'isolation MainActor implicite)
 
-    // MARK: - Metadata Structure
+struct BackupMetadata: Codable, Sendable {
+    let version: String
+    let appVersion: String
+    let exportDate: Date
+    let wingsCount: Int
+    let flightsCount: Int
+    let imagesCount: Int
 
-    struct BackupMetadata: Codable {
-        let version: String
-        let appVersion: String
-        let exportDate: Date
-        let wingsCount: Int
-        let flightsCount: Int
-        let imagesCount: Int
-
-        static func create(wingsCount: Int, flightsCount: Int, imagesCount: Int) -> BackupMetadata {
-            let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
-            return BackupMetadata(
-                version: "1.0",
-                appVersion: appVersion,
-                exportDate: Date(),
-                wingsCount: wingsCount,
-                flightsCount: flightsCount,
-                imagesCount: imagesCount
-            )
-        }
+    static func create(wingsCount: Int, flightsCount: Int, imagesCount: Int, appVersion: String) -> BackupMetadata {
+        return BackupMetadata(
+            version: "1.0",
+            appVersion: appVersion,
+            exportDate: Date(),
+            wingsCount: wingsCount,
+            flightsCount: flightsCount,
+            imagesCount: imagesCount
+        )
     }
+}
+
+struct ZipBackup {
 
     // MARK: - Export to Folder Bundle (iOS-compatible)
 
@@ -45,6 +44,9 @@ struct ZipBackup {
     ///   - flights: Liste des vols à exporter
     ///   - completion: Callback avec l'URL du dossier bundle créé (ou erreur)
     static func exportToZip(wings: [Wing], flights: [Flight], completion: @escaping (Result<URL, Error>) -> Void) {
+        // Capturer appVersion sur le main thread avant d'aller en background
+        let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+
         DispatchQueue.global(qos: .utility).async {
             do {
                 // Créer le dossier bundle .paraflightlog directement
@@ -119,7 +121,8 @@ struct ZipBackup {
                 let metadata = BackupMetadata.create(
                     wingsCount: wings.count,
                     flightsCount: flights.count,
-                    imagesCount: imagesCount
+                    imagesCount: imagesCount,
+                    appVersion: appVersion
                 )
                 let metadataData = try JSONEncoder().encode(metadata)
                 let metadataURL = bundleURL.appendingPathComponent("metadata.json")

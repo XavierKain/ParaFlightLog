@@ -71,15 +71,18 @@ final class DataController {
                 logWarning("Using in-memory database - data will not persist", category: .dataController)
             } catch {
                 // Dernier recours: créer un container minimal
-                // Ce cas ne devrait jamais arriver en pratique
+                // Si même cela échoue, l'app ne peut pas fonctionner du tout
                 logError("Critical: Could not create fallback container: \(error)", category: .dataController)
-                // Force le container in-memory sans configuration
-                // swiftlint:disable:next force_try
-                let minimalContainer = try! ModelContainer(for: schema)
-                self.modelContainer = minimalContainer
-                self.modelContext = ModelContext(minimalContainer)
-                self.isUsingFallbackDatabase = true
-                statsCache.dataController = self
+
+                do {
+                    let minimalContainer = try ModelContainer(for: schema)
+                    self.modelContainer = minimalContainer
+                    self.modelContext = ModelContext(minimalContainer)
+                    self.isUsingFallbackDatabase = true
+                    statsCache.dataController = self
+                } catch {
+                    fatalError("Unable to create any ModelContainer - app cannot function: \(error)")
+                }
             }
         }
     }

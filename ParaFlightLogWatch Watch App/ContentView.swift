@@ -211,8 +211,8 @@ struct ContentView: View {
     }
 
     private func discardFlight() {
-        // Annuler le vol sans sauvegarder
-        locationService.stopFlightTracking()
+        // Annuler le vol sans sauvegarder (résultat ignoré intentionnellement)
+        _ = locationService.stopFlightTracking()
 
         // Annuler la session de persistance
         sessionManager.discardSession()

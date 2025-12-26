@@ -170,13 +170,15 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
 
         let wings = dataController.fetchWings()
+        // Capturer la constante avant d'entrer dans le Task.detached (isolation MainActor)
+        let maxSizeKB = WatchSyncConstants.maxContextSizeKB
 
         // Traiter les images en background pour ne pas bloquer le main thread
         Task.detached(priority: .userInitiated) { [weak self] in
             let wingsDTOWithThumbnails = wings.map { $0.toDTOWithThumbnail() }
 
             guard let jsonData = try? JSONEncoder().encode(wingsDTOWithThumbnails) else {
-                await MainActor.run {
+                await MainActor.run { [weak self] in
                     self?.sendWingsWithoutPhotos()
                 }
                 return
@@ -185,15 +187,15 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             let dataSizeKB = Double(jsonData.count) / 1024.0
 
             // Si les données dépassent la limite, envoyer sans images
-            if dataSizeKB > WatchSyncConstants.maxContextSizeKB {
-                logWarning("Wings data too large (\(String(format: "%.1f", dataSizeKB))KB), sending without photos", category: .watchSync)
-                await MainActor.run {
+            if dataSizeKB > maxSizeKB {
+                await MainActor.run { [weak self] in
+                    logWarning("Wings data too large (\(String(format: "%.1f", dataSizeKB))KB), sending without photos", category: .watchSync)
                     self?.sendWingsWithoutPhotos()
                 }
                 return
             }
 
-            await MainActor.run {
+            await MainActor.run { [weak self] in
                 self?.finishSendingWings(jsonData: jsonData, withPhotos: true)
             }
         }

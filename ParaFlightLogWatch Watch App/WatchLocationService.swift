@@ -28,8 +28,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         }
         // Fallback synchrone si pas encore initialisé - créer et sauvegarder immédiatement
         initializeLocationManagerSync()
-        // _locationManager est maintenant garanti d'être initialisé
-        return _locationManager!
+        // _locationManager est maintenant garanti d'être initialisé par initializeLocationManagerSync()
+        guard let manager = _locationManager else {
+            fatalError("CLLocationManager not initialized after initializeLocationManagerSync() - this should never happen")
+        }
+        return manager
     }
 
     var lastKnownLocation: CLLocation?
@@ -260,7 +263,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         gForceBuffer = []
     }
 
-    // MARK: - Reverse Geocoding avec CLGeocoder
+    // MARK: - Reverse Geocoding avec MKReverseGeocodingRequest (watchOS 26+)
 
     private var isGeocodingInProgress = false
     private var lastGeocodedSpot: String?
@@ -279,53 +282,59 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         guard !isGeocodingInProgress else { return }
         isGeocodingInProgress = true
 
-        let geocoder = CLGeocoder()
-
         // Faire le geocoding en background pour ne pas bloquer l'UI
-        Task.detached(priority: .utility) {
+        Task.detached(priority: .utility) { [weak self] in
             do {
-                let placemarks = try await geocoder.reverseGeocodeLocation(location)
-                let placemark = placemarks.first
+                guard let request = MKReverseGeocodingRequest(location: location) else {
+                    await MainActor.run { [weak self] in
+                        self?.isGeocodingInProgress = false
+                    }
+                    return
+                }
+                let mapItems = try await request.mapItems
+                let mapItem = mapItems.first
 
-                // Calculer le nom du spot en background
+                // watchOS 26+ : utiliser addressRepresentations (nouvelle API)
+                // Stratégie : cityName > regionName > name
                 let unknownSpot = String(localized: "Spot inconnu")
-                let spotName = placemark?.locality ??
-                               placemark?.subLocality ??
-                               placemark?.administrativeArea ??
-                               placemark?.name ??
-                               unknownSpot
+                let spotName: String
+                if let addr = mapItem?.addressRepresentations {
+                    spotName = addr.cityName ?? addr.regionName ?? mapItem?.name ?? unknownSpot
+                } else {
+                    spotName = mapItem?.name ?? unknownSpot
+                }
 
                 await MainActor.run { [weak self] in
-                    guard let self = self else { return }
-                    self.isGeocodingInProgress = false
+                    guard let strongSelf = self else { return }
+                    strongSelf.isGeocodingInProgress = false
 
                     // Si un vol est en cours et qu'on n'a pas encore de spot verrouillé,
                     // verrouiller le premier spot valide obtenu
-                    if self.isTracking && self.lockedSpotName == nil {
-                        self.lockedSpotName = spotName
-                        self.currentSpotName = spotName
-                        self.lastGeocodedSpot = spotName
+                    if strongSelf.isTracking && strongSelf.lockedSpotName == nil {
+                        strongSelf.lockedSpotName = spotName
+                        strongSelf.currentSpotName = spotName
+                        strongSelf.lastGeocodedSpot = spotName
                         return
                     }
 
                     // Ne pas modifier si un vol est en cours (spot déjà verrouillé)
-                    guard !self.isTracking else { return }
+                    guard !strongSelf.isTracking else { return }
 
                     // Ne mettre à jour que si le nom change (évite les re-renders inutiles)
-                    if self.lastGeocodedSpot != spotName {
-                        self.lastGeocodedSpot = spotName
-                        self.currentSpotName = spotName
+                    if strongSelf.lastGeocodedSpot != spotName {
+                        strongSelf.lastGeocodedSpot = spotName
+                        strongSelf.currentSpotName = spotName
                     }
                 }
             } catch {
                 await MainActor.run { [weak self] in
-                    guard let self = self else { return }
-                    self.isGeocodingInProgress = false
+                    guard let strongSelf = self else { return }
+                    strongSelf.isGeocodingInProgress = false
                     // Ne pas modifier si un vol est en cours
-                    guard !self.isTracking else { return }
+                    guard !strongSelf.isTracking else { return }
                     let unknownSpot = String(localized: "Spot inconnu")
-                    if self.currentSpotName != unknownSpot {
-                        self.currentSpotName = unknownSpot
+                    if strongSelf.currentSpotName != unknownSpot {
+                        strongSelf.currentSpotName = unknownSpot
                     }
                 }
             }
@@ -391,7 +400,13 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             // Ajouter un point à la trace GPS (tous les X secondes) - thread-safe
             let now = Date()
             gpsQueue.sync {
-                let shouldAddPoint = lastTrackPointTime == nil || now.timeIntervalSince(lastTrackPointTime!) >= trackPointInterval
+                let shouldAddPoint: Bool
+                if let lastTime = lastTrackPointTime {
+                    shouldAddPoint = now.timeIntervalSince(lastTime) >= trackPointInterval
+                } else {
+                    shouldAddPoint = true  // Pas de point précédent, on ajoute le premier
+                }
+
                 if shouldAddPoint {
                     let trackPoint = GPSTrackPoint(
                         timestamp: now,

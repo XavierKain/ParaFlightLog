@@ -8,11 +8,11 @@
 
 import Foundation
 import CoreLocation
+import MapKit
 
 @Observable
 final class LocationService: NSObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
-    private let geocoder = CLGeocoder()
 
     // Dernière position connue
     var lastKnownLocation: CLLocation?
@@ -72,49 +72,42 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     // MARK: - Reverse Geocoding
 
     /// Convertit une position GPS en nom de spot (locality/subLocality)
+    /// Utilise MKReverseGeocodingRequest (iOS 26+)
     /// - Parameters:
     ///   - location: position GPS
     ///   - completion: callback avec le nom du spot (ou nil si erreur)
     func reverseGeocode(location: CLLocation, completion: @escaping (String?) -> Void) {
-        geocoder.reverseGeocodeLocation(location) { [weak self] placemarks, error in
-            if let error = error {
+        Task {
+            do {
+                guard let request = MKReverseGeocodingRequest(location: location) else {
+                    logWarning("Could not create geocoding request", category: .location)
+                    completion(nil)
+                    return
+                }
+                let mapItems = try await request.mapItems
+
+                guard let mapItem = mapItems.first else {
+                    logWarning("No placemark found", category: .location)
+                    completion(nil)
+                    return
+                }
+
+                // iOS 26+ : utiliser addressRepresentations (nouvelle API)
+                // Stratégie : cityName > regionName > name
+                let spotName: String?
+                if let addr = mapItem.addressRepresentations {
+                    spotName = addr.cityName ?? addr.regionName ?? mapItem.name
+                } else {
+                    spotName = mapItem.name
+                }
+
+                logDebug("Spot found: \(spotName ?? "Unknown")", category: .location)
+                completion(spotName)
+            } catch {
                 logError("Reverse geocoding error: \(error.localizedDescription)", category: .location)
                 completion(nil)
-                return
             }
-
-            guard let placemark = placemarks?.first else {
-                logWarning("No placemark found", category: .location)
-                completion(nil)
-                return
-            }
-
-            // Stratégie : locality > subLocality > administrativeArea
-            let spotName = self?.extractSpotName(from: placemark)
-            logDebug("Spot found: \(spotName ?? "Unknown")", category: .location)
-            completion(spotName)
         }
-    }
-
-    /// Extrait le meilleur nom de spot depuis un placemark
-    private func extractSpotName(from placemark: CLPlacemark) -> String? {
-        // Priorité 1 : locality (ville/village)
-        if let locality = placemark.locality, !locality.isEmpty {
-            return locality
-        }
-
-        // Priorité 2 : subLocality (quartier)
-        if let subLocality = placemark.subLocality, !subLocality.isEmpty {
-            return subLocality
-        }
-
-        // Priorité 3 : administrativeArea (région/état)
-        if let admin = placemark.administrativeArea, !admin.isEmpty {
-            return admin
-        }
-
-        // Fallback : name générique
-        return placemark.name
     }
 
     // MARK: - CLLocationManagerDelegate

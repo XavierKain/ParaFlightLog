@@ -1,4175 +1,4123 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "(\\(size) m²)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "(\\(size) m²)"
+  "sourceLanguage": "en",
+  "strings": {
+    "(\\(size) m²)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(\\(size) m²)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "(\\(size) m²)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "(\\(size) m²)"
           }
         }
       }
     },
-    "(%@ m²)" : {
-
-    },
-    "\\(count) spot détecté" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(count) spot détecté"
+    "(%@ m²)": {},
+    "\\(count) spot détecté": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(count) spot detected"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(count) spot détecté"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(count) spot détecté"
           }
         }
       }
     },
-    "\\(count) spots détectés" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(count) spots détectés"
+    "\\(count) spots détectés": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(count) spots detected"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(count) spots détectés"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(count) spots détectés"
           }
         }
       }
     },
-    "\\(count) vol" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(count) vol"
+    "\\(count) vol": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(count) flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(count) vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(count) vol"
           }
         }
       }
     },
-    "\\(count) vols" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(count) vols"
+    "\\(count) vols": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(count) flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(count) vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(count) vols"
           }
         }
       }
     },
-    "\\(dataController.formatHours(hours)) de vol" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(dataController.formatHours(hours)) de vol"
+    "\\(dataController.formatHours(hours)) de vol": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(dataController.formatHours(hours)) of flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(dataController.formatHours(hours)) de vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(dataController.formatHours(hours)) de vol"
           }
         }
       }
     },
-    "\\(flights.count)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(flights.count)"
+    "\\(flights.count)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(flights.count)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(flights.count)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(flights.count)"
           }
         }
       }
     },
-    "\\(formatAltitude(locationService.currentAltitude))m" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(formatAltitude(locationService.currentAltitude))m"
+    "\\(formatAltitude(locationService.currentAltitude))m": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(formatAltitude(locationService.currentAltitude))m"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(formatAltitude(locationService.currentAltitude))m"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(formatAltitude(locationService.currentAltitude))m"
           }
         }
       }
     },
-    "\\(formatSpeed(locationService.maxSpeed))" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(formatSpeed(locationService.maxSpeed))"
+    "\\(formatSpeed(locationService.maxSpeed))": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(formatSpeed(locationService.maxSpeed))"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(formatSpeed(locationService.maxSpeed))"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(formatSpeed(locationService.maxSpeed))"
           }
         }
       }
     },
-    "\\(hours)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(hours)"
+    "\\(hours)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(hours)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(hours)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(hours)"
           }
         }
       }
     },
-    "\\(Int(maxAlt)) m" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(Int(maxAlt)) m"
+    "\\(Int(maxAlt)) m": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(Int(maxAlt)) m"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(Int(maxAlt)) m"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(Int(maxAlt)) m"
           }
         }
       }
     },
-    "\\(Int(speed * 3.6)) km/h" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(Int(speed * 3.6)) km/h"
+    "\\(Int(speed * 3.6)) km/h": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(Int(speed * 3.6)) km/h"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(Int(speed * 3.6)) km/h"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(Int(speed * 3.6)) km/h"
           }
         }
       }
     },
-    "\\(language.flag) \\(language.displayName)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(language.flag) \\(language.displayName)"
+    "\\(language.flag) \\(language.displayName)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(language.flag) \\(language.displayName)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(language.flag) \\(language.displayName)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(language.flag) \\(language.displayName)"
           }
         }
       }
     },
-    "\\(minutes)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(minutes)"
+    "\\(minutes)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(minutes)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(minutes)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(minutes)"
           }
         }
       }
     },
-    "\\(size) m²" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(size) m²"
+    "\\(size) m²": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(size) m²"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(size) m²"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(size) m²"
           }
         }
       }
     },
-    "\\(spot.count)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(spot.count)"
+    "\\(spot.count)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(spot.count)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(spot.count)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(spot.count)"
           }
         }
       }
     },
-    "\\(stat.sessions)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(stat.sessions)"
+    "\\(stat.sessions)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(stat.sessions)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(stat.sessions)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(stat.sessions)"
           }
         }
       }
     },
-    "\\(totalFlights)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(totalFlights)"
+    "\\(totalFlights)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(totalFlights)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(totalFlights)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(totalFlights)"
           }
         }
       }
     },
-    "\\(track.count) points GPS enregistrés" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(track.count) points GPS enregistrés"
+    "\\(track.count) points GPS enregistrés": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(track.count) GPS points recorded"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(track.count) points GPS enregistrés"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(track.count) points GPS enregistrés"
           }
         }
       }
     },
-    "\\(wings.count)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(wings.count)"
+    "\\(wings.count)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(wings.count)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(wings.count)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(wings.count)"
           }
         }
       }
     },
-    "\\(wings.count) voiles • \\(flights.count) vols" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "\\(wings.count) voiles • \\(flights.count) vols"
+    "\\(wings.count) voiles • \\(flights.count) vols": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(wings.count) wings • \\(flights.count) flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "\\(wings.count) voiles • \\(flights.count) vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "\\(wings.count) voiles • \\(flights.count) vols"
           }
         }
       }
     },
-    "%.4f, %.4f" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$.4f, %2$.4f"
+    "%.4f, %.4f": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$.4f, %2$.4f"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$.4f, %2$.4f"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$.4f, %2$.4f"
           }
         }
       }
     },
-    "%.5f, %.5f" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$.5f, %2$.5f"
+    "%.5f, %.5f": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$.5f, %2$.5f"
           }
         }
       }
     },
-    "%@" : {
-
-    },
-    "%@ %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ %2$@"
+    "%@": {},
+    "%@ %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$@"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$@ %2$@"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$@"
           }
         }
       }
     },
-    "%@ de vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ flight time"
+    "%@ de vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ flight time"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ de vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ de vol"
           }
         }
       }
-    },
-    "%@ G" : {
-
     },
-    "%@ km/h" : {
-
-    },
-    "%@ m" : {
-
-    },
-    "%@ m²" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ m²"
+    "%@ G": {},
+    "%@ km/h": {},
+    "%@ m": {},
+    "%@ m²": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ m²"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%@ m²"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ m²"
           }
         }
       }
-    },
-    "%@m" : {
-
     },
-    "%lld" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld"
+    "%@m": {},
+    "%lld": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld"
           }
         }
       }
     },
-    "%lld %@ %@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld %2$@ %3$@"
+    "%lld %@ %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld %2$@ %3$@"
           }
         }
       }
     },
-    "%lld km/h" : {
-
-    },
-    "%lld m" : {
-
-    },
-    "%lld points GPS enregistrés" : {
-
-    },
-    "%lld spot détecté" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld spot detected"
+    "%lld km/h": {},
+    "%lld m": {},
+    "%lld points GPS enregistrés": {},
+    "%lld spot détecté": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld spot detected"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld spot détecté"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld spot détecté"
           }
         }
       }
     },
-    "%lld spot%@ différent%@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld different spot%2$@"
+    "%lld spot%@ différent%@": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld different spot%2$@"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld spot%2$@ différent%3$@"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld spot%2$@ différent%3$@"
           }
         }
       }
     },
-    "%lld spots détectés" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld spots detected"
+    "%lld spots détectés": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld spots detected"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld spots détectés"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld spots détectés"
           }
         }
       }
     },
-    "%lld voiles • %lld vols" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld voiles • %2$lld vols"
+    "%lld voiles • %lld vols": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "%1$lld voiles • %2$lld vols"
           }
         }
       }
     },
-    "%lld vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld flight"
+    "%lld vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld vol"
           }
         }
       }
     },
-    "%lld vol%@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld flight%2$@"
+    "%lld vol%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld flight%2$@"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lld vol%2$@"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lld vol%2$@"
           }
         }
       }
     },
-    "%lld vols" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld flights"
+    "%lld vols": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lld vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld vols"
           }
         }
       }
     },
-    "%lldh" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldh"
+    "%lldh": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldh"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldh"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldh"
           }
         }
       }
     },
-    "%lldh %@m" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lldh %2$@m"
+    "%lldh %@m": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lldh %2$@m"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lldh %2$@m"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lldh %2$@m"
           }
         }
       }
     },
-    "%lldh%@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lldh%2$@"
+    "%lldh%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lldh%2$@"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%1$lldh%2$@"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$lldh%2$@"
           }
         }
       }
     },
-    "%lldkm/h" : {
-
-    },
-    "%lldm" : {
-
-    },
-    "%lldmin" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldmin"
+    "%lldkm/h": {},
+    "%lldm": {},
+    "%lldmin": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldmin"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "%lldmin"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lldmin"
           }
         }
       }
     },
-    "•" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "•"
+    "•": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "•"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "•"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "•"
           }
         }
       }
     },
-    "• \\(size) m²" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "• \\(size) m²"
+    "• \\(size) m²": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "• \\(size) m²"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "• \\(size) m²"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "• \\(size) m²"
           }
         }
       }
     },
-    "• \\(size)m²" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "• \\(size)m²"
+    "• \\(size)m²": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "• \\(size)m²"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "• \\(size)m²"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "• \\(size)m²"
           }
         }
       }
-    },
-    "• %@ m²" : {
-
-    },
-    "• %@m²" : {
-
     },
-    "+ %lld autre%@ spot%@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "+ %1$lld other spot%2$@"
+    "• %@ m²": {},
+    "• %@m²": {},
+    "+ %lld autre%@ spot%@": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ %1$lld other spot%2$@"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "+ %1$lld autre%2$@ spot%3$@"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "+ %1$lld autre%2$@ spot%3$@"
           }
         }
       }
     },
-    "⚠️ Cette action est irréversible ! La voile \"%@\" et ses %lld vol%@ seront définitivement supprimés." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "⚠️ This action is irreversible! The wing \"%1$@\" and its %2$lld flight%3$@ will be permanently deleted."
+    "⚠️ Cette action est irréversible ! La voile \"%@\" et ses %lld vol%@ seront définitivement supprimés.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⚠️ This action is irreversible! The wing \"%1$@\" and its %2$lld flight%3$@ will be permanently deleted."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "⚠️ Cette action est irréversible ! La voile \"%1$@\" et ses %2$lld vol%3$@ seront définitivement supprimés."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⚠️ Cette action est irréversible ! La voile \"%1$@\" et ses %2$lld vol%3$@ seront définitivement supprimés."
           }
         }
       }
     },
-    "⚠️ La fin doit être après le début" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "⚠️ End time must be after start time"
+    "⚠️ La fin doit être après le début": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⚠️ End time must be after start time"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "⚠️ La fin doit être après le début"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "⚠️ La fin doit être après le début"
           }
         }
       }
     },
-    "📍 \\(count) vol sera mis à jour" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "📍 \\(count) vol sera mis à jour"
+    "📍 \\(count) vol sera mis à jour": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📍 \\(count) flight will be updated"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "📍 \\(count) vol sera mis à jour"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📍 \\(count) vol sera mis à jour"
           }
         }
       }
     },
-    "📍 \\(count) vols seront mis à jour" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "📍 \\(count) vols seront mis à jour"
+    "📍 \\(count) vols seront mis à jour": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📍 \\(count) flights will be updated"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "📍 \\(count) vols seront mis à jour"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📍 \\(count) vols seront mis à jour"
           }
         }
       }
     },
-    "📍 %lld vol sera mis à jour" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "📍 %lld flight will be updated"
+    "📍 %lld vol sera mis à jour": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📍 %lld flight will be updated"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "📍 %lld vol sera mis à jour"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📍 %lld vol sera mis à jour"
           }
         }
       }
     },
-    "📍 %lld vols seront mis à jour" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "📍 %lld flights will be updated"
+    "📍 %lld vols seront mis à jour": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📍 %lld flights will be updated"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "📍 %lld vols seront mis à jour"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "📍 %lld vols seront mis à jour"
           }
         }
       }
     },
-    "1" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1"
+    "1": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1"
           }
         }
       }
     },
-    "1.0.0" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1.0.0"
+    "1.0.0": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1.0.0"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "1.0.0"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1.0.0"
           }
         }
       }
     },
-    "À propos" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "About"
+    "À propos": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "À propos"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "À propos"
           }
         }
       }
     },
-    "Active le Water Lock au début d'un vol pour éviter les touches accidentelles" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enables Water Lock at flight start to prevent accidental touches"
+    "Active le Water Lock au début d'un vol pour éviter les touches accidentelles": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enables Water Lock at flight start to prevent accidental touches"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Active le Water Lock au début d'un vol pour éviter les touches accidentelles"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Active le Water Lock au début d'un vol pour éviter les touches accidentelles"
           }
         }
       }
     },
-    "Activité" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activity"
+    "Activité": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activity"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Activité"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Activité"
           }
         }
       }
     },
-    "Ajouter" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add"
+    "Ajouter": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouter"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter"
           }
         }
       }
     },
-    "Ajouter coordonnées GPS" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add GPS coordinates"
+    "Ajouter coordonnées GPS": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add GPS coordinates"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouter coordonnées GPS"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajouter coordonnées GPS"
           }
         }
       }
     },
-    "Ajoutez d'abord une voile dans l'onglet Voiles" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "First add a wing in the Wings tab"
+    "Ajoutez d'abord une voile dans l'onglet Voiles": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First add a wing in the Wings tab"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajoutez d'abord une voile dans l'onglet Voiles"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez d'abord une voile dans l'onglet Voiles"
           }
         }
       }
     },
-    "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add GPS coordinates to a spot to automatically apply them to all associated flights"
+    "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add GPS coordinates to a spot to automatically apply them to all associated flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés"
           }
         }
       }
     },
-    "Ajoutez votre première voile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add your first wing"
+    "Ajoutez votre première voile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add your first wing"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajoutez votre première voile"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez votre première voile"
           }
         }
       }
     },
-    "Ajoutez-en depuis l'iPhone" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add one from iPhone"
+    "Ajoutez-en depuis l'iPhone": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add one from iPhone"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajoutez-en depuis l'iPhone"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ajoutez-en depuis l'iPhone"
           }
         }
       }
     },
-    "Alt" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alt"
+    "Alt": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alt"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt"
           }
         }
       }
     },
-    "Alt. arrivée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Landing alt."
+    "Alt. arrivée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Landing alt."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alt. arrivée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt. arrivée"
           }
         }
       }
     },
-    "Alt. départ" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Takeoff alt."
+    "Alt. départ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takeoff alt."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alt. départ"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt. départ"
           }
         }
       }
     },
-    "Alt. max" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Max alt."
+    "Alt. max": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max alt."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Alt. max"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Alt. max"
           }
         }
       }
     },
-    "Altitude atterrissage" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Landing altitude"
+    "Altitude atterrissage": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Landing altitude"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Altitude atterrissage"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altitude atterrissage"
           }
         }
       }
     },
-    "Altitude départ" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Takeoff altitude"
+    "Altitude départ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takeoff altitude"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Altitude départ"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altitude départ"
           }
         }
       }
     },
-    "Altitude max" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Max altitude"
+    "Altitude max": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max altitude"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Altitude max"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Altitude max"
           }
         }
       }
     },
-    "Annuler" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cancel"
+    "Annuler": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Annuler"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler"
           }
         }
       }
     },
-    "Annuler le vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Discard flight"
+    "Annuler le vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Discard flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Annuler le vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Annuler le vol"
           }
         }
       }
     },
-    "App Watch" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Watch App"
+    "App Watch": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Watch App"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App Watch"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Watch"
           }
         }
       }
     },
-    "Apple Watch" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Watch"
+    "Apple Watch": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Watch"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Watch"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Watch"
           }
         }
       }
     },
-    "Archiver" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Archive"
+    "Archiver": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archive"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Archiver"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archiver"
           }
         }
       }
     },
-    "ARRÊTER LE VOL" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "STOP FLIGHT"
+    "ARRÊTER LE VOL": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "STOP FLIGHT"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ARRÊTER LE VOL"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ARRÊTER LE VOL"
           }
         }
       }
     },
-    "Arrivée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Landing"
+    "Arrivée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Landing"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Arrivée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Arrivée"
           }
         }
       }
     },
-    "Aucun spot" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No spot"
+    "Aucun spot": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No spot"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun spot"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun spot"
           }
         }
       }
     },
-    "Aucun spot avec coordonnées GPS" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No spot with GPS coordinates"
+    "Aucun spot avec coordonnées GPS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No spot with GPS coordinates"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun spot avec coordonnées GPS"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun spot avec coordonnées GPS"
           }
         }
       }
     },
-    "Aucun vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No flights"
+    "Aucun vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun vol"
           }
         }
       }
     },
-    "Aucun vol durant cette période" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No flights during this period"
+    "Aucun vol durant cette période": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No flights during this period"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucun vol durant cette période"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucun vol durant cette période"
           }
         }
       }
     },
-    "Aucune" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "None"
+    "Aucune": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "None"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune"
           }
         }
       }
     },
-    "Aucune donnée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No data"
+    "Aucune donnée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No data"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune donnée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune donnée"
           }
         }
       }
     },
-    "Aucune voile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No wings"
+    "Aucune voile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No wings"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune voile"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune voile"
           }
         }
       }
     },
-    "Aucune voile archivée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No archived wings"
+    "Aucune voile archivée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No archived wings"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune voile archivée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aucune voile archivée"
           }
         }
       }
     },
-    "Autoriser l'annulation de vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Allow flight cancellation"
+    "Autoriser l'annulation de vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allow flight cancellation"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Autoriser l'annulation de vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Autoriser l'annulation de vol"
           }
         }
       }
     },
-    "Backup créé !" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Backup created!"
+    "Backup créé !": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup created!"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Backup créé !"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Backup créé !"
           }
         }
       }
     },
-    "Build" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Build"
+    "Build": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Build"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build"
           }
         }
       }
     },
-    "Caractéristiques" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Characteristics"
+    "Caractéristiques": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Characteristics"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Caractéristiques"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caractéristiques"
           }
         }
       }
     },
-    "Carte" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Map"
+    "Carte": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Map"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Carte"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carte"
           }
         }
       }
     },
-    "Carte des spots" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spots map"
+    "Carte des spots": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spots map"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Carte des spots"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Carte des spots"
           }
         }
       }
     },
-    "Ce spot sera utilisé en priorité sur la détection GPS automatique" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This spot will take priority over automatic GPS detection"
+    "Ce spot sera utilisé en priorité sur la détection GPS automatique": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This spot will take priority over automatic GPS detection"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ce spot sera utilisé en priorité sur la détection GPS automatique"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ce spot sera utilisé en priorité sur la détection GPS automatique"
           }
         }
       }
     },
-    "Ces paramètres sont synchronisés automatiquement avec votre Apple Watch." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "These settings are automatically synced with your Apple Watch."
+    "Ces paramètres sont synchronisés automatiquement avec votre Apple Watch.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These settings are automatically synced with your Apple Watch."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ces paramètres sont synchronisés automatiquement avec votre Apple Watch."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ces paramètres sont synchronisés automatiquement avec votre Apple Watch."
           }
         }
       }
     },
-    "Cette voile a %lld vol%@ enregistré%@. L'archivage conservera les données, la suppression les effacera." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This wing has %1$lld recorded flight%2$@. Archiving will preserve the data, deletion will erase it."
+    "Cette voile a %lld vol%@ enregistré%@. L'archivage conservera les données, la suppression les effacera.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This wing has %1$lld recorded flight%2$@. Archiving will preserve the data, deletion will erase it."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cette voile a %1$lld vol%2$@ enregistré%3$@. L'archivage conservera les données, la suppression les effacera."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette voile a %1$lld vol%2$@ enregistré%3$@. L'archivage conservera les données, la suppression les effacera."
           }
         }
       }
     },
-    "Cette voile n'a aucun vol enregistré." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "This wing has no recorded flights."
+    "Cette voile n'a aucun vol enregistré.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This wing has no recorded flights."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cette voile n'a aucun vol enregistré."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cette voile n'a aucun vol enregistré."
           }
         }
       }
     },
-    "Changer la photo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change photo"
+    "Changer la photo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change photo"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Changer la photo"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changer la photo"
           }
         }
       }
     },
-    "Changer le spot" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Change spot"
+    "Changer le spot": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change spot"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Changer le spot"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Changer le spot"
           }
         }
       }
     },
-    "Choisir la période" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose period"
+    "Choisir la période": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose period"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisir la période"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir la période"
           }
         }
       }
     },
-    "Choisir la position" : {
-
-    },
-    "Choisir sur la carte" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose on map"
+    "Choisir la position": {},
+    "Choisir sur la carte": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose on map"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisir sur la carte"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir sur la carte"
           }
         }
       }
     },
-    "Choisir une photo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose a photo"
+    "Choisir une photo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a photo"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisir une photo"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir une photo"
           }
         }
       }
     },
-    "Choisir une voile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose a wing"
+    "Choisir une voile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a wing"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisir une voile"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choisir une voile"
           }
         }
       }
     },
-    "Chrono" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Timer"
+    "Chrono": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timer"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chrono"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chrono"
           }
         }
       }
     },
-    "Chronomètre" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chronometer"
+    "Chronomètre": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chronometer"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chronomètre"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chronomètre"
           }
         }
       }
     },
-    "Commencez un vol depuis la Watch ou l'onglet Chrono" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start a flight from the Watch or Timer tab"
+    "Commencez un vol depuis la Watch ou l'onglet Chrono": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start a flight from the Watch or Timer tab"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Commencez un vol depuis la Watch ou l'onglet Chrono"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Commencez un vol depuis la Watch ou l'onglet Chrono"
           }
         }
       }
     },
-    "Coordonnées" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coordinates"
+    "Coordonnées": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coordinates"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Coordonnées"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Coordonnées"
           }
         }
       }
     },
-    "Couleur" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Color"
+    "Couleur": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Color"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couleur"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Couleur"
           }
         }
       }
     },
-    "Couleur personnalisée" : {
-
-    },
-    "Création du backup..." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Creating backup..."
+    "Couleur personnalisée": {},
+    "Création du backup...": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Creating backup..."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Création du backup..."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Création du backup..."
           }
         }
       }
-    },
-    "Créer le backup" : {
-
     },
-    "Date" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Date"
+    "Créer le backup": {},
+    "Date": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Date"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date"
           }
         }
       }
     },
-    "Date de début" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start date"
+    "Date de début": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start date"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Date de début"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date de début"
           }
         }
       }
     },
-    "Date de fin" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "End date"
+    "Date de fin": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End date"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Date de fin"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date de fin"
           }
         }
       }
     },
-    "Date et heure" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Date and time"
+    "Date et heure": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date and time"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Date et heure"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date et heure"
           }
         }
       }
     },
-    "Début" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start"
+    "Début": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Début"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Début"
           }
         }
       }
     },
-    "Début du vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flight start"
+    "Début du vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flight start"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Début du vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Début du vol"
           }
         }
       }
     },
-    "Définir le spot manuellement" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Set spot manually"
+    "Définir le spot manuellement": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set spot manually"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Définir le spot manuellement"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Définir le spot manuellement"
           }
         }
       }
     },
-    "DÉMARRER LE VOL" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "START FLIGHT"
+    "DÉMARRER LE VOL": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "START FLIGHT"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "DÉMARRER LE VOL"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DÉMARRER LE VOL"
           }
         }
       }
     },
-    "Départ" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Takeoff"
+    "Départ": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Takeoff"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Départ"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Départ"
           }
         }
       }
     },
-    "Dernier vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Latest flight"
+    "Dernier vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Latest flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dernier vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dernier vol"
           }
         }
       }
     },
-    "Détail du vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flight details"
+    "Détail du vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flight details"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Détail du vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détail du vol"
           }
         }
       }
     },
-    "Détails" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Details"
+    "Détails": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Details"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Détails"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Détails"
           }
         }
       }
     },
-    "Développeur" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Developer"
+    "Développeur": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Developer"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Développeur"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Développeur"
           }
         }
       }
     },
-    "Dist" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dist"
+    "Dist": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dist"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dist"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dist"
           }
         }
       }
     },
-    "Distance" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Distance"
+    "Distance": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distance"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Distance"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Distance"
           }
         }
       }
     },
-    "Données" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Data"
+    "Données": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Data"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Données"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Données"
           }
         }
       }
     },
-    "durée" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "duration"
+    "durée": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "duration"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "durée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "durée"
           }
         }
       }
     },
-    "Durée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Duration"
+    "Durée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duration"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Durée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durée"
           }
         }
       }
     },
-    "Durée calculée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Calculated duration"
+    "Durée calculée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calculated duration"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Durée calculée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durée calculée"
           }
         }
       }
     },
-    "Durée du vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flight duration"
+    "Durée du vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flight duration"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Durée du vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Durée du vol"
           }
         }
       }
     },
-    "Enregistrer" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save"
+    "Enregistrer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enregistrer"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enregistrer"
           }
         }
       }
     },
-    "Erreur" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Error"
+    "Erreur": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Error"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Erreur"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Erreur"
           }
         }
       }
     },
-    "Export Backup" : {
-
-    },
-    "Exporter backup complet" : {
-
-    },
-    "Exporter en CSV" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Export to CSV"
+    "Export Backup": {},
+    "Exporter backup complet": {},
+    "Exporter en CSV": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export to CSV"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Exporter en CSV"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exporter en CSV"
           }
         }
       }
-    },
-    "Exporter en CSV (ancien format)" : {
-
     },
-    "Fermer" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Close"
+    "Exporter en CSV (ancien format)": {},
+    "Fermer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fermer"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fermer"
           }
         }
       }
     },
-    "Fin" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "End"
+    "Fin": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fin"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin"
           }
         }
       }
     },
-    "Fin du vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flight end"
+    "Fin du vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flight end"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fin du vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fin du vol"
           }
         }
       }
     },
-    "Flying" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flying"
+    "Flying": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flying"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "En vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "En vol"
           }
         }
       }
     },
-    "G" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "G"
+    "G": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "G"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "G"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "G"
           }
         }
       }
     },
-    "G-Force" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "G-Force"
+    "G-Force": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "G-Force"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "G-Force"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "G-Force"
           }
         }
       }
     },
-    "G-Force max" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Max G-Force"
+    "G-Force max": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max G-Force"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "G-Force max"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "G-Force max"
           }
         }
       }
     },
-    "Générer des données de test" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Generate test data"
+    "Générer des données de test": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Generate test data"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Générer des données de test"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Générer des données de test"
           }
         }
       }
     },
-    "Gérer les spots" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manage Spots"
+    "Gérer les spots": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Manage Spots"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gérer les spots"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Gérer les spots"
           }
         }
       }
     },
-    "GPS ✓" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "GPS ✓"
+    "GPS ✓": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS ✓"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "GPS ✓"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "GPS ✓"
           }
         }
       }
     },
-    "Graphiques" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Charts"
+    "Graphiques": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Charts"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Graphiques"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Graphiques"
           }
         }
       }
     },
-    "h" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "h"
+    "h": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "h"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "h"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "h"
           }
         }
       }
     },
-    "heures" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "hours"
+    "heures": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hours"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "heures"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "heures"
           }
         }
       }
     },
-    "Heures" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hours"
+    "Heures": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hours"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Heures"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heures"
           }
         }
       }
     },
-    "Heures de vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flight hours"
+    "Heures de vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flight hours"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Heures de vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Heures de vol"
           }
         }
       }
     },
-    "Historique des vols" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flight history"
+    "Historique des vols": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flight history"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Historique des vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Historique des vols"
           }
         }
       }
     },
-    "Import en cours..." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Importing..."
+    "Import en cours...": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importing..."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import en cours..."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import en cours..."
           }
         }
       }
     },
-    "Importation des données..." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Importing data..."
+    "Importation des données...": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importing data..."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Importation des données..."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importation des données..."
           }
         }
       }
     },
-    "Importer backup ou Excel" : {
-
-    },
-    "Importer depuis Excel/CSV" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Import from Excel/CSV"
+    "Importer backup ou Excel": {},
+    "Importer depuis Excel/CSV": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Import from Excel/CSV"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Importer depuis Excel/CSV"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Importer depuis Excel/CSV"
           }
         }
       }
     },
-    "Informations" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Information"
+    "Informations": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Information"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Informations"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Informations"
           }
         }
       }
     },
-    "Installée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Installed"
+    "Installée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Installée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installée"
           }
         }
       }
     },
-    "Joignable" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reachable"
+    "Joignable": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reachable"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Joignable"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Joignable"
           }
         }
       }
     },
-    "Lancer un vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start a flight"
+    "Lancer un vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start a flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lancer un vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancer un vol"
           }
         }
       }
     },
-    "Langue" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Language"
+    "Langue": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Langue"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langue"
           }
         }
       }
     },
-    "Langue actuelle" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Current language"
+    "Langue actuelle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current language"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Langue actuelle"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langue actuelle"
           }
         }
       }
     },
-    "Langue de l'application" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "App language"
+    "Langue de l'application": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App language"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Langue de l'application"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Langue de l'application"
           }
         }
       }
     },
-    "Les spots apparaîtront ici une fois que vous aurez enregistré des vols" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spots will appear here once you record flights"
+    "Les spots apparaîtront ici une fois que vous aurez enregistré des vols": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spots will appear here once you record flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les spots apparaîtront ici une fois que vous aurez enregistré des vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les spots apparaîtront ici une fois que vous aurez enregistré des vols"
           }
         }
       }
     },
-    "Les voiles archivées apparaîtront ici" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Archived wings will appear here"
+    "Les voiles archivées apparaîtront ici": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archived wings will appear here"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Les voiles archivées apparaîtront ici"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Les voiles archivées apparaîtront ici"
           }
         }
       }
     },
-    "m²" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "m²"
+    "m²": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "m²"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "m²"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "m²"
           }
         }
       }
     },
-    "Max" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Max"
+    "Max": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Max"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max"
           }
         }
       }
     },
-    "Mes voiles" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "My Wings"
+    "Mes voiles": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My Wings"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mes voiles"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mes voiles"
           }
         }
       }
     },
-    "Mes vols" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "My Flights"
+    "Mes vols": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "My Flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mes vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mes vols"
           }
         }
       }
     },
-    "min" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "min"
+    "min": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "min"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "min"
           }
         }
       }
     },
-    "Modifier" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Edit"
+    "Modifier": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modifier"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier"
           }
         }
       }
     },
-    "Modifier la voile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Edit wing"
+    "Modifier la voile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit wing"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modifier la voile"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier la voile"
           }
         }
       }
     },
-    "Modifier le vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Edit flight"
+    "Modifier le vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modifier le vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier le vol"
           }
         }
       }
     },
-    "Modifier sur la carte" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Edit on map"
+    "Modifier sur la carte": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit on map"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Modifier sur la carte"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Modifier sur la carte"
           }
         }
       }
     },
-    "Nom" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Name"
+    "Nom": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Name"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nom"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom"
           }
         }
       }
     },
-    "Nom du spot" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spot name"
+    "Nom du spot": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spot name"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nom du spot"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nom du spot"
           }
         }
       }
     },
-    "Nombre de voiles" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Number of wings"
+    "Nombre de voiles": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Number of wings"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nombre de voiles"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre de voiles"
           }
         }
       }
     },
-    "Nombre de vols" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Number of flights"
+    "Nombre de vols": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Number of flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nombre de vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nombre de vols"
           }
         }
       }
     },
-    "Non" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No"
+    "Non": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Non"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non"
           }
         }
       }
     },
-    "Non installée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Not installed"
+    "Non installée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not installed"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Non installée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Non installée"
           }
         }
       }
     },
-    "Notes" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Notes"
+    "Notes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Notes"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notes"
           }
         }
       }
     },
-    "Nouvelle voile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "New wing"
+    "Nouvelle voile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New wing"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nouvelle voile"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nouvelle voile"
           }
         }
       }
     },
-    "OK" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OK"
+    "OK": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "OK"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "OK"
           }
         }
       }
     },
-    "Options Apple Watch" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Apple Watch options"
+    "Options Apple Watch": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Watch options"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Options Apple Watch"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Options Apple Watch"
           }
         }
       }
     },
-    "Oui" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Yes"
+    "Oui": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yes"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Oui"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oui"
           }
         }
       }
     },
-    "Par spot" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "By spot"
+    "Par spot": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By spot"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Par spot"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par spot"
           }
         }
       }
     },
-    "Par voile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "By wing"
+    "Par voile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "By wing"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Par voile"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Par voile"
           }
         }
       }
     },
-    "ParaFlightLog" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "needs_review",
-            "value" : "ParaFlightLog"
+    "ParaFlightLog": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ParaFlightLog"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ParaFlightLog"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ParaFlightLog"
           }
         }
       }
     },
-    "Partager / Enregistrer" : {
-
-    },
-    "Pas de coordonnées" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No coordinates"
+    "Partager / Enregistrer": {},
+    "Pas de coordonnées": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No coordinates"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pas de coordonnées"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pas de coordonnées"
           }
         }
       }
     },
-    "Période" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Period"
+    "Période": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Period"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Période"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Période"
           }
         }
       }
     },
-    "Période personnalisée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Custom period"
+    "Période personnalisée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom period"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Période personnalisée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Période personnalisée"
           }
         }
       }
     },
-    "Permet d'annuler un vol en cours sans le sauvegarder" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Allows canceling an ongoing flight without saving it"
+    "Permet d'annuler un vol en cours sans le sauvegarder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Allows canceling an ongoing flight without saving it"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Permet d'annuler un vol en cours sans le sauvegarder"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permet d'annuler un vol en cours sans le sauvegarder"
           }
         }
       }
     },
-    "Permission refusée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Permission denied"
+    "Permission refusée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permission denied"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Permission refusée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Permission refusée"
           }
         }
       }
     },
-    "Photo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Photo"
+    "Photo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photo"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Photo"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photo"
           }
         }
       }
     },
-    "Position indisponible" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Position unavailable"
+    "Position indisponible": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position unavailable"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Position indisponible"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position indisponible"
           }
         }
       }
     },
-    "Position..." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Location..."
+    "Position...": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Location..."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Position..."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Position..."
           }
         }
       }
     },
-    "Prêt à exporter" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ready to export"
+    "Prêt à exporter": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready to export"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prêt à exporter"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prêt à exporter"
           }
         }
       }
     },
-    "Prêt à partager" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ready to share"
+    "Prêt à partager": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ready to share"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prêt à partager"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Prêt à partager"
           }
         }
       }
     },
-    "Que voulez-vous faire ?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "What do you want to do?"
+    "Que voulez-vous faire ?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What do you want to do?"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Que voulez-vous faire ?"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Que voulez-vous faire ?"
           }
         }
       }
     },
-    "Récapitulatif" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Summary"
+    "Récapitulatif": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Summary"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Récapitulatif"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Récapitulatif"
           }
         }
       }
     },
-    "Recherche..." : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Searching..."
+    "Recherche...": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searching..."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recherche..."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche..."
           }
         }
       }
     },
-    "Rechercher le lieu" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Search location"
+    "Rechercher le lieu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search location"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rechercher le lieu"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rechercher le lieu"
           }
         }
       }
-    },
-    "Rechercher un lieu..." : {
-
     },
-    "Réglages" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Settings"
+    "Rechercher un lieu...": {},
+    "Réglages": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Settings"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réglages"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Réglages"
           }
         }
       }
     },
-    "Répartition des heures" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Hours breakdown"
+    "Répartition des heures": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hours breakdown"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Répartition des heures"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Répartition des heures"
           }
         }
       }
     },
-    "Restaurer" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restore"
+    "Restaurer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Restaurer"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restaurer"
           }
         }
       }
     },
-    "Résultat" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Result"
+    "Résultat": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Result"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Résultat"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Résultat"
           }
         }
       }
     },
-    "Retour" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Back"
+    "Retour": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Retour"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retour"
           }
         }
       }
     },
-    "Sauvegarder" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Save"
+    "Sauvegarder": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sauvegarder"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sauvegarder"
           }
         }
       }
     },
-    "Searching..." : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Searching..."
+    "Searching...": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searching..."
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Recherche..."
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recherche..."
           }
         }
       }
     },
-    "Sélection" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Selection"
+    "Sélection": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Selection"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sélection"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélection"
           }
         }
       }
     },
-    "Sélectionner une voile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Select a wing"
+    "Sélectionner une voile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a wing"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sélectionner une voile"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sélectionner une voile"
           }
         }
       }
     },
-    "session%@" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "session%@"
+    "session%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "session%@"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "session%@"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "session%@"
           }
         }
       }
     },
-    "Sessions" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sessions"
+    "Sessions": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sessions"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sessions"
           }
         }
       }
     },
-    "Spot" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spot"
+    "Spot": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spot"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spot"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spot"
           }
         }
       }
     },
-    "Spot inconnu" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Unknown spot"
+    "Spot inconnu": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unknown spot"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spot inconnu"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spot inconnu"
           }
         }
       }
     },
-    "Spots" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spots"
+    "Spots": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spots"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spots"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spots"
           }
         }
       }
     },
-    "Spots de vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flying spots"
+    "Spots de vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flying spots"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Spots de vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spots de vol"
           }
         }
       }
     },
-    "Start" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start"
+    "Start": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
           }
         }
       }
     },
-    "Statistiques" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Statistics"
+    "Statistiques": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statistics"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Statistiques"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statistiques"
           }
         }
       }
     },
-    "Statistiques de vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flight statistics"
+    "Statistiques de vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flight statistics"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Statistiques de vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Statistiques de vol"
           }
         }
       }
     },
-    "Stats" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stats"
+    "Stats": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stats"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stats"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stats"
           }
         }
       }
     },
-    "Stop" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stop"
+    "Stop": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stop"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stop"
           }
         }
       }
     },
-    "Supprimer" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete"
+    "Supprimer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer"
           }
         }
       }
     },
-    "Supprimer ce vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete this flight"
+    "Supprimer ce vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete this flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer ce vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer ce vol"
           }
         }
       }
     },
-    "Supprimer ce vol ?" : {
-
-    },
-    "Supprimer définitivement" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete permanently"
+    "Supprimer ce vol ?": {},
+    "Supprimer définitivement": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete permanently"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer définitivement"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer définitivement"
           }
         }
       }
     },
-    "Supprimer définitivement ?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete permanently?"
+    "Supprimer définitivement ?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete permanently?"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer définitivement ?"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer définitivement ?"
           }
         }
       }
     },
-    "Supprimer et utiliser le GPS" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete and use GPS"
+    "Supprimer et utiliser le GPS": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete and use GPS"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer et utiliser le GPS"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer et utiliser le GPS"
           }
         }
       }
     },
-    "Supprimer la photo" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete photo"
+    "Supprimer la photo": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete photo"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer la photo"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer la photo"
           }
         }
       }
     },
-    "Supprimer les coordonnées" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete coordinates"
+    "Supprimer les coordonnées": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete coordinates"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer les coordonnées"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer les coordonnées"
           }
         }
       }
     },
-    "Supprimer toutes les données" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Delete all data"
+    "Supprimer toutes les données": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete all data"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Supprimer toutes les données"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Supprimer toutes les données"
           }
         }
       }
     },
-    "Swipez vers la gauche" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Swipe left"
+    "Swipez vers la gauche": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swipe left"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Swipez vers la gauche"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Swipez vers la gauche"
           }
         }
       }
     },
-    "Synchroniser les voiles" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sync wings"
+    "Synchroniser les voiles": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync wings"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Synchroniser les voiles"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synchroniser les voiles"
           }
         }
       }
     },
-    "Système" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "System"
+    "Système": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Système"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Système"
           }
         }
       }
-    },
-    "Taille" : {
-
     },
-    "Taille (ex: 22 m²)" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Size (e.g. 22 m²)"
+    "Taille": {},
+    "Taille (ex: 22 m²)": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Size (e.g. 22 m²)"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Taille (ex: 22 m²)"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Taille (ex: 22 m²)"
           }
         }
       }
     },
-    "Tapez sur la carte pour placer le marqueur" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap on the map to place the marker"
+    "Tapez sur la carte pour placer le marqueur": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap on the map to place the marker"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tapez sur la carte pour placer le marqueur"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tapez sur la carte pour placer le marqueur"
           }
         }
       }
     },
-    "Temps" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Time"
+    "Temps": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Temps"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temps"
           }
         }
       }
     },
-    "temps de vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "flight time"
+    "temps de vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "flight time"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "temps de vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "temps de vol"
           }
         }
       }
     },
-    "TEMPS DE VOL" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "FLIGHT TIME"
+    "TEMPS DE VOL": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FLIGHT TIME"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "TEMPS DE VOL"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "TEMPS DE VOL"
           }
         }
       }
     },
-    "Terminer" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Done"
+    "Terminer": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terminer"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer"
           }
         }
       }
     },
-    "Terminer le vol ?" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "End flight?"
+    "Terminer le vol ?": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End flight?"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Terminer le vol ?"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Terminer le vol ?"
           }
         }
       }
     },
-    "Timeline" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Timeline"
+    "Timeline": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timeline"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Timeline"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Timeline"
           }
         }
       }
     },
-    "Total" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Total"
+    "Total": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Total"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total"
           }
         }
       }
     },
-    "Toutes" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All"
+    "Toutes": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Toutes"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Toutes"
           }
         }
       }
     },
-    "Type" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Type"
+    "Type": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Type"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type"
           }
         }
       }
     },
-    "Un vol de %@ a été interrompu. Voulez-vous le sauvegarder ?" : {
-
-    },
-    "Valider" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Validate"
+    "Un vol de %@ a été interrompu. Voulez-vous le sauvegarder ?": {},
+    "Valider": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Validate"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Valider"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Valider"
           }
         }
       }
     },
-    "Verrouillage automatique" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Auto water lock"
+    "Verrouillage automatique": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Auto water lock"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verrouillage automatique"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Verrouillage automatique"
           }
         }
       }
     },
-    "Version" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Version"
+    "Version": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Version"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
           }
         }
       }
     },
-    "Veuillez patienter" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Please wait"
+    "Veuillez patienter": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please wait"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Veuillez patienter"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Veuillez patienter"
           }
         }
       }
     },
-    "Vitesse" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Speed"
+    "Vitesse": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Speed"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vitesse"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vitesse"
           }
         }
       }
     },
-    "Vitesse max" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Max speed"
+    "Vitesse max": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Max speed"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vitesse max"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vitesse max"
           }
         }
       }
     },
-    "Voile" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wing"
+    "Voile": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wing"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voile"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voile"
           }
         }
       }
     },
-    "Voile utilisée" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wing used"
+    "Voile utilisée": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wing used"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voile utilisée"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voile utilisée"
           }
         }
       }
     },
-    "Voiles" : {
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wings"
+    "Voiles": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wings"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voiles"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voiles"
           }
         }
       }
     },
-    "Voiles archivées" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Archived wings"
+    "Voiles archivées": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Archived wings"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voiles archivées"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Voiles archivées"
           }
         }
       }
     },
-    "vol" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "flight"
+    "vol": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vol"
           }
         }
       }
     },
-    "VOL EN COURS" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "FLIGHT IN PROGRESS"
+    "VOL EN COURS": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "FLIGHT IN PROGRESS"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "VOL EN COURS"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "VOL EN COURS"
           }
         }
       }
-    },
-    "Vol en cours récupéré" : {
-
     },
-    "Vol terminé !" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flight completed!"
+    "Vol en cours récupéré": {},
+    "Vol terminé !": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flight completed!"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vol terminé !"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vol terminé !"
           }
         }
       }
     },
-    "vol%@" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "flight%@"
+    "vol%@": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "flight%@"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "vol%@"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vol%@"
           }
         }
       }
     },
-    "vols" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "flights"
+    "vols": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "vols"
           }
         }
       }
     },
-    "Vols" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flights"
+    "Vols": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vols"
           }
         }
       }
     },
-    "Vols précédents" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Previous flights"
+    "Vols précédents": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Previous flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vols précédents"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vols précédents"
           }
         }
       }
     },
-    "widget_description" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Launch the app and track your flights"
+    "widget_description": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Launch the app and track your flights"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lancez l'app et suivez vos vols"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancez l'app et suivez vos vols"
           }
         }
       }
     },
-    "widget_flight" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Flight"
+    "widget_flight": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Vol"
           }
         }
       }
     },
-    "widget_start_flight" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Start a flight"
+    "widget_start_flight": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start a flight"
           }
         },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lancer un vol"
+        "fr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lancer un vol"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

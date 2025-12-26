@@ -187,7 +187,7 @@ struct CachedImage: View {
         } else {
             // Décoder en background pour les grosses images
             Task.detached(priority: .userInitiated) {
-                let decoded = ImageCacheManager.shared.image(for: data, key: key, targetSize: size)
+                let decoded = await ImageCacheManager.shared.image(for: data, key: key, targetSize: size)
                 await MainActor.run {
                     image = decoded
                 }
