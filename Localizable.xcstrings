@@ -898,6 +898,9 @@
         }
       }
     },
+    "Active les logs détaillés (peut ralentir l'app)" : {
+
+    },
     "Activité" : {
       "localizations" : {
         "en" : {
@@ -2647,6 +2650,9 @@
           }
         }
       }
+    },
+    "Mode développeur" : {
+
     },
     "Modifier" : {
       "localizations" : {

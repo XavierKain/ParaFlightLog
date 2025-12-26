@@ -26,6 +26,8 @@ enum WatchLogCategory: String {
 // MARK: - Watch Logger
 
 /// Logger centralisé pour l'Apple Watch
+/// Les logs debug/info sont désactivés par défaut pour optimiser les performances
+/// Activer le Mode Développeur dans les réglages iPhone pour les voir
 final class WatchLogger {
     static let shared = WatchLogger()
 
@@ -34,6 +36,12 @@ final class WatchLogger {
     // Cache des loggers par catégorie pour éviter de les recréer
     private var loggers: [WatchLogCategory: Logger] = [:]
     private let queue = DispatchQueue(label: "com.paraflightlog.watchlogger")
+
+    /// Mode développeur : si false, seuls les logs warning/error sont émis
+    /// Lecture depuis UserDefaults pour éviter une dépendance circulaire avec WatchSettings
+    private var isDeveloperModeEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "developerModeEnabled")
+    }
 
     private init() {}
 
@@ -52,22 +60,24 @@ final class WatchLogger {
 
     // MARK: - Log Methods
 
-    /// Log de niveau debug (visible uniquement en debug)
+    /// Log de niveau debug (visible uniquement en mode développeur)
     func debug(_ message: String, category: WatchLogCategory = .general) {
+        guard isDeveloperModeEnabled else { return }
         logger(for: category).debug("\(message, privacy: .public)")
     }
 
-    /// Log de niveau info (événements normaux)
+    /// Log de niveau info (visible uniquement en mode développeur)
     func info(_ message: String, category: WatchLogCategory = .general) {
+        guard isDeveloperModeEnabled else { return }
         logger(for: category).info("\(message, privacy: .public)")
     }
 
-    /// Log de niveau warning (problèmes potentiels)
+    /// Log de niveau warning (toujours actif - problèmes potentiels)
     func warning(_ message: String, category: WatchLogCategory = .general) {
         logger(for: category).warning("\(message, privacy: .public)")
     }
 
-    /// Log de niveau error (erreurs récupérables)
+    /// Log de niveau error (toujours actif - erreurs récupérables)
     func error(_ message: String, category: WatchLogCategory = .general) {
         logger(for: category).error("\(message, privacy: .public)")
     }

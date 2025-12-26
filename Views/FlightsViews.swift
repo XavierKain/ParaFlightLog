@@ -48,14 +48,15 @@ struct FlightsView: View {
 
     var body: some View {
         NavigationStack {
-            if flights.isEmpty {
-                ContentUnavailableView(
-                    "Aucun vol",
-                    systemImage: "airplane.circle",
-                    description: Text("Commencez un vol depuis la Watch ou l'onglet Chrono")
-                )
-                .padding(.top, 100)
-            } else {
+            Group {
+                if flights.isEmpty {
+                    ContentUnavailableView(
+                        String(localized: "Aucun vol"),
+                        systemImage: "airplane.circle",
+                        description: Text(String(localized: "Commencez un vol depuis la Watch ou l'onglet Chrono"))
+                    )
+                    .padding(.top, 100)
+                } else {
                 List {
                     // Dernier vol en grand (featured)
                     if let latest = latestFlight {
@@ -108,7 +109,7 @@ struct FlightsView: View {
                                     .listRowSeparator(.hidden)
                             }
                         } header: {
-                            Text("Vols précédents")
+                            Text(String(localized: "Vols précédents"))
                                 .font(.headline)
                                 .foregroundStyle(.secondary)
                                 .textCase(nil)
@@ -117,20 +118,21 @@ struct FlightsView: View {
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
+                }
             }
+            .navigationTitle(String(localized: "Mes vols"))
         }
-        .navigationTitle(String(localized: "Mes vols"))
         .id(localizationManager.currentLanguage) // Force re-render quand la langue change
         .sheet(item: $showingFlightDetail) { flight in
             FlightDetailView(flight: flight)
         }
-        .confirmationDialog("Supprimer ce vol ?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
-            Button("Supprimer", role: .destructive) {
+        .confirmationDialog(String(localized: "Supprimer ce vol ?"), isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+            Button(String(localized: "Supprimer"), role: .destructive) {
                 if let flight = flightToDelete {
                     deleteFlight(flight)
                 }
             }
-            Button("Annuler", role: .cancel) {}
+            Button(String(localized: "Annuler"), role: .cancel) {}
         }
     }
 

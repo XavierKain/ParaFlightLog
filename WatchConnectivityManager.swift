@@ -78,7 +78,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     // MARK: - Send Watch Settings
 
     /// Envoie les paramètres Watch vers la Watch
-    func sendWatchSettings(autoWaterLock: Bool, allowSessionDismiss: Bool) {
+    func sendWatchSettings(autoWaterLock: Bool, allowSessionDismiss: Bool, developerMode: Bool? = nil) {
         guard WCSession.default.activationState == .activated else {
             logWarning("WCSession not activated, cannot send watch settings", category: .watchSync)
             return
@@ -88,9 +88,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         context[UserDefaultsKeys.watchAutoWaterLock] = autoWaterLock
         context[UserDefaultsKeys.watchAllowSessionDismiss] = allowSessionDismiss
 
+        // Inclure le mode développeur si spécifié, sinon lire depuis UserDefaults
+        let devMode = developerMode ?? UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled)
+        context[UserDefaultsKeys.developerModeEnabled] = devMode
+
         do {
             try WCSession.default.updateApplicationContext(context)
-            logInfo("Sent watch settings: autoWaterLock=\(autoWaterLock), allowDismiss=\(allowSessionDismiss)", category: .watchSync)
+            logInfo("Sent watch settings: autoWaterLock=\(autoWaterLock), allowDismiss=\(allowSessionDismiss), devMode=\(devMode)", category: .watchSync)
         } catch {
             logError("Failed to send watch settings: \(error.localizedDescription)", category: .watchSync)
         }

@@ -535,18 +535,38 @@ struct SettingsView: View {
                     }
                 }
 
-                Section("Développeur") {
+                Section {
+                    Toggle(isOn: Binding(
+                        get: { UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled) },
+                        set: { newValue in
+                            UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.developerModeEnabled)
+                            // Synchroniser avec la Watch
+                            let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+                            let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
+                            watchManager.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: allowDismiss, developerMode: newValue)
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(String(localized: "Mode développeur"))
+                            Text(String(localized: "Active les logs détaillés (peut ralentir l'app)"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                     Button {
                         generateTestData()
                     } label: {
-                        Label("Générer des données de test", systemImage: "wand.and.stars")
+                        Label(String(localized: "Générer des données de test"), systemImage: "wand.and.stars")
                     }
 
                     Button(role: .destructive) {
                         deleteAllData()
                     } label: {
-                        Label("Supprimer toutes les données", systemImage: "trash")
+                        Label(String(localized: "Supprimer toutes les données"), systemImage: "trash")
                     }
+                } header: {
+                    Text(String(localized: "Développeur"))
                 }
 
                 Section("À propos") {

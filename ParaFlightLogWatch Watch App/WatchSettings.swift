@@ -32,20 +32,27 @@ final class WatchSettings {
         }
     }
 
+    /// Mode développeur : active les logs détaillés
+    /// Désactivé par défaut pour de meilleures performances
+    var developerModeEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(developerModeEnabled, forKey: "developerModeEnabled")
+        }
+    }
+
     // MARK: - Initialization
 
     private init() {
         // Charger les valeurs sauvegardées ou utiliser les valeurs par défaut
         self.autoWaterLockEnabled = UserDefaults.standard.object(forKey: "autoWaterLockEnabled") as? Bool ?? false
         self.allowSessionDismiss = UserDefaults.standard.object(forKey: "allowSessionDismiss") as? Bool ?? true
+        self.developerModeEnabled = UserDefaults.standard.object(forKey: "developerModeEnabled") as? Bool ?? false
     }
 
     // MARK: - Update from iPhone
 
     /// Met à jour les paramètres depuis un contexte reçu de l'iPhone
     func updateFromContext(_ context: [String: Any]) {
-        watchLogDebug("updateFromContext called", category: .settings)
-
         if let autoWaterLock = context["watchAutoWaterLock"] as? Bool {
             autoWaterLockEnabled = autoWaterLock
         }
@@ -54,7 +61,14 @@ final class WatchSettings {
             allowSessionDismiss = allowDismiss
         }
 
-        watchLogDebug("Settings updated: autoWaterLock=\(autoWaterLockEnabled), allowDismiss=\(allowSessionDismiss)", category: .settings)
+        if let devMode = context["developerModeEnabled"] as? Bool {
+            developerModeEnabled = devMode
+        }
+
+        // Log uniquement si mode dev activé (évite le log au démarrage si désactivé)
+        if developerModeEnabled {
+            watchLogDebug("Settings updated: autoWaterLock=\(autoWaterLockEnabled), allowDismiss=\(allowSessionDismiss), devMode=\(developerModeEnabled)", category: .settings)
+        }
     }
 
     // MARK: - Water Lock Control

@@ -127,6 +127,7 @@ enum UserDefaultsKeys {
     static let currentLanguage = "currentLanguage"
     static let appleLanguages = "AppleLanguages"
     static let pendingSession = "pendingFlightSession"
+    static let developerModeEnabled = "developerModeEnabled"
 }
 
 // MARK: - Notification Names
