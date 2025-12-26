@@ -29,6 +29,7 @@ struct TimerView: View {
     @State private var showingWingPicker = false
     @State private var showingFlightSummary = false
     @State private var completedFlight: Flight?
+    @State private var showSaveError = false
 
     var body: some View {
         NavigationStack {
@@ -70,10 +71,10 @@ struct TimerView: View {
                                                 size: CGSize(width: 50, height: 50)
                                             ) {
                                                 RoundedRectangle(cornerRadius: 8)
-                                                    .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
+                                                    .fill((wing.color ?? "Gris").toColor().opacity(0.3))
                                                     .overlay {
                                                         Image(systemName: "wind")
-                                                            .foregroundStyle(colorFromString(wing.color ?? "Gris"))
+                                                            .foregroundStyle((wing.color ?? "Gris").toColor())
                                                     }
                                             }
                                             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -268,6 +269,11 @@ struct TimerView: View {
             backgroundTask?.invalidate()
             backgroundTask = nil
         }
+        .alert("Erreur de sauvegarde", isPresented: $showSaveError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text("Impossible de sauvegarder le vol. Veuillez réessayer.")
+        }
     }
 
     private func startBackgroundTimer() {
@@ -333,11 +339,15 @@ struct TimerView: View {
                 )
 
                 dataController.modelContext.insert(flight)
-                try? dataController.modelContext.save()
-
-                // Afficher le récapitulatif
-                completedFlight = flight
-                showingFlightSummary = true
+                do {
+                    try dataController.modelContext.save()
+                    // Afficher le récapitulatif
+                    completedFlight = flight
+                    showingFlightSummary = true
+                } catch {
+                    logError("Failed to save flight from timer: \(error.localizedDescription)", category: .dataController)
+                    showSaveError = true
+                }
             }
         }
 
@@ -363,19 +373,6 @@ struct TimerView: View {
                     currentSpot = spot ?? "Spot inconnu"
                 }
             }
-        }
-    }
-
-    private func colorFromString(_ colorString: String) -> Color {
-        switch colorString.lowercased() {
-        case "rouge": return .red
-        case "bleu": return .blue
-        case "vert": return .green
-        case "jaune": return .yellow
-        case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
-        default: return .gray
         }
     }
 
@@ -415,10 +412,10 @@ struct WingPickerSheet: View {
                                 size: CGSize(width: 50, height: 50)
                             ) {
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
+                                    .fill((wing.color ?? "Gris").toColor().opacity(0.3))
                                     .overlay {
                                         Image(systemName: "wind")
-                                            .foregroundStyle(colorFromString(wing.color ?? "Gris"))
+                                            .foregroundStyle((wing.color ?? "Gris").toColor())
                                     }
                             }
                             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -462,19 +459,6 @@ struct WingPickerSheet: View {
                     }
                 }
             }
-        }
-    }
-
-    private func colorFromString(_ colorString: String) -> Color {
-        switch colorString.lowercased() {
-        case "rouge": return .red
-        case "bleu": return .blue
-        case "vert": return .green
-        case "jaune": return .yellow
-        case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
-        default: return .gray
         }
     }
 }

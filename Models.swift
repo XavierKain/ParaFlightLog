@@ -236,12 +236,21 @@ final class Flight {
     /// Décoder la trace GPS
     var gpsTrack: [GPSTrackPoint]? {
         guard let data = gpsTrackData else { return nil }
-        return try? JSONDecoder().decode([GPSTrackPoint].self, from: data)
+        do {
+            return try JSONDecoder().decode([GPSTrackPoint].self, from: data)
+        } catch {
+            logError("Failed to decode GPS track: \(error.localizedDescription)", category: .flight)
+            return nil
+        }
     }
 
     /// Encoder et sauvegarder la trace GPS
     func setGPSTrack(_ points: [GPSTrackPoint]) {
-        gpsTrackData = try? JSONEncoder().encode(points)
+        do {
+            gpsTrackData = try JSONEncoder().encode(points)
+        } catch {
+            logError("Failed to encode GPS track: \(error.localizedDescription)", category: .flight)
+        }
     }
 
     /// Durée formatée (ex: "1h23" ou "45min")

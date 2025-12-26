@@ -132,11 +132,11 @@ struct WingRow: View {
                 size: thumbnailSize
             ) {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
+                    .fill((wing.color ?? "Gris").toColor().opacity(0.3))
                     .overlay {
                         Image(systemName: "wind")
                             .font(.title2)
-                            .foregroundStyle(colorFromString(wing.color ?? "Gris"))
+                            .foregroundStyle((wing.color ?? "Gris").toColor())
                     }
             }
             .clipShape(RoundedRectangle(cornerRadius: 8))
@@ -170,19 +170,6 @@ struct WingRow: View {
         }
         .padding(.vertical, 4)
     }
-
-    private func colorFromString(_ colorString: String) -> Color {
-        switch colorString.lowercased() {
-        case "rouge": return .red
-        case "bleu": return .blue
-        case "vert": return .green
-        case "jaune": return .yellow
-        case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
-        default: return .gray
-        }
-    }
 }
 
 // MARK: - AddWingView (Formulaire d'ajout avec photo)
@@ -199,6 +186,7 @@ struct AddWingView: View {
     @State private var customColor: String = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
+    @State private var showSaveError: Bool = false
 
     let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
     let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
@@ -291,6 +279,11 @@ struct AddWingView: View {
                     }
                 }
             }
+            .alert("Erreur de sauvegarde", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Impossible de sauvegarder la voile. Veuillez réessayer.")
+            }
         }
     }
 
@@ -317,11 +310,15 @@ struct AddWingView: View {
         modelContext.insert(wing)
 
         Task { @MainActor in
-            try? modelContext.save()
-            watchManager.sendWingsToWatch()
+            do {
+                try modelContext.save()
+                watchManager.sendWingsToWatch()
+                dismiss()
+            } catch {
+                logError("Failed to save wing: \(error.localizedDescription)", category: .dataController)
+                showSaveError = true
+            }
         }
-
-        dismiss()
     }
 }
 
@@ -341,6 +338,7 @@ struct EditWingView: View {
     @State private var customColor: String
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
+    @State private var showSaveError: Bool = false
 
     let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
     let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
@@ -459,6 +457,11 @@ struct EditWingView: View {
                     }
                 }
             }
+            .alert("Erreur de sauvegarde", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Impossible de sauvegarder les modifications. Veuillez réessayer.")
+            }
         }
     }
 
@@ -476,11 +479,15 @@ struct EditWingView: View {
         ImageCacheManager.shared.invalidate(key: wing.id.uuidString)
 
         Task { @MainActor in
-            try? modelContext.save()
-            watchManager.sendWingsToWatch()
+            do {
+                try modelContext.save()
+                watchManager.sendWingsToWatch()
+                dismiss()
+            } catch {
+                logError("Failed to save wing changes: \(error.localizedDescription)", category: .dataController)
+                showSaveError = true
+            }
         }
-
-        dismiss()
     }
 }
 
@@ -719,11 +726,11 @@ struct ArchivedWingsView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                             } else {
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
+                                    .fill((wing.color ?? "Gris").toColor().opacity(0.3))
                                     .frame(width: 50, height: 50)
                                     .overlay {
                                         Image(systemName: "wind")
-                                            .foregroundStyle(colorFromString(wing.color ?? "Gris"))
+                                            .foregroundStyle((wing.color ?? "Gris").toColor())
                                     }
                             }
 
@@ -794,19 +801,6 @@ struct ArchivedWingsView: View {
                 let flightCount = wing.flights?.count ?? 0
                 Text("⚠️ Cette action est irréversible ! La voile \"\(wing.name)\" et ses \(flightCount) vol\(flightCount > 1 ? "s" : "") seront définitivement supprimés.")
             }
-        }
-    }
-
-    private func colorFromString(_ colorString: String) -> Color {
-        switch colorString.lowercased() {
-        case "rouge": return .red
-        case "bleu": return .blue
-        case "vert": return .green
-        case "jaune": return .yellow
-        case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
-        default: return .gray
         }
     }
 }

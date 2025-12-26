@@ -116,8 +116,12 @@ struct SpotsManagementView: View {
         }
 
         Task { @MainActor in
-            try? modelContext.save()
-            logInfo("Updated \(updatedCount) flights with coordinates for spot: \(spotName)", category: .location)
+            do {
+                try modelContext.save()
+                logInfo("Updated \(updatedCount) flights with coordinates for spot: \(spotName)", category: .location)
+            } catch {
+                logError("Failed to save spot coordinates: \(error.localizedDescription)", category: .dataController)
+            }
         }
     }
 
@@ -631,9 +635,15 @@ struct SettingsView: View {
         }
 
         Task { @MainActor in
-            try? modelContext.save()
-            importMessage = "✅ \(wings.count) voiles et 20 vols créés"
-            showingImportSuccess = true
+            do {
+                try modelContext.save()
+                importMessage = "✅ \(wings.count) voiles et 20 vols créés"
+                showingImportSuccess = true
+            } catch {
+                logError("Failed to save demo data: \(error.localizedDescription)", category: .dataController)
+                importMessage = "❌ Erreur lors de la création des données démo"
+                showingImportSuccess = true
+            }
         }
     }
 

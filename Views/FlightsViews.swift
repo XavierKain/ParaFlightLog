@@ -701,11 +701,11 @@ struct FlightRow: View {
                     size: thumbnailSize
                 ) {
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(colorFromString(wing.color ?? "Gris").opacity(0.3))
+                        .fill((wing.color ?? "Gris").toColor().opacity(0.3))
                         .overlay {
                             Image(systemName: "wind")
                                 .font(.caption)
-                                .foregroundStyle(colorFromString(wing.color ?? "Gris"))
+                                .foregroundStyle((wing.color ?? "Gris").toColor())
                         }
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -790,20 +790,6 @@ struct FlightRow: View {
             return "\(Int(distance))m"
         }
     }
-
-    private func colorFromString(_ colorString: String) -> Color {
-        switch colorString.lowercased() {
-        case "bleu": return .blue
-        case "rouge": return .red
-        case "vert": return .green
-        case "jaune": return .yellow
-        case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
-        case "gris": return .gray
-        default: return .gray
-        }
-    }
 }
 
 // MARK: - EditFlightView (Éditer un vol)
@@ -835,6 +821,7 @@ struct EditFlightView: View {
 
     // Suppression
     @State private var showingDeleteConfirmation = false
+    @State private var showSaveError = false
 
     init(flight: Flight) {
         self.flight = flight
@@ -1104,6 +1091,11 @@ struct EditFlightView: View {
                 }
                 Button("Annuler", role: .cancel) {}
             }
+            .alert("Erreur de sauvegarde", isPresented: $showSaveError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Impossible de sauvegarder les modifications. Veuillez réessayer.")
+            }
         }
     }
 
@@ -1144,10 +1136,14 @@ struct EditFlightView: View {
         // Les statistiques ne sont plus modifiables, elles sont préservées
 
         Task { @MainActor in
-            try? modelContext.save()
+            do {
+                try modelContext.save()
+                dismiss()
+            } catch {
+                logError("Failed to save flight: \(error.localizedDescription)", category: .dataController)
+                showSaveError = true
+            }
         }
-
-        dismiss()
     }
 
     private func geocodeSpot() {
@@ -1182,7 +1178,13 @@ struct EditFlightView: View {
                 geocodingMessage = "✅ Coordonnées ajoutées"
 
                 Task { @MainActor in
-                    try? modelContext.save()
+                    do {
+                        try modelContext.save()
+                    } catch {
+                        logError("Failed to save geocoded coordinates: \(error.localizedDescription)", category: .dataController)
+                        // Note: On ne montre pas d'alerte ici car les coordonnées sont déjà visuellement affichées
+                        // et seront sauvegardées au prochain enregistrement du vol
+                    }
                 }
             }
         }

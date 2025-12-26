@@ -135,20 +135,6 @@ struct StatsByWingSection: View {
         return abbreviated.trimmingCharacters(in: .whitespaces)
     }
 
-    private func colorFromString(_ colorString: String) -> Color {
-        switch colorString.lowercased() {
-        case "bleu": return .blue
-        case "rouge": return .red
-        case "vert": return .green
-        case "jaune": return .yellow
-        case "orange": return .orange
-        case "violet": return .purple
-        case "noir": return .black
-        case "gris": return .gray
-        default: return .gray
-        }
-    }
-
     /// Crée le label pour une voile dans le graphique
     private func wingChartLabel(for wing: Wing) -> String {
         if let size = wing.size {
@@ -212,11 +198,11 @@ struct StatsByWingSection: View {
                                     size: CGSize(width: 24, height: 24)
                                 ) {
                                     RoundedRectangle(cornerRadius: 4)
-                                        .fill(colorFromString(stat.wing.color ?? "Gris").opacity(0.3))
+                                        .fill((stat.wing.color ?? "Gris").toColor().opacity(0.3))
                                         .overlay {
                                             Image(systemName: "wind")
                                                 .font(.system(size: 10))
-                                                .foregroundStyle(colorFromString(stat.wing.color ?? "Gris"))
+                                                .foregroundStyle((stat.wing.color ?? "Gris").toColor())
                                         }
                                 }
                                 .clipShape(RoundedRectangle(cornerRadius: 4))

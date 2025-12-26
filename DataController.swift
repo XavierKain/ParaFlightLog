@@ -26,9 +26,6 @@ final class DataController {
     private(set) var isUsingFallbackDatabase: Bool = false
 
     init() {
-        // NOTE: Migration désactivée - la base de données est maintenant persistante
-        // Self.deleteOldDatabaseIfNeeded()
-
         // Configuration du schema SwiftData
         let schema = Schema([
             Wing.self,
@@ -83,26 +80,6 @@ final class DataController {
                 } catch {
                     fatalError("Unable to create any ModelContainer - app cannot function: \(error)")
                 }
-            }
-        }
-    }
-
-    /// Supprime l'ancienne base de données si elle existe (migration forcée)
-    private static func deleteOldDatabaseIfNeeded() {
-        let fileManager = FileManager.default
-
-        guard let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first else {
-            return
-        }
-
-        let storeURL = appSupportURL.appendingPathComponent("default.store")
-
-        if fileManager.fileExists(atPath: storeURL.path) {
-            do {
-                try fileManager.removeItem(at: storeURL)
-                logInfo("Old database deleted for migration", category: .dataController)
-            } catch {
-                logWarning("Could not delete old database: \(error)", category: .dataController)
             }
         }
     }
@@ -242,8 +219,12 @@ final class DataController {
         // Encoder la trace GPS si présente
         var gpsTrackData: Data? = nil
         if let gpsTrack = dto.gpsTrack, !gpsTrack.isEmpty {
-            gpsTrackData = try? JSONEncoder().encode(gpsTrack)
-            logDebug("GPS track with \(gpsTrack.count) points", category: .flight)
+            do {
+                gpsTrackData = try JSONEncoder().encode(gpsTrack)
+                logDebug("GPS track with \(gpsTrack.count) points", category: .flight)
+            } catch {
+                logError("Failed to encode GPS track: \(error.localizedDescription)", category: .flight)
+            }
         }
 
         let flight = Flight(
