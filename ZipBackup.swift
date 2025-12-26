@@ -45,7 +45,7 @@ struct ZipBackup {
     ///   - flights: Liste des vols à exporter
     ///   - completion: Callback avec l'URL du dossier bundle créé (ou erreur)
     static func exportToZip(wings: [Wing], flights: [Flight], completion: @escaping (Result<URL, Error>) -> Void) {
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .utility).async {
             do {
                 // Créer le dossier bundle .paraflightlog directement
                 let bundleName = "ParaFlightLog_Backup_\(formatDateForFilename(Date())).paraflightlog"
@@ -152,7 +152,7 @@ struct ZipBackup {
         mergeMode: Bool = true,
         completion: @escaping (Result<String, Error>) -> Void
     ) {
-        DispatchQueue.global(qos: .userInitiated).async {
+        DispatchQueue.global(qos: .utility).async {
             do {
                 // Obtenir l'accès sécurisé au fichier
                 let gotAccess = zipURL.startAccessingSecurityScopedResource()
