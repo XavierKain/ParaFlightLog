@@ -45,27 +45,41 @@ final class Wing {
         WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: photoData, displayOrder: displayOrder)
     }
 
-    /// Convertit en DTO avec photo compressée pour la Watch (max 50KB)
+    /// Convertit en DTO avec photo redimensionnée pour la Watch (max 120x120)
+    /// Fond gris foncé intégré pour correspondre aux encarts Watch
     func toDTOForWatch() -> WingDTO {
         var compressedPhotoData: Data? = nil
 
         if let originalData = photoData, let image = UIImage(data: originalData) {
-            // Redimensionner l'image pour la Watch (max 100x100)
-            let maxSize: CGFloat = 100
+            // Redimensionner l'image pour la Watch (max 120x120)
+            let maxSize: CGFloat = 120
             let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
-            let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+            let newSize = CGSize(
+                width: max(1, floor(image.size.width * scale)),
+                height: max(1, floor(image.size.height * scale))
+            )
 
-            // Format explicitement non-opaque pour conserver la transparence
+            // Couleur de fond : Color.gray.opacity(0.15) sur noir
+            // SwiftUI Color.gray sur watchOS ≈ 0.557, avec opacity 0.15 = 0.0835
+            let watchEncartBackground = UIColor(white: 0.0835, alpha: 1.0)
+
+            // Contexte opaque avec UIGraphicsImageRenderer (plus fiable)
             let format = UIGraphicsImageRendererFormat()
-            format.opaque = false
+            format.scale = 1.0
+            format.opaque = true
 
             let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
-            let resizedImage = renderer.image { _ in
+            let resizedImage = renderer.image { context in
+                // 1. Remplir avec le gris des encarts Watch
+                watchEncartBackground.setFill()
+                context.fill(CGRect(origin: .zero, size: newSize))
+
+                // 2. Dessiner l'image par-dessus
                 image.draw(in: CGRect(origin: .zero, size: newSize))
             }
 
-            // Utiliser PNG pour conserver la transparence (pas JPEG)
-            compressedPhotoData = resizedImage.pngData()
+            // JPEG haute qualité
+            compressedPhotoData = resizedImage.jpegData(compressionQuality: 0.9)
         }
 
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: compressedPhotoData, displayOrder: displayOrder)
@@ -76,8 +90,8 @@ final class Wing {
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
     }
 
-    /// Convertit en DTO avec miniature pour la Watch (48x48 max)
-    /// L'image est simplement redimensionnée avec UIGraphicsImageRenderer
+    /// Convertit en DTO avec miniature pour la Watch (72x72 max)
+    /// Fond gris foncé intégré pour correspondre aux encarts Watch
     func toDTOWithThumbnail() -> WingDTO {
         // Pas de photo = pas de miniature
         guard let originalData = photoData else {
@@ -88,81 +102,37 @@ final class Wing {
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
-        // Miniature pour la Watch (48x48 pixels max)
-        let maxSize: CGFloat = 48
+        // Miniature pour la Watch (72x72 pixels max)
+        let maxSize: CGFloat = 72
         let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
-        let newSize = CGSize(width: image.size.width * scale, height: image.size.height * scale)
+        let newSize = CGSize(
+            width: max(1, floor(image.size.width * scale)),
+            height: max(1, floor(image.size.height * scale))
+        )
 
-        // Redimensionner avec UIGraphicsImageRenderer
-        // Utiliser format opaque = false pour préserver la transparence si elle existe
+        // Couleur de fond : Color.gray.opacity(0.15) sur noir
+        // SwiftUI Color.gray sur watchOS ≈ 0.557, avec opacity 0.15 = 0.0835
+        let watchEncartBackground = UIColor(white: 0.0835, alpha: 1.0)
+
+        // Contexte opaque avec UIGraphicsImageRenderer (plus fiable)
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1.0
-        format.opaque = false
+        format.opaque = true
 
         let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
-        let resizedImage = renderer.image { _ in
+        let resizedImage = renderer.image { context in
+            // 1. Remplir avec le gris des encarts Watch
+            watchEncartBackground.setFill()
+            context.fill(CGRect(origin: .zero, size: newSize))
+
+            // 2. Dessiner l'image par-dessus
             image.draw(in: CGRect(origin: .zero, size: newSize))
         }
 
-        // Encoder en PNG pour préserver la transparence
-        let thumbnailData = resizedImage.pngData()
+        // JPEG haute qualité
+        let thumbnailData = resizedImage.jpegData(compressionQuality: 0.9)
 
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)
-    }
-}
-
-// MARK: - UIImage Extension pour supprimer le fond blanc
-
-extension UIImage {
-    /// Supprime le fond blanc/gris clair d'une image en le rendant transparent
-    /// Utilise un seuil de tolérance pour capturer les blancs légèrement grisés
-    func removeWhiteBackground(tolerance: CGFloat = 0.92) -> UIImage? {
-        guard let cgImage = self.cgImage else { return nil }
-
-        let width = cgImage.width
-        let height = cgImage.height
-
-        // Créer un contexte bitmap avec canal alpha
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
-
-        guard let context = CGContext(
-            data: nil,
-            width: width,
-            height: height,
-            bitsPerComponent: 8,
-            bytesPerRow: width * 4,
-            space: colorSpace,
-            bitmapInfo: bitmapInfo.rawValue
-        ) else { return nil }
-
-        // Dessiner l'image originale
-        context.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
-
-        guard let pixelBuffer = context.data else { return nil }
-
-        let pixels = pixelBuffer.bindMemory(to: UInt8.self, capacity: width * height * 4)
-
-        // Parcourir tous les pixels et rendre transparents ceux qui sont blancs/gris clair
-        for y in 0..<height {
-            for x in 0..<width {
-                let offset = (y * width + x) * 4
-                let red = CGFloat(pixels[offset]) / 255.0
-                let green = CGFloat(pixels[offset + 1]) / 255.0
-                let blue = CGFloat(pixels[offset + 2]) / 255.0
-
-                // Si le pixel est blanc ou presque blanc (R, G, B tous >= tolerance)
-                if red >= tolerance && green >= tolerance && blue >= tolerance {
-                    // Rendre transparent
-                    pixels[offset + 3] = 0  // Alpha = 0
-                }
-            }
-        }
-
-        // Créer une nouvelle image à partir du contexte modifié
-        guard let newCGImage = context.makeImage() else { return nil }
-
-        return UIImage(cgImage: newCGImage, scale: self.scale, orientation: self.imageOrientation)
     }
 }
 

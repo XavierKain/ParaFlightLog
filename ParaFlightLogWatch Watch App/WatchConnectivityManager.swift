@@ -193,6 +193,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                     // Ne mettre à jour que si les données ont changé
                     // pour éviter les re-renders inutiles
                     guard self.wingsHaveChanged(sortedWings) else { return }
+                    // Vider le cache d'images car les données ont changé
+                    WatchImageCache.shared.clearCache()
                     self.wings = sortedWings
                     self.saveWingsLocally()
                 }
@@ -212,6 +214,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                 await MainActor.run { [weak self] in
                     guard let self = self else { return }
                     guard self.wingsHaveChanged(sortedWings) else { return }
+                    // Vider le cache d'images car les données ont changé
+                    WatchImageCache.shared.clearCache()
                     self.wings = sortedWings
                     self.saveWingsLocally()
                 }
@@ -227,7 +231,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             if wing.id != newWing.id ||
                wing.name != newWing.name ||
                wing.size != newWing.size ||
-               wing.displayOrder != newWing.displayOrder {
+               wing.displayOrder != newWing.displayOrder ||
+               wing.photoData != newWing.photoData {
                 return true
             }
         }

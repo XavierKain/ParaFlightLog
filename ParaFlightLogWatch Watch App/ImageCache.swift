@@ -134,7 +134,7 @@ final class WatchImageCache {
 }
 
 /// Vue SwiftUI pour afficher une image de voile avec cache
-/// Le fond s'adapte au contexte (sélectionné ou non) pour masquer le fond blanc des images
+/// Les images JPEG ont leur fond blanc supprimé côté iPhone avant envoi
 struct CachedWingImage: View {
     let wing: WingDTO
     let size: CGFloat
@@ -154,7 +154,7 @@ struct CachedWingImage: View {
     var body: some View {
         Group {
             if let image = cachedImage {
-                // Afficher l'image originale (le fond blanc est supprimé côté iPhone)
+                // Afficher l'image (fond blanc supprimé côté iPhone pour les JPEG)
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFit()
