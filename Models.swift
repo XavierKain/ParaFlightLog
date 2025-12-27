@@ -46,40 +46,31 @@ final class Wing {
     }
 
     /// Convertit en DTO avec photo redimensionnée pour la Watch (max 120x120)
-    /// Fond gris foncé intégré pour correspondre aux encarts Watch
+    /// Préserve la transparence PNG pour s'adapter à tous les fonds
     func toDTOForWatch() -> WingDTO {
         var compressedPhotoData: Data? = nil
 
         if let originalData = photoData, let image = UIImage(data: originalData) {
-            // Redimensionner l'image pour la Watch (max 120x120)
+            // Calculer la taille cible (max 120x120)
             let maxSize: CGFloat = 120
             let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
-            let newSize = CGSize(
-                width: max(1, floor(image.size.width * scale)),
-                height: max(1, floor(image.size.height * scale))
+            let targetSize = CGSize(
+                width: max(1, round(image.size.width * scale)),
+                height: max(1, round(image.size.height * scale))
             )
 
-            // Couleur de fond : Color.gray.opacity(0.15) sur noir
-            // SwiftUI Color.gray sur watchOS ≈ 0.557, avec opacity 0.15 = 0.0835
-            let watchEncartBackground = UIColor(white: 0.0835, alpha: 1.0)
-
-            // Contexte opaque avec UIGraphicsImageRenderer (plus fiable)
+            // Utiliser UIGraphicsImageRenderer avec transparence
             let format = UIGraphicsImageRendererFormat()
             format.scale = 1.0
-            format.opaque = true
+            format.opaque = false  // Préserver la transparence
 
-            let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
-            let resizedImage = renderer.image { context in
-                // 1. Remplir avec le gris des encarts Watch
-                watchEncartBackground.setFill()
-                context.fill(CGRect(origin: .zero, size: newSize))
-
-                // 2. Dessiner l'image par-dessus
-                image.draw(in: CGRect(origin: .zero, size: newSize))
+            let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+            let resizedImage = renderer.image { _ in
+                image.draw(in: CGRect(origin: .zero, size: targetSize))
             }
 
-            // JPEG haute qualité
-            compressedPhotoData = resizedImage.jpegData(compressionQuality: 0.9)
+            // Encoder en PNG pour préserver la transparence
+            compressedPhotoData = resizedImage.pngData()
         }
 
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: compressedPhotoData, displayOrder: displayOrder)
@@ -91,47 +82,44 @@ final class Wing {
     }
 
     /// Convertit en DTO avec miniature pour la Watch (72x72 max)
-    /// Fond gris foncé intégré pour correspondre aux encarts Watch
+    /// Préserve la transparence PNG pour s'adapter à tous les fonds
     func toDTOWithThumbnail() -> WingDTO {
         // Pas de photo = pas de miniature
         guard let originalData = photoData else {
+            logInfo("Wing \(name): no photo data", category: .watchSync)
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
         guard let image = UIImage(data: originalData) else {
+            logWarning("Wing \(name): failed to create UIImage from \(originalData.count) bytes", category: .watchSync)
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
-        // Miniature pour la Watch (72x72 pixels max)
+        // Calculer la taille cible (max 72x72)
         let maxSize: CGFloat = 72
         let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
-        let newSize = CGSize(
-            width: max(1, floor(image.size.width * scale)),
-            height: max(1, floor(image.size.height * scale))
+        let targetSize = CGSize(
+            width: max(1, round(image.size.width * scale)),
+            height: max(1, round(image.size.height * scale))
         )
 
-        // Couleur de fond : Color.gray.opacity(0.15) sur noir
-        // SwiftUI Color.gray sur watchOS ≈ 0.557, avec opacity 0.15 = 0.0835
-        let watchEncartBackground = UIColor(white: 0.0835, alpha: 1.0)
-
-        // Contexte opaque avec UIGraphicsImageRenderer (plus fiable)
+        // Utiliser UIGraphicsImageRenderer avec transparence
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1.0
-        format.opaque = true
+        format.opaque = false  // Préserver la transparence
 
-        let renderer = UIGraphicsImageRenderer(size: newSize, format: format)
-        let resizedImage = renderer.image { context in
-            // 1. Remplir avec le gris des encarts Watch
-            watchEncartBackground.setFill()
-            context.fill(CGRect(origin: .zero, size: newSize))
-
-            // 2. Dessiner l'image par-dessus
-            image.draw(in: CGRect(origin: .zero, size: newSize))
+        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
+        let resizedImage = renderer.image { _ in
+            image.draw(in: CGRect(origin: .zero, size: targetSize))
         }
 
-        // JPEG haute qualité
-        let thumbnailData = resizedImage.jpegData(compressionQuality: 0.9)
+        // Encoder en PNG pour préserver la transparence
+        guard let thumbnailData = resizedImage.pngData() else {
+            logWarning("Wing \(name): pngData() returned nil", category: .watchSync)
+            return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
+        }
 
+        logInfo("Wing \(name): thumbnail created \(targetSize.width)x\(targetSize.height), \(thumbnailData.count) bytes", category: .watchSync)
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)
     }
 }

@@ -35,7 +35,8 @@ enum WatchSyncConstants: Sendable {
     static let initialSyncDelay: TimeInterval = 2.0
 
     /// Taille maximale des données pour applicationContext (KB)
-    static let maxContextSizeKB = 50.0
+    /// WCSession supporte jusqu'à ~500KB pour applicationContext
+    static let maxContextSizeKB = 200.0
 
     /// Backoff exponentiel : multiplicateur pour chaque retry
     static let backoffMultiplier: Double = 1.5
