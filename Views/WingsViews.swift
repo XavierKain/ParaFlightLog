@@ -169,9 +169,167 @@ struct WingRow: View {
     }
 }
 
-// MARK: - AddWingView (Formulaire d'ajout avec photo)
+// MARK: - AddWingView (Choix du mode d'ajout)
 
+/// Vue principale d'ajout de voile avec choix Library vs Custom
 struct AddWingView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
+    @Environment(WatchConnectivityManager.self) private var watchManager
+
+    @State private var showingLibrary = false
+    @State private var showingCustomForm = false
+    @State private var isAddingFromLibrary = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 32) {
+                Spacer()
+
+                // Icône principale
+                Image(systemName: "wind")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.blue)
+
+                Text(String(localized: "addWing.title"))
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Text(String(localized: "addWing.subtitle"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                Spacer()
+
+                // Deux gros boutons
+                VStack(spacing: 16) {
+                    // Bouton Bibliothèque
+                    Button {
+                        showingLibrary = true
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image(systemName: "book.closed.fill")
+                                .font(.title2)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(String(localized: "addWing.fromLibrary"))
+                                    .font(.headline)
+                                Text(String(localized: "addWing.fromLibraryDesc"))
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.8))
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(isAddingFromLibrary)
+
+                    // Bouton Custom
+                    Button {
+                        showingCustomForm = true
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(String(localized: "addWing.custom"))
+                                    .font(.headline)
+                                Text(String(localized: "addWing.customDesc"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color(.systemGray6))
+                        .foregroundStyle(.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(isAddingFromLibrary)
+                }
+                .padding(.horizontal, 24)
+
+                if isAddingFromLibrary {
+                    ProgressView()
+                        .padding()
+                }
+
+                Spacer()
+            }
+            .navigationTitle(String(localized: "addWing.navTitle"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "common.cancel")) {
+                        dismiss()
+                    }
+                    .disabled(isAddingFromLibrary)
+                }
+            }
+            .sheet(isPresented: $showingLibrary) {
+                WingLibraryView { libraryWing, selectedSize in
+                    addWingFromLibrary(libraryWing, size: selectedSize)
+                }
+            }
+            .sheet(isPresented: $showingCustomForm) {
+                CustomAddWingView()
+            }
+        }
+    }
+
+    private func addWingFromLibrary(_ libraryWing: LibraryWing, size: String) {
+        isAddingFromLibrary = true
+
+        Task {
+            // Télécharger l'image
+            let imageData = try? await WingLibraryService.shared.fetchImage(for: libraryWing)
+
+            await MainActor.run {
+                // Récupérer le displayOrder max actuel
+                let descriptor = FetchDescriptor<Wing>(
+                    predicate: #Predicate { !$0.isArchived },
+                    sortBy: [SortDescriptor(\Wing.displayOrder, order: .reverse)]
+                )
+                let maxDisplayOrder = (try? modelContext.fetch(descriptor).first?.displayOrder) ?? -1
+
+                let wing = Wing(
+                    name: "\(libraryWing.fullName) \(size)m",
+                    size: size,
+                    type: libraryWing.type,
+                    color: nil,
+                    photoData: imageData,
+                    displayOrder: maxDisplayOrder + 1
+                )
+
+                modelContext.insert(wing)
+
+                do {
+                    try modelContext.save()
+                    watchManager.sendWingsToWatch()
+                    logInfo("Wing added from library: \(wing.name)", category: .dataController)
+                    dismiss()
+                } catch {
+                    logError("Failed to save wing: \(error.localizedDescription)", category: .dataController)
+                    isAddingFromLibrary = false
+                }
+            }
+        }
+    }
+}
+
+// MARK: - CustomAddWingView (Formulaire manuel)
+
+/// Formulaire d'ajout manuel d'une voile
+struct CustomAddWingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(WatchConnectivityManager.self) private var watchManager
@@ -184,7 +342,6 @@ struct AddWingView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
     @State private var showSaveError: Bool = false
-    @State private var showingWingLibrary: Bool = false
 
     let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
     let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
@@ -192,23 +349,6 @@ struct AddWingView: View {
     var body: some View {
         NavigationStack {
             Form {
-                // Section bibliothèque en ligne
-                Section {
-                    Button {
-                        showingWingLibrary = true
-                    } label: {
-                        HStack {
-                            Image(systemName: "book.closed")
-                                .foregroundStyle(.blue)
-                            Text(String(localized: "wingLibrary.chooseFromLibrary"))
-                            Spacer()
-                            Image(systemName: "chevron.right")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                }
-
                 Section("Photo") {
                     HStack {
                         Spacer()
@@ -242,7 +382,6 @@ struct AddWingView: View {
                         TextField("Taille", text: $size)
                             .keyboardType(.decimalPad)
                             .onChange(of: size) { _, newValue in
-                                // Filtrer pour ne garder que les chiffres et le point/virgule
                                 let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
                                 if filtered != newValue {
                                     size = filtered
@@ -271,17 +410,17 @@ struct AddWingView: View {
                     }
                 }
             }
-            .navigationTitle("Nouvelle voile")
+            .navigationTitle(String(localized: "addWing.customTitle"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") {
+                    Button(String(localized: "common.cancel")) {
                         dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Ajouter") {
+                    Button(String(localized: "common.add")) {
                         addWing()
                     }
                     .disabled(name.isEmpty)
@@ -299,33 +438,16 @@ struct AddWingView: View {
             } message: {
                 Text("Impossible de sauvegarder la voile. Veuillez réessayer.")
             }
-            .sheet(isPresented: $showingWingLibrary) {
-                WingLibraryView { libraryWing, selectedSize in
-                    // Pré-remplir les champs avec les données de la voile sélectionnée
-                    name = "\(libraryWing.fullName) \(selectedSize)m"
-                    size = selectedSize
-                    type = libraryWing.type
-
-                    // Télécharger l'image en arrière-plan
-                    Task {
-                        if let imageData = try? await WingLibraryService.shared.fetchImage(for: libraryWing) {
-                            photoData = imageData
-                        }
-                    }
-                }
-            }
         }
     }
 
     private func addWing() {
-        // Récupérer le displayOrder max actuel pour ajouter la nouvelle voile à la fin
         let descriptor = FetchDescriptor<Wing>(
             predicate: #Predicate { !$0.isArchived },
             sortBy: [SortDescriptor(\Wing.displayOrder, order: .reverse)]
         )
         let maxDisplayOrder = (try? modelContext.fetch(descriptor).first?.displayOrder) ?? -1
 
-        // Utiliser la couleur personnalisée si "Autre..." est sélectionné
         let finalColor = color == "Autre..." ? customColor : color
 
         let wing = Wing(
