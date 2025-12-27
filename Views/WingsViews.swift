@@ -20,6 +20,10 @@ struct WingsView: View {
     @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
     @State private var showingAddWing = false
 
+    // État pour la suppression - géré au niveau parent pour éviter le crash
+    @State private var wingToDelete: Wing?
+    @State private var showingDeleteConfirmation = false
+
     var body: some View {
         NavigationStack {
             List {
@@ -31,7 +35,10 @@ struct WingsView: View {
                     )
                 } else {
                     ForEach(wings) { wing in
-                        WingListRow(wing: wing)
+                        WingListRow(wing: wing, onDeleteTapped: {
+                            wingToDelete = wing
+                            showingDeleteConfirmation = true
+                        })
                     }
                     .onMove(perform: moveWing)
                 }
@@ -52,6 +59,42 @@ struct WingsView: View {
             }
             .sheet(isPresented: $showingAddWing) {
                 AddWingView()
+            }
+            .alert(
+                wingToDelete.map { "Supprimer \"\($0.name)\" ?" } ?? "Supprimer ?",
+                isPresented: $showingDeleteConfirmation
+            ) {
+                Button("Archiver") {
+                    if let wing = wingToDelete {
+                        withAnimation {
+                            dataController.archiveWing(wing)
+                        }
+                    }
+                    wingToDelete = nil
+                }
+                Button("Supprimer définitivement", role: .destructive) {
+                    if let wing = wingToDelete {
+                        withAnimation {
+                            modelContext.delete(wing)
+                            try? modelContext.save()
+                            dataController.statsCache.invalidate()
+                            watchManager.sendWingsToWatch()
+                        }
+                    }
+                    wingToDelete = nil
+                }
+                Button("Annuler", role: .cancel) {
+                    wingToDelete = nil
+                }
+            } message: {
+                if let wing = wingToDelete {
+                    let flightCount = wing.flights?.count ?? 0
+                    if flightCount > 0 {
+                        Text("Cette voile a \(flightCount) vol\(flightCount > 1 ? "s" : "") enregistré\(flightCount > 1 ? "s" : ""). L'archivage conservera les données, la suppression les effacera.")
+                    } else {
+                        Text("Cette voile n'a aucun vol enregistré.")
+                    }
+                }
             }
         }
     }
@@ -78,15 +121,12 @@ struct WingsView: View {
     }
 }
 
-// MARK: - WingListRow (Row avec navigation et confirmation de suppression)
+// MARK: - WingListRow (Row avec navigation)
 
-/// Row de la liste avec gestion de la suppression intégrée
+/// Row de la liste - la suppression est gérée par le parent WingsView
 struct WingListRow: View {
     let wing: Wing
-    @Environment(DataController.self) private var dataController
-    @Environment(WatchConnectivityManager.self) private var watchManager
-    @Environment(\.modelContext) private var modelContext
-    @State private var showingDeleteConfirmation = false
+    let onDeleteTapped: () -> Void
 
     var body: some View {
         NavigationLink {
@@ -96,32 +136,9 @@ struct WingListRow: View {
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
-                showingDeleteConfirmation = true
+                onDeleteTapped()
             } label: {
                 Label("Supprimer", systemImage: "trash")
-            }
-        }
-        .alert("Supprimer \"\(wing.name)\" ?", isPresented: $showingDeleteConfirmation) {
-            Button("Archiver") {
-                withAnimation {
-                    dataController.archiveWing(wing)
-                }
-            }
-            Button("Supprimer définitivement", role: .destructive) {
-                withAnimation {
-                    modelContext.delete(wing)
-                    try? modelContext.save()
-                    dataController.statsCache.invalidate()
-                    watchManager.sendWingsToWatch()
-                }
-            }
-            Button("Annuler", role: .cancel) { }
-        } message: {
-            let flightCount = wing.flights?.count ?? 0
-            if flightCount > 0 {
-                Text("Cette voile a \(flightCount) vol\(flightCount > 1 ? "s" : "") enregistré\(flightCount > 1 ? "s" : ""). L'archivage conservera les données, la suppression les effacera.")
-            } else {
-                Text("Cette voile n'a aucun vol enregistré.")
             }
         }
     }

@@ -917,6 +917,134 @@
         }
       }
     },
+    "addWing.custom" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom Add"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajout personnalisé"
+          }
+        }
+      }
+    },
+    "addWing.customDesc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manually enter wing details"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrez manuellement les détails"
+          }
+        }
+      }
+    },
+    "addWing.customTitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom Wing"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voile personnalisée"
+          }
+        }
+      }
+    },
+    "addWing.fromLibrary" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose from Library"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir dans la bibliothèque"
+          }
+        }
+      }
+    },
+    "addWing.fromLibraryDesc" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select from preconfigured wings with photos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sélectionnez parmi des voiles préconfigurées"
+          }
+        }
+      }
+    },
+    "addWing.navTitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Wing"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouvelle voile"
+          }
+        }
+      }
+    },
+    "addWing.subtitle" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose how you want to add your wing"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez comment ajouter votre voile"
+          }
+        }
+      }
+    },
+    "addWing.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a Wing"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter une voile"
+          }
+        }
+      }
+    },
     "Ajouter" : {
       "localizations" : {
         "en" : {
@@ -1138,294 +1266,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Annuler"
-          }
-        }
-      }
-    },
-    "common.cancel" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Cancel"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Annuler"
-          }
-        }
-      }
-    },
-    "wingLibrary.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Wing Library"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Bibliothèque de voiles"
-          }
-        }
-      }
-    },
-    "wingLibrary.chooseFromLibrary" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose from library"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisir dans la bibliothèque"
-          }
-        }
-      }
-    },
-    "wingLibrary.loading" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loading..."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Chargement..."
-          }
-        }
-      }
-    },
-    "wingLibrary.retry" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Retry"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Réessayer"
-          }
-        }
-      }
-    },
-    "wingLibrary.offlineMode" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Offline mode - data may be outdated"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mode hors ligne - données peut-être obsolètes"
-          }
-        }
-      }
-    },
-    "wingLibrary.manufacturers" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manufacturers"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Fabricants"
-          }
-        }
-      }
-    },
-    "wingLibrary.allWings" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "All wings"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Toutes les voiles"
-          }
-        }
-      }
-    },
-    "wingLibrary.selectSize" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Select size"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisir la taille"
-          }
-        }
-      }
-    },
-    "addWing.title" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add a Wing"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouter une voile"
-          }
-        }
-      }
-    },
-    "addWing.subtitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose how you want to add your wing"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisissez comment ajouter votre voile"
-          }
-        }
-      }
-    },
-    "addWing.fromLibrary" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choose from Library"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Choisir dans la bibliothèque"
-          }
-        }
-      }
-    },
-    "addWing.fromLibraryDesc" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Select from preconfigured wings with photos"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sélectionnez parmi des voiles préconfigurées"
-          }
-        }
-      }
-    },
-    "addWing.custom" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Custom Add"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajout personnalisé"
-          }
-        }
-      }
-    },
-    "addWing.customDesc" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manually enter wing details"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Entrez manuellement les détails"
-          }
-        }
-      }
-    },
-    "addWing.navTitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "New Wing"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nouvelle voile"
-          }
-        }
-      }
-    },
-    "addWing.customTitle" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Custom Wing"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Voile personnalisée"
-          }
-        }
-      }
-    },
-    "common.add" : {
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Add"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ajouter"
           }
         }
       }
@@ -1957,6 +1797,38 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Commencez un vol depuis la Watch ou l'onglet Chrono"
+          }
+        }
+      }
+    },
+    "common.add" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter"
+          }
+        }
+      }
+    },
+    "common.cancel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
           }
         }
       }
@@ -3119,6 +2991,7 @@
       }
     },
     "Nouvelle voile" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3397,6 +3270,7 @@
       }
     },
     "Que voulez-vous faire ?" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3800,6 +3674,12 @@
           }
         }
       }
+    },
+    "Supprimer ?" : {
+
+    },
+    "Supprimer \"%@\" ?" : {
+
     },
     "Supprimer ce vol" : {
       "localizations" : {
@@ -4472,6 +4352,135 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lancer un vol"
+          }
+        }
+      }
+    },
+    "wingLibrary.allWings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All wings"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Toutes les voiles"
+          }
+        }
+      }
+    },
+    "wingLibrary.chooseFromLibrary" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose from library"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir dans la bibliothèque"
+          }
+        }
+      }
+    },
+    "wingLibrary.loading" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading..."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chargement..."
+          }
+        }
+      }
+    },
+    "wingLibrary.manufacturers" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manufacturers"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fabricants"
+          }
+        }
+      }
+    },
+    "wingLibrary.offlineMode" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline mode - data may be outdated"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mode hors ligne - données peut-être obsolètes"
+          }
+        }
+      }
+    },
+    "wingLibrary.retry" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer"
+          }
+        }
+      }
+    },
+    "wingLibrary.selectSize" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select size"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir la taille"
+          }
+        }
+      }
+    },
+    "wingLibrary.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wing Library"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliothèque de voiles"
           }
         }
       }
