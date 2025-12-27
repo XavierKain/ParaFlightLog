@@ -2747,6 +2747,9 @@
         }
       }
     },
+    "Marque" : {
+
+    },
     "Max" : {
       "localizations" : {
         "en" : {
@@ -2814,6 +2817,9 @@
     "Mode développeur" : {
 
     },
+    "Modèle" : {
+
+    },
     "Modifier" : {
       "localizations" : {
         "en" : {
@@ -2879,6 +2885,7 @@
       }
     },
     "Nom" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {

@@ -15,7 +15,8 @@ import UIKit
 @Model
 final class Wing {
     var id: UUID
-    var name: String
+    var name: String         // Nom du modèle (ex: "Moustache M1")
+    var brand: String?       // Marque/fabricant (ex: "Flare")
     var size: String?
     var type: String?        // ex: "Soaring", "Cross", "Acro"
     var color: String?       // texte libre ou hex
@@ -28,9 +29,10 @@ final class Wing {
     @Relationship(deleteRule: .cascade, inverse: \Flight.wing)
     var flights: [Flight]?
 
-    init(id: UUID = UUID(), name: String, size: String? = nil, type: String? = nil, color: String? = nil, photoData: Data? = nil, isArchived: Bool = false, createdAt: Date = Date(), displayOrder: Int = 0) {
+    init(id: UUID = UUID(), name: String, brand: String? = nil, size: String? = nil, type: String? = nil, color: String? = nil, photoData: Data? = nil, isArchived: Bool = false, createdAt: Date = Date(), displayOrder: Int = 0) {
         self.id = id
         self.name = name
+        self.brand = brand
         self.size = size
         self.type = type
         self.color = color

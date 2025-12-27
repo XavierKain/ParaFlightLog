@@ -171,17 +171,31 @@ struct WingRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 4) {
+                // Titre : nom du modèle
                 Text(wing.name)
                     .font(.headline)
 
-                HStack(spacing: 12) {
+                // Sous-titre : taille • marque • type
+                HStack(spacing: 6) {
                     if let size = wing.size {
                         Text("\(size) m²")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
 
+                    if let brand = wing.brand {
+                        Text("•")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Text(brand)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
                     if let type = wing.type {
+                        Text("•")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                         Text(type)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -325,6 +339,10 @@ struct AddWingView: View {
             // Télécharger l'image
             let imageData = try? await WingLibraryService.shared.fetchImage(for: libraryWing)
 
+            // Récupérer le nom du fabricant depuis le catalogue
+            let manufacturerName = WingLibraryService.shared.catalog?.manufacturers
+                .first { $0.id == libraryWing.manufacturer }?.name
+
             await MainActor.run {
                 // Récupérer le displayOrder max actuel
                 let descriptor = FetchDescriptor<Wing>(
@@ -333,8 +351,10 @@ struct AddWingView: View {
                 )
                 let maxDisplayOrder = (try? modelContext.fetch(descriptor).first?.displayOrder) ?? -1
 
+                // name = modèle seul (ex: "Moustache M1"), brand = marque (ex: "Flare")
                 let wing = Wing(
-                    name: "\(libraryWing.fullName) \(size)m",
+                    name: libraryWing.model,
+                    brand: manufacturerName,
                     size: size,
                     type: libraryWing.type,
                     color: nil,
@@ -347,7 +367,7 @@ struct AddWingView: View {
                 do {
                     try modelContext.save()
                     watchManager.sendWingsToWatch()
-                    logInfo("Wing added from library: \(wing.name)", category: .dataController)
+                    logInfo("Wing added from library: \(wing.name) (\(wing.brand ?? "no brand"))", category: .dataController)
                     dismiss()
                 } catch {
                     logError("Failed to save wing: \(error.localizedDescription)", category: .dataController)
@@ -367,6 +387,7 @@ struct CustomAddWingView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
 
     @State private var name: String = ""
+    @State private var brand: String = ""
     @State private var size: String = ""
     @State private var type: String = "Soaring"
     @State private var color: String = "Bleu"
@@ -409,7 +430,8 @@ struct CustomAddWingView: View {
                 }
 
                 Section("Informations") {
-                    TextField("Nom", text: $name)
+                    TextField("Modèle", text: $name)
+                    TextField("Marque", text: $brand)
                     HStack {
                         TextField("Taille", text: $size)
                             .keyboardType(.decimalPad)
@@ -484,6 +506,7 @@ struct CustomAddWingView: View {
 
         let wing = Wing(
             name: name,
+            brand: brand.isEmpty ? nil : brand,
             size: size.isEmpty ? nil : size,
             type: type,
             color: finalColor.isEmpty ? nil : finalColor,
@@ -516,6 +539,7 @@ struct EditWingView: View {
     let wing: Wing
 
     @State private var name: String
+    @State private var brand: String
     @State private var size: String
     @State private var type: String
     @State private var color: String
@@ -530,6 +554,7 @@ struct EditWingView: View {
     init(wing: Wing) {
         self.wing = wing
         _name = State(initialValue: wing.name)
+        _brand = State(initialValue: wing.brand ?? "")
         _size = State(initialValue: wing.size ?? "")
         _type = State(initialValue: wing.type ?? "Soaring")
         // Si la couleur actuelle n'est pas dans la liste, utiliser "Autre..."
@@ -584,7 +609,8 @@ struct EditWingView: View {
                 }
 
                 Section("Informations") {
-                    TextField("Nom", text: $name)
+                    TextField("Modèle", text: $name)
+                    TextField("Marque", text: $brand)
                     HStack {
                         TextField("Taille", text: $size)
                             .keyboardType(.decimalPad)
@@ -654,6 +680,7 @@ struct EditWingView: View {
         let finalColor = color == "Autre..." ? customColor : color
 
         wing.name = name
+        wing.brand = brand.isEmpty ? nil : brand
         wing.size = size.isEmpty ? nil : size
         wing.type = type
         wing.color = finalColor.isEmpty ? nil : finalColor
@@ -721,9 +748,14 @@ struct WingDetailView: View {
                             .font(.title)
                             .fontWeight(.bold)
 
-                        HStack(spacing: 20) {
+                        HStack(spacing: 16) {
                             if let size = wing.size {
                                 Label("\(size) m²", systemImage: "ruler")
+                                    .font(.subheadline)
+                            }
+
+                            if let brand = wing.brand {
+                                Label(brand, systemImage: "building.2")
                                     .font(.subheadline)
                             }
 

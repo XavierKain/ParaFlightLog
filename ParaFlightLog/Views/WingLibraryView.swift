@@ -130,7 +130,8 @@ struct WingLibraryView: View {
             // All wings
             Section(header: Text(String(localized: "wingLibrary.allWings"))) {
                 ForEach(catalog.wings) { wing in
-                    WingRowView(wing: wing) {
+                    let manufacturerName = catalog.manufacturers.first { $0.id == wing.manufacturer }?.name
+                    WingRowView(wing: wing, manufacturerName: manufacturerName) {
                         selectedWing = wing
                     }
                 }
@@ -184,7 +185,7 @@ private struct WingListView: View {
     var body: some View {
         List {
             ForEach(wings) { wing in
-                WingRowView(wing: wing) {
+                WingRowView(wing: wing, manufacturerName: manufacturer.name) {
                     onWingSelected(wing)
                 }
             }
@@ -198,6 +199,7 @@ private struct WingListView: View {
 /// Ligne affichant une voile dans la liste
 private struct WingRowView: View {
     let wing: LibraryWing
+    let manufacturerName: String?
     let onTap: () -> Void
 
     @State private var image: UIImage?
@@ -222,13 +224,20 @@ private struct WingRowView: View {
                 }
                 .frame(width: 50, height: 50)
 
-                // Info
+                // Info - Titre: modèle, Sous-titre: marque • type • année
                 VStack(alignment: .leading, spacing: 4) {
                     Text(wing.fullName)
                         .font(.headline)
                         .foregroundStyle(.primary)
 
                     HStack(spacing: 8) {
+                        if let brand = manufacturerName {
+                            Text(brand)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Text("•")
+                                .foregroundStyle(.secondary)
+                        }
                         Text(wing.type)
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -243,7 +252,7 @@ private struct WingRowView: View {
                     }
 
                     // Sizes
-                    Text(wing.sizes.map { "\($0)m" }.joined(separator: ", "))
+                    Text(wing.sizes.map { "\($0)m²" }.joined(separator: ", "))
                         .font(.caption)
                         .foregroundStyle(.blue)
                 }
@@ -290,6 +299,11 @@ private struct SizeSelectionSheet: View {
 
     @State private var image: UIImage?
 
+    /// Récupère le nom du fabricant depuis le catalogue en cache
+    private var manufacturerName: String? {
+        WingLibraryService.shared.catalog?.manufacturers.first { $0.id == wing.manufacturer }?.name
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -309,14 +323,20 @@ private struct SizeSelectionSheet: View {
                     .frame(height: 150)
                     .padding()
 
-                    // Wing info
+                    // Wing info - Titre: modèle, Sous-titre: marque • type
                     VStack(spacing: 8) {
                         Text(wing.fullName)
                             .font(.title2)
                             .fontWeight(.semibold)
 
-                        Text(wing.type)
-                            .foregroundStyle(.secondary)
+                        HStack(spacing: 8) {
+                            if let brand = manufacturerName {
+                                Text(brand)
+                                Text("•")
+                            }
+                            Text(wing.type)
+                        }
+                        .foregroundStyle(.secondary)
                     }
 
                     // Size buttons

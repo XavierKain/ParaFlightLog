@@ -145,13 +145,29 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         if activationState == .activated {
             let context = session.applicationContext
             if !context.isEmpty {
+                watchLogInfo("Processing applicationContext on activation (\(context.keys.count) keys)", category: .watchSync)
                 processReceivedContext(context)
+            }
+
+            // Toujours demander une mise à jour fraîche à l'iPhone
+            // pour s'assurer d'avoir les dernières données (voiles supprimées, etc.)
+            if isPhoneReachable {
+                watchLogInfo("Requesting fresh wings from iPhone", category: .watchSync)
+                requestWingsFromPhone()
             }
         }
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
+        let wasReachable = isPhoneReachable
         isPhoneReachable = session.isReachable
+
+        // Si l'iPhone devient joignable, demander une mise à jour des voiles
+        // pour s'assurer d'avoir les dernières données
+        if !wasReachable && isPhoneReachable {
+            watchLogInfo("iPhone became reachable, requesting wings sync", category: .watchSync)
+            requestWingsFromPhone()
+        }
     }
 
     // MARK: - Receive Wings from iPhone
