@@ -72,14 +72,11 @@ struct WingsView: View {
                     dataController.archiveWing(wing)
                 }
                 Button("Supprimer définitivement", role: .destructive) {
-                    let flightCount = wing.flights?.count ?? 0
-                    if flightCount > 0 {
-                        // Si la voile a des vols, forcer l'archivage
-                        dataController.archiveWing(wing)
-                    } else {
-                        // Si pas de vols, suppression directe
-                        dataController.deleteWing(wing)
-                    }
+                    // Suppression définitive avec le modelContext de la vue
+                    modelContext.delete(wing)
+                    try? modelContext.save()
+                    dataController.statsCache.invalidate()
+                    watchManager.sendWingsToWatch()
                 }
                 Button("Annuler", role: .cancel) { }
             } message: { wing in
@@ -732,6 +729,7 @@ struct FullScreenPhotoView: View {
 
 struct ArchivedWingsView: View {
     @Environment(DataController.self) private var dataController
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(filter: #Predicate<Wing> { $0.isArchived }, sort: \Wing.createdAt, order: .reverse) private var archivedWings: [Wing]
     @State private var selectedWing: Wing?
@@ -826,7 +824,11 @@ struct ArchivedWingsView: View {
             Button("Annuler", role: .cancel) { }
             Button("Supprimer", role: .destructive) {
                 if let wing = wingToDelete {
-                    dataController.permanentlyDeleteWing(wing)
+                    // Utiliser le modelContext de la vue pour que @Query soit mis à jour
+                    modelContext.delete(wing)
+                    try? modelContext.save()
+                    // Invalider le cache de stats
+                    dataController.statsCache.invalidate()
                 }
             }
         } message: {

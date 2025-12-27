@@ -21,7 +21,6 @@ struct WingLibraryView: View {
     @State private var errorMessage: String?
     @State private var selectedManufacturer: WingManufacturer?
     @State private var selectedWing: LibraryWing?
-    @State private var showingSizeSheet = false
 
     var body: some View {
         NavigationStack {
@@ -42,13 +41,19 @@ struct WingLibraryView: View {
                         dismiss()
                     }
                 }
-            }
-            .sheet(isPresented: $showingSizeSheet) {
-                if let wing = selectedWing {
-                    SizeSelectionSheet(wing: wing) { size in
-                        onWingSelected(wing, size)
-                        dismiss()
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        Task { await refreshCatalog() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
                     }
+                    .disabled(isLoading)
+                }
+            }
+            .sheet(item: $selectedWing) { wing in
+                SizeSelectionSheet(wing: wing) { size in
+                    onWingSelected(wing, size)
+                    dismiss()
                 }
             }
         }
@@ -109,7 +114,6 @@ struct WingLibraryView: View {
                             wings: catalog.wings.filter { $0.manufacturer == manufacturer.id },
                             onWingSelected: { wing in
                                 selectedWing = wing
-                                showingSizeSheet = true
                             }
                         )
                     } label: {
@@ -128,7 +132,6 @@ struct WingLibraryView: View {
                 ForEach(catalog.wings) { wing in
                     WingRowView(wing: wing) {
                         selectedWing = wing
-                        showingSizeSheet = true
                     }
                 }
             }
@@ -141,8 +144,27 @@ struct WingLibraryView: View {
         isLoading = true
         errorMessage = nil
 
+        // Clear cache on first load to always get fresh data
+        WingLibraryService.shared.clearCache()
+
         do {
-            catalog = try await WingLibraryService.shared.fetchCatalog()
+            catalog = try await WingLibraryService.shared.fetchCatalog(forceRefresh: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+
+        isLoading = false
+    }
+
+    private func refreshCatalog() async {
+        isLoading = true
+        errorMessage = nil
+
+        // Force refresh clears image cache too
+        WingLibraryService.shared.clearCache()
+
+        do {
+            catalog = try await WingLibraryService.shared.fetchCatalog(forceRefresh: true)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -184,7 +206,7 @@ private struct WingRowView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 12) {
-                // Image
+                // Image - affichée directement sans fond (images déjà détourées)
                 Group {
                     if let image = image {
                         Image(uiImage: image)
@@ -199,8 +221,6 @@ private struct WingRowView: View {
                     }
                 }
                 .frame(width: 50, height: 50)
-                .background(Color(.systemGray6))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 // Info
                 VStack(alignment: .leading, spacing: 4) {
@@ -272,60 +292,61 @@ private struct SizeSelectionSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 24) {
-                // Wing image
-                Group {
-                    if let image = image {
-                        Image(uiImage: image)
-                            .resizable()
-                            .scaledToFit()
-                    } else {
-                        Image(systemName: "wind")
-                            .font(.system(size: 60))
-                            .foregroundStyle(.blue)
+            ScrollView {
+                VStack(spacing: 24) {
+                    // Wing image
+                    Group {
+                        if let image = image {
+                            Image(uiImage: image)
+                                .resizable()
+                                .scaledToFit()
+                        } else {
+                            Image(systemName: "wind")
+                                .font(.system(size: 60))
+                                .foregroundStyle(.blue)
+                        }
                     }
-                }
-                .frame(height: 150)
-                .padding()
+                    .frame(height: 150)
+                    .padding()
 
-                // Wing info
-                VStack(spacing: 8) {
-                    Text(wing.fullName)
-                        .font(.title2)
-                        .fontWeight(.semibold)
+                    // Wing info
+                    VStack(spacing: 8) {
+                        Text(wing.fullName)
+                            .font(.title2)
+                            .fontWeight(.semibold)
 
-                    Text(wing.type)
-                        .foregroundStyle(.secondary)
-                }
+                        Text(wing.type)
+                            .foregroundStyle(.secondary)
+                    }
 
-                // Size buttons
-                VStack(spacing: 12) {
-                    Text(String(localized: "wingLibrary.selectSize"))
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
+                    // Size buttons
+                    VStack(spacing: 12) {
+                        Text(String(localized: "wingLibrary.selectSize"))
+                            .font(.headline)
+                            .foregroundStyle(.secondary)
 
-                    LazyVGrid(columns: [
-                        GridItem(.adaptive(minimum: 70), spacing: 12)
-                    ], spacing: 12) {
-                        ForEach(wing.sizes, id: \.self) { size in
-                            Button {
-                                onSizeSelected(size)
-                            } label: {
-                                Text("\(size)m")
-                                    .font(.headline)
-                                    .frame(minWidth: 60)
-                                    .padding(.vertical, 12)
-                                    .padding(.horizontal, 8)
-                                    .background(Color.blue)
-                                    .foregroundStyle(.white)
-                                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                        LazyVGrid(columns: [
+                            GridItem(.adaptive(minimum: 70), spacing: 12)
+                        ], spacing: 12) {
+                            ForEach(wing.sizes, id: \.self) { size in
+                                Button {
+                                    onSizeSelected(size)
+                                } label: {
+                                    Text("\(size)m")
+                                        .font(.headline)
+                                        .frame(minWidth: 60)
+                                        .padding(.vertical, 12)
+                                        .padding(.horizontal, 8)
+                                        .background(Color.blue)
+                                        .foregroundStyle(.white)
+                                        .clipShape(RoundedRectangle(cornerRadius: 10))
+                                }
                             }
                         }
                     }
+                    .padding()
                 }
-                .padding()
-
-                Spacer()
+                .padding(.vertical)
             }
             .navigationTitle(String(localized: "wingLibrary.selectSize"))
             .navigationBarTitleDisplayMode(.inline)
@@ -337,21 +358,25 @@ private struct SizeSelectionSheet: View {
                 }
             }
         }
-        .task {
-            await loadImage()
+        .onAppear {
+            loadImage()
         }
     }
 
-    private func loadImage() async {
+    private func loadImage() {
         guard wing.imageUrl != nil else { return }
 
-        do {
-            let data = try await WingLibraryService.shared.fetchImage(for: wing)
-            if let uiImage = UIImage(data: data) {
-                image = uiImage
+        Task {
+            do {
+                let data = try await WingLibraryService.shared.fetchImage(for: wing)
+                await MainActor.run {
+                    if let uiImage = UIImage(data: data) {
+                        image = uiImage
+                    }
+                }
+            } catch {
+                // Silently fail
             }
-        } catch {
-            // Silently fail
         }
     }
 }

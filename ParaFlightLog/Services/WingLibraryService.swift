@@ -101,7 +101,7 @@ final class WingLibraryService {
 
     // MARK: - Public API
 
-    /// Fetch the catalog from the server or cache
+    /// Fetch the catalog from the server (always tries network first for fresh data)
     @MainActor
     func fetchCatalog(forceRefresh: Bool = false) async throws -> WingCatalog {
         isLoading = true
@@ -110,26 +110,34 @@ final class WingLibraryService {
 
         defer { isLoading = false }
 
-        // Check cache validity
-        if !forceRefresh, let cached = catalog, isCacheValid() {
-            logInfo("Using cached catalog (\(cached.wings.count) wings)", category: .wingLibrary)
-            return cached
-        }
-
-        // Fetch from network
+        // Always try network first to get fresh data
         do {
             let newCatalog = try await fetchFromNetwork()
             catalog = newCatalog
             saveCatalogToCache(newCatalog)
+            // Clear image cache when catalog is updated to get fresh images
+            if forceRefresh {
+                imageCache.removeAll()
+                try? FileManager.default.removeItem(at: imageCacheDirectory)
+                try? FileManager.default.createDirectory(at: imageCacheDirectory, withIntermediateDirectories: true)
+            }
             logInfo("Fetched catalog: \(newCatalog.wings.count) wings, \(newCatalog.manufacturers.count) manufacturers", category: .wingLibrary)
             return newCatalog
         } catch {
             logWarning("Network fetch failed: \(error.localizedDescription)", category: .wingLibrary)
 
-            // Fallback to stale cache if available
+            // Fallback to cache if available
             if let cached = catalog {
                 isOfflineMode = true
-                logInfo("Using stale cache in offline mode", category: .wingLibrary)
+                logInfo("Using cache in offline mode", category: .wingLibrary)
+                return cached
+            }
+
+            // Try loading from persistent cache
+            loadCachedCatalog()
+            if let cached = catalog {
+                isOfflineMode = true
+                logInfo("Using persistent cache in offline mode", category: .wingLibrary)
                 return cached
             }
 
@@ -138,29 +146,28 @@ final class WingLibraryService {
         }
     }
 
-    /// Fetch image data for a wing
+    /// Fetch image data for a wing (always fetches from network, with disk cache fallback)
     func fetchImage(for wing: LibraryWing) async throws -> Data {
         guard let imageUrl = wing.imageUrl else {
             throw WingLibraryError.invalidResponse
         }
 
-        // Check memory cache
+        let diskCachePath = imageCacheDirectory.appendingPathComponent("\(wing.id).png")
+
+        // Check memory cache first (only valid during session)
         if let cached = imageCache[wing.id] {
             return cached
         }
 
-        // Check disk cache
-        let diskCachePath = imageCacheDirectory.appendingPathComponent("\(wing.id).png")
-        if let diskData = try? Data(contentsOf: diskCachePath) {
-            imageCache[wing.id] = diskData
-            return diskData
-        }
-
-        // Fetch from network
+        // Try to fetch from network (always prefer fresh data)
         let url = URL(string: "\(WingLibraryConstants.baseURL)/\(imageUrl)")!
 
         do {
-            let (data, response) = try await URLSession.shared.data(from: url)
+            var request = URLRequest(url: url)
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+            request.timeoutInterval = WingLibraryConstants.networkTimeout
+
+            let (data, response) = try await URLSession.shared.data(for: request)
 
             guard let httpResponse = response as? HTTPURLResponse,
                   httpResponse.statusCode == 200 else {
@@ -174,6 +181,12 @@ final class WingLibraryService {
             logInfo("Fetched image for \(wing.fullName): \(data.count) bytes", category: .wingLibrary)
             return data
         } catch {
+            // Fallback to disk cache if network fails
+            if let diskData = try? Data(contentsOf: diskCachePath) {
+                logInfo("Using cached image for \(wing.fullName)", category: .wingLibrary)
+                imageCache[wing.id] = diskData
+                return diskData
+            }
             throw WingLibraryError.imageFetchFailed(error)
         }
     }
