@@ -23,6 +23,7 @@ enum LogCategory: String {
     case imageProcessing = "ImageProcessing"
     case ui = "UI"
     case dataImport = "DataImport"
+    case wingLibrary = "WingLibrary"
 }
 
 // MARK: - App Logger

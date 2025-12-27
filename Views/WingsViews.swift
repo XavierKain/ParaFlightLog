@@ -187,6 +187,7 @@ struct AddWingView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
     @State private var showSaveError: Bool = false
+    @State private var showingWingLibrary: Bool = false
 
     let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
     let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
@@ -194,6 +195,23 @@ struct AddWingView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // Section bibliothèque en ligne
+                Section {
+                    Button {
+                        showingWingLibrary = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "book.closed")
+                                .foregroundStyle(.blue)
+                            Text(String(localized: "wingLibrary.chooseFromLibrary"))
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
                 Section("Photo") {
                     HStack {
                         Spacer()
@@ -283,6 +301,21 @@ struct AddWingView: View {
                 Button("OK", role: .cancel) { }
             } message: {
                 Text("Impossible de sauvegarder la voile. Veuillez réessayer.")
+            }
+            .sheet(isPresented: $showingWingLibrary) {
+                WingLibraryView { libraryWing, selectedSize in
+                    // Pré-remplir les champs avec les données de la voile sélectionnée
+                    name = "\(libraryWing.fullName) \(selectedSize)m"
+                    size = selectedSize
+                    type = libraryWing.type
+
+                    // Télécharger l'image en arrière-plan
+                    Task {
+                        if let imageData = try? await WingLibraryService.shared.fetchImage(for: libraryWing) {
+                            photoData = imageData
+                        }
+                    }
+                }
             }
         }
     }

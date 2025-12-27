@@ -138,3 +138,22 @@ enum NotificationNames {
     static let wingsSynced = Notification.Name("wingsSynced")
     static let statsCacheInvalidated = Notification.Name("statsCacheInvalidated")
 }
+
+// MARK: - Wing Library Configuration
+
+enum WingLibraryConstants {
+    /// URL de base du repository GitHub
+    static let baseURL = "https://raw.githubusercontent.com/XavierKain/paraflightlog-wings/main"
+
+    /// URL du catalogue JSON
+    static let catalogURL = "\(baseURL)/wings.json"
+
+    /// Durée de validité du cache catalogue (24 heures)
+    static let catalogCacheMaxAge: TimeInterval = 24 * 60 * 60
+
+    /// Durée de validité du cache images (7 jours)
+    static let imageCacheMaxAge: TimeInterval = 7 * 24 * 60 * 60
+
+    /// Timeout pour les requêtes réseau (15 secondes)
+    static let networkTimeout: TimeInterval = 15.0
+}
