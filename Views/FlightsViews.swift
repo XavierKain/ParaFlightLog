@@ -64,7 +64,7 @@ struct FlightsView: View {
                             .onTapGesture {
                                 showingFlightDetail = latest
                             }
-                            .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
@@ -317,7 +317,6 @@ struct LatestFlightCard: View {
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 4)
-        .padding(.horizontal)
     }
 
     private func formatDistanceValue(_ distance: Double) -> String {
