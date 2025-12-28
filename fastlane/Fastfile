@@ -1,0 +1,196 @@
+default_platform(:ios)
+
+platform :ios do
+
+  # ══════════════════════════════════════════════════════════════
+  # CONFIGURATION
+  # ══════════════════════════════════════════════════════════════
+
+  XCODEPROJ = "ParaFlightLog.xcodeproj"
+  SCHEME = "ParaFlightLog"
+  TARGET = "ParaFlightLog"
+
+  # ══════════════════════════════════════════════════════════════
+  # HELPERS
+  # ══════════════════════════════════════════════════════════════
+
+  # Load App Store Connect API Key
+  private_lane :load_api_key do
+    # Try to use key file first, fallback to env content
+    key_filepath = ENV['ASCAPI_KEY_FILEPATH']
+
+    if key_filepath && File.exist?(key_filepath)
+      app_store_connect_api_key(
+        key_id: ENV['ASCAPI_KEY_ID'],
+        issuer_id: ENV['ASCAPI_ISSUER_ID'],
+        key_filepath: key_filepath
+      )
+    else
+      # Fallback: use key_content with proper newline handling
+      key_content = ENV['ASCAPI_KEY_CONTENT']&.gsub('\n', "\n")
+      app_store_connect_api_key(
+        key_id: ENV['ASCAPI_KEY_ID'],
+        issuer_id: ENV['ASCAPI_ISSUER_ID'],
+        key_content: key_content,
+        is_key_content_base64: false
+      )
+    end
+  end
+
+  # Get version from build settings
+  private_lane :current_version do
+    sh("xcodebuild -project ../#{XCODEPROJ} -target #{TARGET} -showBuildSettings 2>/dev/null | grep MARKETING_VERSION | head -1 | awk '{print $3}'").strip
+  end
+
+  # Get build number from build settings
+  private_lane :current_build_number do
+    sh("xcodebuild -project ../#{XCODEPROJ} -target #{TARGET} -showBuildSettings 2>/dev/null | grep CURRENT_PROJECT_VERSION | head -1 | awk '{print $3}'").strip
+  end
+
+  # ══════════════════════════════════════════════════════════════
+  # MAIN LANES
+  # ══════════════════════════════════════════════════════════════
+
+  desc "Build the app without uploading (for testing)"
+  lane :build do
+    build_app(
+      scheme: SCHEME,
+      export_method: "app-store",
+      xcargs: "-allowProvisioningUpdates"
+    )
+  end
+
+  # ──────────────────────────────────────────────────────────────
+  # TESTFLIGHT
+  # ──────────────────────────────────────────────────────────────
+
+  desc "Deploy to TestFlight"
+  desc "Usage: fastlane beta [build_number:XX] [changelog:'Notes']"
+  lane :beta do |options|
+    # Load API Key
+    api_key = load_api_key
+
+    # Increment build number
+    if options[:build_number]
+      increment_build_number(
+        build_number: options[:build_number],
+        xcodeproj: XCODEPROJ
+      )
+    else
+      # Auto-increment based on TestFlight
+      current = latest_testflight_build_number(api_key: api_key) rescue 0
+      increment_build_number(
+        build_number: current + 1,
+        xcodeproj: XCODEPROJ
+      )
+    end
+
+    # Build the app
+    build_app(
+      scheme: SCHEME,
+      export_method: "app-store",
+      xcargs: "-allowProvisioningUpdates"
+    )
+
+    # Upload to TestFlight
+    upload_to_testflight(
+      api_key: api_key,
+      skip_waiting_for_build_processing: false,
+      changelog: options[:changelog] || "New test version"
+    )
+
+    # Success notification
+    version = current_version
+    build = current_build_number
+    UI.success("✅ Build #{version} (#{build}) uploaded to TestFlight!")
+  end
+
+  # ──────────────────────────────────────────────────────────────
+  # APP STORE
+  # ──────────────────────────────────────────────────────────────
+
+  desc "Submit to the App Store for review"
+  desc "Usage: fastlane release [submit:true]"
+  lane :release do |options|
+    # Load API Key
+    api_key = load_api_key
+
+    # Build the app
+    build_app(
+      scheme: SCHEME,
+      export_method: "app-store",
+      xcargs: "-allowProvisioningUpdates"
+    )
+
+    # Upload to App Store Connect
+    upload_to_app_store(
+      api_key: api_key,
+      submit_for_review: options[:submit] || false,
+      automatic_release: false,
+      phased_release: true,
+      force: true,  # Skip HTML preview
+      skip_screenshots: true,
+      skip_metadata: false
+    )
+
+    UI.success("✅ Build uploaded to App Store Connect!")
+    if options[:submit]
+      UI.success("📝 Submitted for review!")
+    else
+      UI.message("💡 Go to App Store Connect to submit manually")
+    end
+  end
+
+  # ──────────────────────────────────────────────────────────────
+  # METADATA
+  # ──────────────────────────────────────────────────────────────
+
+  desc "Download current metadata from App Store Connect"
+  lane :download_metadata do
+    api_key = load_api_key
+
+    download_from_app_store_connect(
+      api_key: api_key,
+      platform: "ios"
+    )
+
+    UI.success("✅ Metadata downloaded to fastlane/metadata/")
+  end
+
+  desc "Upload metadata without submitting a build"
+  lane :upload_metadata do
+    api_key = load_api_key
+
+    upload_to_app_store(
+      api_key: api_key,
+      skip_binary_upload: true,
+      skip_screenshots: true,
+      force: true
+    )
+
+    UI.success("✅ Metadata uploaded!")
+  end
+
+  # ──────────────────────────────────────────────────────────────
+  # UTILITIES
+  # ──────────────────────────────────────────────────────────────
+
+  desc "Increment version number (major, minor, patch)"
+  lane :bump do |options|
+    type = options[:type] || "patch"
+    increment_version_number(
+      bump_type: type,
+      xcodeproj: XCODEPROJ
+    )
+    version = current_version
+    UI.success("✅ Version incremented to #{version}")
+  end
+
+  desc "Display current version information"
+  lane :version_info do
+    version = current_version
+    build = current_build_number
+    UI.message("📱 Version: #{version} (Build #{build})")
+  end
+
+end

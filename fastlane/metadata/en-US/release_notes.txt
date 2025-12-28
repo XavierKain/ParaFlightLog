@@ -1,0 +1,6 @@
+First release of ParaFlightStats!
+• GPS flight recording
+• Detailed statistics
+• Wing management
+• Apple Watch app
+• iOS Widgets

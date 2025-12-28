@@ -1,0 +1,1 @@
+paragliding,flight,log,logbook,gps,tracker,wing,glider

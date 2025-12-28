@@ -72,6 +72,16 @@ fastlane/Preview.html
 fastlane/screenshots/**/*.png
 fastlane/test_output
 
+# Fastlane secrets (NEVER COMMIT)
+.env.default
+.env
+*.p8
+AuthKey_*.p8
+
+# Ruby / Bundler
+vendor/bundle/
+.bundle/
+
 ## macOS
 .DS_Store
 .AppleDouble

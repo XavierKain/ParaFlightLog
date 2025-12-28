@@ -1,0 +1,11 @@
+app_identifier("com.xavierkain.ParaFlightLog")
+team_id("S96H22CQ8W")
+
+# App Store Connect
+# itc_team_id is usually the same as team_id for individual developers
+itc_team_id("S96H22CQ8W")
+
+# For platform-specific configuration
+for_platform :ios do
+  app_identifier("com.xavierkain.ParaFlightLog")
+end

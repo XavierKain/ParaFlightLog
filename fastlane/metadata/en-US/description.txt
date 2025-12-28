@@ -1,0 +1,15 @@
+ParaFlightStats is your ultimate paragliding companion. Record your flights, track your statistics and manage your gear.
+
+KEY FEATURES:
+• Automatic flight recording with GPS
+• Statistics tracking (flight time, altitude, distance)
+• Wing and equipment management
+• Apple Watch synchronization
+• Widget for quick access
+• Data export and backup
+
+APPLE WATCH:
+Start and track your flights directly from your wrist with the dedicated Apple Watch app.
+
+WIDGETS:
+Keep an eye on your statistics with home screen widgets.

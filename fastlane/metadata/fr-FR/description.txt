@@ -1,0 +1,15 @@
+ParaFlightStats est votre compagnon de vol parapente ultime. Enregistrez vos vols, suivez vos statistiques et gérez votre matériel.
+
+FONCTIONNALITÉS PRINCIPALES :
+• Enregistrement automatique des vols avec GPS
+• Suivi des statistiques (temps de vol, altitude, distance)
+• Gestion de vos voiles et équipements
+• Synchronisation Apple Watch
+• Widget pour un accès rapide
+• Export et sauvegarde de vos données
+
+APPLE WATCH :
+Démarrez et suivez vos vols directement depuis votre poignet avec l'app Apple Watch dédiée.
+
+WIDGETS :
+Gardez un œil sur vos statistiques avec les widgets pour l'écran d'accueil.

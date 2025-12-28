@@ -1,0 +1,6 @@
+Première version de ParaFlightStats !
+• Enregistrement des vols avec GPS
+• Statistiques détaillées
+• Gestion des voiles
+• App Apple Watch
+• Widgets iOS
