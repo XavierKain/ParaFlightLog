@@ -1,0 +1,34 @@
+# Devices for App Store screenshots
+devices([
+  "iPhone 17 Pro Max"     # 6.9" - Required (largest)
+])
+
+# Languages
+languages([
+  "fr-FR",
+  "en-US"
+])
+
+# The scheme containing the app (UI Tests will be run against it)
+scheme("ParaFlightLog")
+
+# iOS platform
+ios_version("17.0")
+
+# Project file
+project("./ParaFlightLog.xcodeproj")
+
+# Output directory
+output_directory("./fastlane/screenshots")
+
+# Clear old screenshots
+clear_previous_screenshots(true)
+
+# Override status bar for clean screenshots
+override_status_bar(true)
+
+# Stop after first failure
+stop_after_first_error(true)
+
+# Disable concurrent simulators to avoid issues
+concurrent_simulators(false)
