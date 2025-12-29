@@ -2,16 +2,19 @@
 //  WingLibraryService.swift
 //  ParaFlightLog
 //
-//  Service pour récupérer et mettre en cache le catalogue de voiles en ligne
+//  Service pour récupérer et mettre en cache le catalogue de voiles depuis Appwrite
 //  Target: iOS only
 //
 
 import Foundation
 import UIKit
+import Appwrite
+import NIOCore
+import NIOFoundationCompat
 
 // MARK: - Models
 
-/// Catalogue complet des voiles
+/// Catalogue complet des voiles (construit à partir des données Appwrite)
 struct WingCatalog: Codable {
     let version: String
     let lastUpdated: Date
@@ -23,18 +26,67 @@ struct WingCatalog: Codable {
 struct WingManufacturer: Codable, Identifiable, Hashable {
     let id: String
     let name: String
+    let displayOrder: Int
+
+    init(id: String, name: String, displayOrder: Int = 0) {
+        self.id = id
+        self.name = name
+        self.displayOrder = displayOrder
+    }
+
+    /// Init from Appwrite document
+    init(from document: Document<[String: AnyCodable]>) {
+        self.id = document.id
+        self.name = document.data["name"]?.value as? String ?? ""
+        self.displayOrder = document.data["displayOrder"]?.value as? Int ?? 0
+    }
 }
 
 /// Voile dans la bibliothèque
 struct LibraryWing: Codable, Identifiable, Hashable {
     let id: String
-    let manufacturer: String
+    let manufacturer: String  // manufacturerId
     let model: String
     let fullName: String
     let type: String
     let sizes: [String]
-    let imageUrl: String?
+    let imageFileId: String?
     let year: Int?
+
+    init(id: String, manufacturer: String, model: String, fullName: String, type: String, sizes: [String], imageFileId: String?, year: Int?) {
+        self.id = id
+        self.manufacturer = manufacturer
+        self.model = model
+        self.fullName = fullName
+        self.type = type
+        self.sizes = sizes
+        self.imageFileId = imageFileId
+        self.year = year
+    }
+
+    /// Init from Appwrite document
+    init(from document: Document<[String: AnyCodable]>, manufacturerName: String) {
+        self.id = document.id
+        self.manufacturer = document.data["manufacturerId"]?.value as? String ?? ""
+        self.model = document.data["model"]?.value as? String ?? ""
+        self.type = document.data["type"]?.value as? String ?? ""
+        self.year = document.data["year"]?.value as? Int
+
+        // Handle sizes array
+        if let sizesArray = document.data["sizes"]?.value as? [Any] {
+            self.sizes = sizesArray.compactMap { $0 as? String }
+        } else {
+            self.sizes = []
+        }
+
+        self.imageFileId = document.data["imageFileId"]?.value as? String
+        self.fullName = "\(manufacturerName) \(self.model)"
+    }
+
+    // For backward compatibility with existing code that uses imageUrl
+    var imageUrl: String? {
+        imageFileId
+    }
 
     // Hashable conformance
     func hash(into hasher: inout Hasher) {
@@ -53,6 +105,7 @@ enum WingLibraryError: LocalizedError {
     case invalidResponse
     case decodingFailed(Error)
     case imageFetchFailed(Error)
+    case appwriteError(Error)
 
     var errorDescription: String? {
         switch self {
@@ -64,6 +117,8 @@ enum WingLibraryError: LocalizedError {
             return "Erreur de décodage: \(error.localizedDescription)"
         case .imageFetchFailed(let error):
             return "Erreur de téléchargement d'image: \(error.localizedDescription)"
+        case .appwriteError(let error):
+            return "Erreur Appwrite: \(error.localizedDescription)"
         }
     }
 }
@@ -79,6 +134,10 @@ final class WingLibraryService {
     private(set) var isLoading = false
     private(set) var lastError: WingLibraryError?
     private(set) var isOfflineMode = false
+
+    // Appwrite services
+    private var databases: Databases { AppwriteService.shared.databases }
+    private var storage: Storage { AppwriteService.shared.storage }
 
     // Cache
     private let catalogCacheKey = "wingLibraryCatalog"
@@ -101,7 +160,7 @@ final class WingLibraryService {
 
     // MARK: - Public API
 
-    /// Fetch the catalog from the server (always tries network first for fresh data)
+    /// Fetch the catalog from Appwrite (always tries network first for fresh data)
     @MainActor
     func fetchCatalog(forceRefresh: Bool = false) async throws -> WingCatalog {
         isLoading = true
@@ -112,7 +171,7 @@ final class WingLibraryService {
 
         // Always try network first to get fresh data
         do {
-            let newCatalog = try await fetchFromNetwork()
+            let newCatalog = try await fetchFromAppwrite()
             catalog = newCatalog
             saveCatalogToCache(newCatalog)
             // Clear image cache when catalog is updated to get fresh images
@@ -124,7 +183,7 @@ final class WingLibraryService {
             logInfo("Fetched catalog: \(newCatalog.wings.count) wings, \(newCatalog.manufacturers.count) manufacturers", category: .wingLibrary)
             return newCatalog
         } catch {
-            logWarning("Network fetch failed: \(error.localizedDescription)", category: .wingLibrary)
+            logWarning("Appwrite fetch failed: \(error.localizedDescription)", category: .wingLibrary)
 
             // Fallback to cache if available
             if let cached = catalog {
@@ -141,14 +200,14 @@ final class WingLibraryService {
                 return cached
             }
 
-            lastError = error as? WingLibraryError ?? .networkUnavailable
+            lastError = error as? WingLibraryError ?? .appwriteError(error)
             throw lastError!
         }
     }
 
-    /// Fetch image data for a wing (always fetches from network, with disk cache fallback)
+    /// Fetch image data for a wing from Appwrite Storage
     func fetchImage(for wing: LibraryWing) async throws -> Data {
-        guard let imageUrl = wing.imageUrl else {
+        guard let imageFileId = wing.imageFileId else {
             throw WingLibraryError.invalidResponse
         }
 
@@ -159,27 +218,22 @@ final class WingLibraryService {
             return cached
         }
 
-        // Try to fetch from network (always prefer fresh data)
-        let url = URL(string: "\(WingLibraryConstants.baseURL)/\(imageUrl)")!
-
+        // Try to fetch from Appwrite Storage
         do {
-            var request = URLRequest(url: url)
-            request.cachePolicy = .reloadIgnoringLocalCacheData
-            request.timeoutInterval = WingLibraryConstants.networkTimeout
+            let byteBuffer = try await storage.getFileDownload(
+                bucketId: AppwriteConfig.wingImagesBucketId,
+                fileId: imageFileId
+            )
 
-            let (data, response) = try await URLSession.shared.data(for: request)
-
-            guard let httpResponse = response as? HTTPURLResponse,
-                  httpResponse.statusCode == 200 else {
-                throw WingLibraryError.invalidResponse
-            }
+            // Convert ByteBuffer to Data
+            let fileData = byteBuffer.getData(at: 0, length: byteBuffer.readableBytes) ?? Data()
 
             // Cache to memory and disk
-            imageCache[wing.id] = data
-            try? data.write(to: diskCachePath)
+            imageCache[wing.id] = fileData
+            try? fileData.write(to: diskCachePath)
 
-            logInfo("Fetched image for \(wing.fullName): \(data.count) bytes", category: .wingLibrary)
-            return data
+            logInfo("Fetched image for \(wing.fullName): \(fileData.count) bytes", category: .wingLibrary)
+            return fileData
         } catch {
             // Fallback to disk cache if network fails
             if let diskData = try? Data(contentsOf: diskCachePath) {
@@ -212,29 +266,45 @@ final class WingLibraryService {
 
     // MARK: - Private
 
-    private func fetchFromNetwork() async throws -> WingCatalog {
-        guard let url = URL(string: WingLibraryConstants.catalogURL) else {
-            throw WingLibraryError.invalidResponse
+    private func fetchFromAppwrite() async throws -> WingCatalog {
+        // Fetch manufacturers
+        let manufacturersResponse = try await databases.listDocuments<[String: AnyCodable]>(
+            databaseId: AppwriteConfig.databaseId,
+            collectionId: AppwriteConfig.manufacturersCollectionId,
+            queries: [
+                Query.orderAsc("displayOrder"),
+                Query.limit(100)
+            ]
+        )
+
+        let manufacturers = manufacturersResponse.documents.map { WingManufacturer(from: $0) }
+
+        // Create a lookup dictionary for manufacturer names
+        let manufacturerNames = Dictionary(uniqueKeysWithValues: manufacturers.map { ($0.id, $0.name) })
+
+        // Fetch wings
+        let wingsResponse = try await databases.listDocuments<[String: AnyCodable]>(
+            databaseId: AppwriteConfig.databaseId,
+            collectionId: AppwriteConfig.wingsCollectionId,
+            queries: [
+                Query.orderAsc("model"),
+                Query.limit(500)
+            ]
+        )
+
+        let wings = wingsResponse.documents.map { doc in
+            let manufacturerId = doc.data["manufacturerId"]?.value as? String ?? ""
+            let manufacturerName = manufacturerNames[manufacturerId] ?? ""
+            return LibraryWing(from: doc, manufacturerName: manufacturerName)
         }
 
-        var request = URLRequest(url: url)
-        request.timeoutInterval = WingLibraryConstants.networkTimeout
-        request.cachePolicy = .reloadIgnoringLocalCacheData
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-
-        guard let httpResponse = response as? HTTPURLResponse,
-              httpResponse.statusCode == 200 else {
-            throw WingLibraryError.invalidResponse
-        }
-
-        do {
-            let decoder = JSONDecoder()
-            decoder.dateDecodingStrategy = .iso8601
-            return try decoder.decode(WingCatalog.self, from: data)
-        } catch {
-            throw WingLibraryError.decodingFailed(error)
-        }
+        // Build catalog
+        return WingCatalog(
+            version: "appwrite-1.0",
+            lastUpdated: Date(),
+            manufacturers: manufacturers,
+            wings: wings
+        )
     }
 
     private func loadCachedCatalog() {

@@ -19,6 +19,7 @@
 		2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6542EDBB92000C716D0 /* IOSViews.swift */; };
 		2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */; };
 		257C68F32ECB7651005F3773 /* ParaFlightLogWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		2589C4572F02D8E000EF6911 /* Appwrite in Frameworks */ = {isa = PBXBuildFile; productRef = 2589C4562F02D8E000EF6911 /* Appwrite */; };
 		25C979902EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		25C979922EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		25C979932EDBB5DA009233B8 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798E2EDBB5DA009233B8 /* Models.swift */; };
@@ -85,7 +86,7 @@
 
 /* Begin PBXFileReference section */
 		250A317D2EDDFB18004F63C8 /* StatsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCache.swift; sourceTree = "<group>"; };
-		25145B8B2EDE042F0095D7A9 /* ExcelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParaFlightLog/ExcelImporter.swift; sourceTree = "<group>"; };
+		25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParaFlightLog/ExcelImporter.swift; sourceTree = "<group>"; };
 		25145C292EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ParaFlightLogWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		25145C2D2EDE61D80095D7A9 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -132,15 +133,11 @@
 		};
 		257C68D72ECB7559005F3773 /* ParaFlightLog */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = ParaFlightLog;
 			sourceTree = "<group>";
 		};
 		257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = "ParaFlightLogWatch Watch App";
 			sourceTree = "<group>";
 		};
@@ -160,6 +157,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2589C4572F02D8E000EF6911 /* Appwrite in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -208,7 +206,7 @@
 		257C68CC2ECB7559005F3773 = {
 			isa = PBXGroup;
 			children = (
-				25145B8B2EDE042F0095D7A9 /* ExcelImporter.swift */,
+				25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */,
 				250A317D2EDDFB18004F63C8 /* StatsCache.swift */,
 				25C9798E2EDBB5DA009233B8 /* Models.swift */,
 				38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */,
@@ -252,7 +250,6 @@
 				C4AFF1A10FB982DE2DDD31AF /* ScreenshotTests.swift */,
 				536A65B8BA7237382742B91A /* SnapshotHelper.swift */,
 			);
-			name = ParaFlightLogUITests;
 			path = ParaFlightLogUITests;
 			sourceTree = "<group>";
 		};
@@ -371,6 +368,9 @@
 			);
 			mainGroup = 257C68CC2ECB7559005F3773;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				2589C4552F02D81B00EF6911 /* XCRemoteSwiftPackageReference "sdk-for-apple" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 257C68D62ECB7559005F3773 /* Products */;
 			projectDirPath = "";
@@ -911,6 +911,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		2589C4552F02D81B00EF6911 /* XCRemoteSwiftPackageReference "sdk-for-apple" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/appwrite/sdk-for-apple";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 13.5.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2589C4562F02D8E000EF6911 /* Appwrite */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 2589C4552F02D81B00EF6911 /* XCRemoteSwiftPackageReference "sdk-for-apple" */;
+			productName = Appwrite;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 257C68CD2ECB7559005F3773 /* Project object */;
 }

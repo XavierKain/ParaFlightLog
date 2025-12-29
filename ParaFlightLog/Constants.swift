@@ -142,12 +142,6 @@ enum NotificationNames {
 // MARK: - Wing Library Configuration
 
 enum WingLibraryConstants {
-    /// URL de base du repository GitHub
-    static let baseURL = "https://raw.githubusercontent.com/XavierKain/paraflightlog-wings/main"
-
-    /// URL du catalogue JSON
-    static let catalogURL = "\(baseURL)/wings.json"
-
     /// Durée de validité du cache catalogue (24 heures)
     static let catalogCacheMaxAge: TimeInterval = 24 * 60 * 60
 

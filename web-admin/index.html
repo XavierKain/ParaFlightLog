@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParaFlightLog - Admin Catalogue Voiles</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        body {
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: white !important;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            color: #333 !important;
+        }
+
+        .card {
+            border: none;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.12);
+        }
+
+        .card-header {
+            background: white;
+            border-bottom: 1px solid #eee;
+            border-radius: 16px 16px 0 0 !important;
+        }
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            transform: translateY(-1px);
+        }
+
+        .stats-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .stats-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
+            font-size: 1.5rem;
+        }
+
+        .stats-icon.manufacturers {
+            background: linear-gradient(135deg, #667eea22 0%, #764ba222 100%);
+            color: #667eea;
+        }
+
+        .stats-icon.wings {
+            background: linear-gradient(135deg, #11998e22 0%, #38ef7d22 100%);
+            color: #11998e;
+        }
+
+        .stats-icon.images {
+            background: linear-gradient(135deg, #ee0979aa 0%, #ff6a0022 100%);
+            color: #ee0979;
+        }
+
+        .stats-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .stats-label {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        /* Wing Card Style */
+        .wing-card {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+            height: 100%;
+        }
+
+        .wing-card-image {
+            height: 140px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .wing-card-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .wing-card-body {
+            padding: 16px;
+        }
+
+        .wing-card-manufacturer {
+            font-size: 0.8rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .wing-card-model {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #333;
+            margin: 4px 0 8px;
+        }
+
+        .wing-card-type {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #e9ecef;
+            color: #555;
+        }
+
+        .wing-card-sizes {
+            margin-top: 12px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .size-chip {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+            color: #667eea;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .wing-card-actions {
+            padding: 12px 16px;
+            border-top: 1px solid #f0f0f0;
+            display: flex;
+            gap: 8px;
+        }
+
+        .wing-card-actions .btn {
+            flex: 1;
+            padding: 6px 8px;
+            font-size: 0.8rem;
+        }
+
+        /* Table styles */
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .table {
+            margin: 0;
+        }
+
+        .table th {
+            background: #f8f9fa;
+            border: none;
+            padding: 14px 16px;
+            font-weight: 600;
+            color: #555;
+            font-size: 0.85rem;
+        }
+
+        .table td {
+            padding: 14px 16px;
+            vertical-align: middle;
+            border-color: #f0f0f0;
+        }
+
+        .table-wing-image {
+            width: 60px;
+            height: 40px;
+            object-fit: contain;
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        /* View toggle */
+        .view-toggle {
+            display: flex;
+            background: #f0f0f0;
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .view-toggle .btn {
+            border: none;
+            background: transparent;
+            color: #666;
+            padding: 6px 12px;
+            border-radius: 6px;
+        }
+
+        .view-toggle .btn.active {
+            background: white;
+            color: #333;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Nav tabs */
+        .nav-tabs {
+            border: none;
+            background: white;
+            border-radius: 12px;
+            padding: 6px;
+            display: inline-flex;
+        }
+
+        .nav-tabs .nav-link {
+            border: none;
+            color: #666;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .nav-tabs .nav-link.active {
+            background: var(--primary-gradient);
+            color: white;
+        }
+
+        .nav-tabs .nav-link:hover:not(.active) {
+            background: #f0f0f0;
+        }
+
+        /* Modal */
+        .modal-content {
+            border: none;
+            border-radius: 16px;
+        }
+
+        .modal-header {
+            border-bottom: 1px solid #eee;
+            padding: 20px 24px;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .modal-footer {
+            border-top: 1px solid #eee;
+            padding: 16px 24px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+        }
+
+        .form-label {
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 6px;
+        }
+
+        /* Manufacturer card */
+        .manufacturer-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .manufacturer-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .manufacturer-order {
+            width: 32px;
+            height: 32px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            color: #666;
+        }
+
+        .manufacturer-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .manufacturer-id {
+            font-size: 0.8rem;
+            color: #888;
+            font-family: monospace;
+        }
+
+        .badge-count {
+            background: var(--primary-gradient);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        /* Loading */
+        .loading-spinner {
+            display: none;
+        }
+
+        .loading .loading-spinner {
+            display: inline-block;
+        }
+
+        /* Preview image */
+        .preview-image {
+            max-width: 200px;
+            max-height: 150px;
+            object-fit: contain;
+            background: #f8f9fa;
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            opacity: 0.3;
+            margin-bottom: 16px;
+        }
+
+        /* Drag & Drop */
+        .manufacturer-drag-item {
+            transition: background 0.2s, opacity 0.2s;
+        }
+
+        .manufacturer-drag-item.dragging {
+            opacity: 0.5;
+            background: #f0f0f0;
+        }
+
+        .manufacturer-drag-item.drag-over {
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+        }
+
+        tr.manufacturer-drag-item.drag-over td {
+            border-top: 2px dashed #667eea;
+        }
+
+        .drag-handle {
+            cursor: grab;
+            user-select: none;
+        }
+
+        .drag-handle:active {
+            cursor: grabbing;
+        }
+
+        /* Wing Drag & Drop */
+        .wing-drag-item {
+            transition: transform 0.2s, opacity 0.2s;
+        }
+
+        .wing-drag-item.dragging {
+            opacity: 0.5;
+            transform: scale(0.95);
+        }
+
+        .wing-drag-item.drag-over .wing-card {
+            border: 2px dashed #667eea;
+            background: linear-gradient(135deg, #667eea08 0%, #764ba208 100%);
+        }
+
+        .wing-card {
+            border: 2px solid transparent;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        .wing-drag-handle {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            width: 24px;
+            height: 24px;
+            background: rgba(255,255,255,0.9);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: grab;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .wing-drag-handle:active {
+            cursor: grabbing;
+        }
+
+        .wing-card:hover .wing-drag-handle {
+            opacity: 1;
+        }
+
+        .wing-card-image {
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container"></div>
+
+    <!-- Login Section -->
+    <div id="login-section" class="d-flex align-items-center justify-content-center" style="min-height: 100vh;">
+        <div class="card" style="width: 400px;">
+            <div class="card-body p-4">
+                <div class="text-center mb-4">
+                    <div class="stats-icon wings mx-auto mb-3">
+                        <i class="bi bi-wind"></i>
+                    </div>
+                    <h3 class="mb-1">ParaFlightLog Admin</h3>
+                    <p class="text-muted mb-0">Gestion du catalogue de voiles</p>
+                </div>
+                <form id="login-form">
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="login-email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Mot de passe</label>
+                        <input type="password" class="form-control" id="login-password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2">
+                        <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
+                        Se connecter
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content (hidden until login) -->
+    <div id="main-content" style="display: none;">
+        <!-- Navbar -->
+        <nav class="navbar navbar-expand-lg sticky-top">
+            <div class="container-fluid px-4">
+                <a class="navbar-brand" href="#">
+                    <i class="bi bi-wind me-2 text-primary"></i>ParaFlightLog Admin
+                </a>
+                <div class="d-flex align-items-center gap-3">
+                    <span class="text-muted" id="user-email"></span>
+                    <button class="btn btn-outline-secondary btn-sm" onclick="logout()">
+                        <i class="bi bi-box-arrow-right"></i>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container-fluid px-4 py-4">
+            <!-- Stats Row -->
+            <div class="row g-4 mb-4">
+                <div class="col-md-4">
+                    <div class="stats-card">
+                        <div class="stats-icon manufacturers">
+                            <i class="bi bi-building"></i>
+                        </div>
+                        <div class="stats-number" id="stats-manufacturers">0</div>
+                        <div class="stats-label">Fabricants</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stats-card">
+                        <div class="stats-icon wings">
+                            <i class="bi bi-wind"></i>
+                        </div>
+                        <div class="stats-number" id="stats-wings">0</div>
+                        <div class="stats-label">Voiles</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stats-card">
+                        <div class="stats-icon images">
+                            <i class="bi bi-image"></i>
+                        </div>
+                        <div class="stats-number" id="stats-images">0</div>
+                        <div class="stats-label">Images</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <ul class="nav nav-tabs mb-0" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-wings">
+                            <i class="bi bi-wind me-1"></i> Voiles
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-manufacturers">
+                            <i class="bi bi-building me-1"></i> Fabricants
+                        </button>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="tab-content">
+                <!-- Wings Tab -->
+                <div class="tab-pane fade show active" id="tab-wings">
+                    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                        <div class="d-flex align-items-center gap-3">
+                            <h5 class="mb-0 text-muted">Catalogue des voiles</h5>
+                            <select class="form-select form-select-sm" id="filter-manufacturer" style="width: auto;">
+                                <option value="">Tous les fabricants</option>
+                            </select>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <div class="view-toggle">
+                                <button class="btn active" id="view-cards" onclick="setViewMode('cards')">
+                                    <i class="bi bi-grid-3x3-gap"></i>
+                                </button>
+                                <button class="btn" id="view-list" onclick="setViewMode('list')">
+                                    <i class="bi bi-list-ul"></i>
+                                </button>
+                            </div>
+                            <button class="btn btn-primary" onclick="showAddWingModal()">
+                                <i class="bi bi-plus-lg me-1"></i> Ajouter une voile
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Cards View -->
+                    <div id="wings-cards" class="row g-4">
+                        <div class="col-12 text-center text-muted py-5">Chargement...</div>
+                    </div>
+
+                    <!-- List View -->
+                    <div id="wings-list" class="table-container" style="display: none;">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Image</th>
+                                    <th>Fabricant</th>
+                                    <th>Modèle</th>
+                                    <th>Type</th>
+                                    <th>Tailles</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="wings-table">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Manufacturers Tab -->
+                <div class="tab-pane fade" id="tab-manufacturers">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0 text-muted">Liste des fabricants</h5>
+                        <button class="btn btn-primary btn-sm" onclick="showAddManufacturerModal()">
+                            <i class="bi bi-plus-lg me-1"></i> Ajouter
+                        </button>
+                    </div>
+                    <div class="table-container">
+                        <table class="table table-hover mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 50px;"></th>
+                                    <th>Nom</th>
+                                    <th>ID</th>
+                                    <th>Voiles</th>
+                                    <th style="width: 100px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="manufacturers-container">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Manufacturer Modal -->
+    <div class="modal fade" id="manufacturer-modal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="manufacturer-modal-title">Ajouter un fabricant</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="manufacturer-form">
+                    <div class="modal-body">
+                        <input type="hidden" id="manufacturer-id">
+                        <div class="mb-3">
+                            <label class="form-label">Nom</label>
+                            <input type="text" class="form-control" id="manufacturer-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Ordre d'affichage</label>
+                            <input type="number" class="form-control" id="manufacturer-order" value="0">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
+                            Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Wing Modal -->
+    <div class="modal fade" id="wing-modal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="wing-modal-title">Ajouter une voile</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="wing-form">
+                    <div class="modal-body">
+                        <input type="hidden" id="wing-id">
+                        <input type="hidden" id="wing-image-file-id">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Fabricant</label>
+                                    <select class="form-select" id="wing-manufacturer" required>
+                                        <option value="">Sélectionner...</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Modèle</label>
+                                    <input type="text" class="form-control" id="wing-model" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Type</label>
+                                    <select class="form-select" id="wing-type" required>
+                                        <option value="">Sélectionner...</option>
+                                        <option value="Soaring">Soaring</option>
+                                        <option value="Thermique">Thermique</option>
+                                        <option value="Cross Country">Cross Country</option>
+                                        <option value="Acro">Acro</option>
+                                        <option value="Speedflying">Speedflying</option>
+                                        <option value="Tandem">Tandem</option>
+                                        <option value="EN-A">EN-A</option>
+                                        <option value="EN-B">EN-B</option>
+                                        <option value="EN-C">EN-C</option>
+                                        <option value="EN-D">EN-D</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Année</label>
+                                    <input type="number" class="form-control" id="wing-year" placeholder="Optionnel">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label">Tailles (séparées par des virgules)</label>
+                                    <input type="text" class="form-control" id="wing-sizes" placeholder="XS, S, M, L, XL" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Image</label>
+                                    <input type="file" class="form-control" id="wing-image" accept="image/png,image/jpeg">
+                                    <small class="text-muted">PNG recommandé avec transparence</small>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Aperçu</label>
+                                    <div id="wing-image-preview" class="text-center">
+                                        <img src="" class="preview-image d-none" id="preview-img">
+                                        <div class="text-muted" id="preview-placeholder">
+                                            <i class="bi bi-image" style="font-size: 3rem; opacity: 0.3;"></i>
+                                            <div>Aucune image</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">
+                            <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
+                            Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="delete-modal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Confirmer la suppression</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir supprimer <strong id="delete-item-name"></strong> ?</p>
+                    <p class="text-danger mb-0"><i class="bi bi-exclamation-triangle me-1"></i>Cette action est irréversible.</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn btn-danger" id="confirm-delete-btn">
+                        <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
+                        Supprimer
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/appwrite@15.0.0/dist/iife/sdk.min.js"></script>
+    <script src="app.js?v=10"></script>
+</body>
+</html>
