@@ -145,11 +145,9 @@ struct WingLibraryView: View {
         isLoading = true
         errorMessage = nil
 
-        // Clear cache on first load to always get fresh data
-        WingLibraryService.shared.clearCache()
-
+        // Don't clear image cache - just fetch fresh catalog data
         do {
-            catalog = try await WingLibraryService.shared.fetchCatalog(forceRefresh: true)
+            catalog = try await WingLibraryService.shared.fetchCatalog(forceRefresh: false)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -161,9 +159,7 @@ struct WingLibraryView: View {
         isLoading = true
         errorMessage = nil
 
-        // Force refresh clears image cache too
-        WingLibraryService.shared.clearCache()
-
+        // Force refresh fetches fresh data but keeps image cache
         do {
             catalog = try await WingLibraryService.shared.fetchCatalog(forceRefresh: true)
         } catch {

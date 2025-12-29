@@ -9,8 +9,160 @@
 import Foundation
 import UIKit
 import Appwrite
-import NIOCore
-import NIOFoundationCompat
+
+// MARK: - Thread-Safe Image Cache Actor with Rate Limit Protection
+
+/// Actor garantissant un accès thread-safe au cache d'images
+/// Inclut un système de throttling pour éviter le rate limit Appwrite (60 req/min)
+actor WingImageCache {
+    private var memoryCache: [String: Data] = [:]
+    private var pendingRequests: [String: Task<Data, Error>] = [:]
+    private let cacheDirectory: URL
+
+    // Throttling: limite les requêtes réseau concurrentes
+    // Appwrite a une limite de 60 req/min, on limite à 5 concurrentes max
+    private let maxConcurrentDownloads = 5
+    private var activeDownloads = 0
+    private var waitingQueue: [(String, CheckedContinuation<Void, Never>)] = []
+
+    init(cacheDirectory: URL) {
+        self.cacheDirectory = cacheDirectory
+    }
+
+    /// Attend qu'un slot de téléchargement soit disponible
+    private func acquireDownloadSlot(for wingId: String) async {
+        if activeDownloads < maxConcurrentDownloads {
+            activeDownloads += 1
+            return
+        }
+
+        // File d'attente si tous les slots sont occupés
+        await withCheckedContinuation { continuation in
+            waitingQueue.append((wingId, continuation))
+        }
+    }
+
+    /// Libère un slot de téléchargement
+    private func releaseDownloadSlot() {
+        if let next = waitingQueue.first {
+            waitingQueue.removeFirst()
+            next.1.resume()
+        } else {
+            activeDownloads -= 1
+        }
+    }
+
+    /// Récupère une image depuis le cache ou la télécharge
+    /// - Parameters:
+    ///   - wingId: ID unique de la voile
+    ///   - fetcher: Closure async pour télécharger l'image si pas en cache
+    /// - Returns: Data de l'image
+    func getImage(
+        for wingId: String,
+        fetcher: @escaping () async throws -> Data
+    ) async throws -> Data {
+        // 1. Check memory cache (fastest)
+        if let cached = memoryCache[wingId] {
+            return cached
+        }
+
+        // 2. Check disk cache
+        let diskPath = cacheDirectory.appendingPathComponent("\(wingId).png")
+        if let diskData = try? Data(contentsOf: diskPath), !diskData.isEmpty {
+            memoryCache[wingId] = diskData
+            logInfo("Loaded image from disk cache for wing \(wingId)", category: .wingLibrary)
+            return diskData
+        }
+
+        // 3. Check pending request (thread-safe grâce à l'actor)
+        if let pending = pendingRequests[wingId] {
+            logInfo("Waiting for pending request for wing \(wingId)", category: .wingLibrary)
+            return try await pending.value
+        }
+
+        // 4. Attendre un slot disponible (throttling)
+        await acquireDownloadSlot(for: wingId)
+
+        // 5. Vérifier à nouveau le cache (quelqu'un d'autre a pu le charger pendant l'attente)
+        if let cached = memoryCache[wingId] {
+            releaseDownloadSlot()
+            return cached
+        }
+
+        // 6. Create new fetch task with retry logic
+        logInfo("Fetching image from network for wing \(wingId) (active: \(activeDownloads)/\(maxConcurrentDownloads))", category: .wingLibrary)
+
+        let task = Task<Data, Error> {
+            var lastError: Error?
+
+            // Retry jusqu'à 3 fois en cas d'erreur réseau ou rate limit
+            for attempt in 1...3 {
+                do {
+                    let data = try await fetcher()
+
+                    // Vérifier que les données ne sont pas vides
+                    guard !data.isEmpty else {
+                        throw WingLibraryError.invalidResponse
+                    }
+
+                    return data
+                } catch {
+                    lastError = error
+                    let errorDescription = String(describing: error)
+
+                    // Si c'est un rate limit (429), attendre plus longtemps
+                    if errorDescription.contains("429") || errorDescription.lowercased().contains("rate") {
+                        logWarning("Rate limit hit for wing \(wingId), waiting 2s (attempt \(attempt)/3)", category: .wingLibrary)
+                        try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 secondes
+                    } else if attempt < 3 {
+                        // Autres erreurs: courte pause avant retry
+                        logWarning("Fetch failed for wing \(wingId): \(errorDescription), retrying... (attempt \(attempt)/3)", category: .wingLibrary)
+                        try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconde
+                    }
+                }
+            }
+
+            throw lastError ?? WingLibraryError.invalidResponse
+        }
+
+        pendingRequests[wingId] = task
+
+        do {
+            let data = try await task.value
+            // Cache to memory and disk after successful fetch
+            memoryCache[wingId] = data
+            try? data.write(to: diskPath)
+            pendingRequests.removeValue(forKey: wingId)
+            releaseDownloadSlot()
+            logInfo("Cached image for wing \(wingId): \(data.count) bytes", category: .wingLibrary)
+            return data
+        } catch {
+            pendingRequests.removeValue(forKey: wingId)
+            releaseDownloadSlot()
+            logError("Failed to fetch image for wing \(wingId) after 3 attempts: \(error)", category: .wingLibrary)
+            throw error
+        }
+    }
+
+    /// Vide le cache mémoire et les requêtes en attente
+    func clearMemory() {
+        memoryCache.removeAll()
+        pendingRequests.removeAll()
+    }
+
+    /// Vide complètement le cache (mémoire + disque)
+    func clearAll() {
+        memoryCache.removeAll()
+        pendingRequests.removeAll()
+        try? FileManager.default.removeItem(at: cacheDirectory)
+        try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+    }
+
+    /// Retourne le nombre d'images en cache mémoire (pour debug)
+    func cacheCount() -> Int {
+        return memoryCache.count
+    }
+}
 
 // MARK: - Models
 
@@ -52,8 +204,9 @@ struct LibraryWing: Codable, Identifiable, Hashable {
     let sizes: [String]
     let imageFileId: String?
     let year: Int?
+    let displayOrder: Int
 
-    init(id: String, manufacturer: String, model: String, fullName: String, type: String, sizes: [String], imageFileId: String?, year: Int?) {
+    init(id: String, manufacturer: String, model: String, fullName: String, type: String, sizes: [String], imageFileId: String?, year: Int?, displayOrder: Int = 0) {
         self.id = id
         self.manufacturer = manufacturer
         self.model = model
@@ -62,6 +215,7 @@ struct LibraryWing: Codable, Identifiable, Hashable {
         self.sizes = sizes
         self.imageFileId = imageFileId
         self.year = year
+        self.displayOrder = displayOrder
     }
 
     /// Init from Appwrite document
@@ -71,6 +225,7 @@ struct LibraryWing: Codable, Identifiable, Hashable {
         self.model = document.data["model"]?.value as? String ?? ""
         self.type = document.data["type"]?.value as? String ?? ""
         self.year = document.data["year"]?.value as? Int
+        self.displayOrder = document.data["displayOrder"]?.value as? Int ?? 0
 
         // Handle sizes array
         if let sizesArray = document.data["sizes"]?.value as? [Any] {
@@ -142,7 +297,9 @@ final class WingLibraryService {
     // Cache
     private let catalogCacheKey = "wingLibraryCatalog"
     private let catalogCacheDateKey = "wingLibraryCatalogDate"
-    private var imageCache: [String: Data] = [:]
+
+    // Thread-safe image cache (actor)
+    private let wingImageCache: WingImageCache
 
     // File manager for image cache
     private var imageCacheDirectory: URL {
@@ -152,7 +309,12 @@ final class WingLibraryService {
 
     private init() {
         // Create image cache directory if needed
-        try? FileManager.default.createDirectory(at: imageCacheDirectory, withIntermediateDirectories: true)
+        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+            .appendingPathComponent("WingLibrary", isDirectory: true)
+        try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
+
+        // Initialize thread-safe image cache actor
+        wingImageCache = WingImageCache(cacheDirectory: cacheDir)
 
         // Load cached catalog
         loadCachedCatalog()
@@ -176,9 +338,7 @@ final class WingLibraryService {
             saveCatalogToCache(newCatalog)
             // Clear image cache when catalog is updated to get fresh images
             if forceRefresh {
-                imageCache.removeAll()
-                try? FileManager.default.removeItem(at: imageCacheDirectory)
-                try? FileManager.default.createDirectory(at: imageCacheDirectory, withIntermediateDirectories: true)
+                await wingImageCache.clearAll()
             }
             logInfo("Fetched catalog: \(newCatalog.wings.count) wings, \(newCatalog.manufacturers.count) manufacturers", category: .wingLibrary)
             return newCatalog
@@ -205,56 +365,52 @@ final class WingLibraryService {
         }
     }
 
-    /// Fetch image data for a wing from Appwrite Storage
+    /// Fetch image data for a wing using direct URL (like web-admin)
+    /// Uses URLSession instead of Appwrite SDK for better reliability
     func fetchImage(for wing: LibraryWing) async throws -> Data {
         guard let imageFileId = wing.imageFileId else {
             throw WingLibraryError.invalidResponse
         }
 
-        let diskCachePath = imageCacheDirectory.appendingPathComponent("\(wing.id).png")
+        // Build direct URL like web-admin does:
+        // ${APPWRITE_ENDPOINT}/storage/buckets/${BUCKET_ID}/files/${FILE_ID}/view?project=${PROJECT_ID}
+        let urlString = "\(AppwriteConfig.endpoint)/storage/buckets/\(AppwriteConfig.wingImagesBucketId)/files/\(imageFileId)/view?project=\(AppwriteConfig.projectId)"
 
-        // Check memory cache first (only valid during session)
-        if let cached = imageCache[wing.id] {
-            return cached
+        guard let url = URL(string: urlString) else {
+            throw WingLibraryError.invalidResponse
         }
 
-        // Try to fetch from Appwrite Storage
+        // Delegate to thread-safe actor for cache management
         do {
-            let byteBuffer = try await storage.getFileDownload(
-                bucketId: AppwriteConfig.wingImagesBucketId,
-                fileId: imageFileId
-            )
+            return try await wingImageCache.getImage(for: wing.id) {
+                // Use URLSession like the old GitHub implementation
+                let (data, response) = try await URLSession.shared.data(from: url)
 
-            // Convert ByteBuffer to Data
-            let fileData = byteBuffer.getData(at: 0, length: byteBuffer.readableBytes) ?? Data()
+                // Validate response
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw WingLibraryError.invalidResponse
+                }
 
-            // Cache to memory and disk
-            imageCache[wing.id] = fileData
-            try? fileData.write(to: diskCachePath)
+                guard httpResponse.statusCode == 200 else {
+                    logWarning("Image fetch failed with status \(httpResponse.statusCode) for \(imageFileId)", category: .wingLibrary)
+                    throw WingLibraryError.invalidResponse
+                }
 
-            logInfo("Fetched image for \(wing.fullName): \(fileData.count) bytes", category: .wingLibrary)
-            return fileData
-        } catch {
-            // Fallback to disk cache if network fails
-            if let diskData = try? Data(contentsOf: diskCachePath) {
-                logInfo("Using cached image for \(wing.fullName)", category: .wingLibrary)
-                imageCache[wing.id] = diskData
-                return diskData
+                return data
             }
+        } catch {
             throw WingLibraryError.imageFetchFailed(error)
         }
     }
 
     /// Clear all caches
-    func clearCache() {
+    func clearCache() async {
         catalog = nil
-        imageCache.removeAll()
         UserDefaults.standard.removeObject(forKey: catalogCacheKey)
         UserDefaults.standard.removeObject(forKey: catalogCacheDateKey)
 
-        // Clear disk cache
-        try? FileManager.default.removeItem(at: imageCacheDirectory)
-        try? FileManager.default.createDirectory(at: imageCacheDirectory, withIntermediateDirectories: true)
+        // Clear image cache via actor (thread-safe)
+        await wingImageCache.clearAll()
 
         logInfo("Cache cleared", category: .wingLibrary)
     }
@@ -287,6 +443,7 @@ final class WingLibraryService {
             databaseId: AppwriteConfig.databaseId,
             collectionId: AppwriteConfig.wingsCollectionId,
             queries: [
+                Query.orderAsc("displayOrder"),
                 Query.orderAsc("model"),
                 Query.limit(500)
             ]
