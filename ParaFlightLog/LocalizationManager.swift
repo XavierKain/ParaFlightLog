@@ -112,7 +112,7 @@ final class LocalizationManager {
             return current
         }
 
-        // Détecter la langue du système
+        // Détecter la langue du système : français si système en français, sinon anglais
         let systemLanguage = Locale.current.language.languageCode?.identifier ?? "en"
         return systemLanguage.hasPrefix("fr") ? .french : .english
     }
