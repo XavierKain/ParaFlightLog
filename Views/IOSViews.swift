@@ -9,6 +9,10 @@
 //  - StatsViews.swift: StatsView, TotalStatsCard, StatsByWingSection, etc.
 //  - TimerViews.swift: TimerView, WingPickerSheet, FlightSummaryView, etc.
 //  - SettingsViews.swift: SettingsView, SpotsManagementView, BackupExportView, etc.
+//  - ProfileViews.swift: ProfileView, EditProfileView, WatchSettingsView, etc.
+//  - DiscoverViews.swift: DiscoverView, GlobalFeedView, MapDiscoveryView, etc.
+//  - SpotViews.swift: SpotDetailView, SpotLeaderboardSection, etc.
+//  - SearchViews.swift: SearchView, SearchFlightsView, SearchPilotsView, etc.
 //
 //  Target: iOS only
 //
@@ -22,22 +26,23 @@ struct ContentView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(LocalizationManager.self) private var localizationManager
+    @Environment(AuthService.self) private var authService
 
     // Conserver l'onglet sélectionné lors du changement de langue
     @State private var selectedTab: Int = 0
 
     // Labels des onglets calculés dynamiquement
-    private var wingsLabel: String { "Voiles".localized }
+    private var discoverLabel: String { "Découvrir".localized }
     private var flightsLabel: String { "Vols".localized }
     private var statsLabel: String { "Stats".localized }
     private var chartsLabel: String { "Graphiques".localized }
-    private var settingsLabel: String { "Réglages".localized }
+    private var profileLabel: String { "Profil".localized }
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            WingsView()
+            DiscoverView()
                 .tabItem {
-                    Label(wingsLabel, systemImage: "wind")
+                    Label(discoverLabel, systemImage: "globe")
                 }
                 .tag(0)
 
@@ -59,9 +64,9 @@ struct ContentView: View {
                 }
                 .tag(3)
 
-            SettingsView()
+            ProfileView()
                 .tabItem {
-                    Label(settingsLabel, systemImage: "gearshape")
+                    Label(profileLabel, systemImage: "person.circle")
                 }
                 .tag(4)
         }

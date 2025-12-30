@@ -29,6 +29,10 @@
 		AA0000052EEBB00000000003 /* StatsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000042EEBB00000000003 /* StatsViews.swift */; };
 		AA0000072EEBB00000000004 /* TimerViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000062EEBB00000000004 /* TimerViews.swift */; };
 		AA0000092EEBB00000000005 /* SettingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000082EEBB00000000005 /* SettingsViews.swift */; };
+		AA00000B2EEBB00000000006 /* ProfileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000A2EEBB00000000006 /* ProfileViews.swift */; };
+		AA00000D2EEBB00000000007 /* DiscoverViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000C2EEBB00000000007 /* DiscoverViews.swift */; };
+		AA00000F2EEBB00000000008 /* SpotViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000E2EEBB00000000008 /* SpotViews.swift */; };
+		AA0000112EEBB00000000009 /* SearchViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000102EEBB00000000009 /* SearchViews.swift */; };
 		C841AFFD7BE2509F251B21C5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D6E3BD81946B048929752FA /* Foundation.framework */; };
 		D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 362EAB42550846EE9491A703 /* ZipBackup.swift */; };
 		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
@@ -108,6 +112,10 @@
 		AA0000042EEBB00000000003 /* StatsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsViews.swift; sourceTree = "<group>"; };
 		AA0000062EEBB00000000004 /* TimerViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimerViews.swift; sourceTree = "<group>"; };
 		AA0000082EEBB00000000005 /* SettingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViews.swift; sourceTree = "<group>"; };
+		AA00000A2EEBB00000000006 /* ProfileViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileViews.swift; sourceTree = "<group>"; };
+		AA00000C2EEBB00000000007 /* DiscoverViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverViews.swift; sourceTree = "<group>"; };
+		AA00000E2EEBB00000000008 /* SpotViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotViews.swift; sourceTree = "<group>"; };
+		AA0000102EEBB00000000009 /* SearchViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViews.swift; sourceTree = "<group>"; };
 		C310D0CB152141398E4E5E4F /* ChartsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		C4AFF1A10FB982DE2DDD31AF /* ScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -119,6 +127,13 @@
 				Info.plist,
 			);
 			target = 25145C282EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension */;
+		};
+		257C68D7INFOPLIST00000001 /* Exceptions for "ParaFlightLog" folder in "ParaFlightLog" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 257C68D42ECB7559005F3773 /* ParaFlightLog */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -133,6 +148,9 @@
 		};
 		257C68D72ECB7559005F3773 /* ParaFlightLog */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				257C68D7INFOPLIST00000001 /* Exceptions for "ParaFlightLog" folder in "ParaFlightLog" target */,
+			);
 			path = ParaFlightLog;
 			sourceTree = "<group>";
 		};
@@ -199,6 +217,10 @@
 				AA0000042EEBB00000000003 /* StatsViews.swift */,
 				AA0000062EEBB00000000004 /* TimerViews.swift */,
 				AA0000082EEBB00000000005 /* SettingsViews.swift */,
+				AA00000A2EEBB00000000006 /* ProfileViews.swift */,
+				AA00000C2EEBB00000000007 /* DiscoverViews.swift */,
+				AA00000E2EEBB00000000008 /* SpotViews.swift */,
+				AA0000102EEBB00000000009 /* SearchViews.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -445,6 +467,10 @@
 				AA0000052EEBB00000000003 /* StatsViews.swift in Sources */,
 				AA0000072EEBB00000000004 /* TimerViews.swift in Sources */,
 				AA0000092EEBB00000000005 /* SettingsViews.swift in Sources */,
+				AA00000B2EEBB00000000006 /* ProfileViews.swift in Sources */,
+				AA00000D2EEBB00000000007 /* DiscoverViews.swift in Sources */,
+				AA00000F2EEBB00000000008 /* SpotViews.swift in Sources */,
+				AA0000112EEBB00000000009 /* SearchViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -684,7 +710,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "";
+				INFOPLIST_FILE = ParaFlightLog/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -719,7 +745,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "";
+				INFOPLIST_FILE = ParaFlightLog/Info.plist;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

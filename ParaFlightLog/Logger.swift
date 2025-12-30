@@ -24,6 +24,9 @@ enum LogCategory: String {
     case ui = "UI"
     case dataImport = "DataImport"
     case wingLibrary = "WingLibrary"
+    case auth = "Auth"
+    case sync = "Sync"
+    case notification = "Notification"
 }
 
 // MARK: - App Logger

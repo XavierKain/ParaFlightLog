@@ -8,9 +8,13 @@
 
 import SwiftUI
 import SwiftData
+import Appwrite
 
 @main
 struct ParaFlightLogApp: App {
+    // AppDelegate pour gérer les push notifications
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+
     // Services - DataController et LocationService sont des instances propres à l'app
     @State private var dataController = DataController()
     @State private var locationService = LocationService()
@@ -19,6 +23,7 @@ struct ParaFlightLogApp: App {
     // Cela évite la création de doubles instances et les memory leaks potentiels
     private var watchConnectivityManager: WatchConnectivityManager { WatchConnectivityManager.shared }
     private var localizationManager: LocalizationManager { LocalizationManager.shared }
+    private var authService: AuthService { AuthService.shared }
 
     var body: some Scene {
         WindowGroup {
@@ -27,7 +32,9 @@ struct ParaFlightLogApp: App {
                 .environment(watchConnectivityManager)
                 .environment(locationService)
                 .environment(localizationManager)
+                .environment(authService)
                 .environment(\.locale, localizationManager.locale)
+                .registerOAuthHandler() // Gestionnaire pour les callbacks OAuth Appwrite
         }
         .modelContainer(dataController.modelContainer)
     }
@@ -39,11 +46,12 @@ private struct IOSRootView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(LocationService.self) private var locationService
     @Environment(LocalizationManager.self) private var localizationManager
+    @Environment(AuthService.self) private var authService
 
     @State private var hasInitialized = false
 
     var body: some View {
-        ContentView()
+        AuthContainerView()
             .environment(\.locale, localizationManager.locale)
             .onAppear {
                 // Configurer les bonnes références (une seule fois)

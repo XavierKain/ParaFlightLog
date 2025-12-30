@@ -152,6 +152,26 @@ final class Flight {
     // Trace GPS du vol (stockée en JSON)
     var gpsTrackData: Data?
 
+    // MARK: - Cloud Sync
+    /// ID du document Appwrite dans la collection flights
+    var cloudId: String?
+    /// Date de dernière synchronisation avec le cloud
+    var cloudSyncedAt: Date?
+    /// Vol privé (visible uniquement par le propriétaire) - fonctionnalité premium
+    var isPrivate: Bool = false
+    /// Indique si le vol doit être synchronisé (créé/modifié localement)
+    var needsSync: Bool = true
+    /// Dernière erreur de synchronisation (pour affichage/debug)
+    var syncError: String?
+
+    // MARK: - Social (cache cloud)
+    /// Nombre de likes sur ce vol (cache local du cloud)
+    var likeCount: Int = 0
+    /// Nombre de commentaires sur ce vol (cache local du cloud)
+    var commentCount: Int = 0
+    /// Indique si la trace GPS est uploadée dans le cloud
+    var hasGpsTrackInCloud: Bool = false
+
     // Relation : la voile utilisée pour ce vol
     var wing: Wing?
 
@@ -172,7 +192,15 @@ final class Flight {
          totalDistance: Double? = nil,
          maxSpeed: Double? = nil,
          maxGForce: Double? = nil,
-         gpsTrackData: Data? = nil) {
+         gpsTrackData: Data? = nil,
+         cloudId: String? = nil,
+         cloudSyncedAt: Date? = nil,
+         isPrivate: Bool = false,
+         needsSync: Bool = true,
+         syncError: String? = nil,
+         likeCount: Int = 0,
+         commentCount: Int = 0,
+         hasGpsTrackInCloud: Bool = false) {
         self.id = id
         self.wing = wing
         self.startDate = startDate
@@ -191,6 +219,14 @@ final class Flight {
         self.maxSpeed = maxSpeed
         self.maxGForce = maxGForce
         self.gpsTrackData = gpsTrackData
+        self.cloudId = cloudId
+        self.cloudSyncedAt = cloudSyncedAt
+        self.isPrivate = isPrivate
+        self.needsSync = needsSync
+        self.syncError = syncError
+        self.likeCount = likeCount
+        self.commentCount = commentCount
+        self.hasGpsTrackInCloud = hasGpsTrackInCloud
     }
 
     /// Décoder la trace GPS
