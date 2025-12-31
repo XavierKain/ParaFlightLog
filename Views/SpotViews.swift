@@ -210,19 +210,19 @@ struct SpotQuickStat: View {
 struct SpotMapView: View {
     let spot: Spot
 
-    @State private var region: MKCoordinateRegion
+    @State private var cameraPosition: MapCameraPosition
 
     init(spot: Spot) {
         self.spot = spot
-        _region = State(initialValue: MKCoordinateRegion(
+        _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
             center: spot.coordinate,
             span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
-        ))
+        )))
     }
 
     var body: some View {
-        Map(coordinateRegion: $region, annotationItems: [spot]) { spot in
-            MapAnnotation(coordinate: spot.coordinate) {
+        Map(position: $cameraPosition) {
+            Annotation("", coordinate: spot.coordinate) {
                 Image(systemName: "mappin.circle.fill")
                     .font(.title)
                     .foregroundStyle(.red)

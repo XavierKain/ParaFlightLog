@@ -259,10 +259,10 @@ struct FriendsFeedView: View {
 // MARK: - MapDiscoveryView
 
 struct MapDiscoveryView: View {
-    @State private var region = MKCoordinateRegion(
+    @State private var cameraPosition: MapCameraPosition = .region(MKCoordinateRegion(
         center: CLLocationCoordinate2D(latitude: 46.0, longitude: 2.0),  // France
         span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10)
-    )
+    ))
     @State private var flights: [PublicFlight] = []
     @State private var clusters: [FlightCluster] = []
     @State private var isLoading = false
@@ -270,16 +270,18 @@ struct MapDiscoveryView: View {
 
     var body: some View {
         ZStack {
-            Map(coordinateRegion: $region, annotationItems: clusters) { cluster in
-                MapAnnotation(coordinate: cluster.coordinate) {
-                    ClusterAnnotationView(cluster: cluster) {
-                        selectedCluster = cluster
+            Map(position: $cameraPosition) {
+                ForEach(clusters) { cluster in
+                    Annotation("", coordinate: cluster.coordinate) {
+                        ClusterAnnotationView(cluster: cluster) {
+                            selectedCluster = cluster
+                        }
                     }
                 }
             }
             .ignoresSafeArea(edges: .bottom)
-            .onChange(of: region.center.latitude) { _, _ in
-                Task { await loadFlightsInRegion() }
+            .onMapCameraChange { context in
+                Task { await loadFlightsInRegion(context.region) }
             }
 
             if isLoading {
@@ -297,11 +299,15 @@ struct MapDiscoveryView: View {
             ClusterDetailSheet(cluster: cluster)
         }
         .task {
-            await loadFlightsInRegion()
+            let initialRegion = MKCoordinateRegion(
+                center: CLLocationCoordinate2D(latitude: 46.0, longitude: 2.0),
+                span: MKCoordinateSpan(latitudeDelta: 10, longitudeDelta: 10)
+            )
+            await loadFlightsInRegion(initialRegion)
         }
     }
 
-    private func loadFlightsInRegion() async {
+    private func loadFlightsInRegion(_ region: MKCoordinateRegion) async {
         isLoading = true
 
         let bounds = MapBounds(

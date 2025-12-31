@@ -9,7 +9,6 @@
 /* Begin PBXBuildFile section */
 		19ACDAC342956718EB1A28C8 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4AFF1A10FB982DE2DDD31AF /* ScreenshotTests.swift */; };
 		250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250A317D2EDDFB18004F63C8 /* StatsCache.swift */; };
-		BB0000012EEBB0000000000A /* Constants.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB0000002EEBB0000000000A /* Constants.swift */; };
 		25145BD62EDE096C0095D7A9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
 		25145C2C2EDE61D80095D7A9 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */; };
 		25145C2E2EDE61D80095D7A9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25145C2D2EDE61D80095D7A9 /* SwiftUI.framework */; };
@@ -91,7 +90,6 @@
 
 /* Begin PBXFileReference section */
 		250A317D2EDDFB18004F63C8 /* StatsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCache.swift; sourceTree = "<group>"; };
-		BB0000002EEBB0000000000A /* Constants.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ParaFlightLog/Constants.swift"; sourceTree = "<group>"; };
 		25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParaFlightLog/ExcelImporter.swift; sourceTree = "<group>"; };
 		25145C292EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ParaFlightLogWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
@@ -230,7 +228,6 @@
 		257C68CC2ECB7559005F3773 = {
 			isa = PBXGroup;
 			children = (
-				BB0000002EEBB0000000000A /* Constants.swift */,
 				25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */,
 				250A317D2EDDFB18004F63C8 /* StatsCache.swift */,
 				25C9798E2EDBB5DA009233B8 /* Models.swift */,
@@ -456,7 +453,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				BB0000012EEBB0000000000A /* Constants.swift in Sources */,
 				25C979922EDBB5DA009233B8 /* SharedModels.swift in Sources */,
 				25C979932EDBB5DA009233B8 /* Models.swift in Sources */,
 				2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */,

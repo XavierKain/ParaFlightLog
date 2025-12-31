@@ -166,7 +166,7 @@ final class FlightSyncService {
 
         var uploaded = 0
         var downloaded = 0
-        var conflicts = 0
+        let conflicts = 0
         var errors: [String] = []
 
         // 1. Upload des vols locaux en attente
@@ -314,7 +314,7 @@ final class FlightSyncService {
             return cloudFlight
 
         } catch let error as AppwriteError {
-            throw FlightSyncError.uploadFailed(error.message ?? "Unknown error")
+            throw FlightSyncError.uploadFailed(error.message)
         } catch {
             throw FlightSyncError.uploadFailed(error.localizedDescription)
         }
@@ -391,7 +391,7 @@ final class FlightSyncService {
             return flights
 
         } catch let error as AppwriteError {
-            throw FlightSyncError.downloadFailed(error.message ?? "Unknown error")
+            throw FlightSyncError.downloadFailed(error.message)
         } catch {
             throw FlightSyncError.downloadFailed(error.localizedDescription)
         }
@@ -413,7 +413,7 @@ final class FlightSyncService {
             )
             logInfo("Flight privacy updated: \(flightId) -> \(isPrivate ? "private" : "public")", category: .sync)
         } catch let error as AppwriteError {
-            throw FlightSyncError.uploadFailed(error.message ?? "Unknown error")
+            throw FlightSyncError.uploadFailed(error.message)
         }
     }
 
@@ -429,7 +429,7 @@ final class FlightSyncService {
 
             // Supprimer la trace GPS si elle existe
             if let gpsFileId = document.data["gpsTrackFileId"]?.value as? String {
-                try? await storage.deleteFile(
+                _ = try? await storage.deleteFile(
                     bucketId: AppwriteConfig.gpsTracksBucketId,
                     fileId: gpsFileId
                 )
@@ -444,7 +444,7 @@ final class FlightSyncService {
 
             logInfo("Flight deleted from cloud: \(flightId)", category: .sync)
         } catch let error as AppwriteError {
-            throw FlightSyncError.uploadFailed(error.message ?? "Unknown error")
+            throw FlightSyncError.uploadFailed(error.message)
         }
     }
 

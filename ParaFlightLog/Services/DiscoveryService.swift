@@ -223,7 +223,7 @@ final class DiscoveryService {
             }
         } catch let error as AppwriteError {
             // Vérifier si c'est une erreur de collection manquante
-            let message = error.message ?? ""
+            let message = error.message
             if message.contains("could not be found") || message.contains("Collection") {
                 throw DiscoveryError.collectionNotFound("flights")
             }
@@ -592,7 +592,7 @@ final class DiscoveryService {
                 doc.data["followedId"]?.value as? String
             }
         } catch let error as AppwriteError {
-            let message = error.message ?? ""
+            let message = error.message
             if message.contains("could not be found") || message.contains("Collection") {
                 throw DiscoveryError.collectionNotFound("follows")
             }

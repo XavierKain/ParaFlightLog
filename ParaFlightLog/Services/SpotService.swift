@@ -507,7 +507,7 @@ final class SpotService {
             throw SpotError.notSubscribed
         }
 
-        try await databases.deleteDocument(
+        _ = try await databases.deleteDocument(
             databaseId: AppwriteConfig.databaseId,
             collectionId: AppwriteConfig.spotSubscriptionsCollectionId,
             documentId: subscription.id

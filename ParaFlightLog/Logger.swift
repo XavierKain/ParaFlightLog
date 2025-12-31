@@ -114,19 +114,20 @@ final class AppLogger {
 // MARK: - Global Convenience Functions
 
 /// Fonctions globales pour faciliter l'usage (optionnel, pour une migration progressive)
+/// Marquées nonisolated pour être appelables depuis n'importe quel contexte d'acteur
 
-func logDebug(_ message: String, category: LogCategory = .general) {
+nonisolated func logDebug(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.debug(message, category: category)
 }
 
-func logInfo(_ message: String, category: LogCategory = .general) {
+nonisolated func logInfo(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.info(message, category: category)
 }
 
-func logWarning(_ message: String, category: LogCategory = .general) {
+nonisolated func logWarning(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.warning(message, category: category)
 }
 
-func logError(_ message: String, category: LogCategory = .general) {
+nonisolated func logError(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.error(message, category: category)
 }

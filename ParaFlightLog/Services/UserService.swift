@@ -155,7 +155,7 @@ final class UserService {
             logInfo("Profile created for user: \(email)", category: .auth)
             return profile
         } catch let error as AppwriteError {
-            throw UserProfileError.unknown(error.message ?? "Unknown error")
+            throw UserProfileError.unknown(error.message)
         } catch {
             throw UserProfileError.unknown(error.localizedDescription)
         }
@@ -191,7 +191,7 @@ final class UserService {
 
             return nil
         } catch let error as AppwriteError {
-            throw UserProfileError.unknown(error.message ?? "Unknown error")
+            throw UserProfileError.unknown(error.message)
         } catch {
             throw UserProfileError.unknown(error.localizedDescription)
         }
@@ -314,7 +314,7 @@ final class UserService {
 
             logInfo("Profile updated", category: .auth)
         } catch let error as AppwriteError {
-            throw UserProfileError.unknown(error.message ?? "Unknown error")
+            throw UserProfileError.unknown(error.message)
         } catch {
             throw UserProfileError.unknown(error.localizedDescription)
         }
@@ -332,7 +332,7 @@ final class UserService {
 
         // Supprimer l'ancienne photo si elle existe
         if let oldFileId = profile.profilePhotoFileId {
-            try? await storage.deleteFile(
+            _ = try? await storage.deleteFile(
                 bucketId: AppwriteConfig.profilePhotosBucketId,
                 fileId: oldFileId
             )

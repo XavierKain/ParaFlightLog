@@ -158,7 +158,7 @@ final class AuthService {
 
         do {
             // Essayer de supprimer toutes les sessions
-            try await account.deleteSessions()
+            _ = try await account.deleteSessions()
             logInfo("All sessions deleted", category: .auth)
         } catch {
             logError("Failed to delete sessions: \(error)", category: .auth)
@@ -234,7 +234,7 @@ final class AuthService {
             return session.userId
         } catch let error as AppwriteError {
             // Si l'erreur est "session active", essayer de restaurer la session
-            let message = error.message ?? ""
+            let message = error.message
             if message.contains("session") || message.contains("active") || message.contains("Creation of a session is prohibited") {
                 do {
                     let user = try await account.get()
@@ -292,7 +292,7 @@ final class AuthService {
         defer { isLoading = false }
 
         do {
-            try await account.deleteSession(sessionId: "current")
+            _ = try await account.deleteSession(sessionId: "current")
             currentUserId = nil
             currentEmail = nil
             authState = .unauthenticated
@@ -312,7 +312,7 @@ final class AuthService {
         defer { isLoading = false }
 
         do {
-            try await account.createRecovery(
+            _ = try await account.createRecovery(
                 email: email,
                 url: "paraflightlog://reset-password"
             )
@@ -330,7 +330,7 @@ final class AuthService {
         defer { isLoading = false }
 
         do {
-            try await account.updateRecovery(
+            _ = try await account.updateRecovery(
                 userId: userId,
                 secret: secret,
                 password: newPassword
@@ -374,7 +374,7 @@ final class AuthService {
         }
 
         do {
-            try await account.updateName(name: name)
+            _ = try await account.updateName(name: name)
             logInfo("User name updated", category: .auth)
         } catch let error as AppwriteError {
             throw mapAppwriteError(error)
@@ -390,7 +390,7 @@ final class AuthService {
         }
 
         do {
-            try await account.updateEmail(email: email, password: password)
+            _ = try await account.updateEmail(email: email, password: password)
             currentEmail = email
             logInfo("User email updated", category: .auth)
         } catch let error as AppwriteError {
@@ -407,7 +407,7 @@ final class AuthService {
         }
 
         do {
-            try await account.updatePassword(password: newPassword, oldPassword: oldPassword)
+            _ = try await account.updatePassword(password: newPassword, oldPassword: oldPassword)
             logInfo("User password updated", category: .auth)
         } catch let error as AppwriteError {
             throw mapAppwriteError(error)
@@ -419,7 +419,7 @@ final class AuthService {
     // MARK: - Private Helpers
 
     private func mapAppwriteError(_ error: AppwriteError) -> AuthError {
-        let message = error.message ?? "Unknown error"
+        let message = error.message
 
         if message.contains("Invalid credentials") || message.contains("Invalid email") || message.contains("Invalid password") {
             return .invalidCredentials
