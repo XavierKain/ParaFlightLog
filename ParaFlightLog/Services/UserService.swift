@@ -442,10 +442,30 @@ final class UserService {
     // MARK: - Private Helpers
 
     private func parseProfile(from data: [String: Any]) throws -> CloudUserProfile {
-        let jsonData = try JSONSerialization.data(withJSONObject: data)
+        // Sanitize data to ensure all values are JSON-serializable
+        let sanitizedData = sanitizeForJSON(data)
+        let jsonData = try JSONSerialization.data(withJSONObject: sanitizedData)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(CloudUserProfile.self, from: jsonData)
+    }
+
+    /// Converts non-JSON-serializable types (like Date) to JSON-compatible formats
+    private func sanitizeForJSON(_ value: Any) -> Any {
+        if let dict = value as? [String: Any] {
+            return dict.mapValues { sanitizeForJSON($0) }
+        } else if let array = value as? [Any] {
+            return array.map { sanitizeForJSON($0) }
+        } else if let date = value as? Date {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            return formatter.string(from: date)
+        } else if JSONSerialization.isValidJSONObject([value]) || value is String || value is NSNumber || value is NSNull {
+            return value
+        } else {
+            // Fallback: convert to string
+            return String(describing: value)
+        }
     }
 
     /// Calcule le niveau basé sur l'XP
