@@ -368,6 +368,7 @@ struct FlightDetailView: View {
     @Environment(\.modelContext) private var modelContext
     let flight: Flight
     @State private var showingEditSheet = false
+    @State private var showingFullScreenMap = false
 
     // Calcul de la région pour afficher toute la trace GPS
     private var mapRegion: MKCoordinateRegion {
@@ -404,7 +405,7 @@ struct FlightDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Map avec trace GPS ou simple marker
+                    // Map avec trace GPS ou simple marker (cliquable pour plein écran)
                     if flight.gpsTrack != nil || (flight.latitude != nil && flight.longitude != nil) {
                         Map(initialPosition: .region(mapRegion)) {
                             // Afficher la trace GPS si disponible
@@ -434,6 +435,18 @@ struct FlightDetailView: View {
                         }
                         .frame(height: 220)
                         .clipShape(RoundedRectangle(cornerRadius: 16))
+                        .overlay(alignment: .topTrailing) {
+                            // Icône pour indiquer que la carte est cliquable
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .font(.caption)
+                                .padding(6)
+                                .background(.ultraThinMaterial)
+                                .clipShape(Circle())
+                                .padding(8)
+                        }
+                        .onTapGesture {
+                            showingFullScreenMap = true
+                        }
                         .padding(.horizontal)
 
                         // Info sur la trace GPS
@@ -444,6 +457,10 @@ struct FlightDetailView: View {
                                 Text("\(track.count) points GPS enregistrés")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
+                                Spacer()
+                                Text(String(localized: "Toucher pour agrandir"))
+                                    .font(.caption2)
+                                    .foregroundStyle(.tertiary)
                             }
                             .padding(.horizontal)
                         }
@@ -645,6 +662,9 @@ struct FlightDetailView: View {
             }
             .sheet(isPresented: $showingEditSheet) {
                 EditFlightView(flight: flight)
+            }
+            .fullScreenCover(isPresented: $showingFullScreenMap) {
+                FullScreenMapView(flight: flight, initialRegion: mapRegion)
             }
         }
     }
@@ -1348,6 +1368,165 @@ struct MapCoordinatePicker: View {
                     ))
                 }
             }
+        }
+    }
+}
+
+// MARK: - FullScreenMapView (Carte plein écran pour analyser la trace GPS)
+
+struct FullScreenMapView: View {
+    @Environment(\.dismiss) private var dismiss
+    let flight: Flight
+    let initialRegion: MKCoordinateRegion
+
+    @State private var mapStyle: MapStyle = .standard(elevation: .realistic)
+    @State private var selectedMapStyle: Int = 0  // 0 = standard, 1 = satellite, 2 = hybrid
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Map(initialPosition: .region(initialRegion)) {
+                    // Afficher la trace GPS si disponible
+                    if let track = flight.gpsTrack, track.count >= 2 {
+                        MapPolyline(coordinates: track.map {
+                            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+                        })
+                        .stroke(.blue, lineWidth: 4)
+
+                        // Marker de départ (vert)
+                        if let first = track.first {
+                            Annotation("Départ", coordinate: CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude)) {
+                                VStack(spacing: 2) {
+                                    Image(systemName: "flag.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.white)
+                                        .padding(8)
+                                        .background(.green)
+                                        .clipShape(Circle())
+                                    if let alt = first.altitude {
+                                        Text("\(Int(alt))m")
+                                            .font(.caption2)
+                                            .fontWeight(.semibold)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(.green)
+                                            .foregroundStyle(.white)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
+                        }
+
+                        // Marker d'arrivée (rouge)
+                        if let last = track.last {
+                            Annotation("Arrivée", coordinate: CLLocationCoordinate2D(latitude: last.latitude, longitude: last.longitude)) {
+                                VStack(spacing: 2) {
+                                    Image(systemName: "flag.checkered")
+                                        .font(.title2)
+                                        .foregroundStyle(.white)
+                                        .padding(8)
+                                        .background(.red)
+                                        .clipShape(Circle())
+                                    if let alt = last.altitude {
+                                        Text("\(Int(alt))m")
+                                            .font(.caption2)
+                                            .fontWeight(.semibold)
+                                            .padding(.horizontal, 6)
+                                            .padding(.vertical, 2)
+                                            .background(.red)
+                                            .foregroundStyle(.white)
+                                            .clipShape(Capsule())
+                                    }
+                                }
+                            }
+                        }
+                    } else if let lat = flight.latitude, let lon = flight.longitude {
+                        Marker(flight.spotName ?? "Vol", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+                            .tint(.blue)
+                    }
+                }
+                .mapStyle(mapStyle)
+                .mapControls {
+                    MapCompass()
+                    MapScaleView()
+                }
+                .ignoresSafeArea(edges: .bottom)
+
+                // Contrôles en bas
+                VStack {
+                    Spacer()
+
+                    // Infos du vol
+                    HStack(spacing: 16) {
+                        if let track = flight.gpsTrack, !track.isEmpty {
+                            Label("\(track.count) pts", systemImage: "point.topleft.down.to.point.bottomright.curvepath.fill")
+                                .font(.caption)
+                        }
+                        if let distance = flight.totalDistance {
+                            Label(formatDistance(distance), systemImage: "arrow.triangle.swap")
+                                .font(.caption)
+                        }
+                        if let maxAlt = flight.maxAltitude {
+                            Label("\(Int(maxAlt))m max", systemImage: "arrow.up")
+                                .font(.caption)
+                        }
+                        Text(flight.durationFormatted)
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .padding(.bottom, 8)
+
+                    // Sélecteur de style de carte
+                    Picker("Style", selection: $selectedMapStyle) {
+                        Text("Standard").tag(0)
+                        Text("Satellite").tag(1)
+                        Text("Hybride").tag(2)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .padding(.bottom, 16)
+                    .onChange(of: selectedMapStyle) { _, newValue in
+                        withAnimation {
+                            switch newValue {
+                            case 0:
+                                mapStyle = .standard(elevation: .realistic)
+                            case 1:
+                                mapStyle = .imagery(elevation: .realistic)
+                            case 2:
+                                mapStyle = .hybrid(elevation: .realistic)
+                            default:
+                                mapStyle = .standard(elevation: .realistic)
+                            }
+                        }
+                    }
+                }
+            }
+            .navigationTitle(flight.spotName ?? String(localized: "Trace GPS"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+    }
+
+    private func formatDistance(_ distance: Double) -> String {
+        if distance >= 1000 {
+            return String(format: "%.1f km", distance / 1000)
+        } else {
+            return "\(Int(distance)) m"
         }
     }
 }

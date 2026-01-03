@@ -26,7 +26,7 @@ struct FlightSession: Codable {
     var maxSpeed: Double
     var maxGForce: Double
 
-    // Trace GPS (limitée aux 500 derniers points pour économiser la mémoire)
+    // Trace GPS (limitée aux 1000 derniers points pour économiser la mémoire)
     var gpsTrackPoints: [GPSTrackPoint]
 
     // Métadonnées
@@ -70,9 +70,9 @@ final class FlightSessionManager {
     }
 
     // Limite de points GPS pour éviter les problèmes mémoire
-    // 500 points * 5 secondes = ~42 minutes de vol
+    // 1000 points * 2 secondes = ~33 minutes de vol
     // Pour des vols plus longs, on garde un point sur 2
-    private let maxGPSPoints = 500
+    private let maxGPSPoints = 1000
 
     private init() {
         // Charger une éventuelle session récupérable au démarrage

@@ -223,6 +223,9 @@ struct WelcomeAuthView: View {
 
         do {
             try await authService.signInWithOAuth(provider: provider)
+
+            // Après OAuth, vérifier/créer le profil utilisateur dans la collection users
+            await ensureUserProfileExists()
         } catch {
             logError("OAuth \(provider) failed: \(error)", category: .auth)
             errorMessage = "Connexion \(provider.rawValue.capitalized) échouée. Veuillez réessayer.".localized
@@ -231,6 +234,52 @@ struct WelcomeAuthView: View {
 
         isLoadingOAuth = false
         loadingProvider = nil
+    }
+
+    /// S'assure qu'un profil utilisateur existe dans la collection users après connexion
+    private func ensureUserProfileExists() async {
+        guard let userId = authService.currentUserId,
+              let email = authService.currentEmail else {
+            return
+        }
+
+        do {
+            // Vérifier si le profil existe déjà
+            if let _ = try await UserService.shared.getCurrentProfile() {
+                logInfo("Profile already exists for user: \(email)", category: .auth)
+                return
+            }
+        } catch {
+            // Le profil n'existe pas, on va le créer
+            logInfo("Profile not found, creating one for: \(email)", category: .auth)
+        }
+
+        // Créer le profil
+        let displayName = email.components(separatedBy: "@").first ?? "Pilote"
+        let username = generateUsername(from: email)
+
+        do {
+            _ = try await UserService.shared.createProfile(
+                authUserId: userId,
+                email: email,
+                displayName: displayName,
+                username: username
+            )
+            logInfo("Profile created for user: \(email)", category: .auth)
+        } catch {
+            logError("Failed to create profile: \(error.localizedDescription)", category: .auth)
+        }
+    }
+
+    private func generateUsername(from email: String) -> String {
+        let base = email
+            .components(separatedBy: "@").first?
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .filter { $0.isLetter || $0.isNumber || $0 == "_" } ?? "pilot"
+
+        let randomSuffix = Int.random(in: 100...999)
+        return "\(base)\(randomSuffix)"
     }
 }
 
@@ -410,6 +459,10 @@ struct SignInView: View {
 
         do {
             _ = try await authService.signIn(email: email, password: password)
+
+            // Après connexion, s'assurer que le profil utilisateur existe
+            await ensureUserProfileExists()
+
             await MainActor.run {
                 dismiss()
             }
@@ -419,6 +472,49 @@ struct SignInView: View {
                 isLoading = false
             }
         }
+    }
+
+    /// S'assure qu'un profil utilisateur existe dans la collection users après connexion
+    private func ensureUserProfileExists() async {
+        guard let userId = authService.currentUserId,
+              let email = authService.currentEmail else {
+            return
+        }
+
+        do {
+            // Vérifier si le profil existe déjà
+            if let _ = try await UserService.shared.getCurrentProfile() {
+                return
+            }
+        } catch {
+            // Le profil n'existe pas
+        }
+
+        // Créer le profil
+        let displayName = email.components(separatedBy: "@").first ?? "Pilote"
+        let username = generateUsername(from: email)
+
+        do {
+            _ = try await UserService.shared.createProfile(
+                authUserId: userId,
+                email: email,
+                displayName: displayName,
+                username: username
+            )
+        } catch {
+            logError("Failed to create profile: \(error.localizedDescription)", category: .auth)
+        }
+    }
+
+    private func generateUsername(from email: String) -> String {
+        let base = email
+            .components(separatedBy: "@").first?
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .filter { $0.isLetter || $0.isNumber || $0 == "_" } ?? "pilot"
+
+        let randomSuffix = Int.random(in: 100...999)
+        return "\(base)\(randomSuffix)"
     }
 }
 

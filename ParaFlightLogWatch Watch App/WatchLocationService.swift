@@ -56,15 +56,15 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     // Trace GPS du vol en cours - protégé par gpsQueue pour thread safety
     private var gpsTrackPoints: [GPSTrackPoint] = []
     private var lastTrackPointTime: Date?
-    private let trackPointInterval: TimeInterval = 5.0  // Un point toutes les 5 secondes
+    private let trackPointInterval: TimeInterval = 2.0  // Un point toutes les 2 secondes (meilleure précision trace)
     private let gpsQueue = DispatchQueue(label: "com.paraflightlog.gpstrack", qos: .userInitiated)
 
     // Limite de points GPS en mémoire pour éviter les crashes sur vols longs
-    // 500 points max * 5 secondes = ~42 minutes de vol détaillé
-    // La compaction démarre à 400 points pour garder de la marge
-    // Après compaction, on peut stocker ~2h de vol avec résolution dégradée progressive
-    private let maxGPSPointsInMemory = 500
-    private let compactionThreshold = 400  // Déclencher la compaction à 80% de la limite
+    // 1000 points max * 2 secondes = ~33 minutes de vol détaillé
+    // La compaction démarre à 800 points pour garder de la marge
+    // Après compaction, on peut stocker ~1h+ de vol avec résolution dégradée progressive
+    private let maxGPSPointsInMemory = 1000
+    private let compactionThreshold = 800  // Déclencher la compaction à 80% de la limite
 
     override init() {
         super.init()
@@ -83,7 +83,10 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         manager.delegate = self
         // Précision maximale pour le tracking pendant les vols
         manager.desiredAccuracy = kCLLocationAccuracyBest
-        manager.distanceFilter = 5.0  // Mise à jour tous les 5 mètres
+        // IMPORTANT: Utiliser kCLDistanceFilterNone pour recevoir TOUTES les mises à jour GPS
+        // Sinon, en vol stationnaire (thermique, soaring), on ne reçoit pas de mises à jour
+        // et la trace GPS est très incomplète
+        manager.distanceFilter = kCLDistanceFilterNone
         // Note: allowsBackgroundLocationUpdates n'est pas nécessaire sur watchOS
         // Les updates continuent automatiquement pendant que l'app est active
         _locationManager = manager
@@ -386,22 +389,30 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
                 // Distance parcourue depuis la dernière position
                 let distance = location.distance(from: previous)
 
-                // Filtres pour éviter le bruit GPS :
-                // 1. Distance minimale de 3m (le GPS peut fluctuer de 1-3m à l'arrêt)
-                // 2. Distance maximale de 100m entre 2 points (éviter les sauts GPS)
-                // 3. Précision horizontale acceptable (< 20m)
-                // 4. Vitesse GPS cohérente (> 0.5 m/s = 1.8 km/h, sinon considéré à l'arrêt)
-                let hasGoodAccuracy = location.horizontalAccuracy > 0 && location.horizontalAccuracy < 20
-                let isMoving = location.speed > 0.5  // Plus de 1.8 km/h
-                let isValidDistance = distance >= 3 && distance < 100
+                // Temps écoulé depuis la dernière position (pour filtrer les sauts temporels)
+                let timeDelta = location.timestamp.timeIntervalSince(previous.timestamp)
 
-                if isValidDistance && hasGoodAccuracy && isMoving {
+                // Filtres pour éviter le bruit GPS (ASSOUPLIS pour parapente) :
+                // 1. Distance minimale de 2m (le GPS peut fluctuer de 1-2m à l'arrêt)
+                // 2. Distance maximale de 200m entre 2 points (éviter les sauts GPS majeurs)
+                // 3. Précision horizontale acceptable (< 50m - en montagne c'est souvent 20-40m)
+                // 4. Temps entre 2 points raisonnable (< 30s, sinon c'est un gap)
+                let hasAcceptableAccuracy = location.horizontalAccuracy > 0 && location.horizontalAccuracy < 50
+                let isValidDistance = distance >= 2 && distance < 200
+                let isValidTimeDelta = timeDelta > 0 && timeDelta < 30
+
+                // Calculer la vitesse implicite pour détecter les sauts GPS aberrants
+                // Si on "parcourt" 100m en 1s, c'est impossible en parapente (360 km/h)
+                let implicitSpeed = timeDelta > 0 ? distance / timeDelta : 0
+                let isRealisticSpeed = implicitSpeed < 30  // < 108 km/h max réaliste
+
+                if isValidDistance && hasAcceptableAccuracy && isValidTimeDelta && isRealisticSpeed {
                     totalDistance += distance
                 }
 
                 // Vitesse max (location.speed est en m/s, -1 si invalide)
                 let speed = location.speed
-                if speed > 0 && speed < 100 {  // Filtrer les vitesses aberrantes (< 360 km/h)
+                if speed > 0 && speed < 30 {  // Filtrer les vitesses aberrantes (< 108 km/h)
                     if speed > maxSpeed {
                         maxSpeed = speed
                     }

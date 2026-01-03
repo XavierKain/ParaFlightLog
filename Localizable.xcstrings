@@ -501,6 +501,9 @@
     "%lld points GPS enregistrés" : {
 
     },
+    "%lld pts" : {
+
+    },
     "%lld spot détecté" : {
       "localizations" : {
         "en" : {
@@ -661,6 +664,9 @@
 
     },
     "%lldm" : {
+
+    },
+    "%lldm max" : {
 
     },
     "%lldmin" : {
@@ -2564,6 +2570,9 @@
         }
       }
     },
+    "Hybride" : {
+
+    },
     "Import en cours..." : {
       "localizations" : {
         "en" : {
@@ -3466,6 +3475,9 @@
         }
       }
     },
+    "Satellite" : {
+
+    },
     "Sauvegarder" : {
       "localizations" : {
         "en" : {
@@ -3626,6 +3638,9 @@
         }
       }
     },
+    "Standard" : {
+
+    },
     "Start" : {
       "localizations" : {
         "en" : {
@@ -3706,6 +3721,9 @@
           }
         }
       }
+    },
+    "Style" : {
+
     },
     "Supprimer" : {
       "localizations" : {
@@ -4043,6 +4061,9 @@
         }
       }
     },
+    "Toucher pour agrandir" : {
+
+    },
     "Toutes" : {
       "localizations" : {
         "en" : {
@@ -4058,6 +4079,9 @@
           }
         }
       }
+    },
+    "Trace GPS" : {
+
     },
     "Type" : {
       "localizations" : {

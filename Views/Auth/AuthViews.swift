@@ -92,6 +92,10 @@ struct SignInView: View {
 
         do {
             try await authService.signIn(email: email, password: password)
+
+            // Après connexion, s'assurer que le profil utilisateur existe
+            await ensureUserProfileExists()
+
             dismiss()
         } catch let error as AuthError {
             errorMessage = error.localizedDescription
@@ -100,6 +104,49 @@ struct SignInView: View {
         }
 
         isLoading = false
+    }
+
+    /// S'assure qu'un profil utilisateur existe dans la collection users après connexion
+    private func ensureUserProfileExists() async {
+        guard let userId = authService.currentUserId,
+              let email = authService.currentEmail else {
+            return
+        }
+
+        do {
+            // Vérifier si le profil existe déjà
+            if let _ = try await UserService.shared.getCurrentProfile() {
+                return
+            }
+        } catch {
+            // Le profil n'existe pas
+        }
+
+        // Créer le profil
+        let displayName = email.components(separatedBy: "@").first ?? "Pilote"
+        let username = generateUsername(from: email)
+
+        do {
+            _ = try await UserService.shared.createProfile(
+                authUserId: userId,
+                email: email,
+                displayName: displayName,
+                username: username
+            )
+        } catch {
+            // Silently fail - profile will be created later if needed
+        }
+    }
+
+    private func generateUsername(from email: String) -> String {
+        let base = email
+            .components(separatedBy: "@").first?
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .filter { $0.isLetter || $0.isNumber || $0 == "_" } ?? "pilot"
+
+        let randomSuffix = Int.random(in: 100...999)
+        return "\(base)\(randomSuffix)"
     }
 }
 
