@@ -44,7 +44,7 @@ enum UserProfileError: LocalizedError {
 
 // MARK: - User Profile Model
 
-struct CloudUserProfile: Codable, Identifiable, Equatable {
+struct CloudUserProfile: Identifiable, Equatable {
     let id: String
     let authUserId: String
     let email: String
@@ -68,14 +68,114 @@ struct CloudUserProfile: Codable, Identifiable, Equatable {
     let createdAt: Date
     var lastActiveAt: Date
 
-    enum CodingKeys: String, CodingKey {
-        case id = "$id"
-        case authUserId, email, displayName, username, bio
-        case profilePhotoFileId, homeLocationLat, homeLocationLon, homeLocationName
-        case pilotWeight, isPremium, premiumUntil, notificationsEnabled
-        case totalFlights, totalFlightSeconds
-        case xpTotal, level, currentStreak, longestStreak
-        case createdAt, lastActiveAt
+    /// Initialise depuis un dictionnaire Appwrite avec gestion des valeurs manquantes
+    init(from data: [String: Any]) throws {
+        guard let id = data["$id"] as? String else {
+            throw UserProfileError.unknown("Missing $id field")
+        }
+        guard let authUserId = data["authUserId"] as? String else {
+            throw UserProfileError.unknown("Missing authUserId field")
+        }
+
+        self.id = id
+        self.authUserId = authUserId
+        self.email = data["email"] as? String ?? ""
+        self.displayName = data["displayName"] as? String ?? "Pilote"
+        self.username = data["username"] as? String ?? "pilot"
+        self.bio = data["bio"] as? String
+        self.profilePhotoFileId = data["profilePhotoFileId"] as? String
+        self.homeLocationLat = data["homeLocationLat"] as? Double
+        self.homeLocationLon = data["homeLocationLon"] as? Double
+        self.homeLocationName = data["homeLocationName"] as? String
+        self.pilotWeight = data["pilotWeight"] as? Double
+
+        // Booléens avec valeurs par défaut
+        self.isPremium = data["isPremium"] as? Bool ?? false
+        self.notificationsEnabled = data["notificationsEnabled"] as? Bool ?? true
+
+        // Entiers avec valeurs par défaut
+        self.totalFlights = data["totalFlights"] as? Int ?? 0
+        self.totalFlightSeconds = data["totalFlightSeconds"] as? Int ?? 0
+        self.xpTotal = data["xpTotal"] as? Int ?? 0
+        self.level = data["level"] as? Int ?? 1
+        self.currentStreak = data["currentStreak"] as? Int ?? 0
+        self.longestStreak = data["longestStreak"] as? Int ?? 0
+
+        // Dates - parser depuis string ISO8601 ou utiliser Date()
+        if let premiumUntilStr = data["premiumUntil"] as? String {
+            self.premiumUntil = ISO8601DateFormatter().date(from: premiumUntilStr)
+        } else {
+            self.premiumUntil = nil
+        }
+
+        if let createdAtStr = data["createdAt"] as? String,
+           let createdAt = ISO8601DateFormatter().date(from: createdAtStr) {
+            self.createdAt = createdAt
+        } else if let createdAt = data["$createdAt"] as? String,
+                  let date = ISO8601DateFormatter().date(from: createdAt) {
+            self.createdAt = date
+        } else {
+            self.createdAt = Date()
+        }
+
+        if let lastActiveAtStr = data["lastActiveAt"] as? String,
+           let lastActiveAt = ISO8601DateFormatter().date(from: lastActiveAtStr) {
+            self.lastActiveAt = lastActiveAt
+        } else if let updatedAt = data["$updatedAt"] as? String,
+                  let date = ISO8601DateFormatter().date(from: updatedAt) {
+            self.lastActiveAt = date
+        } else {
+            self.lastActiveAt = Date()
+        }
+    }
+
+    /// Initialisation directe (pour créer un profil local)
+    init(
+        id: String,
+        authUserId: String,
+        email: String,
+        displayName: String,
+        username: String,
+        bio: String? = nil,
+        profilePhotoFileId: String? = nil,
+        homeLocationLat: Double? = nil,
+        homeLocationLon: Double? = nil,
+        homeLocationName: String? = nil,
+        pilotWeight: Double? = nil,
+        isPremium: Bool = false,
+        premiumUntil: Date? = nil,
+        notificationsEnabled: Bool = true,
+        totalFlights: Int = 0,
+        totalFlightSeconds: Int = 0,
+        xpTotal: Int = 0,
+        level: Int = 1,
+        currentStreak: Int = 0,
+        longestStreak: Int = 0,
+        createdAt: Date = Date(),
+        lastActiveAt: Date = Date()
+    ) {
+        self.id = id
+        self.authUserId = authUserId
+        self.email = email
+        self.displayName = displayName
+        self.username = username
+        self.bio = bio
+        self.profilePhotoFileId = profilePhotoFileId
+        self.homeLocationLat = homeLocationLat
+        self.homeLocationLon = homeLocationLon
+        self.homeLocationName = homeLocationName
+        self.pilotWeight = pilotWeight
+        self.isPremium = isPremium
+        self.premiumUntil = premiumUntil
+        self.notificationsEnabled = notificationsEnabled
+        self.totalFlights = totalFlights
+        self.totalFlightSeconds = totalFlightSeconds
+        self.xpTotal = xpTotal
+        self.level = level
+        self.currentStreak = currentStreak
+        self.longestStreak = longestStreak
+        self.createdAt = createdAt
+        self.lastActiveAt = lastActiveAt
     }
 }
 
@@ -108,17 +208,30 @@ final class UserService {
     /// Crée un profil utilisateur après inscription
     @discardableResult
     func createProfile(authUserId: String, email: String, displayName: String, username: String) async throws -> CloudUserProfile {
+        logInfo("createProfile: Starting for authUserId=\(authUserId), email=\(email)", category: .auth)
+        logInfo("createProfile: Using database=\(AppwriteConfig.databaseId), collection=\(AppwriteConfig.usersCollectionId)", category: .auth)
+
         isLoading = true
         defer { isLoading = false }
 
         // Vérifier que le username est valide
         guard isValidUsername(username) else {
+            logError("createProfile: Invalid username format: \(username)", category: .auth)
             throw UserProfileError.invalidUsername
         }
 
         // Vérifier que le username n'est pas déjà pris
-        guard try await isUsernameAvailable(username) else {
-            throw UserProfileError.usernameAlreadyTaken
+        do {
+            let isAvailable = try await isUsernameAvailable(username)
+            if !isAvailable {
+                logError("createProfile: Username already taken: \(username)", category: .auth)
+                throw UserProfileError.usernameAlreadyTaken
+            }
+        } catch let error as UserProfileError {
+            throw error
+        } catch {
+            logError("createProfile: Error checking username availability: \(error.localizedDescription)", category: .auth)
+            // Continue anyway - le serveur vérifiera l'unicité
         }
 
         let now = Date()
@@ -140,6 +253,8 @@ final class UserService {
             "lastActiveAt": now.ISO8601Format()
         ]
 
+        logInfo("createProfile: Sending data to Appwrite...", category: .auth)
+
         do {
             let document = try await databases.createDocument(
                 databaseId: AppwriteConfig.databaseId,
@@ -148,15 +263,21 @@ final class UserService {
                 data: profileData
             )
 
+            logInfo("createProfile: Document created with ID=\(document.id)", category: .auth)
+
             let profile = try parseProfile(from: document.data)
             currentUserProfile = profile
             profileCache[profile.id] = profile
 
-            logInfo("Profile created for user: \(email)", category: .auth)
+            logInfo("createProfile: Profile created successfully for user: \(email)", category: .auth)
             return profile
         } catch let error as AppwriteError {
+            logError("createProfile: Appwrite error - \(error.message)", category: .auth)
+            logError("createProfile: Error type - \(error.type ?? "unknown")", category: .auth)
+            logError("createProfile: This usually means the 'users' collection doesn't exist or has wrong attributes/permissions", category: .auth)
             throw UserProfileError.unknown(error.message)
         } catch {
+            logError("createProfile: Unknown error - \(error.localizedDescription)", category: .auth)
             throw UserProfileError.unknown(error.localizedDescription)
         }
     }
@@ -166,8 +287,12 @@ final class UserService {
     /// Récupère le profil de l'utilisateur connecté
     func getCurrentProfile() async throws -> CloudUserProfile? {
         guard let authUserId = AuthService.shared.currentUserId else {
+            logWarning("getCurrentProfile: No authUserId available", category: .auth)
             return nil
         }
+
+        logInfo("getCurrentProfile: Looking for profile with authUserId=\(authUserId)", category: .auth)
+        logInfo("getCurrentProfile: Using database=\(AppwriteConfig.databaseId), collection=\(AppwriteConfig.usersCollectionId)", category: .auth)
 
         isLoading = true
         defer { isLoading = false }
@@ -182,17 +307,25 @@ final class UserService {
                 ]
             )
 
+            logInfo("getCurrentProfile: Found \(documents.documents.count) document(s)", category: .auth)
+
             if let doc = documents.documents.first {
+                logInfo("getCurrentProfile: Parsing document \(doc.id)", category: .auth)
                 let profile = try parseProfile(from: doc.data)
                 currentUserProfile = profile
                 profileCache[profile.id] = profile
+                logInfo("getCurrentProfile: Profile loaded successfully for \(profile.email)", category: .auth)
                 return profile
             }
 
+            logInfo("getCurrentProfile: No profile found for authUserId=\(authUserId)", category: .auth)
             return nil
         } catch let error as AppwriteError {
+            logError("getCurrentProfile: Appwrite error - \(error.message)", category: .auth)
+            logError("getCurrentProfile: Error type - \(error.type ?? "unknown")", category: .auth)
             throw UserProfileError.unknown(error.message)
         } catch {
+            logError("getCurrentProfile: Unknown error - \(error.localizedDescription)", category: .auth)
             throw UserProfileError.unknown(error.localizedDescription)
         }
     }
@@ -394,6 +527,15 @@ final class UserService {
 
     // MARK: - Stats Update
 
+    /// Ajoute de l'XP à l'utilisateur (pour les badges gagnés, etc.)
+    func addXP(_ xp: Int) async {
+        do {
+            try await updateStats(addXP: xp)
+        } catch {
+            logWarning("Failed to add XP: \(error.localizedDescription)", category: .auth)
+        }
+    }
+
     /// Met à jour les statistiques de l'utilisateur (appelé après un vol)
     func updateStats(addFlights: Int = 0, addSeconds: Int = 0, addXP: Int = 0) async throws {
         guard let profile = currentUserProfile else {
@@ -442,30 +584,18 @@ final class UserService {
     // MARK: - Private Helpers
 
     private func parseProfile(from data: [String: Any]) throws -> CloudUserProfile {
-        // Sanitize data to ensure all values are JSON-serializable
-        let sanitizedData = sanitizeForJSON(data)
-        let jsonData = try JSONSerialization.data(withJSONObject: sanitizedData)
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try decoder.decode(CloudUserProfile.self, from: jsonData)
-    }
-
-    /// Converts non-JSON-serializable types (like Date) to JSON-compatible formats
-    private func sanitizeForJSON(_ value: Any) -> Any {
-        if let dict = value as? [String: Any] {
-            return dict.mapValues { sanitizeForJSON($0) }
-        } else if let array = value as? [Any] {
-            return array.map { sanitizeForJSON($0) }
-        } else if let date = value as? Date {
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-            return formatter.string(from: date)
-        } else if JSONSerialization.isValidJSONObject([value]) || value is String || value is NSNumber || value is NSNull {
-            return value
-        } else {
-            // Fallback: convert to string
-            return String(describing: value)
+        // Convertir les valeurs AnyCodable en types natifs
+        var nativeData: [String: Any] = [:]
+        for (key, value) in data {
+            if let anyCodable = value as? AnyCodable {
+                nativeData[key] = anyCodable.value
+            } else {
+                nativeData[key] = value
+            }
         }
+
+        // Utiliser le constructeur direct qui gère les valeurs manquantes
+        return try CloudUserProfile(from: nativeData)
     }
 
     /// Calcule le niveau basé sur l'XP

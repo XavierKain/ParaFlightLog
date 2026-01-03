@@ -8,7 +8,10 @@
 
 import SwiftUI
 import SwiftData
+import Appwrite
 import AppwriteEnums
+import NIOCore
+import NIOFoundationCompat
 
 // MARK: - AuthContainerView (Gestion de l'état d'authentification)
 
@@ -16,6 +19,8 @@ import AppwriteEnums
 /// selon l'état d'authentification de l'utilisateur
 struct AuthContainerView: View {
     @Environment(AuthService.self) private var authService
+    @State private var isLoadingProfile = false
+    @State private var profileLoadAttempted = false
 
     var body: some View {
         Group {
@@ -27,8 +32,28 @@ struct AuthContainerView: View {
                         await authService.restoreSession()
                     }
 
-            case .authenticated, .skipped:
-                // Utilisateur connecté ou mode hors-ligne - afficher l'app principale
+            case .authenticated:
+                // Utilisateur connecté - charger le profil puis afficher l'app
+                if isLoadingProfile {
+                    VStack(spacing: 16) {
+                        ProgressView()
+                        Text("Chargement du profil...".localized)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    ContentView()
+                        .task {
+                            // Ne charger le profil qu'une fois
+                            if !profileLoadAttempted {
+                                profileLoadAttempted = true
+                                await loadOrCreateProfile()
+                            }
+                        }
+                }
+
+            case .skipped:
+                // Mode hors-ligne - afficher l'app principale directement
                 ContentView()
 
             case .unauthenticated:
@@ -36,6 +61,72 @@ struct AuthContainerView: View {
                 WelcomeAuthView()
             }
         }
+        .onChange(of: authService.authState) { oldValue, newValue in
+            // Réinitialiser quand l'état d'auth change
+            if oldValue != newValue {
+                profileLoadAttempted = false
+            }
+        }
+    }
+
+    /// Charge ou crée le profil utilisateur après authentification
+    private func loadOrCreateProfile() async {
+        // Si le profil est déjà chargé, ne rien faire
+        if UserService.shared.currentUserProfile != nil {
+            logInfo("Profile already loaded in memory", category: .auth)
+            return
+        }
+
+        guard let userId = authService.currentUserId else {
+            logWarning("Cannot load profile: missing userId", category: .auth)
+            return
+        }
+
+        let email = authService.currentEmail ?? "user@paraflightlog.app"
+
+        isLoadingProfile = true
+        defer { isLoadingProfile = false }
+
+        do {
+            // Essayer de charger le profil existant
+            if let profile = try await UserService.shared.getCurrentProfile() {
+                logInfo("Profile loaded for user: \(profile.email)", category: .auth)
+                return
+            }
+
+            // Le profil n'existe pas, le créer
+            logInfo("Profile not found in Appwrite, creating one for: \(email)", category: .auth)
+            let displayName = email.components(separatedBy: "@").first ?? "Pilote"
+            let username = generateUsernameForAuth(from: email)
+
+            _ = try await UserService.shared.createProfile(
+                authUserId: userId,
+                email: email,
+                displayName: displayName,
+                username: username
+            )
+            logInfo("Profile created successfully for user: \(email)", category: .auth)
+
+        } catch is CancellationError {
+            // Navigation normale - ignorer silencieusement
+            return
+        } catch {
+            // Log l'erreur détaillée
+            logError("Failed to load/create profile: \(error.localizedDescription)", category: .auth)
+            // L'utilisateur pourra toujours utiliser l'app en mode local
+            // Le profil sera retenté lors de l'accès à l'onglet Profil
+        }
+    }
+
+    private func generateUsernameForAuth(from email: String) -> String {
+        let base = email
+            .components(separatedBy: "@").first?
+            .lowercased()
+            .replacingOccurrences(of: " ", with: "_")
+            .filter { $0.isLetter || $0.isNumber || $0 == "_" } ?? "pilot"
+
+        let randomSuffix = Int.random(in: 100...999)
+        return "\(base)\(randomSuffix)"
     }
 }
 
@@ -781,6 +872,32 @@ struct ProfileView: View {
                         .padding(.vertical, 8)
                     }
 
+                    // Gamification - Niveau et badges
+                    Section("Progression".localized) {
+                        // Barre de progression niveau
+                        LevelProgressView(level: profile.level, xpTotal: profile.xpTotal)
+                            .padding(.vertical, 4)
+
+                        // Badges obtenus
+                        NavigationLink {
+                            BadgesView()
+                        } label: {
+                            HStack {
+                                Label("Badges".localized, systemImage: "medal.fill")
+                                Spacer()
+                                Text("\(BadgeService.shared.userBadges.count)")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+
+                        // Classements
+                        NavigationLink {
+                            LeaderboardsView()
+                        } label: {
+                            Label("Classements".localized, systemImage: "trophy.fill")
+                        }
+                    }
+
                     // Synchronisation Cloud
                     Section {
                         SyncStatusView(status: syncStatus)
@@ -1027,17 +1144,20 @@ struct ProfileView: View {
             if let profile = try await UserService.shared.getCurrentProfile() {
                 await MainActor.run {
                     userProfile = profile
+                    logInfo("Cloud profile loaded successfully: \(profile.email)", category: .auth)
                 }
                 return
             }
         } catch {
             // La collection n'existe peut-être pas encore ou autre erreur
             logError("Failed to load cloud profile: \(error.localizedDescription)", category: .auth)
+            logError("Make sure the 'users' collection exists in Appwrite with correct permissions", category: .auth)
         }
 
         // Profil cloud non trouvé ou erreur - essayer de le créer automatiquement
-        if let userId = authService.currentUserId, let email = authService.currentEmail {
-            logInfo("Creating cloud profile...", category: .auth)
+        if let userId = authService.currentUserId {
+            let email = authService.currentEmail ?? "user@paraflightlog.app"
+            logInfo("Attempting to create cloud profile for: \(email)", category: .auth)
             let username = generateUsername(from: email)
             let displayName = email.components(separatedBy: "@").first ?? "Pilote"
 
@@ -1050,16 +1170,20 @@ struct ProfileView: View {
                 )
                 await MainActor.run {
                     userProfile = newProfile
+                    logInfo("Cloud profile created successfully: \(newProfile.email)", category: .auth)
                 }
                 return
             } catch {
                 logError("Failed to create cloud profile: \(error.localizedDescription)", category: .auth)
+                logError("Check Appwrite console for collection 'users' configuration", category: .auth)
             }
         }
 
         // Fallback: créer un profil local temporaire
+        // IMPORTANT: Ce profil ne permettra PAS la synchronisation cloud
         await MainActor.run {
             createLocalFallbackProfile()
+            logWarning("Using local fallback profile - cloud sync will NOT work until Appwrite 'users' collection is configured", category: .auth)
         }
     }
 
@@ -1133,53 +1257,156 @@ struct ProfileView: View {
     }
 }
 
+// MARK: - ProfilePhotoView
+
+/// Vue qui affiche la photo de profil depuis Appwrite ou l'initiale en fallback
+struct ProfilePhotoView: View {
+    let fileId: String?
+    let displayName: String
+    let size: CGFloat
+
+    @State private var loadedImage: UIImage?
+    @State private var isLoading = false
+
+    var body: some View {
+        ZStack {
+            if let image = loadedImage {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: size, height: size)
+                    .clipShape(Circle())
+            } else {
+                Circle()
+                    .fill(Color.blue.opacity(0.15))
+                    .frame(width: size, height: size)
+                    .overlay {
+                        if isLoading {
+                            ProgressView()
+                                .scaleEffect(0.7)
+                        } else {
+                            Text(displayName.prefix(1).uppercased())
+                                .font(size > 60 ? .largeTitle : .title2)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.blue)
+                        }
+                    }
+            }
+        }
+        .task(id: fileId) {
+            await loadImage()
+        }
+    }
+
+    private func loadImage() async {
+        guard let fileId = fileId, !fileId.isEmpty else {
+            loadedImage = nil
+            return
+        }
+
+        isLoading = true
+        defer { isLoading = false }
+
+        do {
+            let data = try await AppwriteService.shared.storage.getFileView(
+                bucketId: AppwriteConfig.profilePhotosBucketId,
+                fileId: fileId
+            )
+
+            if let image = UIImage(data: Data(buffer: data)) {
+                await MainActor.run {
+                    loadedImage = image
+                }
+            }
+        } catch {
+            logError("Failed to load profile photo: \(error.localizedDescription)", category: .auth)
+            await MainActor.run {
+                loadedImage = nil
+            }
+        }
+    }
+}
+
 // MARK: - ProfileHeaderView
 
 struct ProfileHeaderView: View {
     let profile: CloudUserProfile
 
     var body: some View {
-        HStack(spacing: 16) {
-            // Avatar
-            ZStack {
-                Circle()
-                    .fill(Color.blue.opacity(0.15))
-                    .frame(width: 70, height: 70)
+        VStack(spacing: 16) {
+            HStack(spacing: 16) {
+                // Avatar
+                ProfilePhotoView(
+                    fileId: profile.profilePhotoFileId,
+                    displayName: profile.displayName,
+                    size: 80
+                )
 
-                if profile.profilePhotoFileId != nil {
-                    // TODO: Charger l'image depuis Appwrite
-                    Image(systemName: "person.fill")
-                        .font(.title)
-                        .foregroundStyle(.blue)
-                } else {
-                    Text(profile.displayName.prefix(1).uppercased())
-                        .font(.title)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.blue)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(profile.displayName)
+                        .font(.title3)
+                        .fontWeight(.semibold)
+
+                    Text("@\(profile.username)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+
+                    // Level badge
+                    HStack(spacing: 4) {
+                        Image(systemName: "star.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                        Text("Niveau \(profile.level)")
+                            .font(.caption)
+                            .fontWeight(.medium)
+                        Text("• \(profile.xpTotal) XP")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
+
+                Spacer()
+
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(.secondary)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                Text(profile.displayName)
-                    .font(.title3)
-                    .fontWeight(.semibold)
-
-                Text("@\(profile.username)")
+            // Bio si présente
+            if let bio = profile.bio, !bio.isEmpty {
+                Text(bio)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-
-                if let bio = profile.bio, !bio.isEmpty {
-                    Text(bio)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(2)
-                }
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Spacer()
+            // Informations supplémentaires
+            HStack(spacing: 16) {
+                if let weight = profile.pilotWeight {
+                    Label("\(Int(weight)) kg", systemImage: "scalemass")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
 
-            Image(systemName: "chevron.right")
-                .foregroundStyle(.secondary)
+                if let location = profile.homeLocationName, !location.isEmpty {
+                    Label(location, systemImage: "location.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                // Série actuelle
+                if profile.currentStreak > 0 {
+                    HStack(spacing: 2) {
+                        Image(systemName: "flame.fill")
+                            .foregroundStyle(.orange)
+                        Text("\(profile.currentStreak)")
+                            .fontWeight(.semibold)
+                    }
+                    .font(.caption)
+                }
+            }
         }
         .padding(.vertical, 8)
     }
@@ -1256,10 +1483,16 @@ struct EditProfileView: View {
     @State private var username: String
     @State private var bio: String
     @State private var pilotWeight: String
+    @State private var homeLocationName: String
     @State private var isSaving = false
     @State private var errorMessage: String?
     @State private var usernameAvailable: Bool? = nil
     @State private var checkingUsername = false
+
+    // Photo de profil
+    @State private var showingImagePicker = false
+    @State private var selectedImageData: Data?
+    @State private var isUploadingPhoto = false
 
     init(profile: CloudUserProfile, onSave: @escaping (CloudUserProfile) -> Void) {
         self.profile = profile
@@ -1268,11 +1501,68 @@ struct EditProfileView: View {
         _username = State(initialValue: profile.username)
         _bio = State(initialValue: profile.bio ?? "")
         _pilotWeight = State(initialValue: profile.pilotWeight.map { String(Int($0)) } ?? "")
+        _homeLocationName = State(initialValue: profile.homeLocationName ?? "")
     }
 
     var body: some View {
         NavigationStack {
             Form {
+                // Section Photo de profil
+                Section {
+                    HStack {
+                        Spacer()
+                        ZStack {
+                            // Photo sélectionnée, photo existante, ou initiale
+                            if let imageData = selectedImageData,
+                               let uiImage = UIImage(data: imageData) {
+                                Image(uiImage: uiImage)
+                                    .resizable()
+                                    .scaledToFill()
+                                    .frame(width: 100, height: 100)
+                                    .clipShape(Circle())
+                            } else {
+                                // Afficher la photo existante ou l'initiale
+                                ProfilePhotoView(
+                                    fileId: profile.profilePhotoFileId,
+                                    displayName: displayName,
+                                    size: 100
+                                )
+                            }
+
+                            // Badge caméra
+                            VStack {
+                                Spacer()
+                                HStack {
+                                    Spacer()
+                                    Circle()
+                                        .fill(Color.blue)
+                                        .frame(width: 32, height: 32)
+                                        .overlay {
+                                            Image(systemName: "camera.fill")
+                                                .font(.caption)
+                                                .foregroundStyle(.white)
+                                        }
+                                }
+                            }
+                            .frame(width: 100, height: 100)
+
+                            if isUploadingPhoto {
+                                Circle()
+                                    .fill(.ultraThinMaterial)
+                                    .frame(width: 100, height: 100)
+                                    .overlay {
+                                        ProgressView()
+                                    }
+                            }
+                        }
+                        .onTapGesture {
+                            showingImagePicker = true
+                        }
+                        Spacer()
+                    }
+                    .listRowBackground(Color.clear)
+                }
+
                 Section("Informations".localized) {
                     TextField("Nom affiché".localized, text: $displayName)
 
@@ -1305,6 +1595,12 @@ struct EditProfileView: View {
                             .keyboardType(.numberPad)
                         Text("kg")
                             .foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Image(systemName: "location.fill")
+                            .foregroundStyle(.secondary)
+                        TextField("Site de vol habituel".localized, text: $homeLocationName)
                     }
                 }
 
@@ -1341,6 +1637,9 @@ struct EditProfileView: View {
                         .background(.ultraThinMaterial)
                         .cornerRadius(12)
                 }
+            }
+            .sheet(isPresented: $showingImagePicker) {
+                ImagePicker(imageData: $selectedImageData)
             }
         }
     }
@@ -1381,27 +1680,129 @@ struct EditProfileView: View {
         isSaving = true
         errorMessage = nil
 
-        do {
-            let weight = Double(pilotWeight)
+        // Utiliser Task detached pour éviter les CancellationError quand la vue se démonte
+        let savedImageData = selectedImageData
+        let savedDisplayName = displayName
+        let savedBio = bio
+        let savedUsername = username
+        let savedWeight = pilotWeight.isEmpty ? nil : Double(pilotWeight)
+        let savedLocation = homeLocationName.isEmpty ? nil : homeLocationName
+        let currentUsername = profile.username
 
+        do {
+            // 1. Upload la photo si une nouvelle image a été sélectionnée
+            if let imageData = savedImageData {
+                isUploadingPhoto = true
+                do {
+                    _ = try await UserService.shared.updateProfilePhoto(imageData: imageData)
+                    logInfo("Profile photo uploaded successfully", category: .auth)
+                } catch {
+                    logError("Failed to upload profile photo: \(error.localizedDescription)", category: .auth)
+                    // Continue anyway - save the other fields
+                }
+                isUploadingPhoto = false
+            }
+
+            // 2. Mettre à jour les autres champs du profil
             try await UserService.shared.updateProfile(
-                displayName: displayName,
-                bio: bio.isEmpty ? nil : bio,
-                username: username.lowercased() != profile.username ? username : nil,
-                pilotWeight: weight
+                displayName: savedDisplayName,
+                bio: savedBio,  // Toujours envoyer bio (même vide pour effacer)
+                username: savedUsername.lowercased() != currentUsername ? savedUsername : nil,
+                homeLocationName: savedLocation,
+                pilotWeight: savedWeight
             )
 
+            // 3. Récupérer le profil mis à jour
             if let updatedProfile = try await UserService.shared.getCurrentProfile() {
                 await MainActor.run {
                     onSave(updatedProfile)
                     dismiss()
                 }
+            } else {
+                await MainActor.run {
+                    dismiss()
+                }
+            }
+        } catch is CancellationError {
+            // Ignorer - la vue s'est démontée mais la sauvegarde a probablement réussi
+            logInfo("Profile save task was cancelled but save likely succeeded", category: .auth)
+            await MainActor.run {
+                dismiss()
             }
         } catch {
             await MainActor.run {
                 errorMessage = error.localizedDescription
                 isSaving = false
             }
+        }
+    }
+}
+
+// MARK: - ImagePicker
+
+import PhotosUI
+
+struct ImagePicker: UIViewControllerRepresentable {
+    @Binding var imageData: Data?
+    @Environment(\.dismiss) private var dismiss
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var config = PHPickerConfiguration()
+        config.filter = .images
+        config.selectionLimit = 1
+
+        let picker = PHPickerViewController(configuration: config)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        let parent: ImagePicker
+
+        init(_ parent: ImagePicker) {
+            self.parent = parent
+        }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            parent.dismiss()
+
+            guard let provider = results.first?.itemProvider,
+                  provider.canLoadObject(ofClass: UIImage.self) else { return }
+
+            provider.loadObject(ofClass: UIImage.self) { image, error in
+                if let uiImage = image as? UIImage {
+                    // Redimensionner et compresser l'image
+                    let resizedImage = self.resizeImage(uiImage, targetSize: CGSize(width: 400, height: 400))
+                    if let data = resizedImage.jpegData(compressionQuality: 0.8) {
+                        DispatchQueue.main.async {
+                            self.parent.imageData = data
+                        }
+                    }
+                }
+            }
+        }
+
+        private func resizeImage(_ image: UIImage, targetSize: CGSize) -> UIImage {
+            let size = image.size
+            let widthRatio = targetSize.width / size.width
+            let heightRatio = targetSize.height / size.height
+            let ratio = min(widthRatio, heightRatio)
+
+            let newSize = CGSize(width: size.width * ratio, height: size.height * ratio)
+            let rect = CGRect(origin: .zero, size: newSize)
+
+            UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
+            image.draw(in: rect)
+            let newImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+
+            return newImage ?? image
         }
     }
 }

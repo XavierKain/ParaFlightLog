@@ -186,6 +186,11 @@ final class FlightSyncService {
         lastSyncDate = Date()
         lastError = errors.isEmpty ? nil : errors.joined(separator: "; ")
 
+        // 3. Vérifier et attribuer les badges après sync réussie
+        if uploaded > 0 || downloaded > 0 {
+            await checkAndAwardBadgesAfterSync(modelContext: modelContext)
+        }
+
         return SyncResult(
             uploaded: uploaded,
             downloaded: downloaded,
@@ -222,7 +227,10 @@ final class FlightSyncService {
             "commentCount": 0,
             "createdAt": flight.createdAt.ISO8601Format(),
             "syncedAt": now.ISO8601Format(),
-            "deviceSource": "iphone"
+            "deviceSource": "iphone",
+            // Pilot info for discovery feed
+            "pilotName": profile.displayName,
+            "pilotUsername": profile.username
         ]
 
         // Champs optionnels
@@ -575,6 +583,55 @@ final class FlightSyncService {
     func scheduleBackgroundSync() {
         // TODO: Implémenter avec BGTaskScheduler
         logInfo("Background sync scheduled", category: .sync)
+    }
+
+    // MARK: - Badge Verification
+
+    /// Vérifie et attribue les badges après une synchronisation
+    @MainActor
+    private func checkAndAwardBadgesAfterSync(modelContext: ModelContext) async {
+        guard let profile = UserService.shared.currentUserProfile else { return }
+
+        // Récupérer les stats nécessaires pour les badges
+        let descriptor = FetchDescriptor<Flight>()
+        guard let allFlights = try? modelContext.fetch(descriptor) else { return }
+
+        // Calculer les stats
+        let uniqueSpots = Set(allFlights.compactMap { $0.spotName }).count
+        let maxAltitude = allFlights.compactMap { $0.maxAltitude }.max() ?? 0
+        let maxDistance = allFlights.compactMap { $0.totalDistance }.max() ?? 0
+        let longestFlight = allFlights.map { $0.durationSeconds }.max() ?? 0
+
+        do {
+            // Vérifier et attribuer les nouveaux badges
+            let newBadges = try await BadgeService.shared.checkAndAwardBadges(
+                profile: profile,
+                uniqueSpots: uniqueSpots,
+                maxAltitude: maxAltitude,
+                maxDistance: maxDistance,
+                longestFlightSeconds: longestFlight
+            )
+
+            // Notifier l'utilisateur pour chaque nouveau badge
+            for badge in newBadges {
+                try? await NotificationService.shared.scheduleLocalNotification(
+                    title: "Badge obtenu !".localized,
+                    body: badge.localizedName,
+                    identifier: "badge_\(badge.id)",
+                    timeInterval: 1,
+                    userInfo: ["badgeId": badge.id]
+                )
+                logInfo("Badge earned: \(badge.id)", category: .sync)
+            }
+
+            // Mettre à jour le profil avec les nouveaux XP si des badges ont été gagnés
+            if !newBadges.isEmpty {
+                let xpGained = newBadges.reduce(0) { $0 + $1.xpReward }
+                await UserService.shared.addXP(xpGained)
+            }
+        } catch {
+            logWarning("Badge check failed: \(error.localizedDescription)", category: .sync)
+        }
     }
 
     // MARK: - Private Helpers
