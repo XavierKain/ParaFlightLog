@@ -60,6 +60,7 @@ struct PublicFlight: Identifiable, Codable {
     let wingBrand: String?
     let wingModel: String?
     let wingSize: String?
+    let wingPhotoFileId: String?  // ID de l'image de la voile dans Appwrite Storage
 
     let maxAltitude: Double?
     let totalDistance: Double?
@@ -218,17 +219,33 @@ final class DiscoveryService {
                 ]
             )
 
-            return try response.documents.compactMap { doc -> PublicFlight? in
-                try parsePublicFlight(from: doc.data)
+            logInfo("Global feed: fetched \(response.documents.count) documents", category: .sync)
+
+            var flights: [PublicFlight] = []
+            for doc in response.documents {
+                do {
+                    let flight = try parsePublicFlight(from: doc.data)
+                    flights.append(flight)
+                } catch {
+                    logWarning("Failed to parse flight document: \(error.localizedDescription)", category: .sync)
+                    // Continue with next document instead of failing completely
+                }
             }
+
+            logInfo("Global feed: parsed \(flights.count) flights successfully", category: .sync)
+            return flights
         } catch let error as AppwriteError {
             // Vérifier si c'est une erreur de collection manquante
             let message = error.message
+            logError("Appwrite error: \(message)", category: .sync)
             if message.contains("could not be found") || message.contains("Collection") {
                 throw DiscoveryError.collectionNotFound("flights")
             }
             throw DiscoveryError.fetchFailed(message)
+        } catch let error as DiscoveryError {
+            throw error
         } catch {
+            logError("Global feed error: \(error.localizedDescription)", category: .sync)
             throw DiscoveryError.fetchFailed(error.localizedDescription)
         }
     }
@@ -602,15 +619,72 @@ final class DiscoveryService {
 
     private func parsePublicFlight(from data: [String: AnyCodable]) throws -> PublicFlight {
         guard let id = data["$id"]?.value as? String,
-              let pilotId = data["userId"]?.value as? String,
-              let startDateStr = data["startDate"]?.value as? String,
-              let startDate = ISO8601DateFormatter().date(from: startDateStr),
-              let durationSeconds = data["durationSeconds"]?.value as? Int else {
+              let pilotId = data["userId"]?.value as? String else {
+            logError("Missing required fields: $id or userId", category: .sync)
             throw DiscoveryError.invalidResponse
         }
 
-        let createdAtStr = data["createdAt"]?.value as? String
-        let createdAt = createdAtStr.flatMap { ISO8601DateFormatter().date(from: $0) } ?? startDate
+        // Parse startDate with multiple formats
+        let startDate: Date
+        if let startDateStr = data["startDate"]?.value as? String {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = formatter.date(from: startDateStr) {
+                startDate = date
+            } else {
+                // Try without fractional seconds
+                formatter.formatOptions = [.withInternetDateTime]
+                if let date = formatter.date(from: startDateStr) {
+                    startDate = date
+                } else {
+                    logError("Failed to parse startDate: \(startDateStr)", category: .sync)
+                    throw DiscoveryError.invalidResponse
+                }
+            }
+        } else {
+            logError("Missing startDate field", category: .sync)
+            throw DiscoveryError.invalidResponse
+        }
+
+        // Parse durationSeconds flexibly (Int or Double)
+        let durationSeconds: Int
+        if let intValue = data["durationSeconds"]?.value as? Int {
+            durationSeconds = intValue
+        } else if let doubleValue = data["durationSeconds"]?.value as? Double {
+            durationSeconds = Int(doubleValue)
+        } else {
+            logError("Missing or invalid durationSeconds", category: .sync)
+            throw DiscoveryError.invalidResponse
+        }
+
+        // Parse createdAt
+        let createdAt: Date
+        if let createdAtStr = data["createdAt"]?.value as? String {
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            createdAt = formatter.date(from: createdAtStr) ?? startDate
+        } else {
+            createdAt = startDate
+        }
+
+        // Parse optional numeric fields flexibly
+        func parseDouble(_ key: String) -> Double? {
+            if let doubleValue = data[key]?.value as? Double {
+                return doubleValue
+            } else if let intValue = data[key]?.value as? Int {
+                return Double(intValue)
+            }
+            return nil
+        }
+
+        func parseInt(_ key: String, defaultValue: Int = 0) -> Int {
+            if let intValue = data[key]?.value as? Int {
+                return intValue
+            } else if let doubleValue = data[key]?.value as? Double {
+                return Int(doubleValue)
+            }
+            return defaultValue
+        }
 
         return PublicFlight(
             id: id,
@@ -622,17 +696,18 @@ final class DiscoveryService {
             durationSeconds: durationSeconds,
             spotId: data["spotId"]?.value as? String,
             spotName: data["spotName"]?.value as? String,
-            latitude: data["latitude"]?.value as? Double,
-            longitude: data["longitude"]?.value as? Double,
+            latitude: parseDouble("latitude"),
+            longitude: parseDouble("longitude"),
             wingBrand: data["wingBrand"]?.value as? String,
             wingModel: data["wingModel"]?.value as? String,
             wingSize: data["wingSize"]?.value as? String,
-            maxAltitude: data["maxAltitude"]?.value as? Double,
-            totalDistance: data["totalDistance"]?.value as? Double,
-            maxSpeed: data["maxSpeed"]?.value as? Double,
+            wingPhotoFileId: data["wingPhotoFileId"]?.value as? String,
+            maxAltitude: parseDouble("maxAltitude"),
+            totalDistance: parseDouble("totalDistance"),
+            maxSpeed: parseDouble("maxSpeed"),
             hasGpsTrack: data["hasGpsTrack"]?.value as? Bool ?? false,
-            likeCount: data["likeCount"]?.value as? Int ?? 0,
-            commentCount: data["commentCount"]?.value as? Int ?? 0,
+            likeCount: parseInt("likeCount"),
+            commentCount: parseInt("commentCount"),
             createdAt: createdAt
         )
     }

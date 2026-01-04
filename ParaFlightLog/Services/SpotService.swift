@@ -744,6 +744,7 @@ final class SpotService {
             wingBrand: data["wingBrand"]?.value as? String,
             wingModel: data["wingModel"]?.value as? String,
             wingSize: data["wingSize"]?.value as? String,
+            wingPhotoFileId: data["wingPhotoFileId"]?.value as? String,
             maxAltitude: data["maxAltitude"]?.value as? Double,
             totalDistance: data["totalDistance"]?.value as? Double,
             maxSpeed: data["maxSpeed"]?.value as? Double,

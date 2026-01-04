@@ -407,6 +407,9 @@ final class BadgeService {
         )
     }
 
+    /// Erreurs rencontrées lors de la dernière attribution (pour debug)
+    private(set) var lastAwardErrors: [String] = []
+
     /// Vérifie et attribue les badges mérités
     /// Retourne la liste des nouveaux badges obtenus
     @discardableResult
@@ -422,6 +425,7 @@ final class BadgeService {
         }
 
         var newBadges: [Badge] = []
+        var errors: [String] = []
 
         for badge in allBadges {
             // Ignorer si déjà obtenu
@@ -476,9 +480,23 @@ final class BadgeService {
                     newBadges.append(badge)
                     logInfo("Badge earned: \(badge.name)", category: .general)
                 } catch {
-                    logError("Failed to award badge \(badge.name): \(error.localizedDescription)", category: .general)
+                    // Log détaillé de l'erreur pour debug
+                    var errorDetail = "\(badge.name): "
+                    if let appwriteError = error as? AppwriteError {
+                        errorDetail += "\(appwriteError.message) (code: \(appwriteError.code ?? 0))"
+                        logError("Appwrite error details - message: \(appwriteError.message), code: \(appwriteError.code ?? 0), type: \(appwriteError.type ?? "unknown")", category: .general)
+                    } else {
+                        errorDetail += error.localizedDescription
+                    }
+                    errors.append(errorDetail)
+                    logError("Failed to award badge \(badge.name): \(error)", category: .general)
                 }
             }
+        }
+
+        // Sauvegarder les erreurs pour debug
+        await MainActor.run {
+            self.lastAwardErrors = errors
         }
 
         // Ajouter l'XP pour les nouveaux badges

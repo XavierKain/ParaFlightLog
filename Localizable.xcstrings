@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "--" : {
+
+    },
     "(\\(size) m²)" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -19,6 +22,9 @@
       }
     },
     "(%@ m²)" : {
+
+    },
+    "(%lld vols)" : {
 
     },
     "@" : {
@@ -367,6 +373,9 @@
         }
       }
     },
+    "#%lld" : {
+
+    },
     "%.4f, %.4f" : {
       "localizations" : {
         "en" : {
@@ -492,6 +501,9 @@
         }
       }
     },
+    "%lld kg" : {
+
+    },
     "%lld km/h" : {
 
     },
@@ -595,6 +607,16 @@
         }
       }
     },
+    "%lld vol%@ • %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld vol%2$@ • %3$@"
+          }
+        }
+      }
+    },
     "%lld vols" : {
       "localizations" : {
         "en" : {
@@ -610,6 +632,32 @@
           }
         }
       }
+    },
+    "%lld vols • %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld vols • %2$@"
+          }
+        }
+      }
+    },
+    "%lld XP" : {
+
+    },
+    "%lld/%lld badges obtenus" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld badges obtenus"
+          }
+        }
+      }
+    },
+    "%lld%%" : {
+
     },
     "%lldh" : {
       "extractionState" : "stale",
@@ -741,6 +789,9 @@
     "• %@m²" : {
 
     },
+    "• %lld XP" : {
+
+    },
     "+ %lld autre%@ spot%@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -757,6 +808,9 @@
           }
         }
       }
+    },
+    "+%lld XP" : {
+
     },
     "⚠️ Cette action est irréversible ! La voile \"%@\" et ses %lld vol%@ seront définitivement supprimés." : {
       "localizations" : {
@@ -1325,6 +1379,9 @@
         }
       }
     },
+    "Annuler vol" : {
+
+    },
     "App Watch" : {
       "localizations" : {
         "en" : {
@@ -1630,6 +1687,9 @@
       }
     },
     "Catégorie" : {
+
+    },
+    "Ce changement sera appliqué à tous les vols de ce spot." : {
 
     },
     "Ce spot sera utilisé en priorité sur la détection GPS automatique" : {
@@ -2458,6 +2518,9 @@
         }
       }
     },
+    "GPS" : {
+
+    },
     "GPS ✓" : {
       "localizations" : {
         "en" : {
@@ -2935,6 +2998,12 @@
         }
       }
     },
+    "Niv. %lld" : {
+
+    },
+    "Niveau %lld" : {
+
+    },
     "Nom" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2951,6 +3020,9 @@
           }
         }
       }
+    },
+    "Nom actuel" : {
+
     },
     "Nom du spot" : {
       "localizations" : {
@@ -3048,6 +3120,9 @@
         }
       }
     },
+    "Nouveau nom" : {
+
+    },
     "Nouvelle voile" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3064,6 +3139,9 @@
           }
         }
       }
+    },
+    "Obtenu le %@" : {
+
     },
     "OK" : {
       "localizations" : {
@@ -3146,6 +3224,7 @@
       }
     },
     "ParaFlightLog" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3213,6 +3292,9 @@
         }
       }
     },
+    "Permet d'annuler un vol en cours" : {
+
+    },
     "Permet d'annuler un vol en cours sans le sauvegarder" : {
       "localizations" : {
         "en" : {
@@ -3260,6 +3342,9 @@
           }
         }
       }
+    },
+    "Portée" : {
+
     },
     "Position indisponible" : {
       "localizations" : {
@@ -3343,6 +3428,9 @@
         }
       }
     },
+    "Recalculer tous les badges" : {
+
+    },
     "Récapitulatif" : {
       "localizations" : {
         "en" : {
@@ -3411,6 +3499,15 @@
         }
       }
     },
+    "Renommer" : {
+
+    },
+    "Renommer ce spot partout" : {
+
+    },
+    "Renommer le spot" : {
+
+    },
     "Répartition des heures" : {
       "localizations" : {
         "en" : {
@@ -3474,6 +3571,9 @@
           }
         }
       }
+    },
+    "Réuploader tous les vols" : {
+
     },
     "Satellite" : {
 
@@ -3574,6 +3674,9 @@
         }
       }
     },
+    "SOARX" : {
+
+    },
     "Spot" : {
       "localizations" : {
         "en" : {
@@ -3621,6 +3724,9 @@
           }
         }
       }
+    },
+    "Spots à proximité (~1km)" : {
+
     },
     "Spots de vol" : {
       "localizations" : {
@@ -3861,6 +3967,12 @@
           }
         }
       }
+    },
+    "sur %lld" : {
+
+    },
+    "Swipe pour continuer" : {
+
     },
     "Swipez vers la gauche" : {
       "localizations" : {
@@ -4134,6 +4246,9 @@
         }
       }
     },
+    "Verrouille l'écran pendant le vol" : {
+
+    },
     "Version" : {
       "localizations" : {
         "en" : {
@@ -4379,6 +4494,9 @@
           }
         }
       }
+    },
+    "Water Lock" : {
+
     },
     "widget_description" : {
       "extractionState" : "stale",

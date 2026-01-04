@@ -77,7 +77,7 @@ struct ZipBackup {
         DispatchQueue.global(qos: .utility).async {
             do {
                 // Créer le dossier bundle .paraflightlog directement
-                let bundleName = "ParaFlightLog_Backup_\(formatDateForFilename(Date())).paraflightlog"
+                let bundleName = "SOARX_Backup_\(formatDateForFilename(Date())).paraflightlog"
                 let bundleURL = FileManager.default.temporaryDirectory.appendingPathComponent(bundleName)
 
                 // Supprimer si existe déjà

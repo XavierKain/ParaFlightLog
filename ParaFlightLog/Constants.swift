@@ -13,10 +13,10 @@ import Foundation
 
 enum AppConstants {
     /// Bundle identifier pour OSLog
-    static let bundleIdentifier = "com.xavierkain.ParaFlightLog"
+    static let bundleIdentifier = "com.xavierkain.SOARX"
 
     /// Nom de l'application
-    static let appName = "ParaFlightLog"
+    static let appName = "SOARX"
 }
 
 // MARK: - Watch Sync Configuration

@@ -560,6 +560,18 @@ struct SettingsView: View {
                         Label(String(localized: "Générer des données de test"), systemImage: "wand.and.stars")
                     }
 
+                    Button {
+                        reuploadAllFlights()
+                    } label: {
+                        Label(String(localized: "Réuploader tous les vols"), systemImage: "arrow.triangle.2.circlepath.icloud")
+                    }
+
+                    Button {
+                        recalculateAllBadges()
+                    } label: {
+                        Label(String(localized: "Recalculer tous les badges"), systemImage: "medal.fill")
+                    }
+
                     Button(role: .destructive) {
                         deleteAllData()
                     } label: {
@@ -739,7 +751,7 @@ struct SettingsView: View {
         }
 
         // Créer un dossier pour les images
-        let imagesFolder = documentsPath.appendingPathComponent("ParaFlightLog_Images_\(timestamp)")
+        let imagesFolder = documentsPath.appendingPathComponent("SOARX_Images_\(timestamp)")
         try? FileManager.default.createDirectory(at: imagesFolder, withIntermediateDirectories: true)
 
         // Générer CSV des voiles avec référence aux images
@@ -784,8 +796,8 @@ struct SettingsView: View {
         }
 
         // Sauvegarder les fichiers
-        let wingsFileName = "ParaFlightLog_Wings_\(timestamp).csv"
-        let flightsFileName = "ParaFlightLog_Flights_\(timestamp).csv"
+        let wingsFileName = "SOARX_Wings_\(timestamp).csv"
+        let flightsFileName = "SOARX_Flights_\(timestamp).csv"
         let wingsURL = documentsPath.appendingPathComponent(wingsFileName)
         let flightsURL = documentsPath.appendingPathComponent(flightsFileName)
 
@@ -843,6 +855,97 @@ struct SettingsView: View {
         } catch {
             importMessage = "❌ Erreur: \(error.localizedDescription)"
             showingImportSuccess = true
+        }
+    }
+
+    /// Réupload tous les vols vers le cloud (force sync)
+    private func reuploadAllFlights() {
+        isImporting = true
+        importMessage = "Réupload en cours..."
+
+        Task {
+            do {
+                // Marquer tous les vols comme non synchronisés pour forcer le réupload
+                for flight in flights {
+                    flight.needsSync = true
+                }
+                try modelContext.save()
+
+                // Lancer la synchronisation complète
+                let result = try await FlightSyncService.shared.performFullSync(modelContext: modelContext)
+
+                await MainActor.run {
+                    isImporting = false
+                    importMessage = "✅ \(result.uploaded) vols réuploadés\n\(result.downloaded) vols téléchargés"
+                    if !result.errors.isEmpty {
+                        importMessage += "\n⚠️ Erreurs: \(result.errors.joined(separator: ", "))"
+                    }
+                    showingImportSuccess = true
+                }
+            } catch {
+                await MainActor.run {
+                    isImporting = false
+                    importMessage = "❌ Erreur: \(error.localizedDescription)"
+                    showingImportSuccess = true
+                }
+            }
+        }
+    }
+
+    /// Recalcule tous les badges en fonction des vols actuels
+    private func recalculateAllBadges() {
+        isImporting = true
+        importMessage = "Calcul des badges..."
+
+        Task {
+            guard let profile = UserService.shared.currentUserProfile else {
+                await MainActor.run {
+                    isImporting = false
+                    importMessage = "❌ Vous devez être connecté pour recalculer les badges"
+                    showingImportSuccess = true
+                }
+                return
+            }
+
+            // Calculer les stats à partir de tous les vols
+            let uniqueSpots = Set(flights.compactMap { $0.spotName }).count
+            let maxAltitude = flights.compactMap { $0.maxAltitude }.max() ?? 0
+            let maxDistance = flights.compactMap { $0.totalDistance }.max() ?? 0
+            let longestFlight = flights.map { $0.durationSeconds }.max() ?? 0
+
+            do {
+                // Charger tous les badges disponibles
+                await BadgeService.shared.loadAllBadges()
+
+                // Charger les badges déjà obtenus
+                await BadgeService.shared.loadUserBadges(userId: profile.id)
+
+                // Vérifier et attribuer les badges manquants
+                let newBadges = try await BadgeService.shared.checkAndAwardBadges(
+                    profile: profile,
+                    uniqueSpots: uniqueSpots,
+                    maxAltitude: maxAltitude,
+                    maxDistance: maxDistance,
+                    longestFlightSeconds: longestFlight
+                )
+
+                await MainActor.run {
+                    isImporting = false
+                    if newBadges.isEmpty {
+                        importMessage = "✅ Badges vérifiés - Aucun nouveau badge obtenu"
+                    } else {
+                        let badgeNames = newBadges.map { $0.localizedName }.joined(separator: ", ")
+                        importMessage = "🎉 \(newBadges.count) nouveau(x) badge(s) obtenu(s) !\n\(badgeNames)"
+                    }
+                    showingImportSuccess = true
+                }
+            } catch {
+                await MainActor.run {
+                    isImporting = false
+                    importMessage = "❌ Erreur: \(error.localizedDescription)"
+                    showingImportSuccess = true
+                }
+            }
         }
     }
 }

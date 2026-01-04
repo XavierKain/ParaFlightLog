@@ -172,7 +172,7 @@ struct RectangularWidgetView: View {
                             .lineLimit(1)
                     }
                 } else {
-                    Text("ParaFlightLog")
+                    Text("SOARX")
                         .font(.headline)
 
                     Text(WidgetStrings.startFlight)
@@ -208,7 +208,7 @@ struct InlineWidgetView: View {
             Label(entry.elapsedTime, systemImage: "play.fill")
                 .fontWeight(.semibold)
         } else {
-            Label("ParaFlightLog", systemImage: "wind")
+            Label("SOARX", systemImage: "wind")
         }
     }
 }
@@ -222,7 +222,7 @@ struct ParaFlightLogWidget: Widget {
         StaticConfiguration(kind: kind, provider: FlightWidgetProvider()) { entry in
             FlightWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("ParaFlightLog")
+        .configurationDisplayName("SOARX")
         .description(WidgetStrings.description)
         .supportedFamilies([
             .accessoryCircular,

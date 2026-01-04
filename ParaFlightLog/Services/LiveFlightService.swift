@@ -14,7 +14,7 @@ import CoreLocation
 // MARK: - Live Flight Model
 
 /// Représente un vol en cours
-struct LiveFlight: Identifiable, Equatable {
+struct LiveFlight: Identifiable, Equatable, Hashable {
     let id: String
     let oderId: String
     let pilotName: String

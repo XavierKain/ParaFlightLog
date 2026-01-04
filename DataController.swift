@@ -253,6 +253,9 @@ final class DataController {
         statsCache.invalidate()
 
         logInfo("Flight saved: \(flight.durationFormatted) with \(wing.name)", category: .flight)
+
+        // Synchroniser automatiquement vers le cloud si l'utilisateur est connecté
+        syncFlightToCloudIfNeeded(flight)
     }
 
     /// Ajoute un vol directement (pour les vols créés depuis l'iPhone)
@@ -276,6 +279,41 @@ final class DataController {
         statsCache.invalidate()
 
         logInfo("Flight saved: \(flight.durationFormatted) at \(spotName ?? "Unknown")", category: .flight)
+
+        // Synchroniser automatiquement vers le cloud si l'utilisateur est connecté
+        syncFlightToCloudIfNeeded(flight)
+    }
+
+    // MARK: - Cloud Sync
+
+    /// Synchronise automatiquement un vol vers le cloud si l'utilisateur est authentifié
+    private func syncFlightToCloudIfNeeded(_ flight: Flight) {
+        // Vérifier si l'utilisateur est authentifié avec un vrai compte (pas skipped)
+        guard AuthService.shared.isAuthenticated,
+              UserService.shared.currentUserProfile != nil else {
+            logDebug("Skipping cloud sync - user not authenticated", category: .sync)
+            return
+        }
+
+        // Lancer la synchronisation en arrière-plan
+        Task {
+            do {
+                let cloudFlight = try await FlightSyncService.shared.uploadFlight(flight)
+
+                // Mettre à jour le vol local avec les infos cloud sur le main thread
+                await MainActor.run {
+                    flight.cloudId = cloudFlight.id
+                    flight.cloudSyncedAt = Date()
+                    flight.needsSync = false
+                    flight.hasGpsTrackInCloud = cloudFlight.hasGpsTrack
+                    self.saveContext()
+                    logInfo("Flight auto-synced to cloud: \(cloudFlight.id)", category: .sync)
+                }
+            } catch {
+                logWarning("Auto-sync failed for flight: \(error.localizedDescription)", category: .sync)
+                // Le vol reste marqué needsSync = true, sera synchronisé lors de la prochaine sync manuelle
+            }
+        }
     }
 
     /// Supprime un vol
@@ -285,6 +323,162 @@ final class DataController {
 
         // Invalider le cache de stats après suppression d'un vol
         statsCache.invalidate()
+    }
+
+    // MARK: - Spot Detection
+
+    /// Structure représentant un spot local avec ses statistiques
+    struct LocalSpot: Identifiable, Hashable {
+        let id = UUID()
+        let name: String
+        let latitude: Double
+        let longitude: Double
+        let flightCount: Int
+        let totalFlightSeconds: Int
+
+        var formattedTotalTime: String {
+            let hours = totalFlightSeconds / 3600
+            let minutes = (totalFlightSeconds % 3600) / 60
+            if hours > 0 {
+                return "\(hours)h\(String(format: "%02d", minutes))"
+            }
+            return "\(minutes) min"
+        }
+
+        func hash(into hasher: inout Hasher) {
+            hasher.combine(name)
+        }
+
+        static func == (lhs: LocalSpot, rhs: LocalSpot) -> Bool {
+            lhs.name == rhs.name
+        }
+    }
+
+    /// Trouve les spots existants dans un rayon donné (en mètres) autour d'une coordonnée
+    /// Retourne les spots triés par distance
+    func findNearbySpots(latitude: Double, longitude: Double, radiusMeters: Double = 1000) -> [LocalSpot] {
+        let flights = fetchFlights()
+
+        // Grouper les vols par nom de spot et calculer la position moyenne
+        var spotGroups: [String: (flights: [Flight], avgLat: Double, avgLon: Double)] = [:]
+
+        for flight in flights {
+            guard let spotName = flight.spotName,
+                  let lat = flight.latitude,
+                  let lon = flight.longitude else { continue }
+
+            if var group = spotGroups[spotName] {
+                group.flights.append(flight)
+                // Recalculer la moyenne
+                let count = Double(group.flights.count)
+                let prevCount = count - 1
+                group.avgLat = (group.avgLat * prevCount + lat) / count
+                group.avgLon = (group.avgLon * prevCount + lon) / count
+                spotGroups[spotName] = group
+            } else {
+                spotGroups[spotName] = (flights: [flight], avgLat: lat, avgLon: lon)
+            }
+        }
+
+        // Filtrer par distance et créer les LocalSpot
+        var nearbySpots: [(spot: LocalSpot, distance: Double)] = []
+
+        for (name, group) in spotGroups {
+            let distance = haversineDistance(
+                lat1: latitude, lon1: longitude,
+                lat2: group.avgLat, lon2: group.avgLon
+            )
+
+            if distance <= radiusMeters {
+                let totalSeconds = group.flights.reduce(0) { $0 + $1.durationSeconds }
+                let spot = LocalSpot(
+                    name: name,
+                    latitude: group.avgLat,
+                    longitude: group.avgLon,
+                    flightCount: group.flights.count,
+                    totalFlightSeconds: totalSeconds
+                )
+                nearbySpots.append((spot: spot, distance: distance))
+            }
+        }
+
+        // Trier par distance
+        return nearbySpots.sorted { $0.distance < $1.distance }.map { $0.spot }
+    }
+
+    /// Trouve tous les spots uniques dans les vols existants
+    func getAllSpots() -> [LocalSpot] {
+        let flights = fetchFlights()
+
+        var spotGroups: [String: (flights: [Flight], avgLat: Double, avgLon: Double)] = [:]
+
+        for flight in flights {
+            guard let spotName = flight.spotName else { continue }
+            let lat = flight.latitude ?? 0
+            let lon = flight.longitude ?? 0
+
+            if var group = spotGroups[spotName] {
+                group.flights.append(flight)
+                if lat != 0 && lon != 0 {
+                    let count = Double(group.flights.filter { $0.latitude != nil }.count)
+                    if count > 0 {
+                        let prevCount = count - 1
+                        group.avgLat = (group.avgLat * prevCount + lat) / count
+                        group.avgLon = (group.avgLon * prevCount + lon) / count
+                    }
+                }
+                spotGroups[spotName] = group
+            } else {
+                spotGroups[spotName] = (flights: [flight], avgLat: lat, avgLon: lon)
+            }
+        }
+
+        return spotGroups.map { name, group in
+            let totalSeconds = group.flights.reduce(0) { $0 + $1.durationSeconds }
+            return LocalSpot(
+                name: name,
+                latitude: group.avgLat,
+                longitude: group.avgLon,
+                flightCount: group.flights.count,
+                totalFlightSeconds: totalSeconds
+            )
+        }.sorted { $0.flightCount > $1.flightCount }
+    }
+
+    /// Renomme un spot dans tous les vols existants
+    func renameSpot(from oldName: String, to newName: String) {
+        let flights = fetchFlights()
+        var renamedCount = 0
+
+        for flight in flights {
+            if flight.spotName == oldName {
+                flight.spotName = newName
+                flight.needsSync = true  // Marquer pour re-sync
+                renamedCount += 1
+            }
+        }
+
+        if renamedCount > 0 {
+            saveContext()
+            logInfo("Renamed spot '\(oldName)' to '\(newName)' in \(renamedCount) flights", category: .dataController)
+        }
+    }
+
+    /// Calcule la distance en mètres entre deux coordonnées (formule de Haversine)
+    private func haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+        let earthRadius = 6371000.0 // mètres
+
+        let lat1Rad = lat1 * .pi / 180
+        let lat2Rad = lat2 * .pi / 180
+        let deltaLat = (lat2 - lat1) * .pi / 180
+        let deltaLon = (lon2 - lon1) * .pi / 180
+
+        let a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+                cos(lat1Rad) * cos(lat2Rad) *
+                sin(deltaLon / 2) * sin(deltaLon / 2)
+        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return earthRadius * c
     }
 
     // MARK: - Stats

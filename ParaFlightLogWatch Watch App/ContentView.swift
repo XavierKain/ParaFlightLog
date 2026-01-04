@@ -163,17 +163,18 @@ struct ContentView: View {
         activeFlightWing = wing
 
         // Démarrer les services de localisation après un court délai
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
-            locationService.startUpdatingLocation()
-            locationService.startFlightTracking()
+        let wingName = wing.name
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            self.locationService.startUpdatingLocation()
+            self.locationService.startFlightTracking()
 
             // Notifier l'iPhone pour démarrer le live flight (si connecté)
-            watchManager.notifyLiveFlightStart(
-                wingName: wing.fullName,
-                latitude: locationService.currentLocation?.coordinate.latitude,
-                longitude: locationService.currentLocation?.coordinate.longitude,
-                altitude: locationService.currentAltitude
-            ) { success, spotName in
+            self.watchManager.notifyLiveFlightStart(
+                wingName: wingName,
+                latitude: self.locationService.lastKnownLocation?.coordinate.latitude,
+                longitude: self.locationService.lastKnownLocation?.coordinate.longitude,
+                altitude: self.locationService.currentAltitude
+            ) { success, _ in
                 if success {
                     watchLogInfo("Live flight started on iPhone", category: .watchSync)
                 }

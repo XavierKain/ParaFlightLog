@@ -23,64 +23,13 @@ struct LiveFlightsMapView: View {
 
     var body: some View {
         ZStack {
-            // Carte
-            Map(position: $cameraPosition, selection: $selectedFlight) {
-                ForEach(liveFlights) { flight in
-                    if let coordinate = flight.coordinate {
-                        Annotation(
-                            flight.pilotName,
-                            coordinate: coordinate,
-                            anchor: .bottom
-                        ) {
-                            LiveFlightMarker(flight: flight, isSelected: selectedFlight?.id == flight.id)
-                        }
-                        .tag(flight)
-                    }
-                }
-            }
-            .mapStyle(.standard(elevation: .realistic))
-            .mapControls {
-                MapUserLocationButton()
-                MapCompass()
-                MapScaleView()
-            }
-
-            // Overlay: compteur de pilotes en vol
-            VStack {
-                HStack {
-                    Spacer()
-                    LiveFlightCountBadge(count: liveFlights.count)
-                        .padding()
-                }
-                Spacer()
-            }
-
-            // Overlay: chargement
+            mapView
+            overlayBadge
             if isLoading && liveFlights.isEmpty {
-                ProgressView("Chargement des vols en direct...".localized)
-                    .padding()
-                    .background(.ultraThinMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                loadingOverlay
             }
-
-            // Overlay: aucun vol
             if !isLoading && liveFlights.isEmpty {
-                VStack(spacing: 16) {
-                    Image(systemName: "airplane.circle")
-                        .font(.system(size: 60))
-                        .foregroundStyle(.secondary)
-
-                    Text("Aucun pilote en vol".localized)
-                        .font(.headline)
-
-                    Text("Les pilotes en vol apparaîtront ici en temps réel".localized)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-                .padding(32)
-                .background(.ultraThinMaterial)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+                emptyStateOverlay
             }
         }
         .sheet(item: $selectedFlight) { flight in
@@ -108,6 +57,68 @@ struct LiveFlightsMapView: View {
         .onDisappear {
             stopAutoRefresh()
         }
+    }
+
+    // MARK: - Subviews
+
+    private var mapView: some View {
+        Map(position: $cameraPosition, selection: $selectedFlight) {
+            ForEach(liveFlights) { flight in
+                if let coordinate = flight.coordinate {
+                    Annotation(
+                        flight.pilotName,
+                        coordinate: coordinate,
+                        anchor: .bottom
+                    ) {
+                        LiveFlightMarker(flight: flight, isSelected: selectedFlight?.id == flight.id)
+                    }
+                    .tag(flight)
+                }
+            }
+        }
+        .mapStyle(.standard(elevation: .realistic))
+        .mapControls {
+            MapUserLocationButton()
+            MapCompass()
+            MapScaleView()
+        }
+    }
+
+    private var overlayBadge: some View {
+        VStack {
+            HStack {
+                Spacer()
+                LiveFlightCountBadge(count: liveFlights.count)
+                    .padding()
+            }
+            Spacer()
+        }
+    }
+
+    private var loadingOverlay: some View {
+        ProgressView("Chargement des vols en direct...".localized)
+            .padding()
+            .background(.ultraThinMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
+    private var emptyStateOverlay: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "airplane.circle")
+                .font(.system(size: 60))
+                .foregroundStyle(.secondary)
+
+            Text("Aucun pilote en vol".localized)
+                .font(.headline)
+
+            Text("Les pilotes en vol apparaîtront ici en temps réel".localized)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(32)
+        .background(.ultraThinMaterial)
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Private Methods
@@ -282,20 +293,20 @@ struct LiveFlightDetailSheet: View {
                     GridItem(.flexible()),
                     GridItem(.flexible())
                 ], spacing: 16) {
-                    StatCard(
+                    LiveFlightStatCard(
                         icon: "clock.fill",
                         value: flight.formattedDuration,
                         label: "Durée".localized
                     )
 
                     if let altitude = flight.altitude {
-                        StatCard(
+                        LiveFlightStatCard(
                             icon: "arrow.up",
                             value: "\(Int(altitude))m",
                             label: "Altitude".localized
                         )
                     } else {
-                        StatCard(
+                        LiveFlightStatCard(
                             icon: "arrow.up",
                             value: "—",
                             label: "Altitude".localized
@@ -303,13 +314,13 @@ struct LiveFlightDetailSheet: View {
                     }
 
                     if let spotName = flight.spotName {
-                        StatCard(
+                        LiveFlightStatCard(
                             icon: "mappin",
                             value: spotName,
                             label: "Spot".localized
                         )
                     } else {
-                        StatCard(
+                        LiveFlightStatCard(
                             icon: "mappin",
                             value: "—",
                             label: "Spot".localized
@@ -348,9 +359,9 @@ struct LiveFlightDetailSheet: View {
     }
 }
 
-// MARK: - StatCard
+// MARK: - LiveFlightStatCard
 
-private struct StatCard: View {
+private struct LiveFlightStatCard: View {
     let icon: String
     let value: String
     let label: String

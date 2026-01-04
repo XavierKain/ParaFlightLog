@@ -832,6 +832,12 @@ struct EditFlightView: View {
     @State private var showingMapPicker = false
     @State private var selectedCoordinate: CLLocationCoordinate2D?
 
+    // Spot suggestions
+    @State private var nearbySpots: [DataController.LocalSpot] = []
+    @State private var showingSpotRenameSheet = false
+    @State private var newSpotName: String = ""
+    @State private var originalSpotName: String = ""
+
     // Statistiques de vol (lecture seule)
     @State private var startAltitude: String
     @State private var maxAltitude: String
@@ -935,6 +941,59 @@ struct EditFlightView: View {
 
                 Section("Spot") {
                     TextField("Nom du spot", text: $spotName)
+                        .onChange(of: spotName) { _, _ in
+                            updateNearbySpots()
+                        }
+
+                    // Suggestions de spots proches
+                    if !nearbySpots.isEmpty && spotName.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Spots à proximité (~1km)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            ForEach(nearbySpots.prefix(3)) { spot in
+                                Button {
+                                    spotName = spot.name
+                                } label: {
+                                    HStack {
+                                        Image(systemName: "mappin.circle.fill")
+                                            .foregroundStyle(.orange)
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(spot.name)
+                                                .foregroundStyle(.primary)
+                                            Text("\(spot.flightCount) vol\(spot.flightCount > 1 ? "s" : "") • \(spot.formattedTotalTime)")
+                                                .font(.caption)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                        Spacer()
+                                        Image(systemName: "arrow.right.circle")
+                                            .foregroundStyle(.blue)
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    // Bouton pour renommer ce spot dans tous les vols
+                    if let currentSpotName = flight.spotName, !currentSpotName.isEmpty {
+                        Button {
+                            originalSpotName = currentSpotName
+                            newSpotName = currentSpotName
+                            showingSpotRenameSheet = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "pencil.circle")
+                                Text("Renommer ce spot partout")
+                                Spacer()
+                                Text("(\(getFlightCountForSpot(currentSpotName)) vols)")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
 
                     // Afficher les coordonnées si elles existent
                     if let coord = selectedCoordinate {
@@ -1099,11 +1158,37 @@ struct EditFlightView: View {
             }
             .onAppear {
                 selectedWing = flight.wing
+                updateNearbySpots()
             }
             .sheet(isPresented: $showingMapPicker) {
                 MapCoordinatePicker(
                     selectedCoordinate: $selectedCoordinate,
                     spotName: spotName
+                )
+            }
+            .sheet(isPresented: $showingSpotRenameSheet) {
+                SpotRenameSheet(
+                    originalName: originalSpotName,
+                    newName: $newSpotName,
+                    onRename: { oldName, newName in
+                        // Renommer le spot dans tous les vols
+                        let descriptor = FetchDescriptor<Flight>()
+                        if let allFlights = try? modelContext.fetch(descriptor) {
+                            var renamedCount = 0
+                            for f in allFlights {
+                                if f.spotName == oldName {
+                                    f.spotName = newName
+                                    f.needsSync = true
+                                    renamedCount += 1
+                                }
+                            }
+                            if renamedCount > 0 {
+                                try? modelContext.save()
+                                spotName = newName
+                                logInfo("Renamed spot '\(oldName)' to '\(newName)' in \(renamedCount) flights", category: .dataController)
+                            }
+                        }
+                    }
                 )
             }
             .confirmationDialog("Supprimer ce vol ?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
@@ -1209,6 +1294,135 @@ struct EditFlightView: View {
                 }
             }
         }
+    }
+
+    private func updateNearbySpots() {
+        // Si on a des coordonnées, chercher les spots proches
+        guard let coord = selectedCoordinate else {
+            nearbySpots = []
+            return
+        }
+
+        let descriptor = FetchDescriptor<Flight>()
+        guard let allFlights = try? modelContext.fetch(descriptor) else {
+            nearbySpots = []
+            return
+        }
+
+        // Grouper les vols par nom de spot
+        var spotGroups: [String: (flights: [Flight], avgLat: Double, avgLon: Double)] = [:]
+
+        for f in allFlights {
+            guard let spotName = f.spotName,
+                  let lat = f.latitude,
+                  let lon = f.longitude else { continue }
+
+            if var group = spotGroups[spotName] {
+                group.flights.append(f)
+                let count = Double(group.flights.count)
+                let prevCount = count - 1
+                group.avgLat = (group.avgLat * prevCount + lat) / count
+                group.avgLon = (group.avgLon * prevCount + lon) / count
+                spotGroups[spotName] = group
+            } else {
+                spotGroups[spotName] = (flights: [f], avgLat: lat, avgLon: lon)
+            }
+        }
+
+        // Filtrer par distance (1km) et créer les LocalSpot
+        var result: [(spot: DataController.LocalSpot, distance: Double)] = []
+        let radiusMeters = 1000.0
+
+        for (name, group) in spotGroups {
+            let distance = haversineDistance(
+                lat1: coord.latitude, lon1: coord.longitude,
+                lat2: group.avgLat, lon2: group.avgLon
+            )
+
+            if distance <= radiusMeters {
+                let totalSeconds = group.flights.reduce(0) { $0 + $1.durationSeconds }
+                let spot = DataController.LocalSpot(
+                    name: name,
+                    latitude: group.avgLat,
+                    longitude: group.avgLon,
+                    flightCount: group.flights.count,
+                    totalFlightSeconds: totalSeconds
+                )
+                result.append((spot: spot, distance: distance))
+            }
+        }
+
+        nearbySpots = result.sorted { $0.distance < $1.distance }.map { $0.spot }
+    }
+
+    private func getFlightCountForSpot(_ spotName: String) -> Int {
+        let descriptor = FetchDescriptor<Flight>()
+        guard let allFlights = try? modelContext.fetch(descriptor) else { return 0 }
+        return allFlights.filter { $0.spotName == spotName }.count
+    }
+
+    private func haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double) -> Double {
+        let earthRadius = 6371000.0 // mètres
+        let lat1Rad = lat1 * .pi / 180
+        let lat2Rad = lat2 * .pi / 180
+        let deltaLat = (lat2 - lat1) * .pi / 180
+        let deltaLon = (lon2 - lon1) * .pi / 180
+
+        let a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+                cos(lat1Rad) * cos(lat2Rad) *
+                sin(deltaLon / 2) * sin(deltaLon / 2)
+        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return earthRadius * c
+    }
+}
+
+// MARK: - SpotRenameSheet
+
+struct SpotRenameSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let originalName: String
+    @Binding var newName: String
+    let onRename: (String, String) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack {
+                        Text("Nom actuel")
+                        Spacer()
+                        Text(originalName)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    TextField("Nouveau nom", text: $newName)
+                        .autocorrectionDisabled()
+                } footer: {
+                    Text("Ce changement sera appliqué à tous les vols de ce spot.")
+                }
+            }
+            .navigationTitle("Renommer le spot")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Annuler") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Renommer") {
+                        if !newName.isEmpty && newName != originalName {
+                            onRename(originalName, newName)
+                        }
+                        dismiss()
+                    }
+                    .disabled(newName.isEmpty || newName == originalName)
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 }
 

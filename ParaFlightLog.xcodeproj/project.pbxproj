@@ -523,7 +523,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ParaFlightLogWidgetExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWidgetExtension;
+				INFOPLIST_KEY_CFBundleDisplayName = SOARX;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -556,7 +556,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ParaFlightLogWidgetExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWidgetExtension;
+				INFOPLIST_KEY_CFBundleDisplayName = SOARX;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -711,8 +711,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ParaFlightLog/Info.plist;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
+				INFOPLIST_KEY_CFBundleDisplayName = SOARX;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -746,8 +747,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ParaFlightLog/Info.plist;
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
+				INFOPLIST_KEY_CFBundleDisplayName = SOARX;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -781,10 +783,10 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWatch;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accède à vos données de santé pour enregistrer vos sessions de vol.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de vos vols.";
+				INFOPLIST_KEY_CFBundleDisplayName = SOARX;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "SOARX accède à vos données de santé pour enregistrer vos sessions de vol.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SOARX enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de vos vols.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog;
@@ -819,10 +821,10 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWatch;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accède à vos données de santé pour enregistrer vos sessions de vol.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de vos vols.";
+				INFOPLIST_KEY_CFBundleDisplayName = SOARX;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "SOARX accède à vos données de santé pour enregistrer vos sessions de vol.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SOARX enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de vos vols.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog;
