@@ -573,6 +573,42 @@ final class UserService {
         }
     }
 
+    /// Recalcule et met à jour toutes les statistiques utilisateur depuis les données locales
+    /// À appeler après sync ou recalcul des badges
+    func recalculateAndUpdateAllStats(
+        totalFlights: Int,
+        totalFlightSeconds: Int,
+        longestStreak: Int,
+        currentStreak: Int
+    ) async throws {
+        guard let profile = currentUserProfile else {
+            throw UserProfileError.notAuthenticated
+        }
+
+        do {
+            let document = try await databases.updateDocument(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.usersCollectionId,
+                documentId: profile.id,
+                data: [
+                    "totalFlights": totalFlights,
+                    "totalFlightSeconds": totalFlightSeconds,
+                    "longestStreak": longestStreak,
+                    "currentStreak": currentStreak,
+                    "lastActiveAt": Date().ISO8601Format()
+                ]
+            )
+
+            let updatedProfile = try parseProfile(from: document.data)
+            currentUserProfile = updatedProfile
+            profileCache[updatedProfile.id] = updatedProfile
+
+            logInfo("All stats recalculated: flights=\(totalFlights), seconds=\(totalFlightSeconds), streak=\(currentStreak)/\(longestStreak)", category: .auth)
+        } catch {
+            throw UserProfileError.unknown(error.localizedDescription)
+        }
+    }
+
     // MARK: - Logout Cleanup
 
     /// Nettoie les données locales lors de la déconnexion

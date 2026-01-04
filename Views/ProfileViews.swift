@@ -181,8 +181,8 @@ struct WelcomeAuthView: View {
                         }
 
                         VStack(spacing: 8) {
-                            Text("ParaFlightLog")
-                                .font(.system(size: 32, weight: .bold, design: .rounded))
+                            Text("SOARX")
+                                .font(.system(size: 36, weight: .bold, design: .rounded))
 
                             Text("Votre carnet de vol parapente".localized)
                                 .font(.subheadline)
@@ -835,6 +835,9 @@ struct ProfileView: View {
     @State private var showingEditProfile = false
     @State private var showingSettings = false
     @State private var syncStatus: SyncStatus = .idle
+    @State private var showingDevAlert = false
+    @State private var devAlertMessage = ""
+    @State private var isDevOperationRunning = false
 
     enum SyncStatus: Equatable {
         case idle
@@ -862,6 +865,7 @@ struct ProfileView: View {
 
                     // Stats rapides
                     Section("Statistiques") {
+                        // Première ligne : Vols, Temps, Voiles
                         HStack {
                             StatItem(value: "\(flights.count)", label: "Vols".localized)
                             Divider()
@@ -870,6 +874,61 @@ struct ProfileView: View {
                             StatItem(value: "\(wings.filter { !$0.isArchived }.count)", label: "Voiles".localized)
                         }
                         .padding(.vertical, 8)
+
+                        // Deuxième ligne : Spots, Distance, Altitude max
+                        HStack {
+                            StatItem(value: "\(uniqueSpotsCount)", label: "Spots".localized)
+                            Divider()
+                            StatItem(value: formatTotalDistance(), label: "Distance".localized)
+                            Divider()
+                            StatItem(value: formatMaxAltitude(), label: "Alt. max".localized)
+                        }
+                        .padding(.vertical, 8)
+                    }
+
+                    // Section Voiles utilisées
+                    if !topWings.isEmpty {
+                        Section("Voiles utilisées".localized) {
+                            ForEach(topWings, id: \.wing.id) { wingStats in
+                                HStack {
+                                    // Photo de la voile
+                                    if let photoData = wingStats.wing.photoData,
+                                       let uiImage = UIImage(data: photoData) {
+                                        Image(uiImage: uiImage)
+                                            .resizable()
+                                            .scaledToFill()
+                                            .frame(width: 40, height: 40)
+                                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                                    } else {
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color.blue.opacity(0.15))
+                                            .frame(width: 40, height: 40)
+                                            .overlay {
+                                                Image(systemName: "wind")
+                                                    .foregroundStyle(.blue)
+                                            }
+                                    }
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(wingStats.wing.name)
+                                            .font(.subheadline)
+                                            .fontWeight(.medium)
+                                        Text("\(wingStats.flightCount) vols • \(formatDuration(wingStats.totalSeconds))")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    // Pourcentage d'utilisation
+                                    Text("\(wingStats.percentage)%")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.blue)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
                     }
 
                     // Gamification - Niveau et badges
@@ -1046,6 +1105,37 @@ struct ProfileView: View {
                     }
                 }
 
+                // Section Développeur
+                Section {
+                    Button {
+                        reuploadAllFlights()
+                    } label: {
+                        HStack {
+                            Label("Réuploader tous les vols".localized, systemImage: "arrow.triangle.2.circlepath.icloud")
+                            Spacer()
+                            if isDevOperationRunning {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(isDevOperationRunning)
+
+                    Button {
+                        recalculateAllBadges()
+                    } label: {
+                        HStack {
+                            Label("Recalculer tous les badges".localized, systemImage: "medal.fill")
+                            Spacer()
+                            if isDevOperationRunning {
+                                ProgressView()
+                            }
+                        }
+                    }
+                    .disabled(isDevOperationRunning)
+                } header: {
+                    Text("Développeur".localized)
+                }
+
                 // À propos
                 Section("À propos".localized) {
                     HStack {
@@ -1094,7 +1184,214 @@ struct ProfileView: View {
                     await loadProfile()
                 }
             }
+            .alert("Développeur".localized, isPresented: $showingDevAlert) {
+                Button("OK") { }
+            } message: {
+                Text(devAlertMessage)
+            }
         }
+    }
+
+    // MARK: - Developer Functions
+
+    private func reuploadAllFlights() {
+        isDevOperationRunning = true
+
+        Task {
+            do {
+                // Marquer tous les vols comme non synchronisés pour forcer le réupload
+                for flight in flights {
+                    flight.needsSync = true
+                }
+                try modelContext.save()
+
+                // Lancer la synchronisation complète
+                let result = try await FlightSyncService.shared.performFullSync(modelContext: modelContext)
+
+                await MainActor.run {
+                    isDevOperationRunning = false
+                    devAlertMessage = "✅ \(result.uploaded) vols réuploadés\n\(result.downloaded) vols téléchargés"
+                    if !result.errors.isEmpty {
+                        devAlertMessage += "\n⚠️ Erreurs: \(result.errors.joined(separator: ", "))"
+                    }
+                    showingDevAlert = true
+                }
+            } catch {
+                await MainActor.run {
+                    isDevOperationRunning = false
+                    devAlertMessage = "❌ Erreur: \(error.localizedDescription)"
+                    showingDevAlert = true
+                }
+            }
+        }
+    }
+
+    private func recalculateAllBadges() {
+        isDevOperationRunning = true
+
+        Task {
+            guard var profile = UserService.shared.currentUserProfile else {
+                await MainActor.run {
+                    isDevOperationRunning = false
+                    devAlertMessage = "❌ Vous devez être connecté pour recalculer les badges"
+                    showingDevAlert = true
+                }
+                return
+            }
+
+            // Calculer les stats à partir de TOUS les vols locaux
+            let totalFlightsLocal = flights.count
+            let totalSecondsLocal = flights.reduce(0) { $0 + $1.durationSeconds }
+            let uniqueSpots = Set(flights.compactMap { $0.spotName }).count
+            let maxAltitude = flights.compactMap { $0.maxAltitude }.max() ?? 0
+            let maxDistance = flights.compactMap { $0.totalDistance }.max() ?? 0
+            let longestFlight = flights.map { $0.durationSeconds }.max() ?? 0
+
+            // Calculer le streak (jours consécutifs de vol)
+            let (currentStreak, longestStreak) = calculateFlightStreaks()
+
+            // Mettre à jour les stats dans le cloud AVANT de vérifier les badges
+            do {
+                try await UserService.shared.recalculateAndUpdateAllStats(
+                    totalFlights: totalFlightsLocal,
+                    totalFlightSeconds: totalSecondsLocal,
+                    longestStreak: longestStreak,
+                    currentStreak: currentStreak
+                )
+            } catch {
+                logWarning("Failed to update cloud stats: \(error.localizedDescription)", category: .general)
+            }
+
+            // Recharger le profil avec les stats mises à jour
+            if let updatedProfile = UserService.shared.currentUserProfile {
+                profile = updatedProfile
+            }
+
+            do {
+                // Charger tous les badges disponibles
+                await BadgeService.shared.loadAllBadges()
+
+                // Charger les badges déjà obtenus AVANT
+                await BadgeService.shared.loadUserBadges(userId: profile.id)
+
+                let badgesCount = BadgeService.shared.allBadges.count
+                let userBadgesCountBefore = BadgeService.shared.userBadges.count
+
+                // Vérifier et attribuer les badges manquants
+                let newBadges = try await BadgeService.shared.checkAndAwardBadges(
+                    profile: profile,
+                    uniqueSpots: uniqueSpots,
+                    maxAltitude: maxAltitude,
+                    maxDistance: maxDistance,
+                    longestFlightSeconds: longestFlight
+                )
+
+                // Recharger pour avoir le compteur à jour APRÈS attribution
+                await BadgeService.shared.loadUserBadges(userId: profile.id)
+                let userBadgesCountAfter = BadgeService.shared.userBadges.count
+
+                // Récupérer les erreurs d'attribution
+                let awardErrors = BadgeService.shared.lastAwardErrors
+
+                await MainActor.run {
+                    isDevOperationRunning = false
+                    var message = ""
+                    if newBadges.isEmpty && awardErrors.isEmpty {
+                        message = "✅ Badges vérifiés - Aucun nouveau badge\n"
+                    } else if !newBadges.isEmpty {
+                        let badgeNames = newBadges.map { $0.localizedName }.joined(separator: ", ")
+                        message = "🎉 \(newBadges.count) badge(s) obtenu(s) !\n\(badgeNames)\n"
+                    }
+
+                    // Afficher les erreurs s'il y en a
+                    if !awardErrors.isEmpty {
+                        message += "\n⚠️ Erreurs d'attribution (\(awardErrors.count)):\n"
+                        for error in awardErrors.prefix(3) {
+                            message += "• \(error)\n"
+                        }
+                        if awardErrors.count > 3 {
+                            message += "... et \(awardErrors.count - 3) autres\n"
+                        }
+                    }
+
+                    message += "\n📊 Stats cloud mises à jour:\n"
+                    message += "• \(totalFlightsLocal) vols, \(totalSecondsLocal / 3600)h\n"
+                    message += "• \(uniqueSpots) spots, Alt: \(Int(maxAltitude))m\n"
+                    message += "• Streak: \(currentStreak)j (max: \(longestStreak)j)\n"
+                    message += "\n🏅 \(badgesCount) dispo, \(userBadgesCountAfter) obtenus"
+                    if userBadgesCountBefore != userBadgesCountAfter {
+                        message += " (+\(userBadgesCountAfter - userBadgesCountBefore) nouveaux)"
+                    }
+                    devAlertMessage = message
+                    showingDevAlert = true
+                }
+            } catch {
+                await MainActor.run {
+                    isDevOperationRunning = false
+                    devAlertMessage = "❌ Erreur: \(error.localizedDescription)"
+                    showingDevAlert = true
+                }
+            }
+        }
+    }
+
+    /// Calcule les séries de jours consécutifs de vol
+    private func calculateFlightStreaks() -> (current: Int, longest: Int) {
+        guard !flights.isEmpty else { return (0, 0) }
+
+        // Récupérer les dates uniques de vol (jours)
+        let calendar = Calendar.current
+        let flightDays = Set(flights.map { calendar.startOfDay(for: $0.startDate) })
+        let sortedDays = flightDays.sorted(by: >)  // Du plus récent au plus ancien
+
+        guard let mostRecentDay = sortedDays.first else { return (0, 0) }
+
+        // Calculer le streak actuel (depuis aujourd'hui ou hier)
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+
+        var currentStreak = 0
+        var longestStreak = 0
+        var tempStreak = 1
+
+        // Vérifier si le streak actuel est valide (vol aujourd'hui ou hier)
+        let isStreakActive = mostRecentDay == today || mostRecentDay == yesterday
+
+        if isStreakActive {
+            currentStreak = 1
+            var checkDate = mostRecentDay
+
+            for day in sortedDays.dropFirst() {
+                let expectedPrevious = calendar.date(byAdding: .day, value: -1, to: checkDate)!
+                if day == expectedPrevious {
+                    currentStreak += 1
+                    checkDate = day
+                } else {
+                    break
+                }
+            }
+        }
+
+        // Calculer le plus long streak historique
+        for (index, day) in sortedDays.enumerated() {
+            if index == 0 {
+                tempStreak = 1
+                continue
+            }
+
+            let previousDay = sortedDays[index - 1]
+            let expectedPrevious = calendar.date(byAdding: .day, value: -1, to: previousDay)!
+
+            if day == expectedPrevious {
+                tempStreak += 1
+            } else {
+                longestStreak = max(longestStreak, tempStreak)
+                tempStreak = 1
+            }
+        }
+        longestStreak = max(longestStreak, tempStreak)
+
+        return (currentStreak, longestStreak)
     }
 
     private func loadProfile() async {
@@ -1254,6 +1551,77 @@ struct ProfileView: View {
         } else {
             return "\(minutes)min"
         }
+    }
+
+    private func formatDuration(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        if hours > 0 {
+            return "\(hours)h\(String(format: "%02d", minutes))"
+        } else {
+            return "\(minutes)min"
+        }
+    }
+
+    private func formatTotalDistance() -> String {
+        let totalKm = flights.compactMap { $0.totalDistance }.reduce(0, +) / 1000
+        if totalKm >= 1000 {
+            return String(format: "%.0fk km", totalKm / 1000)
+        } else if totalKm >= 1 {
+            return String(format: "%.0f km", totalKm)
+        } else {
+            return "—"
+        }
+    }
+
+    private func formatMaxAltitude() -> String {
+        let maxAlt = flights.compactMap { $0.maxAltitude }.max() ?? 0
+        if maxAlt > 0 {
+            return String(format: "%.0f m", maxAlt)
+        } else {
+            return "—"
+        }
+    }
+
+    private var uniqueSpotsCount: Int {
+        Set(flights.compactMap { $0.spotName }).count
+    }
+
+    /// Structure pour les stats de voile
+    struct WingStats {
+        let wing: Wing
+        let flightCount: Int
+        let totalSeconds: Int
+        let percentage: Int
+    }
+
+    /// Top 5 des voiles les plus utilisées
+    private var topWings: [WingStats] {
+        var wingDict: [UUID: (wing: Wing, count: Int, seconds: Int)] = [:]
+
+        for flight in flights {
+            guard let wing = flight.wing else { continue }
+            if var existing = wingDict[wing.id] {
+                existing.count += 1
+                existing.seconds += flight.durationSeconds
+                wingDict[wing.id] = existing
+            } else {
+                wingDict[wing.id] = (wing: wing, count: 1, seconds: flight.durationSeconds)
+            }
+        }
+
+        let totalFlights = max(flights.count, 1)
+
+        return wingDict.values
+            .map { WingStats(
+                wing: $0.wing,
+                flightCount: $0.count,
+                totalSeconds: $0.seconds,
+                percentage: Int(Double($0.count) / Double(totalFlights) * 100)
+            )}
+            .sorted { $0.flightCount > $1.flightCount }
+            .prefix(5)
+            .map { $0 }
     }
 }
 

@@ -597,10 +597,28 @@ final class FlightSyncService {
         guard let allFlights = try? modelContext.fetch(descriptor) else { return }
 
         // Calculer les stats
+        let totalFlights = allFlights.count
+        let totalSeconds = allFlights.reduce(0) { $0 + $1.durationSeconds }
         let uniqueSpots = Set(allFlights.compactMap { $0.spotName }).count
         let maxAltitude = allFlights.compactMap { $0.maxAltitude }.max() ?? 0
         let maxDistance = allFlights.compactMap { $0.totalDistance }.max() ?? 0
         let longestFlight = allFlights.map { $0.durationSeconds }.max() ?? 0
+
+        // Calculer le streak
+        let (currentStreak, longestStreak) = calculateFlightStreaks(from: allFlights)
+
+        // Mettre à jour les stats dans le cloud
+        do {
+            try await UserService.shared.recalculateAndUpdateAllStats(
+                totalFlights: totalFlights,
+                totalFlightSeconds: totalSeconds,
+                longestStreak: longestStreak,
+                currentStreak: currentStreak
+            )
+            logInfo("Cloud stats updated: \(totalFlights) flights, \(totalSeconds / 3600)h, streak \(currentStreak)/\(longestStreak)", category: .sync)
+        } catch {
+            logWarning("Failed to update cloud stats: \(error.localizedDescription)", category: .sync)
+        }
 
         do {
             // Vérifier et attribuer les nouveaux badges
@@ -632,6 +650,65 @@ final class FlightSyncService {
         } catch {
             logWarning("Badge check failed: \(error.localizedDescription)", category: .sync)
         }
+    }
+
+    /// Calcule les séries de jours consécutifs de vol
+    private func calculateFlightStreaks(from flights: [Flight]) -> (current: Int, longest: Int) {
+        guard !flights.isEmpty else { return (0, 0) }
+
+        // Récupérer les dates uniques de vol (jours)
+        let calendar = Calendar.current
+        let flightDays = Set(flights.map { calendar.startOfDay(for: $0.startDate) })
+        let sortedDays = flightDays.sorted(by: >)  // Du plus récent au plus ancien
+
+        guard let mostRecentDay = sortedDays.first else { return (0, 0) }
+
+        // Calculer le streak actuel (depuis aujourd'hui ou hier)
+        let today = calendar.startOfDay(for: Date())
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+
+        var currentStreak = 0
+        var longestStreak = 0
+        var tempStreak = 1
+
+        // Vérifier si le streak actuel est valide (vol aujourd'hui ou hier)
+        let isStreakActive = mostRecentDay == today || mostRecentDay == yesterday
+
+        if isStreakActive {
+            currentStreak = 1
+            var checkDate = mostRecentDay
+
+            for day in sortedDays.dropFirst() {
+                let expectedPrevious = calendar.date(byAdding: .day, value: -1, to: checkDate)!
+                if day == expectedPrevious {
+                    currentStreak += 1
+                    checkDate = day
+                } else {
+                    break
+                }
+            }
+        }
+
+        // Calculer le plus long streak historique
+        for (index, day) in sortedDays.enumerated() {
+            if index == 0 {
+                tempStreak = 1
+                continue
+            }
+
+            let previousDay = sortedDays[index - 1]
+            let expectedPrevious = calendar.date(byAdding: .day, value: -1, to: previousDay)!
+
+            if day == expectedPrevious {
+                tempStreak += 1
+            } else {
+                longestStreak = max(longestStreak, tempStreak)
+                tempStreak = 1
+            }
+        }
+        longestStreak = max(longestStreak, tempStreak)
+
+        return (currentStreak, longestStreak)
     }
 
     // MARK: - Private Helpers
