@@ -93,17 +93,29 @@ final class AuthService {
         isLoading = true
         defer { isLoading = false }
 
+        logInfo("Attempting to restore session...", category: .auth)
+
         do {
+            // Vérifier d'abord si une session existe
+            let session = try await account.getSession(sessionId: "current")
+            logInfo("Found existing session: \(session.id), provider: \(session.provider), expires: \(session.expire)", category: .auth)
+
+            // Récupérer les infos utilisateur
             let user = try await account.get()
             currentUserId = user.id
             currentEmail = user.email
             authState = .authenticated(userId: user.id)
-            logInfo("Session restored for user: \(user.email)", category: .auth)
+            logInfo("Session restored successfully for user: \(user.email) (id: \(user.id))", category: .auth)
+        } catch let error as AppwriteError {
+            currentUserId = nil
+            currentEmail = nil
+            authState = .unauthenticated
+            logInfo("No active session - Appwrite: \(error.message) (type: \(error.type ?? "unknown"))", category: .auth)
         } catch {
             currentUserId = nil
             currentEmail = nil
             authState = .unauthenticated
-            logInfo("No active session found", category: .auth)
+            logInfo("No active session - error: \(error.localizedDescription)", category: .auth)
         }
     }
 

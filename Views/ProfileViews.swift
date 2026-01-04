@@ -71,9 +71,10 @@ struct AuthContainerView: View {
 
     /// Charge ou crée le profil utilisateur après authentification
     private func loadOrCreateProfile() async {
-        // Si le profil est déjà chargé, ne rien faire
-        if UserService.shared.currentUserProfile != nil {
-            logInfo("Profile already loaded in memory", category: .auth)
+        // Si le profil est déjà chargé, charger quand même les badges
+        if let existingProfile = UserService.shared.currentUserProfile {
+            logInfo("Profile already loaded in memory, loading badges...", category: .auth)
+            await loadBadgesForUser(userId: existingProfile.id)
             return
         }
 
@@ -91,6 +92,8 @@ struct AuthContainerView: View {
             // Essayer de charger le profil existant
             if let profile = try await UserService.shared.getCurrentProfile() {
                 logInfo("Profile loaded for user: \(profile.email)", category: .auth)
+                // Charger les badges de l'utilisateur
+                await loadBadgesForUser(userId: profile.id)
                 return
             }
 
@@ -99,13 +102,16 @@ struct AuthContainerView: View {
             let displayName = email.components(separatedBy: "@").first ?? "Pilote"
             let username = generateUsernameForAuth(from: email)
 
-            _ = try await UserService.shared.createProfile(
+            let newProfile = try await UserService.shared.createProfile(
                 authUserId: userId,
                 email: email,
                 displayName: displayName,
                 username: username
             )
             logInfo("Profile created successfully for user: \(email)", category: .auth)
+
+            // Charger les badges (même si nouveau profil, pour initialiser)
+            await loadBadgesForUser(userId: newProfile.id)
 
         } catch is CancellationError {
             // Navigation normale - ignorer silencieusement
@@ -116,6 +122,17 @@ struct AuthContainerView: View {
             // L'utilisateur pourra toujours utiliser l'app en mode local
             // Le profil sera retenté lors de l'accès à l'onglet Profil
         }
+    }
+
+    /// Charge les badges pour un utilisateur
+    private func loadBadgesForUser(userId: String) async {
+        // Charger les définitions des badges si pas encore fait
+        if BadgeService.shared.allBadges.isEmpty {
+            await BadgeService.shared.loadAllBadges()
+        }
+        // Charger les badges obtenus par l'utilisateur
+        await BadgeService.shared.loadUserBadges(userId: userId)
+        logInfo("Badges loaded at startup: \(BadgeService.shared.userBadges.count) earned out of \(BadgeService.shared.allBadges.count)", category: .auth)
     }
 
     private func generateUsernameForAuth(from email: String) -> String {
