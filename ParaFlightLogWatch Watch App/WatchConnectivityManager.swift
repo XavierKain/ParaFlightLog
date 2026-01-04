@@ -130,6 +130,87 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    // MARK: - Live Flight
+
+    /// Notifie l'iPhone qu'un vol en direct démarre
+    func notifyLiveFlightStart(
+        wingName: String?,
+        latitude: Double?,
+        longitude: Double?,
+        altitude: Double?,
+        completion: ((Bool, String?) -> Void)? = nil
+    ) {
+        guard sessionActivated else {
+            completion?(false, nil)
+            return
+        }
+
+        var message: [String: Any] = ["action": "startLiveFlight"]
+        if let wingName = wingName { message["wingName"] = wingName }
+        if let lat = latitude { message["latitude"] = lat }
+        if let lon = longitude { message["longitude"] = lon }
+        if let alt = altitude { message["altitude"] = alt }
+
+        if isPhoneReachable {
+            WCSession.default.sendMessage(message, replyHandler: { reply in
+                let status = reply["status"] as? String
+                let spotName = reply["spotName"] as? String
+                completion?(status == "success", spotName)
+            }, errorHandler: { error in
+                watchLogWarning("notifyLiveFlightStart failed: \(error.localizedDescription)", category: .watchSync)
+                completion?(false, nil)
+            })
+        } else {
+            // L'iPhone n'est pas joignable, on ne peut pas démarrer le live flight
+            watchLogWarning("iPhone not reachable for live flight start", category: .watchSync)
+            completion?(false, nil)
+        }
+    }
+
+    /// Notifie l'iPhone qu'un vol en direct se termine
+    func notifyLiveFlightEnd(completion: ((Bool) -> Void)? = nil) {
+        guard sessionActivated else {
+            completion?(false)
+            return
+        }
+
+        let message: [String: Any] = ["action": "endLiveFlight"]
+
+        if isPhoneReachable {
+            WCSession.default.sendMessage(message, replyHandler: { reply in
+                let status = reply["status"] as? String
+                completion?(status == "success")
+            }, errorHandler: { error in
+                watchLogWarning("notifyLiveFlightEnd failed: \(error.localizedDescription)", category: .watchSync)
+                completion?(false)
+            })
+        } else {
+            watchLogWarning("iPhone not reachable for live flight end", category: .watchSync)
+            completion?(false)
+        }
+    }
+
+    /// Met à jour la position du vol en direct
+    func updateLiveFlightLocation(
+        latitude: Double,
+        longitude: Double,
+        altitude: Double?
+    ) {
+        guard sessionActivated, isPhoneReachable else { return }
+
+        var message: [String: Any] = [
+            "action": "updateLiveLocation",
+            "latitude": latitude,
+            "longitude": longitude
+        ]
+        if let alt = altitude { message["altitude"] = alt }
+
+        WCSession.default.sendMessage(message, replyHandler: nil) { error in
+            // Silently fail - location updates are best effort
+            watchLogDebug("updateLiveFlightLocation failed: \(error.localizedDescription)", category: .watchSync)
+        }
+    }
+
     // MARK: - WCSessionDelegate
 
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {

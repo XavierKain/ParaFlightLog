@@ -10,6 +10,7 @@
 
 import Foundation
 import WatchConnectivity
+import CoreLocation
 
 @Observable
 final class WatchConnectivityManager: NSObject, WCSessionDelegate {
@@ -406,6 +407,26 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             return
         }
 
+        // Vérifier si c'est un démarrage de vol en direct
+        if let action = message["action"] as? String, action == "startLiveFlight" {
+            logInfo("Watch started live flight", category: .watchSync)
+            handleLiveFlightStart(message: message, replyHandler: replyHandler)
+            return
+        }
+
+        // Vérifier si c'est une fin de vol en direct
+        if let action = message["action"] as? String, action == "endLiveFlight" {
+            logInfo("Watch ended live flight", category: .watchSync)
+            handleLiveFlightEnd(replyHandler: replyHandler)
+            return
+        }
+
+        // Vérifier si c'est une mise à jour de position live
+        if let action = message["action"] as? String, action == "updateLiveLocation" {
+            handleLiveLocationUpdate(message: message, replyHandler: replyHandler)
+            return
+        }
+
         // Sinon, c'est un vol
         guard let flightData = message["flight"] as? [String: Any],
               let jsonData = try? JSONSerialization.data(withJSONObject: flightData),
@@ -432,6 +453,85 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                     self?.dataController?.addFlight(from: flightDTO, location: nil, spotName: nil)
                     replyHandler(["status": "success", "spotName": "Unknown"])
                 }
+            }
+        }
+    }
+
+    // MARK: - Live Flight Handling
+
+    /// Gère le démarrage d'un vol en direct depuis la Watch
+    private func handleLiveFlightStart(message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+        let wingName = message["wingName"] as? String
+        let latitude = message["latitude"] as? Double
+        let longitude = message["longitude"] as? Double
+        let altitude = message["altitude"] as? Double
+
+        Task {
+            do {
+                // Obtenir le nom du spot via reverse geocoding si on a une position
+                var spotName: String?
+                if let lat = latitude, let lon = longitude {
+                    let location = CLLocation(latitude: lat, longitude: lon)
+                    spotName = await withCheckedContinuation { continuation in
+                        locationService?.reverseGeocode(location: location) { name in
+                            continuation.resume(returning: name)
+                        }
+                    }
+                }
+
+                // Démarrer le vol en direct
+                let coordinate = (latitude != nil && longitude != nil)
+                    ? CLLocationCoordinate2D(latitude: latitude!, longitude: longitude!)
+                    : nil
+
+                try await LiveFlightService.shared.startLiveFlight(
+                    location: coordinate,
+                    altitude: altitude,
+                    spotName: spotName,
+                    wingName: wingName
+                )
+
+                logInfo("Live flight started from Watch", category: .sync)
+                replyHandler(["status": "success", "spotName": spotName ?? ""])
+
+            } catch {
+                logError("Failed to start live flight from Watch: \(error)", category: .sync)
+                replyHandler(["status": "error", "message": error.localizedDescription])
+            }
+        }
+    }
+
+    /// Gère la fin d'un vol en direct depuis la Watch
+    private func handleLiveFlightEnd(replyHandler: @escaping ([String: Any]) -> Void) {
+        Task {
+            do {
+                try await LiveFlightService.shared.endLiveFlight()
+                logInfo("Live flight ended from Watch", category: .sync)
+                replyHandler(["status": "success"])
+            } catch {
+                logError("Failed to end live flight from Watch: \(error)", category: .sync)
+                replyHandler(["status": "error", "message": error.localizedDescription])
+            }
+        }
+    }
+
+    /// Gère la mise à jour de position d'un vol en direct
+    private func handleLiveLocationUpdate(message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
+        guard let latitude = message["latitude"] as? Double,
+              let longitude = message["longitude"] as? Double else {
+            replyHandler(["status": "error", "message": "Missing coordinates"])
+            return
+        }
+
+        let altitude = message["altitude"] as? Double
+
+        Task {
+            do {
+                let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+                try await LiveFlightService.shared.updateLocation(location: coordinate, altitude: altitude)
+                replyHandler(["status": "success"])
+            } catch {
+                replyHandler(["status": "error", "message": error.localizedDescription])
             }
         }
     }

@@ -13,7 +13,7 @@ struct ContentView: View {
     @Environment(WatchLocationService.self) private var locationService
     @State private var selectedWing: WingDTO?
     @State private var activeFlightWing: WingDTO? // Voile capturée au démarrage - sert aussi de trigger pour fullScreenCover
-    @State private var selectedTab: Int = 0
+    @State private var selectedTab: Int = 1  // Page par défaut: sélection de voile (milieu)
     @State private var isFlying: Bool = false
     // Timer data stockée au niveau ContentView
     @State private var flightStartDate: Date?
@@ -29,12 +29,16 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Écran 1 : Sélection de voile
-            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab)
-                .environment(watchManager)
+            // Page 0 (gauche) : Settings
+            WatchSettingsView()
                 .tag(0)
 
-            // Écran 2 : Récap voile + bouton Start
+            // Page 1 (milieu, défaut) : Sélection de voile
+            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab)
+                .environment(watchManager)
+                .tag(1)
+
+            // Page 2 (droite) : Récap voile + bouton Start
             FlightStartView(
                 selectedWing: $selectedWing,
                 onStartFlight: {
@@ -42,9 +46,9 @@ struct ContentView: View {
                 }
             )
             .environment(watchManager)
-            .tag(1)
+            .tag(2)
         }
-        .tabViewStyle(.page)
+        .tabViewStyle(PageTabViewStyle())
         // Utiliser fullScreenCover(item:) pour que SwiftUI capture la valeur au moment de la présentation
         .fullScreenCover(item: $activeFlightWing) { wing in
             // Écran 3 : Timer actif (plein écran, impossible de quitter)
@@ -162,6 +166,18 @@ struct ContentView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
             locationService.startUpdatingLocation()
             locationService.startFlightTracking()
+
+            // Notifier l'iPhone pour démarrer le live flight (si connecté)
+            watchManager.notifyLiveFlightStart(
+                wingName: wing.fullName,
+                latitude: locationService.currentLocation?.coordinate.latitude,
+                longitude: locationService.currentLocation?.coordinate.longitude,
+                altitude: locationService.currentAltitude
+            ) { success, spotName in
+                if success {
+                    watchLogInfo("Live flight started on iPhone", category: .watchSync)
+                }
+            }
         }
     }
 
@@ -197,6 +213,13 @@ struct ContentView: View {
         // Terminer la session de persistance (vol sauvegardé)
         sessionManager.endSession()
 
+        // Notifier l'iPhone que le live flight est terminé
+        watchManager.notifyLiveFlightEnd { success in
+            if success {
+                watchLogInfo("Live flight ended on iPhone", category: .watchSync)
+            }
+        }
+
         // Arrêter la session workout si active
         Task {
             await workoutManager.stopWorkoutSession()
@@ -207,7 +230,7 @@ struct ContentView: View {
         flightStartDate = nil
         activeFlightWing = nil  // Ferme le fullScreenCover
         selectedWing = nil
-        selectedTab = 0 // Revenir à la sélection de voile
+        selectedTab = 1 // Revenir à la sélection de voile (page du milieu)
     }
 
     private func discardFlight() {
@@ -217,6 +240,9 @@ struct ContentView: View {
         // Annuler la session de persistance
         sessionManager.discardSession()
 
+        // Notifier l'iPhone que le live flight est annulé
+        watchManager.notifyLiveFlightEnd(completion: nil)
+
         // Arrêter la session workout si active
         Task {
             await workoutManager.stopWorkoutSession()
@@ -227,7 +253,7 @@ struct ContentView: View {
         flightStartDate = nil
         activeFlightWing = nil  // Ferme le fullScreenCover
         selectedWing = nil
-        selectedTab = 0
+        selectedTab = 1  // Revenir à la sélection de voile (page du milieu)
     }
 }
 
@@ -277,7 +303,7 @@ struct WingSelectionView: View {
                                     // Petit délai pour voir l'effet de sélection avant le scroll
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                                         withAnimation {
-                                            selectedTab = 1
+                                            selectedTab = 2  // Aller vers la page Start (droite)
                                         }
                                     }
                                 }
@@ -934,6 +960,83 @@ struct StatBox: View {
         .padding(.vertical, 6)
         .background(Color.gray.opacity(0.15))
         .clipShape(RoundedRectangle(cornerRadius: 8))
+    }
+}
+
+// MARK: - WatchSettingsView (Écran Settings)
+
+struct WatchSettingsView: View {
+    @State private var settings = WatchSettings.shared
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                // Header
+                HStack {
+                    Image(systemName: "gear")
+                        .font(.title3)
+                        .foregroundStyle(.blue)
+                    Text("Réglages")
+                        .font(.headline)
+                }
+                .padding(.top, 4)
+
+                // Water Lock Toggle
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(isOn: $settings.autoWaterLockEnabled) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "drop.fill")
+                                .foregroundStyle(.cyan)
+                            Text("Water Lock")
+                                .font(.subheadline)
+                        }
+                    }
+                    .tint(.cyan)
+
+                    Text("Verrouille l'écran pendant le vol")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 10)
+                .background(Color.gray.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                // Allow Dismiss Toggle
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(isOn: $settings.allowSessionDismiss) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "xmark.circle")
+                                .foregroundStyle(.orange)
+                            Text("Annuler vol")
+                                .font(.subheadline)
+                        }
+                    }
+                    .tint(.orange)
+
+                    Text("Permet d'annuler un vol en cours")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 10)
+                .background(Color.gray.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                Spacer()
+
+                // Indication swipe
+                HStack(spacing: 4) {
+                    Text("Swipe pour continuer")
+                        .font(.caption2)
+                    Image(systemName: "arrow.right")
+                        .font(.caption2)
+                }
+                .foregroundStyle(.secondary)
+                .padding(.top, 8)
+            }
+            .padding(.horizontal, 8)
+        }
     }
 }
 
