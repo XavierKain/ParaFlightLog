@@ -1062,6 +1062,48 @@ struct ProfileView: View {
                     }
                 }
 
+                // Section Notifications (si authentifié)
+                if authService.isAuthenticated {
+                    Section("Notifications".localized) {
+                        NavigationLink {
+                            NotificationsView()
+                        } label: {
+                            HStack {
+                                Label("Notifications".localized, systemImage: "bell.fill")
+                                Spacer()
+                                if NotificationService.shared.unreadCount > 0 {
+                                    Text("\(NotificationService.shared.unreadCount)")
+                                        .font(.caption)
+                                        .fontWeight(.semibold)
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(.red)
+                                        .clipShape(Capsule())
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Section Sécurité
+                Section("Sécurité".localized) {
+                    NavigationLink {
+                        EmergencyContactsView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "sos.circle.fill")
+                                .foregroundStyle(.red)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Contacts d'urgence".localized)
+                                Text("Configurez vos contacts SOS".localized)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+
                 // Section Préférences
                 Section("Préférences".localized) {
                     Picker("Langue".localized, selection: Binding(

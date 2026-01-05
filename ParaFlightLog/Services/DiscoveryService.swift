@@ -70,6 +70,11 @@ struct PublicFlight: Identifiable, Codable {
     let likeCount: Int
     let commentCount: Int
 
+    // Photos du vol
+    let hasPhotos: Bool
+    let photoCount: Int
+    let photoFileIds: [String]
+
     let createdAt: Date
 
     // Computed properties
@@ -686,6 +691,14 @@ final class DiscoveryService {
             return defaultValue
         }
 
+        // Parse photo file IDs array
+        var photoFileIds: [String] = []
+        if let photoIdsArray = data["photoFileIds"]?.value as? [String] {
+            photoFileIds = photoIdsArray
+        } else if let photoIdsArray = data["photoFileIds"]?.value as? [Any] {
+            photoFileIds = photoIdsArray.compactMap { $0 as? String }
+        }
+
         return PublicFlight(
             id: id,
             pilotId: pilotId,
@@ -708,6 +721,9 @@ final class DiscoveryService {
             hasGpsTrack: data["hasGpsTrack"]?.value as? Bool ?? false,
             likeCount: parseInt("likeCount"),
             commentCount: parseInt("commentCount"),
+            hasPhotos: data["hasPhotos"]?.value as? Bool ?? false,
+            photoCount: parseInt("photoCount"),
+            photoFileIds: photoFileIds,
             createdAt: createdAt
         )
     }

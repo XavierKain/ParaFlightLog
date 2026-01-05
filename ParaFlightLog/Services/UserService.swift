@@ -617,6 +617,127 @@ final class UserService {
         profileCache.removeAll()
     }
 
+    // MARK: - Public Profiles
+
+    /// Récupère le profil public d'un pilote par son ID
+    /// Utilisé pour afficher le profil d'autres utilisateurs
+    func getPublicProfile(userId: String) async throws -> CloudUserProfile {
+        // Vérifier le cache d'abord
+        if let cachedProfile = profileCache[userId] {
+            return cachedProfile
+        }
+
+        do {
+            let response = try await databases.listDocuments(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.usersCollectionId,
+                queries: [
+                    Query.equal("$id", value: userId),
+                    Query.limit(1)
+                ]
+            )
+
+            guard let document = response.documents.first else {
+                throw UserProfileError.profileNotFound
+            }
+
+            let profile = try parseProfile(from: document.data)
+            profileCache[userId] = profile
+
+            return profile
+        } catch let error as UserProfileError {
+            throw error
+        } catch let error as AppwriteError {
+            // Si le profil n'existe pas, essayer avec authUserId
+            let response = try await databases.listDocuments(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.usersCollectionId,
+                queries: [
+                    Query.equal("authUserId", value: userId),
+                    Query.limit(1)
+                ]
+            )
+
+            guard let document = response.documents.first else {
+                throw UserProfileError.profileNotFound
+            }
+
+            let profile = try parseProfile(from: document.data)
+            profileCache[userId] = profile
+
+            return profile
+        }
+    }
+
+    /// Vérifie si l'utilisateur actuel suit un autre pilote
+    func isFollowing(userId: String) async throws -> Bool {
+        guard let currentUserId = AuthService.shared.currentUserId else {
+            return false
+        }
+
+        do {
+            let response = try await databases.listDocuments(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.followsCollectionId,
+                queries: [
+                    Query.equal("followerId", value: currentUserId),
+                    Query.equal("followedId", value: userId),
+                    Query.limit(1)
+                ]
+            )
+            return !response.documents.isEmpty
+        } catch {
+            return false
+        }
+    }
+
+    /// Suit ou cesse de suivre un pilote
+    func toggleFollow(userId: String) async throws -> Bool {
+        guard let currentUserId = AuthService.shared.currentUserId else {
+            throw UserProfileError.notAuthenticated
+        }
+
+        // Vérifier si on suit déjà
+        let isCurrentlyFollowing = try await isFollowing(userId: userId)
+
+        if isCurrentlyFollowing {
+            // Trouver et supprimer le document de follow
+            let response = try await databases.listDocuments(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.followsCollectionId,
+                queries: [
+                    Query.equal("followerId", value: currentUserId),
+                    Query.equal("followedId", value: userId),
+                    Query.limit(1)
+                ]
+            )
+
+            if let doc = response.documents.first {
+                _ = try await databases.deleteDocument(
+                    databaseId: AppwriteConfig.databaseId,
+                    collectionId: AppwriteConfig.followsCollectionId,
+                    documentId: doc.id
+                )
+            }
+            logInfo("Unfollowed user \(userId)", category: .auth)
+            return false
+        } else {
+            // Créer un nouveau follow
+            _ = try await databases.createDocument(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.followsCollectionId,
+                documentId: ID.unique(),
+                data: [
+                    "followerId": currentUserId,
+                    "followedId": userId,
+                    "createdAt": Date().ISO8601Format()
+                ]
+            )
+            logInfo("Followed user \(userId)", category: .auth)
+            return true
+        }
+    }
+
     // MARK: - Private Helpers
 
     private func parseProfile(from data: [String: Any]) throws -> CloudUserProfile {

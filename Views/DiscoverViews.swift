@@ -803,21 +803,27 @@ struct PublicFlightCardView: View {
                             }
                     }
 
-                    // Badge trace GPS
-                    if flight.hasGpsTrack {
-                        HStack(spacing: 4) {
-                            Image(systemName: "point.topleft.down.to.point.bottomright.curvepath.fill")
-                            Text("Trace GPS")
+                    // Badges GPS et Photos
+                    HStack(spacing: 6) {
+                        if flight.hasGpsTrack {
+                            HStack(spacing: 4) {
+                                Image(systemName: "point.topleft.down.to.point.bottomright.curvepath.fill")
+                                Text("GPS")
+                            }
+                            .font(.caption2)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(.blue)
+                            .clipShape(Capsule())
                         }
-                        .font(.caption2)
-                        .fontWeight(.semibold)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(.blue)
-                        .clipShape(Capsule())
-                        .padding(10)
+
+                        if flight.hasPhotos && flight.photoCount > 0 {
+                            FlightPhotosBadge(count: flight.photoCount)
+                        }
                     }
+                    .padding(10)
                 }
             }
 
@@ -925,15 +931,29 @@ struct PublicFlightCardView: View {
                 Divider()
 
                 HStack {
-                    // Badge GPS si pas de carte
-                    if !showMap && flight.hasGpsTrack {
-                        HStack(spacing: 4) {
-                            Image(systemName: "point.topleft.down.to.point.bottomright.curvepath.fill")
-                            Text("GPS")
+                    // Badges si pas de carte (GPS + Photos)
+                    if !showMap {
+                        HStack(spacing: 8) {
+                            if flight.hasGpsTrack {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "point.topleft.down.to.point.bottomright.curvepath.fill")
+                                    Text("GPS")
+                                }
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.blue)
+                            }
+
+                            if flight.hasPhotos && flight.photoCount > 0 {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "photo.fill")
+                                    Text("\(flight.photoCount)")
+                                }
+                                .font(.caption2)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.orange)
+                            }
                         }
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.blue)
                     }
 
                     Spacer()
@@ -1098,6 +1118,12 @@ struct PublicFlightDetailView: View {
                         .background(Color.blue.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .padding(.horizontal)
+
+                        // Photos du vol (si disponibles)
+                        if details.flight.hasPhotos && !details.flight.photoFileIds.isEmpty {
+                            FlightPhotosSection(flight: details.flight)
+                                .padding(.horizontal)
+                        }
 
                         // Statistiques de vol
                         if details.flight.maxAltitude != nil || details.flight.totalDistance != nil || details.flight.maxSpeed != nil {

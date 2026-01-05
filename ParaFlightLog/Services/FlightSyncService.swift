@@ -8,6 +8,7 @@
 //
 
 import Foundation
+import UIKit
 import Appwrite
 import SwiftData
 import NIOCore
@@ -22,6 +23,8 @@ enum FlightSyncError: LocalizedError {
     case downloadFailed(String)
     case gpsTrackUploadFailed
     case gpsTrackDownloadFailed
+    case photoUploadFailed(String)
+    case photoDeleteFailed(String)
     case conflictDetected
     case unknown(String)
 
@@ -39,6 +42,10 @@ enum FlightSyncError: LocalizedError {
             return "Échec de l'upload de la trace GPS"
         case .gpsTrackDownloadFailed:
             return "Échec du téléchargement de la trace GPS"
+        case .photoUploadFailed(let message):
+            return "Échec de l'upload de la photo: \(message)"
+        case .photoDeleteFailed(let message):
+            return "Échec de la suppression de la photo: \(message)"
         case .conflictDetected:
             return "Conflit de synchronisation détecté"
         case .unknown(let message):
@@ -356,6 +363,168 @@ final class FlightSyncService {
             return data
         } catch {
             throw FlightSyncError.gpsTrackDownloadFailed
+        }
+    }
+
+    // MARK: - Flight Photos
+
+    /// Upload des photos pour un vol
+    /// - Parameters:
+    ///   - flightId: ID du vol dans le cloud
+    ///   - images: Liste des images UIImage à uploader
+    /// - Returns: Liste des IDs des fichiers uploadés
+    func uploadFlightPhotos(flightId: String, images: [UIImage]) async throws -> [String] {
+        guard AuthService.shared.isAuthenticated else {
+            throw FlightSyncError.notAuthenticated
+        }
+
+        var uploadedFileIds: [String] = []
+
+        for (index, image) in images.enumerated() {
+            // Compresser l'image en JPEG
+            guard let imageData = image.jpegData(compressionQuality: 0.8) else {
+                logWarning("Failed to compress image \(index) for flight \(flightId)", category: .sync)
+                continue
+            }
+
+            do {
+                let file = try await storage.createFile(
+                    bucketId: AppwriteConfig.flightPhotosBucketId,
+                    fileId: ID.unique(),
+                    file: InputFile.fromData(
+                        imageData,
+                        filename: "\(flightId)_\(index)_\(Date().timeIntervalSince1970).jpg",
+                        mimeType: "image/jpeg"
+                    )
+                )
+                uploadedFileIds.append(file.id)
+                logInfo("Flight photo uploaded: \(file.id) for flight \(flightId)", category: .sync)
+            } catch let error as AppwriteError {
+                throw FlightSyncError.photoUploadFailed(error.message)
+            } catch {
+                throw FlightSyncError.photoUploadFailed(error.localizedDescription)
+            }
+        }
+
+        // Mettre à jour le document du vol avec les IDs des photos
+        if !uploadedFileIds.isEmpty {
+            do {
+                // Récupérer les photos existantes
+                let document = try await databases.getDocument(
+                    databaseId: AppwriteConfig.databaseId,
+                    collectionId: AppwriteConfig.flightsCollectionId,
+                    documentId: flightId
+                )
+
+                var existingPhotoIds: [String] = []
+                if let photoIdsData = document.data["photoFileIds"]?.value as? [String] {
+                    existingPhotoIds = photoIdsData
+                }
+
+                // Combiner avec les nouvelles photos
+                let allPhotoIds = existingPhotoIds + uploadedFileIds
+
+                _ = try await databases.updateDocument(
+                    databaseId: AppwriteConfig.databaseId,
+                    collectionId: AppwriteConfig.flightsCollectionId,
+                    documentId: flightId,
+                    data: [
+                        "photoFileIds": allPhotoIds,
+                        "hasPhotos": true,
+                        "photoCount": allPhotoIds.count,
+                        "syncedAt": Date().ISO8601Format()
+                    ]
+                )
+                logInfo("Flight \(flightId) updated with \(allPhotoIds.count) photos", category: .sync)
+            } catch let error as AppwriteError {
+                logWarning("Failed to update flight with photo IDs: \(error.message)", category: .sync)
+            }
+        }
+
+        return uploadedFileIds
+    }
+
+    /// Supprime une photo d'un vol
+    /// - Parameters:
+    ///   - flightId: ID du vol dans le cloud
+    ///   - photoId: ID du fichier photo à supprimer
+    func deleteFlightPhoto(flightId: String, photoId: String) async throws {
+        guard AuthService.shared.isAuthenticated else {
+            throw FlightSyncError.notAuthenticated
+        }
+
+        do {
+            // Supprimer le fichier
+            _ = try await storage.deleteFile(
+                bucketId: AppwriteConfig.flightPhotosBucketId,
+                fileId: photoId
+            )
+            logInfo("Flight photo deleted: \(photoId)", category: .sync)
+
+            // Mettre à jour le document du vol
+            let document = try await databases.getDocument(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.flightsCollectionId,
+                documentId: flightId
+            )
+
+            var photoIds: [String] = []
+            if let photoIdsData = document.data["photoFileIds"]?.value as? [String] {
+                photoIds = photoIdsData.filter { $0 != photoId }
+            }
+
+            _ = try await databases.updateDocument(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.flightsCollectionId,
+                documentId: flightId,
+                data: [
+                    "photoFileIds": photoIds,
+                    "hasPhotos": !photoIds.isEmpty,
+                    "photoCount": photoIds.count,
+                    "syncedAt": Date().ISO8601Format()
+                ]
+            )
+        } catch let error as AppwriteError {
+            throw FlightSyncError.photoDeleteFailed(error.message)
+        } catch {
+            throw FlightSyncError.photoDeleteFailed(error.localizedDescription)
+        }
+    }
+
+    /// Télécharge une photo de vol
+    /// - Parameter fileId: ID du fichier photo
+    /// - Returns: Data de l'image
+    func downloadFlightPhoto(fileId: String) async throws -> Data {
+        do {
+            let byteBuffer = try await storage.getFileView(
+                bucketId: AppwriteConfig.flightPhotosBucketId,
+                fileId: fileId
+            )
+            return Data(buffer: byteBuffer)
+        } catch let error as AppwriteError {
+            throw FlightSyncError.downloadFailed(error.message)
+        } catch {
+            throw FlightSyncError.downloadFailed(error.localizedDescription)
+        }
+    }
+
+    /// Récupère les IDs des photos d'un vol
+    /// - Parameter flightId: ID du vol
+    /// - Returns: Liste des IDs des photos
+    func getFlightPhotoIds(flightId: String) async throws -> [String] {
+        do {
+            let document = try await databases.getDocument(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.flightsCollectionId,
+                documentId: flightId
+            )
+
+            if let photoIds = document.data["photoFileIds"]?.value as? [String] {
+                return photoIds
+            }
+            return []
+        } catch {
+            return []
         }
     }
 

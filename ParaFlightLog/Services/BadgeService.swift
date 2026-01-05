@@ -210,6 +210,13 @@ struct UserBadge: Identifiable, Codable, Equatable {
     }
 }
 
+/// Badge obtenu avec ses détails complets
+struct EarnedBadge: Identifiable, Equatable {
+    let id: String
+    let badge: Badge
+    let earnedAt: Date
+}
+
 /// Progression vers un badge
 struct BadgeProgress {
     let badge: Badge
@@ -379,6 +386,53 @@ final class BadgeService {
     /// Retourne le badge correspondant à un ID
     func getBadge(_ badgeId: String) -> Badge? {
         allBadges.first { $0.id == badgeId }
+    }
+
+    /// Récupère les badges obtenus par un utilisateur avec les détails de chaque badge
+    /// Retourne une liste de EarnedBadge (badge + date d'obtention)
+    func getUserBadges(userId: String) async throws -> [EarnedBadge] {
+        // S'assurer que les badges sont chargés
+        if allBadges.isEmpty {
+            await loadAllBadges()
+        }
+
+        do {
+            let documents = try await databases.listDocuments(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.userBadgesCollectionId,
+                queries: [
+                    Query.equal("userId", value: userId),
+                    Query.orderDesc("earnedAt"),
+                    Query.limit(100)
+                ]
+            )
+
+            var earnedBadges: [EarnedBadge] = []
+            for doc in documents.documents {
+                var nativeData: [String: Any] = [:]
+                for (key, value) in doc.data {
+                    if let anyCodable = value as? AnyCodable {
+                        nativeData[key] = anyCodable.value
+                    } else {
+                        nativeData[key] = value
+                    }
+                }
+
+                if let userBadge = try? UserBadge(from: nativeData),
+                   let badge = getBadge(userBadge.badgeId) {
+                    earnedBadges.append(EarnedBadge(
+                        id: userBadge.id,
+                        badge: badge,
+                        earnedAt: userBadge.earnedAt
+                    ))
+                }
+            }
+
+            return earnedBadges
+        } catch {
+            logError("Failed to get user badges: \(error.localizedDescription)", category: .general)
+            return []
+        }
     }
 
     /// Calcule la progression pour un badge donné

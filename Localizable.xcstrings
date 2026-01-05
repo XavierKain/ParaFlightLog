@@ -491,6 +491,16 @@
         }
       }
     },
+    "%lld / %lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld / %2$lld"
+          }
+        }
+      }
+    },
     "%lld %@ %@" : {
       "localizations" : {
         "en" : {
@@ -507,8 +517,28 @@
     "%lld km/h" : {
 
     },
+    "%lld km/h %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld km/h %2$@"
+          }
+        }
+      }
+    },
     "%lld m" : {
 
+    },
+    "%lld photo%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld photo%2$@"
+          }
+        }
+      }
     },
     "%lld points GPS enregistrés" : {
 
@@ -657,6 +687,12 @@
       }
     },
     "%lld%%" : {
+
+    },
+    "%lld°" : {
+
+    },
+    "%lld°C" : {
 
     },
     "%lldh" : {
@@ -957,6 +993,9 @@
 
     },
     "30 min" : {
+
+    },
+    "99+" : {
 
     },
     "À propos" : {
@@ -3004,6 +3043,16 @@
     "Niveau %lld" : {
 
     },
+    "Niveau %lld: %lld XP" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Niveau %1$lld: %2$lld XP"
+          }
+        }
+      }
+    },
     "Nom" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3610,6 +3659,9 @@
         }
       }
     },
+    "Section" : {
+
+    },
     "Sélection" : {
       "localizations" : {
         "en" : {
@@ -3675,6 +3727,9 @@
       }
     },
     "SOARX" : {
+
+    },
+    "SOS" : {
 
     },
     "Spot" : {

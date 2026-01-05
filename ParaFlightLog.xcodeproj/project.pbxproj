@@ -33,6 +33,13 @@
 		AA00000D2EEBB00000000007 /* DiscoverViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000C2EEBB00000000007 /* DiscoverViews.swift */; };
 		AA00000F2EEBB00000000008 /* SpotViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00000E2EEBB00000000008 /* SpotViews.swift */; };
 		AA0000112EEBB00000000009 /* SearchViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000102EEBB00000000009 /* SearchViews.swift */; };
+		AA0000132EEBB0000000000A /* NotificationsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000122EEBB0000000000A /* NotificationsView.swift */; };
+		AA0000152EEBB0000000000B /* BadgesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000142EEBB0000000000B /* BadgesView.swift */; };
+		AA0000172EEBB0000000000C /* LeaderboardsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000162EEBB0000000000C /* LeaderboardsView.swift */; };
+		AA0000192EEBB0000000000D /* WeatherViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000182EEBB0000000000D /* WeatherViews.swift */; };
+		AA00001B2EEBB0000000000E /* EmergencyViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00001A2EEBB0000000000E /* EmergencyViews.swift */; };
+		AA00001D2EEBB0000000000F /* FlightPhotosViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00001C2EEBB0000000000F /* FlightPhotosViews.swift */; };
+		AA00001F2EEBB00000000010 /* LiveFlightsMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00001E2EEBB00000000010 /* LiveFlightsMapView.swift */; };
 		C841AFFD7BE2509F251B21C5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D6E3BD81946B048929752FA /* Foundation.framework */; };
 		D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 362EAB42550846EE9491A703 /* ZipBackup.swift */; };
 		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
@@ -116,6 +123,13 @@
 		AA00000C2EEBB00000000007 /* DiscoverViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverViews.swift; sourceTree = "<group>"; };
 		AA00000E2EEBB00000000008 /* SpotViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotViews.swift; sourceTree = "<group>"; };
 		AA0000102EEBB00000000009 /* SearchViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViews.swift; sourceTree = "<group>"; };
+		AA0000122EEBB0000000000A /* NotificationsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsView.swift; sourceTree = "<group>"; };
+		AA0000142EEBB0000000000B /* BadgesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BadgesView.swift; sourceTree = "<group>"; };
+		AA0000162EEBB0000000000C /* LeaderboardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LeaderboardsView.swift; sourceTree = "<group>"; };
+		AA0000182EEBB0000000000D /* WeatherViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeatherViews.swift; sourceTree = "<group>"; };
+		AA00001A2EEBB0000000000E /* EmergencyViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyViews.swift; sourceTree = "<group>"; };
+		AA00001C2EEBB0000000000F /* FlightPhotosViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightPhotosViews.swift; sourceTree = "<group>"; };
+		AA00001E2EEBB00000000010 /* LiveFlightsMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveFlightsMapView.swift; sourceTree = "<group>"; };
 		C310D0CB152141398E4E5E4F /* ChartsView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChartsView.swift; sourceTree = "<group>"; };
 		C4AFF1A10FB982DE2DDD31AF /* ScreenshotTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ScreenshotTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -221,6 +235,13 @@
 				AA00000C2EEBB00000000007 /* DiscoverViews.swift */,
 				AA00000E2EEBB00000000008 /* SpotViews.swift */,
 				AA0000102EEBB00000000009 /* SearchViews.swift */,
+				AA0000122EEBB0000000000A /* NotificationsView.swift */,
+				AA0000142EEBB0000000000B /* BadgesView.swift */,
+				AA0000162EEBB0000000000C /* LeaderboardsView.swift */,
+				AA0000182EEBB0000000000D /* WeatherViews.swift */,
+				AA00001A2EEBB0000000000E /* EmergencyViews.swift */,
+				AA00001C2EEBB0000000000F /* FlightPhotosViews.swift */,
+				AA00001E2EEBB00000000010 /* LiveFlightsMapView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -471,6 +492,13 @@
 				AA00000D2EEBB00000000007 /* DiscoverViews.swift in Sources */,
 				AA00000F2EEBB00000000008 /* SpotViews.swift in Sources */,
 				AA0000112EEBB00000000009 /* SearchViews.swift in Sources */,
+				AA0000132EEBB0000000000A /* NotificationsView.swift in Sources */,
+				AA0000152EEBB0000000000B /* BadgesView.swift in Sources */,
+				AA0000172EEBB0000000000C /* LeaderboardsView.swift in Sources */,
+				AA0000192EEBB0000000000D /* WeatherViews.swift in Sources */,
+				AA00001B2EEBB0000000000E /* EmergencyViews.swift in Sources */,
+				AA00001D2EEBB0000000000F /* FlightPhotosViews.swift in Sources */,
+				AA00001F2EEBB00000000010 /* LiveFlightsMapView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

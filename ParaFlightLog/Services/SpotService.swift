@@ -729,6 +729,14 @@ final class SpotService {
         let createdAtStr = data["createdAt"]?.value as? String
         let createdAt = createdAtStr.flatMap { ISO8601DateFormatter().date(from: $0) } ?? startDate
 
+        // Parse photo file IDs array
+        var photoFileIds: [String] = []
+        if let photoIdsArray = data["photoFileIds"]?.value as? [String] {
+            photoFileIds = photoIdsArray
+        } else if let photoIdsArray = data["photoFileIds"]?.value as? [Any] {
+            photoFileIds = photoIdsArray.compactMap { $0 as? String }
+        }
+
         return PublicFlight(
             id: id,
             pilotId: pilotId,
@@ -751,6 +759,9 @@ final class SpotService {
             hasGpsTrack: data["hasGpsTrack"]?.value as? Bool ?? false,
             likeCount: data["likeCount"]?.value as? Int ?? 0,
             commentCount: data["commentCount"]?.value as? Int ?? 0,
+            hasPhotos: data["hasPhotos"]?.value as? Bool ?? false,
+            photoCount: data["photoCount"]?.value as? Int ?? 0,
+            photoFileIds: photoFileIds,
             createdAt: createdAt
         )
     }

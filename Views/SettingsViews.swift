@@ -515,6 +515,28 @@ struct SettingsView: View {
                     Text("Ces paramètres sont synchronisés automatiquement avec votre Apple Watch.")
                 }
 
+                // Section Sécurité
+                Section {
+                    NavigationLink {
+                        EmergencyContactsView()
+                    } label: {
+                        HStack {
+                            Image(systemName: "sos.circle.fill")
+                                .foregroundStyle(.red)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Contacts d'urgence".localized)
+                                Text("Configurez vos contacts SOS".localized)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                } header: {
+                    Text("Sécurité".localized)
+                } footer: {
+                    Text("En cas d'urgence pendant un vol, vous pourrez envoyer votre position GPS à vos contacts.".localized)
+                }
+
                 Section("Données") {
                     NavigationLink {
                         BackupExportView(wings: wings, flights: flights)
