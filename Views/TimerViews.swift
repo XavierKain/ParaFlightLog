@@ -294,9 +294,10 @@ struct TimerView: View {
         isFlying = true
         startBackgroundTimer()
 
-        // Démarrer la localisation en arrière-plan pour ne pas bloquer l'UI
+        // Démarrer la localisation et le tracking GPS en arrière-plan
         Task {
             locationService.startUpdatingLocation()
+            locationService.startFlightTracking()
 
             // Ne mettre à jour le spot que si aucun spot manuel n'est défini
             if manualSpotOverride == nil {
@@ -314,6 +315,11 @@ struct TimerView: View {
         backgroundTask?.invalidate()
         backgroundTask = nil
 
+        // Arrêter le tracking et récupérer les données de vol
+        let endAltitude = locationService.stopFlightTracking()
+        let flightData = locationService.getFlightData()
+        let gpsTrack = locationService.getGPSTrack()
+
         locationService.stopUpdatingLocation()
 
         // Utiliser le spot manuel en priorité, sinon le spot automatique
@@ -326,6 +332,16 @@ struct TimerView: View {
             finalSpot = nil
         }
 
+        // Encoder la trace GPS
+        var gpsTrackData: Data?
+        if !gpsTrack.isEmpty {
+            do {
+                gpsTrackData = try JSONEncoder().encode(gpsTrack)
+            } catch {
+                logError("Failed to encode GPS track: \(error.localizedDescription)", category: .dataController)
+            }
+        }
+
         locationService.requestLocation { [self] location in
             DispatchQueue.main.async {
                 let flight = Flight(
@@ -335,7 +351,13 @@ struct TimerView: View {
                     durationSeconds: duration,
                     spotName: finalSpot,
                     latitude: location?.coordinate.latitude,
-                    longitude: location?.coordinate.longitude
+                    longitude: location?.coordinate.longitude,
+                    startAltitude: flightData.startAlt,
+                    maxAltitude: flightData.maxAlt,
+                    endAltitude: endAltitude,
+                    totalDistance: flightData.distance > 0 ? flightData.distance : nil,
+                    maxSpeed: flightData.speed > 0 ? flightData.speed : nil,
+                    gpsTrackData: gpsTrackData
                 )
 
                 dataController.modelContext.insert(flight)
