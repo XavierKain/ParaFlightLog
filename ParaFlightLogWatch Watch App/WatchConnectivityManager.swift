@@ -73,13 +73,21 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     /// Envoie un vol terminé vers l'iPhone
     func sendFlightToPhone(_ flight: FlightDTO) {
-        guard sessionActivated else { return }
+        guard sessionActivated else {
+            watchLogWarning("Cannot send flight: session not activated", category: .watchSync)
+            return
+        }
 
         // Encoder le FlightDTO en dictionnaire
         guard let data = try? JSONEncoder().encode(flight),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            watchLogError("Failed to encode flight for sending", category: .watchSync)
             return
         }
+
+        let dataSizeKB = Double(data.count) / 1024.0
+        let gpsPointCount = flight.gpsTrack?.count ?? 0
+        watchLogInfo("Sending flight to iPhone: \(String(format: "%.1f", dataSizeKB))KB, \(gpsPointCount) GPS points, dist: \(flight.totalDistance ?? 0)m", category: .watchSync)
 
         let userInfo = ["flight": json]
         // Utiliser transferUserInfo pour envoyer en arrière-plan

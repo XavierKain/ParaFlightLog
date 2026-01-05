@@ -364,7 +364,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
            let jsonData = try? JSONSerialization.data(withJSONObject: flightData),
            let flightDTO = try? JSONDecoder().decode(FlightDTO.self, from: jsonData) {
 
-            logInfo("Received flight: \(flightDTO.durationSeconds)s with wing \(flightDTO.wingId)", category: .flight)
+            let gpsPointCount = flightDTO.gpsTrack?.count ?? 0
+            let dataSizeKB = Double(jsonData.count) / 1024.0
+            logInfo("Received flight from Watch: \(flightDTO.durationSeconds)s, \(gpsPointCount) GPS points, \(String(format: "%.1f", dataSizeKB))KB, dist: \(flightDTO.totalDistance ?? 0)m", category: .flight)
 
             // Obtenir la position GPS + reverse geocoding
             locationService?.requestLocation { [weak self] location in

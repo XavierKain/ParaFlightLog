@@ -150,12 +150,12 @@ struct ContentView: View {
         // Démarrer la session de persistance pour sauvegarder automatiquement
         sessionManager.startSession(wing: wing, spotName: locationService.currentSpotName)
 
-        // Démarrer la session workout EN ARRIÈRE-PLAN IMMÉDIATEMENT
-        // pour ne pas bloquer l'affichage du vol
-        if WatchSettings.shared.autoWaterLockEnabled {
-            Task.detached(priority: .high) { [workoutManager] in
-                await workoutManager.startWorkoutSession()
-            }
+        // Démarrer la session workout TOUJOURS pour maintenir les mises à jour GPS
+        // La session workout est NÉCESSAIRE pour que watchOS continue à envoyer
+        // les mises à jour de localisation quand l'écran s'éteint.
+        // Sans ça, après quelques secondes, l'app passe en background et le GPS s'arrête.
+        Task.detached(priority: .high) { [workoutManager] in
+            await workoutManager.startWorkoutSession()
         }
 
         // Assigner activeFlightWing déclenche automatiquement le fullScreenCover(item:)
@@ -192,6 +192,9 @@ struct ContentView: View {
         let gpsTrack = locationService.getGPSTrack()
         let endAltitude = locationService.stopFlightTracking()
         let flightData = locationService.getFlightData()
+
+        // Logger les données du vol pour debug
+        watchLogInfo("Flight completed: \(duration)s, GPS points: \(gpsTrack.count), Distance: \(flightData.distance)m, MaxAlt: \(flightData.maxAlt ?? 0)m", category: .flight)
 
         // Créer le FlightDTO avec toutes les données y compris la trace GPS
         let flight = FlightDTO(

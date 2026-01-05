@@ -99,13 +99,14 @@ final class WorkoutManager: NSObject {
                 self.isWorkoutActive = true
             }
 
-            watchLogInfo("Workout session started", category: .workout)
+            watchLogInfo("Workout session started (required for continuous GPS)", category: .workout)
 
-            // Maintenant on peut activer le Water Lock
+            // Activer le Water Lock seulement si le paramètre est activé
+            // Note: La session workout est TOUJOURS démarrée pour maintenir le GPS actif
             await MainActor.run {
                 if WatchSettings.shared.autoWaterLockEnabled {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        watchLogDebug("Activating Water Lock with workout session", category: .workout)
+                        watchLogDebug("Activating Water Lock", category: .workout)
                         WKInterfaceDevice.current().enableWaterLock()
                     }
                 }
