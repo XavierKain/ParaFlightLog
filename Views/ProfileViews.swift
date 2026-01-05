@@ -1126,6 +1126,17 @@ struct ProfileView: View {
                     } label: {
                         Label("Exporter backup".localized, systemImage: "archivebox")
                     }
+
+                    // État de synchronisation
+                    NavigationLink {
+                        PendingActionsView()
+                    } label: {
+                        HStack {
+                            Label("Synchronisation".localized, systemImage: "arrow.triangle.2.circlepath")
+                            Spacer()
+                            OfflineSyncStatusView()
+                        }
+                    }
                 }
 
                 // Section Compte

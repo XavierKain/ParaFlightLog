@@ -1232,6 +1232,16 @@ struct PublicFlightDetailView: View {
                             .padding(.horizontal)
                         }
 
+                        // Bouton de partage
+                        HStack {
+                            Spacer()
+                            QuickFlightShareButton(flight: details.flight)
+                                .padding()
+                                .background(Color(.secondarySystemBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+                        .padding(.horizontal)
+
                         // Note: Likes et commentaires désactivés pour le moment
                         // Seront implémentés dans une version future
 

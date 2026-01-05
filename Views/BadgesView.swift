@@ -380,6 +380,13 @@ struct BadgeDetailView: View {
                     .padding()
                     .background(Color(.secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    // Bouton de partage (seulement si badge obtenu)
+                    if isEarned, let earnedDate = earnedDate {
+                        BadgeShareButton(badge: badge, earnedAt: earnedDate)
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.large)
+                    }
                 }
                 .padding()
             }
