@@ -24,7 +24,13 @@
     "(%@ m²)" : {
 
     },
+    "(%lld tentative(s))" : {
+
+    },
     "(%lld vols)" : {
+
+    },
+    "(%lld)" : {
 
     },
     "@" : {
@@ -1290,6 +1296,9 @@
         }
       }
     },
+    "Alt: %lldm" : {
+
+    },
     "Alt. arrivée" : {
       "localizations" : {
         "en" : {
@@ -2188,6 +2197,9 @@
         }
       }
     },
+    "Dernière sync: %@" : {
+
+    },
     "Détail du vol" : {
       "localizations" : {
         "en" : {
@@ -2251,6 +2263,9 @@
           }
         }
       }
+    },
+    "Dist: %@" : {
+
     },
     "Distance" : {
       "localizations" : {
@@ -2476,6 +2491,9 @@
           }
         }
       }
+    },
+    "Format" : {
+
     },
     "G" : {
       "localizations" : {
