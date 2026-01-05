@@ -308,11 +308,14 @@ final class LiveFlightService {
         }
     }
 
-    /// Récupère tous les vols en direct actifs
+    /// Récupère tous les vols en direct actifs (réels + démo si activé)
     func fetchLiveFlights() async throws -> [LiveFlight] {
         isLoading = true
         defer { isLoading = false }
 
+        var flights: [LiveFlight] = []
+
+        // Récupérer les vols réels depuis Appwrite
         do {
             let documents = try await databases.listDocuments(
                 databaseId: AppwriteConfig.databaseId,
@@ -324,7 +327,6 @@ final class LiveFlightService {
                 ]
             )
 
-            var flights: [LiveFlight] = []
             for doc in documents.documents {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
@@ -340,17 +342,26 @@ final class LiveFlightService {
                 }
             }
 
-            await MainActor.run {
-                self.liveFlights = flights
-            }
-
-            logInfo("Fetched \(flights.count) live flights", category: .sync)
-            return flights
+            logInfo("Fetched \(flights.count) real live flights", category: .sync)
 
         } catch let error as AppwriteError {
-            logError("Failed to fetch live flights: \(error.message)", category: .sync)
-            throw LiveFlightError.networkError(error.message)
+            logWarning("Failed to fetch real live flights: \(error.message)", category: .sync)
+            // Continue avec les vols de démo si disponibles
         }
+
+        // Ajouter les vols de démonstration si le mode démo est activé
+        let demoFlights = DemoDataService.shared.getDemoFlights()
+        if !demoFlights.isEmpty {
+            flights.append(contentsOf: demoFlights)
+            logInfo("Added \(demoFlights.count) demo flights", category: .sync)
+        }
+
+        await MainActor.run {
+            self.liveFlights = flights
+        }
+
+        logInfo("Total live flights: \(flights.count) (real + demo)", category: .sync)
+        return flights
     }
 
     /// Vérifie si l'utilisateur a un vol en cours (restauration au démarrage)

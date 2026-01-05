@@ -576,6 +576,22 @@ struct SettingsView: View {
                         }
                     }
 
+                    Toggle(isOn: Binding(
+                        get: { DemoDataService.shared.isDemoModeEnabled },
+                        set: { DemoDataService.shared.isDemoModeEnabled = $0 }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(String(localized: "Mode démo Live"))
+                                Image(systemName: "airplane.circle.fill")
+                                    .foregroundStyle(.orange)
+                            }
+                            Text(String(localized: "Affiche des pilotes simulés sur la carte Live"))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                     Button {
                         generateTestData()
                     } label: {
