@@ -3,17 +3,19 @@
 //  ParaFlightLog
 //
 //  Service de génération de données de démonstration
-//  Permet de tester les vols en direct avec des pilotes simulés
+//  Crée de vrais documents live_flights dans Appwrite pour tester
+//  le flux complet (persistance, notifications, synchronisation)
 //  Target: iOS only
 //
 
 import Foundation
 import CoreLocation
+import Appwrite
 
 // MARK: - Demo Pilot Data
 
 /// Pilotes fictifs pour la démonstration des vols en direct
-struct DemoPilot {
+struct DemoPilot: Identifiable {
     let id: String
     let name: String
     let username: String
@@ -21,19 +23,18 @@ struct DemoPilot {
     let spotName: String
     let baseCoordinate: CLLocationCoordinate2D
     let flightDurationMinutes: Int
+    let startDelayMinutes: Int // Décalage de départ
 
-    /// Génère une position simulée avec un léger déplacement aléatoire
+    /// Génère une position simulée avec un léger déplacement
     func simulatedCoordinate(elapsedMinutes: Int) -> CLLocationCoordinate2D {
-        // Simuler un déplacement thermique/soaring
         let progress = Double(elapsedMinutes) / Double(max(flightDurationMinutes, 1))
-        let randomOffset = Double.random(in: -0.005...0.005)
 
         // Mouvement en spirale/cercle simulant un thermique
         let angle = progress * 2 * .pi * 3 // 3 tours pendant le vol
-        let radius = 0.01 * (1 + progress) // rayon qui augmente
+        let radius = 0.008 * (1 + progress) // rayon qui augmente
 
-        let latOffset = sin(angle) * radius + randomOffset
-        let lonOffset = cos(angle) * radius + randomOffset
+        let latOffset = sin(angle) * radius
+        let lonOffset = cos(angle) * radius
 
         return CLLocationCoordinate2D(
             latitude: baseCoordinate.latitude + latOffset,
@@ -43,12 +44,11 @@ struct DemoPilot {
 
     /// Génère une altitude simulée
     func simulatedAltitude(elapsedMinutes: Int) -> Double {
-        // Altitude de départ + gain thermique
-        let baseAltitude = Double.random(in: 800...1200)
+        let baseAltitude = 1000.0
         let progress = Double(elapsedMinutes) / Double(max(flightDurationMinutes, 1))
 
         // Simuler une montée en thermique puis descente
-        let thermalGain = sin(progress * .pi) * Double.random(in: 500...1500)
+        let thermalGain = sin(progress * .pi) * 800
 
         return baseAltitude + thermalGain
     }
@@ -62,30 +62,55 @@ final class DemoDataService {
 
     // MARK: - Properties
 
+    private let databases: Databases
+
     /// Indique si le mode démo est activé
     var isDemoModeEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: UserDefaultsKeys.demoModeEnabled) }
         set {
+            let wasEnabled = UserDefaults.standard.bool(forKey: UserDefaultsKeys.demoModeEnabled)
             UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.demoModeEnabled)
-            if newValue {
+
+            if newValue && !wasEnabled {
                 startDemoFlights()
-            } else {
+            } else if !newValue && wasEnabled {
                 stopDemoFlights()
             }
         }
     }
 
-    /// Pilotes de démonstration actuellement "en vol"
-    private(set) var demoLiveFlights: [LiveFlight] = []
-
-    /// Timer pour mettre à jour les positions
+    /// Timer pour mettre à jour les positions dans Appwrite
     private var updateTimer: Timer?
 
-    /// Heure de démarrage des vols de démo
-    private var demoStartTime: Date?
+    /// Heure de démarrage des vols de démo (persistée)
+    private var demoStartTime: Date? {
+        get {
+            UserDefaults.standard.object(forKey: "demoStartTime") as? Date
+        }
+        set {
+            UserDefaults.standard.set(newValue, forKey: "demoStartTime")
+        }
+    }
+
+    /// IDs des documents créés dans Appwrite pour les nettoyer
+    private var createdDocumentIds: Set<String> {
+        get {
+            Set(UserDefaults.standard.stringArray(forKey: "demoDocumentIds") ?? [])
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: "demoDocumentIds")
+        }
+    }
 
     /// Pilotes pour lesquels une notification a déjà été envoyée
-    private var notifiedPilotIds: Set<String> = []
+    private var notifiedPilotIds: Set<String> {
+        get {
+            Set(UserDefaults.standard.stringArray(forKey: "demoNotifiedPilots") ?? [])
+        }
+        set {
+            UserDefaults.standard.set(Array(newValue), forKey: "demoNotifiedPilots")
+        }
+    }
 
     // MARK: - Demo Pilots Configuration
 
@@ -98,7 +123,8 @@ final class DemoDataService {
             wingName: "Ozone Alpina 4",
             spotName: "Saint-Hilaire-du-Touvet",
             baseCoordinate: CLLocationCoordinate2D(latitude: 45.3067, longitude: 5.8867),
-            flightDurationMinutes: 45
+            flightDurationMinutes: 45,
+            startDelayMinutes: 0
         ),
         DemoPilot(
             id: "demo-pilot-2",
@@ -107,7 +133,8 @@ final class DemoDataService {
             wingName: "Advance Xi",
             spotName: "Annecy - Planfait",
             baseCoordinate: CLLocationCoordinate2D(latitude: 45.8567, longitude: 6.1533),
-            flightDurationMinutes: 60
+            flightDurationMinutes: 60,
+            startDelayMinutes: 2
         ),
         DemoPilot(
             id: "demo-pilot-3",
@@ -116,7 +143,8 @@ final class DemoDataService {
             wingName: "Niviuk Ikuma 2",
             spotName: "Puy de Dôme",
             baseCoordinate: CLLocationCoordinate2D(latitude: 45.7722, longitude: 2.9644),
-            flightDurationMinutes: 35
+            flightDurationMinutes: 35,
+            startDelayMinutes: 5
         ),
         DemoPilot(
             id: "demo-pilot-4",
@@ -125,7 +153,8 @@ final class DemoDataService {
             wingName: "BGD Cure 2",
             spotName: "Chamonix - Planpraz",
             baseCoordinate: CLLocationCoordinate2D(latitude: 45.9367, longitude: 6.8700),
-            flightDurationMinutes: 50
+            flightDurationMinutes: 50,
+            startDelayMinutes: 3
         ),
         DemoPilot(
             id: "demo-pilot-5",
@@ -134,135 +163,321 @@ final class DemoDataService {
             wingName: "Gin Explorer 2",
             spotName: "Millau - Brunas",
             baseCoordinate: CLLocationCoordinate2D(latitude: 44.0947, longitude: 3.0833),
-            flightDurationMinutes: 40
+            flightDurationMinutes: 40,
+            startDelayMinutes: 7
         )
     ]
 
     // MARK: - Init
 
     private init() {
-        // Restaurer l'état au démarrage si le mode démo était activé
+        self.databases = AppwriteService.shared.databases
+
+        // Restaurer le timer si le mode démo était activé
         if UserDefaults.standard.bool(forKey: UserDefaultsKeys.demoModeEnabled) {
-            startDemoFlights()
+            // Vérifier si les vols sont encore actifs
+            if let startTime = demoStartTime {
+                let elapsed = Date().timeIntervalSince(startTime) / 60
+                let maxDuration = demoPilots.map { $0.flightDurationMinutes + $0.startDelayMinutes }.max() ?? 60
+
+                if elapsed < Double(maxDuration) {
+                    // Les vols sont encore en cours, reprendre les mises à jour
+                    startUpdateTimer()
+                    logInfo("Demo mode resumed - flights still active", category: .sync)
+                } else {
+                    // Les vols sont terminés, relancer
+                    startDemoFlights()
+                }
+            } else {
+                startDemoFlights()
+            }
         }
     }
 
     // MARK: - Public Methods
 
-    /// Démarre les vols de démonstration
+    /// Démarre les vols de démonstration (crée les documents dans Appwrite)
     func startDemoFlights() {
-        demoStartTime = Date()
-        notifiedPilotIds = [] // Réinitialiser les notifications
-        updateDemoFlights()
+        // Nettoyer les anciens vols démo d'abord
+        Task {
+            await cleanupDemoFlights()
 
-        // Mettre à jour les positions toutes les 5 secondes
-        updateTimer?.invalidate()
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 5.0, repeats: true) { [weak self] _ in
-            self?.updateDemoFlights()
+            // Réinitialiser l'état
+            demoStartTime = Date()
+            notifiedPilotIds = []
+            createdDocumentIds = []
+
+            // Créer les vols dans Appwrite
+            await createDemoFlightsInAppwrite()
+
+            // Démarrer le timer de mise à jour
+            await MainActor.run {
+                startUpdateTimer()
+            }
+
+            logInfo("Demo mode started with \(demoPilots.count) simulated pilots in Appwrite", category: .sync)
         }
-
-        logInfo("Demo mode started with \(demoPilots.count) simulated pilots", category: .sync)
     }
 
-    /// Arrête les vols de démonstration
+    /// Arrête les vols de démonstration (supprime les documents d'Appwrite)
     func stopDemoFlights() {
         updateTimer?.invalidate()
         updateTimer = nil
-        demoLiveFlights = []
-        demoStartTime = nil
-        notifiedPilotIds = []
 
-        logInfo("Demo mode stopped", category: .sync)
+        Task {
+            await cleanupDemoFlights()
+
+            await MainActor.run {
+                demoStartTime = nil
+                notifiedPilotIds = []
+                createdDocumentIds = []
+            }
+
+            logInfo("Demo mode stopped - all demo flights removed from Appwrite", category: .sync)
+        }
     }
 
-    /// Retourne les vols en direct (réels + démo si activé)
+    /// Retourne les vols de démo (pour compatibilité, mais maintenant ils sont dans Appwrite)
     func getDemoFlights() -> [LiveFlight] {
-        guard isDemoModeEnabled else { return [] }
-        return demoLiveFlights
+        // Les vols démo sont maintenant dans Appwrite, donc on retourne vide
+        // LiveFlightService les récupère directement depuis Appwrite
+        return []
     }
 
     // MARK: - Private Methods
 
-    /// Met à jour les positions des vols de démo
-    private func updateDemoFlights() {
+    /// Démarre le timer de mise à jour des positions
+    private func startUpdateTimer() {
+        updateTimer?.invalidate()
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: true) { [weak self] _ in
+            self?.updateDemoFlightsInAppwrite()
+        }
+        // Exécuter immédiatement une première mise à jour
+        updateDemoFlightsInAppwrite()
+    }
+
+    /// Crée les documents live_flights dans Appwrite
+    private func createDemoFlightsInAppwrite() async {
+        guard let startTime = demoStartTime else { return }
+
+        for pilot in demoPilots {
+            let coordinate = pilot.baseCoordinate
+            let altitude = pilot.simulatedAltitude(elapsedMinutes: 0)
+            let pilotStartTime = startTime.addingTimeInterval(TimeInterval(pilot.startDelayMinutes * 60))
+
+            let flightData: [String: Any] = [
+                "userId": pilot.id,
+                "pilotName": pilot.name,
+                "pilotUsername": pilot.username,
+                "startedAt": pilotStartTime.ISO8601Format(),
+                "latitude": coordinate.latitude,
+                "longitude": coordinate.longitude,
+                "altitude": altitude,
+                "spotName": pilot.spotName,
+                "wingName": pilot.wingName,
+                "isActive": true,
+                "isDemo": true // Flag pour identifier les vols démo
+            ]
+
+            do {
+                let document = try await databases.createDocument(
+                    databaseId: AppwriteConfig.databaseId,
+                    collectionId: AppwriteConfig.liveFlightsCollectionId,
+                    documentId: pilot.id, // Utiliser l'ID du pilote comme ID document
+                    data: flightData
+                )
+
+                await MainActor.run {
+                    var ids = createdDocumentIds
+                    ids.insert(document.id)
+                    createdDocumentIds = ids
+                }
+
+                logInfo("Created demo flight in Appwrite for: \(pilot.name)", category: .sync)
+
+            } catch let error as AppwriteError {
+                // Si le document existe déjà, essayer de le mettre à jour
+                if error.message.contains("already exists") {
+                    do {
+                        _ = try await databases.updateDocument(
+                            databaseId: AppwriteConfig.databaseId,
+                            collectionId: AppwriteConfig.liveFlightsCollectionId,
+                            documentId: pilot.id,
+                            data: flightData
+                        )
+
+                        await MainActor.run {
+                            var ids = createdDocumentIds
+                            ids.insert(pilot.id)
+                            createdDocumentIds = ids
+                        }
+
+                        logInfo("Updated existing demo flight for: \(pilot.name)", category: .sync)
+                    } catch {
+                        logWarning("Failed to update demo flight for \(pilot.name): \(error.localizedDescription)", category: .sync)
+                    }
+                } else {
+                    logWarning("Failed to create demo flight for \(pilot.name): \(error.message)", category: .sync)
+                }
+            } catch {
+                logWarning("Failed to create demo flight for \(pilot.name): \(error.localizedDescription)", category: .sync)
+            }
+        }
+    }
+
+    /// Met à jour les positions des vols démo dans Appwrite
+    private func updateDemoFlightsInAppwrite() {
         guard let startTime = demoStartTime else { return }
 
         let elapsedMinutes = Int(Date().timeIntervalSince(startTime) / 60)
 
-        // Générer les vols en cours (certains peuvent avoir "atterri")
-        var flights: [LiveFlight] = []
+        Task {
+            var allPilotsLanded = true
 
-        for pilot in demoPilots {
-            // Vérifier si ce pilote est encore "en vol"
-            guard elapsedMinutes < pilot.flightDurationMinutes else { continue }
+            for pilot in demoPilots {
+                let pilotElapsed = elapsedMinutes - pilot.startDelayMinutes
 
-            // Simuler un décalage de départ pour chaque pilote
-            let pilotStartOffset = abs(pilot.id.hashValue % 10) // 0-9 minutes de décalage
-            let pilotElapsed = max(0, elapsedMinutes - pilotStartOffset)
+                // Le pilote n'a pas encore décollé
+                if pilotElapsed < 0 {
+                    allPilotsLanded = false
+                    continue
+                }
 
-            // Le pilote n'a pas encore décollé
-            if pilotElapsed <= 0 { continue }
+                // Le pilote a atterri
+                if pilotElapsed >= pilot.flightDurationMinutes {
+                    // Marquer comme inactif
+                    await markPilotAsLanded(pilot)
+                    continue
+                }
 
-            // Envoyer une notification si c'est le premier décollage de ce pilote
-            if !notifiedPilotIds.contains(pilot.id) {
-                notifiedPilotIds.insert(pilot.id)
-                sendTakeoffNotification(for: pilot)
+                allPilotsLanded = false
+
+                // Envoyer notification si premier décollage
+                if pilotElapsed >= 0 && pilotElapsed < 1 {
+                    await checkAndSendNotification(for: pilot)
+                }
+
+                // Mettre à jour la position
+                let coordinate = pilot.simulatedCoordinate(elapsedMinutes: pilotElapsed)
+                let altitude = pilot.simulatedAltitude(elapsedMinutes: pilotElapsed)
+
+                do {
+                    _ = try await databases.updateDocument(
+                        databaseId: AppwriteConfig.databaseId,
+                        collectionId: AppwriteConfig.liveFlightsCollectionId,
+                        documentId: pilot.id,
+                        data: [
+                            "latitude": coordinate.latitude,
+                            "longitude": coordinate.longitude,
+                            "altitude": altitude,
+                            "isActive": true
+                        ]
+                    )
+                } catch {
+                    // Silently fail - position updates are best effort
+                }
             }
 
-            let coordinate = pilot.simulatedCoordinate(elapsedMinutes: pilotElapsed)
-            let altitude = pilot.simulatedAltitude(elapsedMinutes: pilotElapsed)
-
-            let liveFlight = LiveFlight(
-                id: pilot.id,
-                userId: pilot.id,
-                pilotName: pilot.name,
-                pilotUsername: pilot.username,
-                pilotPhotoFileId: nil, // Pas de photo pour les pilotes démo
-                startedAt: startTime.addingTimeInterval(TimeInterval(pilotStartOffset * 60)),
-                latitude: coordinate.latitude,
-                longitude: coordinate.longitude,
-                altitude: altitude,
-                spotName: pilot.spotName,
-                wingName: pilot.wingName,
-                isActive: true
-            )
-
-            flights.append(liveFlight)
+            // Si tous les pilotes ont atterri, relancer les vols
+            if allPilotsLanded {
+                logInfo("All demo pilots landed - restarting flights", category: .sync)
+                await MainActor.run {
+                    startDemoFlights()
+                }
+            }
         }
-
-        // Si tous les pilotes ont atterri, relancer les vols
-        if flights.isEmpty && elapsedMinutes > 10 {
-            demoStartTime = Date()
-            notifiedPilotIds = [] // Réinitialiser pour les nouveaux décollages
-            updateDemoFlights()
-            return
-        }
-
-        demoLiveFlights = flights
     }
 
-    /// Envoie une notification locale pour le décollage d'un pilote démo
-    private func sendTakeoffNotification(for pilot: DemoPilot) {
-        Task {
+    /// Marque un pilote comme ayant atterri
+    private func markPilotAsLanded(_ pilot: DemoPilot) async {
+        do {
+            _ = try await databases.updateDocument(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.liveFlightsCollectionId,
+                documentId: pilot.id,
+                data: ["isActive": false]
+            )
+        } catch {
+            // Ignore errors
+        }
+    }
+
+    /// Vérifie et envoie une notification de décollage
+    private func checkAndSendNotification(for pilot: DemoPilot) async {
+        let currentNotified = notifiedPilotIds
+        guard !currentNotified.contains(pilot.id) else { return }
+
+        await MainActor.run {
+            var updated = notifiedPilotIds
+            updated.insert(pilot.id)
+            notifiedPilotIds = updated
+        }
+
+        // Envoyer notification locale
+        do {
+            try await NotificationService.shared.scheduleLocalNotification(
+                title: "\(pilot.name) est en vol !",
+                body: "Décollage depuis \(pilot.spotName) avec une \(pilot.wingName)",
+                identifier: "demo-takeoff-\(pilot.id)-\(Date().timeIntervalSince1970)",
+                timeInterval: 1,
+                userInfo: [
+                    "type": "flight_started",
+                    "pilotId": pilot.id,
+                    "pilotName": pilot.name,
+                    "spotName": pilot.spotName,
+                    "isDemo": "true"
+                ]
+            )
+            logInfo("Demo notification sent for pilot: \(pilot.name)", category: .notification)
+        } catch {
+            logWarning("Failed to send demo notification: \(error.localizedDescription)", category: .notification)
+        }
+    }
+
+    /// Nettoie tous les vols démo d'Appwrite
+    private func cleanupDemoFlights() async {
+        // Supprimer les documents qu'on a créés
+        for docId in createdDocumentIds {
             do {
-                try await NotificationService.shared.scheduleLocalNotification(
-                    title: "\(pilot.name) est en vol !",
-                    body: "Décollage depuis \(pilot.spotName) avec une \(pilot.wingName)",
-                    identifier: "demo-takeoff-\(pilot.id)",
-                    timeInterval: 1, // Notification quasi immédiate
-                    userInfo: [
-                        "type": "flight_started",
-                        "pilotId": pilot.id,
-                        "pilotName": pilot.name,
-                        "spotName": pilot.spotName,
-                        "isDemo": "true"
-                    ]
+                _ = try await databases.deleteDocument(
+                    databaseId: AppwriteConfig.databaseId,
+                    collectionId: AppwriteConfig.liveFlightsCollectionId,
+                    documentId: docId
                 )
-                logInfo("Demo notification sent for pilot: \(pilot.name)", category: .notification)
+                logInfo("Deleted demo flight: \(docId)", category: .sync)
             } catch {
-                logWarning("Failed to send demo notification: \(error.localizedDescription)", category: .notification)
+                // Document déjà supprimé ou n'existe pas
             }
+        }
+
+        // Aussi chercher et supprimer tous les documents avec isDemo=true (au cas où)
+        do {
+            let documents = try await databases.listDocuments(
+                databaseId: AppwriteConfig.databaseId,
+                collectionId: AppwriteConfig.liveFlightsCollectionId,
+                queries: [
+                    Query.equal("isDemo", value: true)
+                ]
+            )
+
+            for doc in documents.documents {
+                do {
+                    _ = try await databases.deleteDocument(
+                        databaseId: AppwriteConfig.databaseId,
+                        collectionId: AppwriteConfig.liveFlightsCollectionId,
+                        documentId: doc.id
+                    )
+                } catch {
+                    // Ignore
+                }
+            }
+
+            if documents.documents.count > 0 {
+                logInfo("Cleaned up \(documents.documents.count) demo flights from Appwrite", category: .sync)
+            }
+        } catch {
+            // Collection might not have isDemo attribute yet
+            logWarning("Could not query demo flights: \(error.localizedDescription)", category: .sync)
         }
     }
 }
-

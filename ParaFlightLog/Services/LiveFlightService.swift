@@ -342,25 +342,17 @@ final class LiveFlightService {
                 }
             }
 
-            logInfo("Fetched \(flights.count) real live flights", category: .sync)
+            logInfo("Fetched \(flights.count) live flights", category: .sync)
 
         } catch let error as AppwriteError {
-            logWarning("Failed to fetch real live flights: \(error.message)", category: .sync)
-            // Continue avec les vols de démo si disponibles
-        }
-
-        // Ajouter les vols de démonstration si le mode démo est activé
-        let demoFlights = DemoDataService.shared.getDemoFlights()
-        if !demoFlights.isEmpty {
-            flights.append(contentsOf: demoFlights)
-            logInfo("Added \(demoFlights.count) demo flights", category: .sync)
+            logError("Failed to fetch live flights: \(error.message)", category: .sync)
+            throw LiveFlightError.networkError(error.message)
         }
 
         await MainActor.run {
             self.liveFlights = flights
         }
 
-        logInfo("Total live flights: \(flights.count) (real + demo)", category: .sync)
         return flights
     }
 
