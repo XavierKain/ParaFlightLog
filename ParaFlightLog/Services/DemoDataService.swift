@@ -84,6 +84,9 @@ final class DemoDataService {
     /// Heure de démarrage des vols de démo
     private var demoStartTime: Date?
 
+    /// Pilotes pour lesquels une notification a déjà été envoyée
+    private var notifiedPilotIds: Set<String> = []
+
     // MARK: - Demo Pilots Configuration
 
     /// Liste des pilotes de démonstration
@@ -149,6 +152,7 @@ final class DemoDataService {
     /// Démarre les vols de démonstration
     func startDemoFlights() {
         demoStartTime = Date()
+        notifiedPilotIds = [] // Réinitialiser les notifications
         updateDemoFlights()
 
         // Mettre à jour les positions toutes les 5 secondes
@@ -166,6 +170,7 @@ final class DemoDataService {
         updateTimer = nil
         demoLiveFlights = []
         demoStartTime = nil
+        notifiedPilotIds = []
 
         logInfo("Demo mode stopped", category: .sync)
     }
@@ -198,6 +203,12 @@ final class DemoDataService {
             // Le pilote n'a pas encore décollé
             if pilotElapsed <= 0 { continue }
 
+            // Envoyer une notification si c'est le premier décollage de ce pilote
+            if !notifiedPilotIds.contains(pilot.id) {
+                notifiedPilotIds.insert(pilot.id)
+                sendTakeoffNotification(for: pilot)
+            }
+
             let coordinate = pilot.simulatedCoordinate(elapsedMinutes: pilotElapsed)
             let altitude = pilot.simulatedAltitude(elapsedMinutes: pilotElapsed)
 
@@ -222,11 +233,36 @@ final class DemoDataService {
         // Si tous les pilotes ont atterri, relancer les vols
         if flights.isEmpty && elapsedMinutes > 10 {
             demoStartTime = Date()
+            notifiedPilotIds = [] // Réinitialiser pour les nouveaux décollages
             updateDemoFlights()
             return
         }
 
         demoLiveFlights = flights
+    }
+
+    /// Envoie une notification locale pour le décollage d'un pilote démo
+    private func sendTakeoffNotification(for pilot: DemoPilot) {
+        Task {
+            do {
+                try await NotificationService.shared.scheduleLocalNotification(
+                    title: "\(pilot.name) est en vol !",
+                    body: "Décollage depuis \(pilot.spotName) avec une \(pilot.wingName)",
+                    identifier: "demo-takeoff-\(pilot.id)",
+                    timeInterval: 1, // Notification quasi immédiate
+                    userInfo: [
+                        "type": "flight_started",
+                        "pilotId": pilot.id,
+                        "pilotName": pilot.name,
+                        "spotName": pilot.spotName,
+                        "isDemo": "true"
+                    ]
+                )
+                logInfo("Demo notification sent for pilot: \(pilot.name)", category: .notification)
+            } catch {
+                logWarning("Failed to send demo notification: \(error.localizedDescription)", category: .notification)
+            }
+        }
     }
 }
 
