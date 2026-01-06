@@ -115,6 +115,7 @@ final class DemoDataService {
     // MARK: - Demo Pilots Configuration
 
     /// Liste des pilotes de démonstration
+    /// Chaque pilote décolle avec 1 minute de décalage (0, 1, 2, 3, 4 min)
     private let demoPilots: [DemoPilot] = [
         DemoPilot(
             id: "demo-pilot-1",
@@ -123,8 +124,8 @@ final class DemoDataService {
             wingName: "Ozone Alpina 4",
             spotName: "Saint-Hilaire-du-Touvet",
             baseCoordinate: CLLocationCoordinate2D(latitude: 45.3067, longitude: 5.8867),
-            flightDurationMinutes: 45,
-            startDelayMinutes: 0
+            flightDurationMinutes: 15,
+            startDelayMinutes: 0  // Immédiat
         ),
         DemoPilot(
             id: "demo-pilot-2",
@@ -133,8 +134,8 @@ final class DemoDataService {
             wingName: "Advance Xi",
             spotName: "Annecy - Planfait",
             baseCoordinate: CLLocationCoordinate2D(latitude: 45.8567, longitude: 6.1533),
-            flightDurationMinutes: 60,
-            startDelayMinutes: 2
+            flightDurationMinutes: 18,
+            startDelayMinutes: 1  // +1 minute
         ),
         DemoPilot(
             id: "demo-pilot-3",
@@ -143,8 +144,8 @@ final class DemoDataService {
             wingName: "Niviuk Ikuma 2",
             spotName: "Puy de Dôme",
             baseCoordinate: CLLocationCoordinate2D(latitude: 45.7722, longitude: 2.9644),
-            flightDurationMinutes: 35,
-            startDelayMinutes: 5
+            flightDurationMinutes: 12,
+            startDelayMinutes: 2  // +2 minutes
         ),
         DemoPilot(
             id: "demo-pilot-4",
@@ -153,8 +154,8 @@ final class DemoDataService {
             wingName: "BGD Cure 2",
             spotName: "Chamonix - Planpraz",
             baseCoordinate: CLLocationCoordinate2D(latitude: 45.9367, longitude: 6.8700),
-            flightDurationMinutes: 50,
-            startDelayMinutes: 3
+            flightDurationMinutes: 20,
+            startDelayMinutes: 3  // +3 minutes
         ),
         DemoPilot(
             id: "demo-pilot-5",
@@ -163,8 +164,8 @@ final class DemoDataService {
             wingName: "Gin Explorer 2",
             spotName: "Millau - Brunas",
             baseCoordinate: CLLocationCoordinate2D(latitude: 44.0947, longitude: 3.0833),
-            flightDurationMinutes: 40,
-            startDelayMinutes: 7
+            flightDurationMinutes: 16,
+            startDelayMinutes: 4  // +4 minutes
         )
     ]
 
@@ -265,6 +266,9 @@ final class DemoDataService {
             let altitude = pilot.simulatedAltitude(elapsedMinutes: 0)
             let pilotStartTime = startTime.addingTimeInterval(TimeInterval(pilot.startDelayMinutes * 60))
 
+            // Le premier pilote (délai 0) est actif immédiatement
+            let isActiveNow = pilot.startDelayMinutes == 0
+
             let flightData: [String: Any] = [
                 "userId": pilot.id,
                 "pilotName": pilot.name,
@@ -275,9 +279,14 @@ final class DemoDataService {
                 "altitude": altitude,
                 "spotName": pilot.spotName,
                 "wingName": pilot.wingName,
-                "isActive": true,
+                "isActive": isActiveNow,
                 "isDemo": true // Flag pour identifier les vols démo
             ]
+
+            // Envoyer notification immédiatement pour le premier pilote
+            if isActiveNow {
+                await checkAndSendNotification(for: pilot)
+            }
 
             do {
                 let document = try await databases.createDocument(
@@ -329,37 +338,37 @@ final class DemoDataService {
     private func updateDemoFlightsInAppwrite() {
         guard let startTime = demoStartTime else { return }
 
-        let elapsedMinutes = Int(Date().timeIntervalSince(startTime) / 60)
+        let elapsedSeconds = Date().timeIntervalSince(startTime)
+        let elapsedMinutes = Int(elapsedSeconds / 60)
 
         Task {
             var allPilotsLanded = true
 
             for pilot in demoPilots {
-                let pilotElapsed = elapsedMinutes - pilot.startDelayMinutes
+                let pilotDelaySeconds = Double(pilot.startDelayMinutes * 60)
+                let pilotElapsedSeconds = elapsedSeconds - pilotDelaySeconds
+                let pilotElapsedMinutes = Int(pilotElapsedSeconds / 60)
 
                 // Le pilote n'a pas encore décollé
-                if pilotElapsed < 0 {
+                if pilotElapsedSeconds < 0 {
                     allPilotsLanded = false
                     continue
                 }
 
                 // Le pilote a atterri
-                if pilotElapsed >= pilot.flightDurationMinutes {
-                    // Marquer comme inactif
+                if pilotElapsedMinutes >= pilot.flightDurationMinutes {
                     await markPilotAsLanded(pilot)
                     continue
                 }
 
                 allPilotsLanded = false
 
-                // Envoyer notification si premier décollage
-                if pilotElapsed >= 0 && pilotElapsed < 1 {
-                    await checkAndSendNotification(for: pilot)
-                }
+                // Envoyer notification au moment du décollage (première fois que pilotElapsedSeconds >= 0)
+                await checkAndSendNotification(for: pilot)
 
-                // Mettre à jour la position
-                let coordinate = pilot.simulatedCoordinate(elapsedMinutes: pilotElapsed)
-                let altitude = pilot.simulatedAltitude(elapsedMinutes: pilotElapsed)
+                // Mettre à jour la position et activer le vol
+                let coordinate = pilot.simulatedCoordinate(elapsedMinutes: max(0, pilotElapsedMinutes))
+                let altitude = pilot.simulatedAltitude(elapsedMinutes: max(0, pilotElapsedMinutes))
 
                 do {
                     _ = try await databases.updateDocument(
@@ -379,7 +388,7 @@ final class DemoDataService {
             }
 
             // Si tous les pilotes ont atterri, relancer les vols
-            if allPilotsLanded {
+            if allPilotsLanded && elapsedMinutes > 0 {
                 logInfo("All demo pilots landed - restarting flights", category: .sync)
                 await MainActor.run {
                     startDemoFlights()
