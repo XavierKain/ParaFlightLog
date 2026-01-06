@@ -208,7 +208,7 @@ struct UserRankCard: View {
         if rank.percentile <= 1 {
             return .purple
         } else if rank.percentile <= 5 {
-            return Color(hex: "#FFD700") ?? .yellow
+            return Color("#FFD700")
         } else if rank.percentile <= 10 {
             return .orange
         } else if rank.percentile <= 25 {
@@ -295,9 +295,9 @@ struct RankBadge: View {
 
     private var medalColor: Color {
         switch rank {
-        case 1: return Color(hex: "#FFD700") ?? .yellow
+        case 1: return Color("#FFD700")
         case 2: return Color(.systemGray)
-        case 3: return Color(hex: "#CD7F32") ?? .brown
+        case 3: return Color("#CD7F32")
         default: return .clear
         }
     }

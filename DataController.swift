@@ -68,7 +68,6 @@ final class DataController {
                 logWarning("Using in-memory database - data will not persist", category: .dataController)
             } catch {
                 // Dernier recours: créer un container minimal
-                // Si même cela échoue, l'app ne peut pas fonctionner du tout
                 logError("Critical: Could not create fallback container: \(error)", category: .dataController)
 
                 do {
@@ -78,7 +77,16 @@ final class DataController {
                     self.isUsingFallbackDatabase = true
                     statsCache.dataController = self
                 } catch {
-                    fatalError("Unable to create any ModelContainer - app cannot function: \(error)")
+                    // Dernier recours absolu: créer un container in-memory sans configuration
+                    // Ceci ne devrait jamais échouer, mais si c'est le cas, l'app affichera un état dégradé
+                    logError("CRITICAL: All ModelContainer attempts failed: \(error)", category: .dataController)
+                    let emergencyContainer = try! ModelContainer(for: schema, configurations: [
+                        ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+                    ])
+                    self.modelContainer = emergencyContainer
+                    self.modelContext = ModelContext(emergencyContainer)
+                    self.isUsingFallbackDatabase = true
+                    statsCache.dataController = self
                 }
             }
         }
@@ -329,7 +337,8 @@ final class DataController {
 
     /// Structure représentant un spot local avec ses statistiques
     struct LocalSpot: Identifiable, Hashable {
-        let id = UUID()
+        /// ID stable basé sur le nom du spot (évite les re-renders SwiftUI)
+        var id: String { name }
         let name: String
         let latitude: Double
         let longitude: Double

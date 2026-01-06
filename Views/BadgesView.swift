@@ -258,10 +258,10 @@ struct BadgeCard: View {
 
     private var tierColor: Color {
         switch badge.tier {
-        case .bronze: return Color(hex: "#CD7F32") ?? .brown
+        case .bronze: return Color("#CD7F32")
         case .silver: return Color(.systemGray)
-        case .gold: return Color(hex: "#FFD700") ?? .yellow
-        case .platinum: return Color(hex: "#E5E4E2") ?? .gray
+        case .gold: return Color("#FFD700")
+        case .platinum: return Color("#E5E4E2")
         }
     }
 }
@@ -412,10 +412,10 @@ struct BadgeDetailView: View {
 
     private var tierColor: Color {
         switch badge.tier {
-        case .bronze: return Color(hex: "#CD7F32") ?? .brown
+        case .bronze: return Color("#CD7F32")
         case .silver: return Color(.systemGray)
-        case .gold: return Color(hex: "#FFD700") ?? .yellow
-        case .platinum: return Color(hex: "#E5E4E2") ?? .gray
+        case .gold: return Color("#FFD700")
+        case .platinum: return Color("#E5E4E2")
         }
     }
 }
@@ -551,28 +551,14 @@ struct BadgeEarnedAlert: View {
 
     private var tierColor: Color {
         switch badge.tier {
-        case .bronze: return Color(hex: "#CD7F32") ?? .brown
+        case .bronze: return Color("#CD7F32")
         case .silver: return Color(.systemGray)
-        case .gold: return Color(hex: "#FFD700") ?? .yellow
-        case .platinum: return Color(hex: "#E5E4E2") ?? .gray
+        case .gold: return Color("#FFD700")
+        case .platinum: return Color("#E5E4E2")
         }
     }
 }
 
 // MARK: - Color Extension
-
-extension Color {
-    init?(hex: String) {
-        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
-
-        var rgb: UInt64 = 0
-        guard Scanner(string: hexSanitized).scanHexInt64(&rgb) else { return nil }
-
-        let r = Double((rgb & 0xFF0000) >> 16) / 255.0
-        let g = Double((rgb & 0x00FF00) >> 8) / 255.0
-        let b = Double(rgb & 0x0000FF) / 255.0
-
-        self.init(red: r, green: g, blue: b)
-    }
-}
+// Note: Color(hex:) is now provided natively by SwiftUI in iOS 26+
+// Our custom implementation has been removed to avoid conflicts

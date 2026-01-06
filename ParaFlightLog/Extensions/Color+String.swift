@@ -2,12 +2,15 @@
 //  Color+String.swift
 //  ParaFlightLog
 //
-//  Extension pour convertir les noms de couleurs en Color SwiftUI
-//  Supporte les noms français et anglais
+//  Extensions pour les couleurs SwiftUI
+//  - Conversion de noms de couleurs (français/anglais)
+//  - Initialisation depuis code hex
 //  Target: iOS + Watch (shared)
 //
 
 import SwiftUI
+
+// MARK: - String to Color
 
 extension String {
     /// Convertit un nom de couleur (français ou anglais) en Color SwiftUI
@@ -36,3 +39,7 @@ extension String {
         }
     }
 }
+
+// MARK: - Color from Hex
+// Note: Color(hex:) is now provided natively by SwiftUI in iOS 26+
+// Our custom implementation has been removed to avoid conflicts

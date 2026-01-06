@@ -22,17 +22,18 @@ enum ShareContentType {
 }
 
 /// Configuration de l'image de partage
-struct ShareImageConfig {
+struct ShareImageConfig: Sendable {
     let width: CGFloat
     let height: CGFloat
     let backgroundColor: UIColor
     let accentColor: UIColor
     let includeAppBranding: Bool
 
+    // Presets using standard colors (not dynamic system colors)
     static let instagram = ShareImageConfig(
         width: 1080,
         height: 1920,
-        backgroundColor: UIColor.systemBackground,
+        backgroundColor: UIColor.white,
         accentColor: UIColor.systemBlue,
         includeAppBranding: true
     )
@@ -40,7 +41,7 @@ struct ShareImageConfig {
     static let square = ShareImageConfig(
         width: 1080,
         height: 1080,
-        backgroundColor: UIColor.systemBackground,
+        backgroundColor: UIColor.white,
         accentColor: UIColor.systemBlue,
         includeAppBranding: true
     )
@@ -48,7 +49,7 @@ struct ShareImageConfig {
     static let standard = ShareImageConfig(
         width: 1200,
         height: 630,
-        backgroundColor: UIColor.systemBackground,
+        backgroundColor: UIColor.white,
         accentColor: UIColor.systemBlue,
         includeAppBranding: true
     )
@@ -57,6 +58,7 @@ struct ShareImageConfig {
 // MARK: - ShareService
 
 @Observable
+@MainActor
 final class ShareService {
     static let shared = ShareService()
 
@@ -98,10 +100,9 @@ final class ShareService {
     // MARK: - Flight Share Image Generation
 
     /// Génère une image de partage pour un vol
-    @MainActor
     func generateFlightShareImage(
         flight: PublicFlight,
-        config: ShareImageConfig = .instagram
+        config: ShareImageConfig
     ) -> UIImage {
         isGenerating = true
         defer { isGenerating = false }
@@ -127,11 +128,10 @@ final class ShareService {
     // MARK: - Badge Share Image Generation
 
     /// Génère une image de partage pour un badge obtenu
-    @MainActor
     func generateBadgeShareImage(
         badge: Badge,
         earnedAt: Date,
-        config: ShareImageConfig = .square
+        config: ShareImageConfig
     ) -> UIImage {
         isGenerating = true
         defer { isGenerating = false }
@@ -252,7 +252,7 @@ final class ShareService {
 
     private func drawFlightContent(flight: PublicFlight, in context: UIGraphicsImageRendererContext, rect: CGRect, config: ShareImageConfig) {
         let padding: CGFloat = 60
-        let contentWidth = rect.width - (padding * 2)
+        _ = rect.width - (padding * 2)  // contentWidth reserved for future use
 
         // Titre "VOL PARAPENTE"
         let titleFont = UIFont.systemFont(ofSize: 48, weight: .bold)

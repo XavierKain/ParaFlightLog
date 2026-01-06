@@ -883,7 +883,7 @@ struct PilotProfileView: View {
         } catch {
             logError("Failed to load pilot profile: \(error)", category: .sync)
             // Fallback si on a des vols mais pas de profil
-            if !flights.isEmpty, let firstFlight = flights.first {
+            if !flights.isEmpty {
                 profile = nil
                 errorMessage = nil
             } else {

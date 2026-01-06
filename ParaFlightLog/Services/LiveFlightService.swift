@@ -16,7 +16,7 @@ import CoreLocation
 /// Représente un vol en cours
 struct LiveFlight: Identifiable, Equatable, Hashable {
     let id: String
-    let oderId: String
+    let userId: String
     let pilotName: String
     let pilotUsername: String
     let pilotPhotoFileId: String?
@@ -57,7 +57,7 @@ struct LiveFlight: Identifiable, Equatable, Hashable {
         }
 
         self.id = id
-        self.oderId = data["userId"] as? String ?? ""
+        self.userId = data["userId"] as? String ?? ""
         self.pilotName = data["pilotName"] as? String ?? "Pilote"
         self.pilotUsername = data["pilotUsername"] as? String ?? "pilot"
         self.pilotPhotoFileId = data["pilotPhotoFileId"] as? String
@@ -92,7 +92,7 @@ struct LiveFlight: Identifiable, Equatable, Hashable {
         isActive: Bool = true
     ) {
         self.id = id
-        self.oderId = userId
+        self.userId = userId
         self.pilotName = pilotName
         self.pilotUsername = pilotUsername
         self.pilotPhotoFileId = pilotPhotoFileId

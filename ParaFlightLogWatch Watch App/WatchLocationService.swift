@@ -29,10 +29,16 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         // Fallback synchrone si pas encore initialisé - créer et sauvegarder immédiatement
         initializeLocationManagerSync()
         // _locationManager est maintenant garanti d'être initialisé par initializeLocationManagerSync()
-        guard let manager = _locationManager else {
-            fatalError("CLLocationManager not initialized after initializeLocationManagerSync() - this should never happen")
+        // Double-check avec création d'urgence si nécessaire (ne devrait jamais arriver)
+        if _locationManager == nil {
+            let emergencyManager = CLLocationManager()
+            emergencyManager.delegate = self
+            emergencyManager.desiredAccuracy = kCLLocationAccuracyBest
+            emergencyManager.distanceFilter = kCLDistanceFilterNone
+            _locationManager = emergencyManager
+            watchLogWarning("Emergency CLLocationManager creation - this should never happen", category: .location)
         }
-        return manager
+        return _locationManager!
     }
 
     var lastKnownLocation: CLLocation?

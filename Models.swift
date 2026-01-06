@@ -10,6 +10,24 @@ import Foundation
 import SwiftData
 import UIKit
 
+// MARK: - DateFormatter Cache
+
+/// Cache statique des DateFormatters pour éviter les créations répétées (coûteuses)
+private enum DateFormattersCache {
+    static let mediumDateTime: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        formatter.locale = Locale(identifier: "fr_FR")
+        return formatter
+    }()
+
+    static let iso8601: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        return formatter
+    }()
+}
+
 // MARK: - Wing
 /// Modèle SwiftData représentant une voile de parapente
 @Model
@@ -53,26 +71,7 @@ final class Wing {
         var compressedPhotoData: Data? = nil
 
         if let originalData = photoData, let image = UIImage(data: originalData) {
-            // Calculer la taille cible (max 120x120)
-            let maxSize: CGFloat = 120
-            let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
-            let targetSize = CGSize(
-                width: max(1, round(image.size.width * scale)),
-                height: max(1, round(image.size.height * scale))
-            )
-
-            // Utiliser UIGraphicsImageRenderer avec transparence
-            let format = UIGraphicsImageRendererFormat()
-            format.scale = 1.0
-            format.opaque = false  // Préserver la transparence
-
-            let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
-            let resizedImage = renderer.image { _ in
-                image.draw(in: CGRect(origin: .zero, size: targetSize))
-            }
-
-            // Encoder en PNG pour préserver la transparence
-            compressedPhotoData = resizedImage.pngData()
+            compressedPhotoData = image.resizedForWatch()
         }
 
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: compressedPhotoData, displayOrder: displayOrder)
@@ -97,31 +96,12 @@ final class Wing {
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
-        // Calculer la taille cible (max 72x72)
-        let maxSize: CGFloat = 72
-        let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
-        let targetSize = CGSize(
-            width: max(1, round(image.size.width * scale)),
-            height: max(1, round(image.size.height * scale))
-        )
-
-        // Utiliser UIGraphicsImageRenderer avec transparence
-        let format = UIGraphicsImageRendererFormat()
-        format.scale = 1.0
-        format.opaque = false  // Préserver la transparence
-
-        let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
-        let resizedImage = renderer.image { _ in
-            image.draw(in: CGRect(origin: .zero, size: targetSize))
-        }
-
-        // Encoder en PNG pour préserver la transparence
-        guard let thumbnailData = resizedImage.pngData() else {
-            logWarning("Wing \(name): pngData() returned nil", category: .watchSync)
+        guard let thumbnailData = image.thumbnailForWatch() else {
+            logWarning("Wing \(name): thumbnailForWatch() returned nil", category: .watchSync)
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
-        logInfo("Wing \(name): thumbnail created \(targetSize.width)x\(targetSize.height), \(thumbnailData.count) bytes", category: .watchSync)
+        logInfo("Wing \(name): thumbnail created, \(thumbnailData.count) bytes", category: .watchSync)
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)
     }
 }
@@ -261,12 +241,8 @@ final class Flight {
         }
     }
 
-    /// Date formatée pour l'affichage
+    /// Date formatée pour l'affichage (utilise le cache pour les performances)
     var dateFormatted: String {
-        let formatter = DateFormatter()
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .short
-        formatter.locale = Locale(identifier: "fr_FR")
-        return formatter.string(from: startDate)
+        DateFormattersCache.mediumDateTime.string(from: startDate)
     }
 }

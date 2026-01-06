@@ -13,7 +13,7 @@ import os.log
 // MARK: - Log Categories
 
 /// Catégories de log pour filtrer dans Console.app
-enum LogCategory: String {
+enum LogCategory: String, Sendable {
     case general = "General"
     case watchSync = "WatchSync"
     case dataController = "DataController"
@@ -31,35 +31,36 @@ enum LogCategory: String {
 
 // MARK: - App Logger
 
-/// Logger centralisé pour l'application
+/// Logger centralisé pour l'application - Thread-safe pour Swift 6
 /// Usage: AppLogger.shared.info("Message", category: .watchSync)
-final class AppLogger {
+final class AppLogger: @unchecked Sendable {
     static let shared = AppLogger()
 
     private let subsystem = AppConstants.bundleIdentifier
 
     // Cache des loggers par catégorie pour éviter de les recréer
     private var loggers: [LogCategory: Logger] = [:]
-    private let queue = DispatchQueue(label: "com.xavierkain.ParaFlightLog.logger")
+    private let lock = NSLock()
 
     /// Mode développeur : si false, seuls les logs error/critical sont émis
     /// Ceci améliore les performances en production
-    var isDeveloperModeEnabled: Bool {
+    private var isDeveloperModeEnabled: Bool {
         UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled)
     }
 
     private init() {}
 
-    /// Récupère ou crée un logger pour une catégorie donnée
+    /// Récupère ou crée un logger pour une catégorie donnée (thread-safe)
     private func logger(for category: LogCategory) -> Logger {
+        lock.lock()
+        defer { lock.unlock() }
+
         if let existing = loggers[category] {
             return existing
         }
 
         let newLogger = Logger(subsystem: subsystem, category: category.rawValue)
-        queue.sync {
-            loggers[category] = newLogger
-        }
+        loggers[category] = newLogger
         return newLogger
     }
 
@@ -113,21 +114,21 @@ final class AppLogger {
 
 // MARK: - Global Convenience Functions
 
-/// Fonctions globales pour faciliter l'usage (optionnel, pour une migration progressive)
-/// Marquées nonisolated pour être appelables depuis n'importe quel contexte d'acteur
+/// Fonctions globales pour faciliter l'usage
+/// Thread-safe grâce à AppLogger qui est @unchecked Sendable
 
-nonisolated func logDebug(_ message: String, category: LogCategory = .general) {
+func logDebug(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.debug(message, category: category)
 }
 
-nonisolated func logInfo(_ message: String, category: LogCategory = .general) {
+func logInfo(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.info(message, category: category)
 }
 
-nonisolated func logWarning(_ message: String, category: LogCategory = .general) {
+func logWarning(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.warning(message, category: category)
 }
 
-nonisolated func logError(_ message: String, category: LogCategory = .general) {
+func logError(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.error(message, category: category)
 }
