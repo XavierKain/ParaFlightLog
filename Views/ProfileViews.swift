@@ -1177,6 +1177,40 @@ struct ProfileView: View {
 
                 // Section Développeur
                 Section {
+                    Toggle(isOn: Binding(
+                        get: { UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled) },
+                        set: { newValue in
+                            UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.developerModeEnabled)
+                            // Synchroniser avec la Watch
+                            let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+                            let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
+                            watchManager.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: allowDismiss, developerMode: newValue)
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Mode développeur".localized)
+                            Text("Active les logs détaillés".localized)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Toggle(isOn: Binding(
+                        get: { DemoDataService.shared.isDemoModeEnabled },
+                        set: { DemoDataService.shared.isDemoModeEnabled = $0 }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text("Mode démo Live".localized)
+                                Image(systemName: "airplane.circle.fill")
+                                    .foregroundStyle(.orange)
+                            }
+                            Text("Affiche des pilotes simulés sur la carte Live".localized)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                     Button {
                         reuploadAllFlights()
                     } label: {

@@ -1183,6 +1183,9 @@
         }
       }
     },
+    "Affiche des pilotes simulés sur la carte Live" : {
+
+    },
     "Ajouter" : {
       "localizations" : {
         "en" : {
@@ -2984,6 +2987,9 @@
           }
         }
       }
+    },
+    "Mode démo Live" : {
+
     },
     "Mode développeur" : {
 
