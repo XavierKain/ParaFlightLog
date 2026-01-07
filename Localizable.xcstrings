@@ -1,6 +1,9 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "" : {
+
+    },
     "--" : {
 
     },
@@ -1020,6 +1023,9 @@
         }
       }
     },
+    "Actif" : {
+
+    },
     "Active le Water Lock au début d'un vol pour éviter les touches accidentelles" : {
       "localizations" : {
         "en" : {
@@ -1054,6 +1060,9 @@
           }
         }
       }
+    },
+    "Actualiser" : {
+
     },
     "addWing.custom" : {
       "localizations" : {
@@ -1513,6 +1522,12 @@
         }
       }
     },
+    "Aucun NOTAM" : {
+
+    },
+    "Aucun NOTAM actif dans cette catégorie" : {
+
+    },
     "Aucun spot" : {
       "localizations" : {
         "en" : {
@@ -1641,6 +1656,9 @@
         }
       }
     },
+    "Aucune zone d'alerte" : {
+
+    },
     "Autoriser l'annulation de vol" : {
       "localizations" : {
         "en" : {
@@ -1656,6 +1674,9 @@
           }
         }
       }
+    },
+    "Avant chaque vol" : {
+
     },
     "Backup créé !" : {
       "localizations" : {
@@ -1736,6 +1757,9 @@
           }
         }
       }
+    },
+    "Carte NOTAM" : {
+
     },
     "Catégorie" : {
 
@@ -1838,6 +1862,9 @@
           }
         }
       }
+    },
+    "Chargement des NOTAM..." : {
+
     },
     "Choisir la période" : {
       "localizations" : {
@@ -2037,7 +2064,13 @@
         }
       }
     },
+    "Créer" : {
+
+    },
     "Créer le backup" : {
+
+    },
+    "Créez des zones pour recevoir des alertes NOTAM" : {
 
     },
     "Date" : {
@@ -2201,6 +2234,12 @@
       }
     },
     "Dernière sync: %@" : {
+
+    },
+    "Description" : {
+
+    },
+    "Description (optionnel)" : {
 
     },
     "Détail du vol" : {
@@ -2400,6 +2439,9 @@
       }
     },
     "Erreur de sauvegarde" : {
+
+    },
+    "Expiration de NOTAM" : {
 
     },
     "Export Backup" : {
@@ -2808,6 +2850,9 @@
     "kg" : {
 
     },
+    "km" : {
+
+    },
     "Lancer un vol" : {
       "localizations" : {
         "en" : {
@@ -2873,6 +2918,9 @@
         }
       }
     },
+    "Latitude" : {
+
+    },
     "Les spots apparaîtront ici une fois que vous aurez enregistré des vols" : {
       "localizations" : {
         "en" : {
@@ -2905,6 +2953,9 @@
         }
       }
     },
+    "Longitude" : {
+
+    },
     "m²" : {
       "localizations" : {
         "en" : {
@@ -2920,6 +2971,9 @@
           }
         }
       }
+    },
+    "Màj: %@" : {
+
     },
     "Marque" : {
 
@@ -3097,6 +3151,9 @@
     "Nom actuel" : {
 
     },
+    "Nom de la zone" : {
+
+    },
     "Nom du spot" : {
       "localizations" : {
         "en" : {
@@ -3177,6 +3234,12 @@
         }
       }
     },
+    "NOTAM" : {
+
+    },
+    "NOTAM Actifs" : {
+
+    },
     "Notes" : {
       "localizations" : {
         "en" : {
@@ -3193,7 +3256,16 @@
         }
       }
     },
+    "Notifications" : {
+
+    },
     "Nouveau nom" : {
+
+    },
+    "Nouveaux" : {
+
+    },
+    "Nouveaux NOTAM" : {
 
     },
     "Nouvelle voile" : {
@@ -3212,6 +3284,9 @@
           }
         }
       }
+    },
+    "Nouvelle zone" : {
+
     },
     "Obtenu le %@" : {
 
@@ -3419,6 +3494,9 @@
     "Portée" : {
 
     },
+    "Position" : {
+
+    },
     "Position indisponible" : {
       "localizations" : {
         "en" : {
@@ -3451,6 +3529,9 @@
           }
         }
       }
+    },
+    "Pré-vol" : {
+
     },
     "Prêt à exporter" : {
       "localizations" : {
@@ -3500,6 +3581,9 @@
           }
         }
       }
+    },
+    "Rayon" : {
+
     },
     "Recalculer tous les badges" : {
 
@@ -3754,6 +3838,9 @@
 
     },
     "SOS" : {
+
+    },
+    "Source: %@" : {
 
     },
     "Spot" : {
@@ -4219,6 +4306,9 @@
           }
         }
       }
+    },
+    "Texte original" : {
+
     },
     "Timeline" : {
       "localizations" : {
@@ -4756,6 +4846,9 @@
           }
         }
       }
+    },
+    "Zones d'alerte" : {
+
     }
   },
   "version" : "1.0"

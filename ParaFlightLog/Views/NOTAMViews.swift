@@ -18,11 +18,35 @@ struct NOTAMListView: View {
     @State private var selectedFilter: NOTAMType? = nil
     @State private var showingAlertZones = false
     @State private var showingMap = false
+    @State private var showingCountryPicker = false
 
     var body: some View {
         NavigationStack {
             List {
-                // Section filtres
+                // Section sélection pays
+                Section {
+                    Button {
+                        showingCountryPicker = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "globe")
+                                .foregroundStyle(Color.accentColor)
+                            Text("Pays sélectionnés")
+                            Spacer()
+                            Text(selectedCountriesText)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .foregroundStyle(.primary)
+                } header: {
+                    Text("Régions")
+                }
+
+                // Section filtres par type
                 Section {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -36,13 +60,15 @@ struct NOTAMListView: View {
                                 NOTAMFilterChip(
                                     title: type.displayName,
                                     isSelected: selectedFilter == type,
-                                    chipColor: Color(type.color),
+                                    chipColor: Color.fromHex(type.color) ?? .gray,
                                     action: { selectedFilter = type }
                                 )
                             }
                         }
                         .padding(.horizontal, 4)
                     }
+                } header: {
+                    Text("Filtres")
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
@@ -117,6 +143,9 @@ struct NOTAMListView: View {
             .sheet(isPresented: $showingMap) {
                 NOTAMMapView()
             }
+            .sheet(isPresented: $showingCountryPicker) {
+                CountryPickerView()
+            }
             .task {
                 await notamService.refreshIfNeeded()
             }
@@ -129,6 +158,83 @@ struct NOTAMListView: View {
             return active.filter { $0.type == filter }
         }
         return active
+    }
+
+    private var selectedCountriesText: String {
+        let countries = notamService.selectedCountries
+        if countries.isEmpty {
+            return "Aucun"
+        } else if countries.count == 1 {
+            return countries.first!.flag + " " + countries.first!.displayName
+        } else if countries.count <= 3 {
+            return countries.map { $0.flag }.joined(separator: " ")
+        } else {
+            return "\(countries.count) pays"
+        }
+    }
+}
+
+// MARK: - Country Picker View
+
+struct CountryPickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var notamService = NOTAMService.shared
+    @State private var selectedCountries: Set<NOTAMCountry> = []
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    ForEach(Array(NOTAMCountry.allCases), id: \.self) { country in
+                        Button {
+                            if selectedCountries.contains(country) {
+                                selectedCountries.remove(country)
+                            } else {
+                                selectedCountries.insert(country)
+                            }
+                        } label: {
+                            HStack {
+                                Text(country.flag)
+                                    .font(.title2)
+                                Text(country.displayName)
+                                    .foregroundStyle(.primary)
+                                Spacer()
+                                Text(country.notamSource)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                                if selectedCountries.contains(country) {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundStyle(Color.accentColor)
+                                }
+                            }
+                        }
+                    }
+                } footer: {
+                    Text("Sélectionnez les pays pour lesquels vous souhaitez voir les NOTAM")
+                }
+            }
+            .navigationTitle("Pays")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Annuler") { dismiss() }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Appliquer") {
+                        notamService.selectedCountries = selectedCountries
+                        Task {
+                            await notamService.refreshNOTAMs()
+                        }
+                        dismiss()
+                    }
+                    .disabled(selectedCountries.isEmpty)
+                }
+            }
+            .onAppear {
+                selectedCountries = notamService.selectedCountries
+            }
+        }
     }
 }
 
@@ -453,7 +559,7 @@ struct AlertZoneRowView: View {
     }
 }
 
-// MARK: - Add Alert Zone View
+// MARK: - Add Alert Zone View (Interactive Map)
 
 struct AddAlertZoneView: View {
     @Environment(\.dismiss) private var dismiss
@@ -465,55 +571,66 @@ struct AddAlertZoneView: View {
     @State private var notifyBeforeFlight = true
     @State private var notifyOnExpiration = false
 
-    @State private var centerLatitude: Double = 45.0
-    @State private var centerLongitude: Double = 6.0
-    @State private var radiusKm: Double = 50.0
+    // Position sur la carte
+    @State private var centerCoordinate = CLLocationCoordinate2D(latitude: 45.0, longitude: 6.0)
+    @State private var radiusKm: Double = 30.0
 
     @State private var isSaving = false
+    @State private var showingSettings = false
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Informations") {
-                    TextField("Nom de la zone", text: $name)
-                    TextField("Description (optionnel)", text: $description)
-                }
+            ZStack {
+                // Carte interactive avec le cercle
+                AlertZoneMapEditor(
+                    centerCoordinate: $centerCoordinate,
+                    radiusKm: $radiusKm
+                )
+                .ignoresSafeArea(edges: .bottom)
 
-                Section("Position") {
-                    HStack {
-                        Text("Latitude")
-                        Spacer()
-                        TextField("Latitude", value: $centerLatitude, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 120)
-                    }
+                // Panneau d'informations en bas
+                VStack {
+                    Spacer()
 
-                    HStack {
-                        Text("Longitude")
-                        Spacer()
-                        TextField("Longitude", value: $centerLongitude, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 120)
-                    }
+                    VStack(spacing: 16) {
+                        // Slider pour le rayon
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack {
+                                Image(systemName: "circle.dashed")
+                                    .foregroundStyle(Color.accentColor)
+                                Text("Rayon: \(Int(radiusKm)) km")
+                                    .font(.headline)
+                                Spacer()
+                            }
 
-                    HStack {
-                        Text("Rayon")
-                        Spacer()
-                        TextField("km", value: $radiusKm, format: .number)
-                            .keyboardType(.decimalPad)
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 80)
-                        Text("km")
+                            Slider(value: $radiusKm, in: 5...200, step: 5) {
+                                Text("Rayon")
+                            }
+                            .tint(Color.accentColor)
+                        }
+
+                        // Nom de la zone
+                        TextField("Nom de la zone", text: $name)
+                            .textFieldStyle(.roundedBorder)
+
+                        // Bouton pour les paramètres avancés
+                        Button {
+                            showingSettings = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "gear")
+                                Text("Paramètres de notification")
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                            }
+                            .font(.subheadline)
                             .foregroundStyle(.secondary)
+                        }
                     }
-                }
-
-                Section("Notifications") {
-                    Toggle("Nouveaux NOTAM", isOn: $notifyOnNewNOTAM)
-                    Toggle("Avant chaque vol", isOn: $notifyBeforeFlight)
-                    Toggle("Expiration de NOTAM", isOn: $notifyOnExpiration)
+                    .padding()
+                    .background(.ultraThinMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                    .padding()
                 }
             }
             .navigationTitle("Nouvelle zone")
@@ -530,6 +647,15 @@ struct AddAlertZoneView: View {
                     .disabled(name.isEmpty || isSaving)
                 }
             }
+            .sheet(isPresented: $showingSettings) {
+                AlertZoneSettingsSheet(
+                    notifyOnNewNOTAM: $notifyOnNewNOTAM,
+                    notifyBeforeFlight: $notifyBeforeFlight,
+                    notifyOnExpiration: $notifyOnExpiration,
+                    description: $description
+                )
+                .presentationDetents([.medium])
+            }
         }
     }
 
@@ -543,7 +669,7 @@ struct AddAlertZoneView: View {
             notifyBeforeFlight: notifyBeforeFlight,
             notifyOnExpiration: notifyOnExpiration,
             geometry: .circle(
-                center: CLLocationCoordinate2D(latitude: centerLatitude, longitude: centerLongitude),
+                center: centerCoordinate,
                 radiusMeters: radiusKm * 1000
             )
         )
@@ -562,37 +688,143 @@ struct AddAlertZoneView: View {
     }
 }
 
-// MARK: - NOTAM Map View
+// MARK: - Alert Zone Map Editor
+
+struct AlertZoneMapEditor: View {
+    @Binding var centerCoordinate: CLLocationCoordinate2D
+    @Binding var radiusKm: Double
+
+    @State private var region: MKCoordinateRegion
+
+    init(centerCoordinate: Binding<CLLocationCoordinate2D>, radiusKm: Binding<Double>) {
+        self._centerCoordinate = centerCoordinate
+        self._radiusKm = radiusKm
+
+        let span = MKCoordinateSpan(
+            latitudeDelta: radiusKm.wrappedValue / 50.0,
+            longitudeDelta: radiusKm.wrappedValue / 50.0
+        )
+        self._region = State(initialValue: MKCoordinateRegion(
+            center: centerCoordinate.wrappedValue,
+            span: span
+        ))
+    }
+
+    var body: some View {
+        ZStack {
+            Map(coordinateRegion: $region, interactionModes: .all)
+                .onChange(of: region.center.latitude) { _, _ in
+                    centerCoordinate = region.center
+                }
+                .onChange(of: region.center.longitude) { _, _ in
+                    centerCoordinate = region.center
+                }
+
+            // Cercle de la zone (overlay visuel)
+            Circle()
+                .stroke(Color.accentColor, lineWidth: 3)
+                .fill(Color.accentColor.opacity(0.15))
+                .frame(width: circleSize, height: circleSize)
+
+            // Point central
+            Circle()
+                .fill(Color.accentColor)
+                .frame(width: 12, height: 12)
+
+            // Instructions
+            VStack {
+                Text("Déplacez la carte pour positionner le centre")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(.ultraThinMaterial)
+                    .clipShape(Capsule())
+                    .padding(.top, 60)
+
+                Spacer()
+            }
+        }
+    }
+
+    // Calcul de la taille du cercle en pixels basé sur le rayon et le zoom
+    private var circleSize: CGFloat {
+        // Approximation: 1 degré de latitude ≈ 111 km
+        let degreesPerKm = 1.0 / 111.0
+        let radiusDegrees = radiusKm * degreesPerKm
+        let spanDegrees = region.span.latitudeDelta
+
+        // Taille de l'écran (approximation)
+        let screenHeight: CGFloat = UIScreen.main.bounds.height
+
+        // Ratio entre le rayon et la span visible
+        let ratio = radiusDegrees / spanDegrees
+
+        // Taille du cercle en pixels (diamètre)
+        return min(screenHeight * ratio * 2, screenHeight * 0.8)
+    }
+}
+
+// MARK: - Alert Zone Settings Sheet
+
+struct AlertZoneSettingsSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Binding var notifyOnNewNOTAM: Bool
+    @Binding var notifyBeforeFlight: Bool
+    @Binding var notifyOnExpiration: Bool
+    @Binding var description: String
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Notifications") {
+                    Toggle(isOn: $notifyOnNewNOTAM) {
+                        Label("Nouveaux NOTAM", systemImage: "bell.badge")
+                    }
+
+                    Toggle(isOn: $notifyBeforeFlight) {
+                        Label("Avant chaque vol", systemImage: "airplane.departure")
+                    }
+
+                    Toggle(isOn: $notifyOnExpiration) {
+                        Label("Expiration de NOTAM", systemImage: "clock.badge.exclamationmark")
+                    }
+                }
+
+                Section("Description") {
+                    TextField("Description (optionnel)", text: $description, axis: .vertical)
+                        .lineLimit(3...6)
+                }
+            }
+            .navigationTitle("Paramètres")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("OK") { dismiss() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - NOTAM Map View with Overlays
 
 struct NOTAMMapView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var notamService = NOTAMService.shared
-    @State private var region = MKCoordinateRegion(
-        center: CLLocationCoordinate2D(latitude: 45.5, longitude: 5.5),
-        span: MKCoordinateSpan(latitudeDelta: 5, longitudeDelta: 5)
-    )
+    @State private var selectedNOTAM: NOTAM?
+    @State private var showNOTAMDetail = false
 
     var body: some View {
         NavigationStack {
-            Map(coordinateRegion: $region, annotationItems: notamService.cachedNOTAMs.filter { $0.isActive }) { notam in
-                MapAnnotation(coordinate: notamCenter(notam)) {
-                    VStack {
-                        Image(systemName: notam.type.iconName)
-                            .font(.title2)
-                            .foregroundStyle(Color(notam.type.color))
-                            .padding(6)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Circle())
-
-                        Text(notam.title)
-                            .font(.caption2)
-                            .lineLimit(1)
-                            .padding(.horizontal, 4)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
-                    }
+            NOTAMMapWithOverlays(
+                notams: notamService.cachedNOTAMs.filter { $0.isActive },
+                alertZones: notamService.alertZones,
+                onNOTAMSelected: { notam in
+                    selectedNOTAM = notam
+                    showNOTAMDetail = true
                 }
-            }
+            )
             .navigationTitle("Carte NOTAM")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -600,24 +832,227 @@ struct NOTAMMapView: View {
                     Button("Fermer") { dismiss() }
                 }
             }
+            .sheet(isPresented: $showNOTAMDetail) {
+                if let notam = selectedNOTAM {
+                    NavigationStack {
+                        NOTAMDetailView(notam: notam)
+                            .toolbar {
+                                ToolbarItem(placement: .cancellationAction) {
+                                    Button("Fermer") { showNOTAMDetail = false }
+                                }
+                            }
+                    }
+                    .presentationDetents([.medium, .large])
+                }
+            }
+        }
+    }
+}
+
+// MARK: - NOTAM Map with Overlays (UIKit MapView)
+
+struct NOTAMMapWithOverlays: UIViewRepresentable {
+    let notams: [NOTAM]
+    let alertZones: [AlertZone]
+    var onNOTAMSelected: ((NOTAM) -> Void)?
+
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView()
+        mapView.delegate = context.coordinator
+
+        // Centrer sur la France par défaut
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: 46.0, longitude: 2.5),
+            span: MKCoordinateSpan(latitudeDelta: 8, longitudeDelta: 8)
+        )
+        mapView.setRegion(region, animated: false)
+
+        return mapView
+    }
+
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        // Supprimer les overlays et annotations existants
+        mapView.removeOverlays(mapView.overlays)
+        mapView.removeAnnotations(mapView.annotations)
+
+        // Ajouter les zones NOTAM
+        for notam in notams {
+            addNOTAMOverlay(notam, to: mapView, context: context)
+        }
+
+        // Ajouter les zones d'alerte utilisateur
+        for zone in alertZones where zone.isEnabled {
+            addAlertZoneOverlay(zone, to: mapView, context: context)
         }
     }
 
-    private func notamCenter(_ notam: NOTAM) -> CLLocationCoordinate2D {
+    private func addNOTAMOverlay(_ notam: NOTAM, to mapView: MKMapView, context: Context) {
         switch notam.geometry {
-        case .circle(let center, _):
-            return center
-        case .polygon(let coords):
-            guard !coords.isEmpty else {
-                return CLLocationCoordinate2D(latitude: 0, longitude: 0)
-            }
-            let sumLat = coords.reduce(0.0) { $0 + $1.latitude }
-            let sumLon = coords.reduce(0.0) { $0 + $1.longitude }
-            return CLLocationCoordinate2D(
-                latitude: sumLat / Double(coords.count),
-                longitude: sumLon / Double(coords.count)
-            )
+        case .circle(let center, let radiusNM):
+            let radiusMeters = radiusNM * 1852  // 1 NM = 1852 m
+            let circle = NOTAMCircle(center: center, radius: radiusMeters)
+            circle.notam = notam
+            mapView.addOverlay(circle)
+
+            // Ajouter une annotation au centre
+            let annotation = NOTAMAnnotation(notam: notam, coordinate: center)
+            mapView.addAnnotation(annotation)
+
+        case .polygon(let coordinates):
+            guard coordinates.count >= 3 else { return }
+            var coords = coordinates
+            let polygon = NOTAMPolygon(coordinates: &coords, count: coordinates.count)
+            polygon.notam = notam
+            mapView.addOverlay(polygon)
+
+            // Ajouter une annotation au centre
+            let center = polygonCenter(coordinates)
+            let annotation = NOTAMAnnotation(notam: notam, coordinate: center)
+            mapView.addAnnotation(annotation)
         }
+    }
+
+    private func addAlertZoneOverlay(_ zone: AlertZone, to mapView: MKMapView, context: Context) {
+        switch zone.geometry {
+        case .circle(let center, let radiusMeters):
+            let circle = AlertZoneCircle(center: center, radius: radiusMeters)
+            circle.alertZone = zone
+            mapView.addOverlay(circle, level: .aboveLabels)
+
+        case .polygon(let coordinates):
+            guard coordinates.count >= 3 else { return }
+            var coords = coordinates
+            let polygon = AlertZonePolygon(coordinates: &coords, count: coordinates.count)
+            polygon.alertZone = zone
+            mapView.addOverlay(polygon, level: .aboveLabels)
+        }
+    }
+
+    private func polygonCenter(_ coordinates: [CLLocationCoordinate2D]) -> CLLocationCoordinate2D {
+        guard !coordinates.isEmpty else {
+            return CLLocationCoordinate2D(latitude: 0, longitude: 0)
+        }
+        let sumLat = coordinates.reduce(0.0) { $0 + $1.latitude }
+        let sumLon = coordinates.reduce(0.0) { $0 + $1.longitude }
+        return CLLocationCoordinate2D(
+            latitude: sumLat / Double(coordinates.count),
+            longitude: sumLon / Double(coordinates.count)
+        )
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
+
+    class Coordinator: NSObject, MKMapViewDelegate {
+        var parent: NOTAMMapWithOverlays
+
+        init(_ parent: NOTAMMapWithOverlays) {
+            self.parent = parent
+        }
+
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let circle = overlay as? NOTAMCircle, let notam = circle.notam {
+                let renderer = MKCircleRenderer(circle: circle)
+                let color = UIColor(Color.fromHex(notam.type.color) ?? .red)
+                renderer.fillColor = color.withAlphaComponent(0.2)
+                renderer.strokeColor = color.withAlphaComponent(0.8)
+                renderer.lineWidth = 2
+                return renderer
+            }
+
+            if let polygon = overlay as? NOTAMPolygon, let notam = polygon.notam {
+                let renderer = MKPolygonRenderer(polygon: polygon)
+                let color = UIColor(Color.fromHex(notam.type.color) ?? .red)
+                renderer.fillColor = color.withAlphaComponent(0.2)
+                renderer.strokeColor = color.withAlphaComponent(0.8)
+                renderer.lineWidth = 2
+                return renderer
+            }
+
+            if overlay is AlertZoneCircle {
+                let renderer = MKCircleRenderer(circle: overlay as! MKCircle)
+                renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.1)
+                renderer.strokeColor = UIColor.systemBlue.withAlphaComponent(0.5)
+                renderer.lineWidth = 2
+                renderer.lineDashPattern = [8, 4]
+                return renderer
+            }
+
+            if overlay is AlertZonePolygon {
+                let renderer = MKPolygonRenderer(polygon: overlay as! MKPolygon)
+                renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.1)
+                renderer.strokeColor = UIColor.systemBlue.withAlphaComponent(0.5)
+                renderer.lineWidth = 2
+                renderer.lineDashPattern = [8, 4]
+                return renderer
+            }
+
+            return MKOverlayRenderer(overlay: overlay)
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard let notamAnnotation = annotation as? NOTAMAnnotation else { return nil }
+
+            let identifier = "NOTAMAnnotation"
+            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+
+            if annotationView == nil {
+                annotationView = MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                annotationView?.canShowCallout = true
+                annotationView?.rightCalloutAccessoryView = UIButton(type: .detailDisclosure)
+            } else {
+                annotationView?.annotation = annotation
+            }
+
+            // Créer l'icône
+            let config = UIImage.SymbolConfiguration(pointSize: 24, weight: .medium)
+            let image = UIImage(systemName: notamAnnotation.notam.type.iconName, withConfiguration: config)
+            let color = UIColor(Color.fromHex(notamAnnotation.notam.type.color) ?? .red)
+
+            annotationView?.image = image?.withTintColor(color, renderingMode: .alwaysOriginal)
+
+            return annotationView
+        }
+
+        func mapView(_ mapView: MKMapView, annotationView view: MKAnnotationView, calloutAccessoryControlTapped control: UIControl) {
+            if let notamAnnotation = view.annotation as? NOTAMAnnotation {
+                parent.onNOTAMSelected?(notamAnnotation.notam)
+            }
+        }
+    }
+}
+
+// MARK: - Custom Overlay Classes
+
+class NOTAMCircle: MKCircle {
+    var notam: NOTAM?
+}
+
+class NOTAMPolygon: MKPolygon {
+    var notam: NOTAM?
+}
+
+class AlertZoneCircle: MKCircle {
+    var alertZone: AlertZone?
+}
+
+class AlertZonePolygon: MKPolygon {
+    var alertZone: AlertZone?
+}
+
+// MARK: - NOTAM Annotation
+
+class NOTAMAnnotation: NSObject, MKAnnotation {
+    let notam: NOTAM
+    let coordinate: CLLocationCoordinate2D
+
+    var title: String? { notam.title }
+    var subtitle: String? { notam.type.displayName }
+
+    init(notam: NOTAM, coordinate: CLLocationCoordinate2D) {
+        self.notam = notam
+        self.coordinate = coordinate
     }
 }
 

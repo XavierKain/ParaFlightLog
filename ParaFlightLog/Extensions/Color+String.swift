@@ -40,6 +40,24 @@ extension String {
     }
 }
 
-// MARK: - Color from Hex
-// Note: Color(hex:) is now provided natively by SwiftUI in iOS 26+
-// Our custom implementation has been removed to avoid conflicts
+// MARK: - Color from Hex String
+
+extension Color {
+    /// Crée une couleur depuis un code hex string (ex: "#FF3B30" ou "FF3B30")
+    /// Retourne nil si le format est invalide
+    static func fromHex(_ hex: String) -> Color? {
+        var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+        hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+
+        guard hexSanitized.count == 6,
+              let hexNumber = UInt64(hexSanitized, radix: 16) else {
+            return nil
+        }
+
+        let r = Double((hexNumber & 0xFF0000) >> 16) / 255.0
+        let g = Double((hexNumber & 0x00FF00) >> 8) / 255.0
+        let b = Double(hexNumber & 0x0000FF) / 255.0
+
+        return Color(red: r, green: g, blue: b)
+    }
+}
