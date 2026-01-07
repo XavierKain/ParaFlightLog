@@ -22,6 +22,7 @@ struct DiscoverView: View {
 
     @State private var selectedSegment: DiscoverSegment = .global
     @State private var showingSearch = false
+    @State private var showingNOTAM = false
 
     enum DiscoverSegment: String, CaseIterable {
         case global = "Tous"
@@ -65,6 +66,15 @@ struct DiscoverView: View {
             }
             .navigationTitle("Découvrir".localized)
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showingNOTAM = true
+                    } label: {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                    }
+                    .accessibilityLabel("NOTAM")
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingSearch = true
@@ -75,6 +85,9 @@ struct DiscoverView: View {
             }
             .sheet(isPresented: $showingSearch) {
                 SearchView()
+            }
+            .sheet(isPresented: $showingNOTAM) {
+                NOTAMListView()
             }
         }
     }
