@@ -29,106 +29,84 @@ enum LogCategory: String, Sendable {
     case notification = "Notification"
 }
 
-// MARK: - App Logger
+// MARK: - Log Enum (Thread-safe, accessible depuis n'importe quel contexte)
 
-/// Logger centralisé pour l'application - Thread-safe pour Swift 6
-/// Usage: AppLogger.shared.info("Message", category: .watchSync)
-final class AppLogger: @unchecked Sendable {
-    static let shared = AppLogger()
+/// API de logging principale - utilisable depuis n'importe quel contexte de concurrence
+/// Usage: Log.info("Message", category: .watchSync)
+/// Toute la logique est encapsulée pour éviter l'inférence MainActor
+enum Log: Sendable {
+    /// Cache thread-safe des loggers OSLog par catégorie
+    nonisolated(unsafe) private static var loggerLock = NSLock()
+    nonisolated(unsafe) private static var loggerCache: [LogCategory: Logger] = [:]
+    /// Bundle identifier - copie locale pour éviter l'accès à AppConstants (MainActor)
+    nonisolated(unsafe) private static var bundleId = "com.xavierkain.ParaFlightLog"
+    /// Clé UserDefaults - copie locale pour éviter l'accès à UserDefaultsKeys (MainActor)
+    nonisolated(unsafe) private static var developerModeKey = "developerModeEnabled"
 
-    private let subsystem = AppConstants.bundleIdentifier
+    /// Récupère ou crée un logger OSLog pour une catégorie (thread-safe)
+    nonisolated private static func getOSLogger(for category: LogCategory) -> Logger {
+        loggerLock.lock()
+        defer { loggerLock.unlock() }
 
-    // Cache des loggers par catégorie pour éviter de les recréer
-    private var loggers: [LogCategory: Logger] = [:]
-    private let lock = NSLock()
-
-    /// Mode développeur : si false, seuls les logs error/critical sont émis
-    /// Ceci améliore les performances en production
-    private var isDeveloperModeEnabled: Bool {
-        UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled)
-    }
-
-    private init() {}
-
-    /// Récupère ou crée un logger pour une catégorie donnée (thread-safe)
-    private func logger(for category: LogCategory) -> Logger {
-        lock.lock()
-        defer { lock.unlock() }
-
-        if let existing = loggers[category] {
+        if let existing = loggerCache[category] {
             return existing
         }
 
-        let newLogger = Logger(subsystem: subsystem, category: category.rawValue)
-        loggers[category] = newLogger
+        let newLogger = Logger(subsystem: bundleId, category: category.rawValue)
+        loggerCache[category] = newLogger
         return newLogger
     }
 
-    // MARK: - Log Methods
-
-    /// Log de niveau debug (visible uniquement en mode développeur)
-    func debug(_ message: String, category: LogCategory = .general) {
-        guard isDeveloperModeEnabled else { return }
-        logger(for: category).debug("\(message, privacy: .public)")
+    /// Vérifie si le mode développeur est activé
+    nonisolated private static func isDeveloperModeEnabled() -> Bool {
+        UserDefaults.standard.bool(forKey: developerModeKey)
     }
 
-    /// Log de niveau info (visible uniquement en mode développeur)
-    func info(_ message: String, category: LogCategory = .general) {
-        guard isDeveloperModeEnabled else { return }
-        logger(for: category).info("\(message, privacy: .public)")
+    nonisolated static func debug(_ message: String, category: LogCategory = .general) {
+        guard isDeveloperModeEnabled() else { return }
+        getOSLogger(for: category).debug("\(message, privacy: .public)")
     }
 
-    /// Log de niveau notice (visible uniquement en mode développeur)
-    func notice(_ message: String, category: LogCategory = .general) {
-        guard isDeveloperModeEnabled else { return }
-        logger(for: category).notice("\(message, privacy: .public)")
+    nonisolated static func info(_ message: String, category: LogCategory = .general) {
+        guard isDeveloperModeEnabled() else { return }
+        getOSLogger(for: category).info("\(message, privacy: .public)")
     }
 
-    /// Log de niveau warning (toujours actif - problèmes potentiels)
-    func warning(_ message: String, category: LogCategory = .general) {
-        logger(for: category).warning("\(message, privacy: .public)")
+    nonisolated static func notice(_ message: String, category: LogCategory = .general) {
+        guard isDeveloperModeEnabled() else { return }
+        getOSLogger(for: category).notice("\(message, privacy: .public)")
     }
 
-    /// Log de niveau error (toujours actif - erreurs récupérables)
-    func error(_ message: String, category: LogCategory = .general) {
-        logger(for: category).error("\(message, privacy: .public)")
+    nonisolated static func warning(_ message: String, category: LogCategory = .general) {
+        getOSLogger(for: category).warning("\(message, privacy: .public)")
     }
 
-    /// Log de niveau critical (toujours actif - erreurs critiques)
-    func critical(_ message: String, category: LogCategory = .general) {
-        logger(for: category).critical("\(message, privacy: .public)")
+    nonisolated static func error(_ message: String, category: LogCategory = .general) {
+        getOSLogger(for: category).error("\(message, privacy: .public)")
     }
 
-    // MARK: - Convenience Methods
-
-    /// Log avec emoji pour compatibilité visuelle (à utiliser temporairement pendant la migration)
-    func legacy(_ message: String, category: LogCategory = .general) {
-        // En debug, on garde le comportement print pour la compatibilité
-        #if DEBUG
-        print(message)
-        #endif
-        // On log aussi dans OSLog pour la transition
-        logger(for: category).info("\(message, privacy: .public)")
+    nonisolated static func critical(_ message: String, category: LogCategory = .general) {
+        getOSLogger(for: category).critical("\(message, privacy: .public)")
     }
 }
 
-// MARK: - Global Convenience Functions
+// MARK: - Legacy Global Functions (MainActor only)
 
-/// Fonctions globales pour faciliter l'usage
-/// Thread-safe grâce à AppLogger qui est @unchecked Sendable
+/// Fonctions globales pour la compatibilité avec le code existant
+/// Utilisent @MainActor - pour du code hors MainActor, utiliser Log.info(), etc.
 
-func logDebug(_ message: String, category: LogCategory = .general) {
-    AppLogger.shared.debug(message, category: category)
+@MainActor func logDebug(_ message: String, category: LogCategory = .general) {
+    Log.debug(message, category: category)
 }
 
-func logInfo(_ message: String, category: LogCategory = .general) {
-    AppLogger.shared.info(message, category: category)
+@MainActor func logInfo(_ message: String, category: LogCategory = .general) {
+    Log.info(message, category: category)
 }
 
-func logWarning(_ message: String, category: LogCategory = .general) {
-    AppLogger.shared.warning(message, category: category)
+@MainActor func logWarning(_ message: String, category: LogCategory = .general) {
+    Log.warning(message, category: category)
 }
 
-func logError(_ message: String, category: LogCategory = .general) {
-    AppLogger.shared.error(message, category: category)
+@MainActor func logError(_ message: String, category: LogCategory = .general) {
+    Log.error(message, category: category)
 }

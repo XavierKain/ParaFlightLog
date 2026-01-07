@@ -70,13 +70,13 @@ actor WingImageCache {
         let diskPath = cacheDirectory.appendingPathComponent("\(wingId).png")
         if let diskData = try? Data(contentsOf: diskPath), !diskData.isEmpty {
             memoryCache[wingId] = diskData
-            logInfo("Loaded image from disk cache for wing \(wingId)", category: .wingLibrary)
+            Log.info("Loaded image from disk cache for wing \(wingId)", category: .wingLibrary)
             return diskData
         }
 
         // 3. Check pending request (thread-safe grâce à l'actor)
         if let pending = pendingRequests[wingId] {
-            logInfo("Waiting for pending request for wing \(wingId)", category: .wingLibrary)
+            Log.info("Waiting for pending request for wing \(wingId)", category: .wingLibrary)
             return try await pending.value
         }
 
@@ -90,7 +90,7 @@ actor WingImageCache {
         }
 
         // 6. Create new fetch task with retry logic
-        logInfo("Fetching image from network for wing \(wingId) (active: \(activeDownloads)/\(maxConcurrentDownloads))", category: .wingLibrary)
+        Log.info("Fetching image from network for wing \(wingId) (active: \(activeDownloads)/\(maxConcurrentDownloads))", category: .wingLibrary)
 
         let task = Task<Data, Error> {
             var lastError: Error?
@@ -112,11 +112,11 @@ actor WingImageCache {
 
                     // Si c'est un rate limit (429), attendre plus longtemps
                     if errorDescription.contains("429") || errorDescription.lowercased().contains("rate") {
-                        logWarning("Rate limit hit for wing \(wingId), waiting 2s (attempt \(attempt)/3)", category: .wingLibrary)
+                        Log.warning("Rate limit hit for wing \(wingId), waiting 2s (attempt \(attempt)/3)", category: .wingLibrary)
                         try? await Task.sleep(nanoseconds: 2_000_000_000) // 2 secondes
                     } else if attempt < 3 {
                         // Autres erreurs: courte pause avant retry
-                        logWarning("Fetch failed for wing \(wingId): \(errorDescription), retrying... (attempt \(attempt)/3)", category: .wingLibrary)
+                        Log.warning("Fetch failed for wing \(wingId): \(errorDescription), retrying... (attempt \(attempt)/3)", category: .wingLibrary)
                         try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconde
                     }
                 }
@@ -134,12 +134,12 @@ actor WingImageCache {
             try? data.write(to: diskPath)
             pendingRequests.removeValue(forKey: wingId)
             releaseDownloadSlot()
-            logInfo("Cached image for wing \(wingId): \(data.count) bytes", category: .wingLibrary)
+            Log.info("Cached image for wing \(wingId): \(data.count) bytes", category: .wingLibrary)
             return data
         } catch {
             pendingRequests.removeValue(forKey: wingId)
             releaseDownloadSlot()
-            logError("Failed to fetch image for wing \(wingId) after 3 attempts: \(error)", category: .wingLibrary)
+            Log.error("Failed to fetch image for wing \(wingId) after 3 attempts: \(error)", category: .wingLibrary)
             throw error
         }
     }
@@ -340,15 +340,15 @@ final class WingLibraryService {
             if forceRefresh {
                 await wingImageCache.clearAll()
             }
-            logInfo("Fetched catalog: \(newCatalog.wings.count) wings, \(newCatalog.manufacturers.count) manufacturers", category: .wingLibrary)
+            Log.info("Fetched catalog: \(newCatalog.wings.count) wings, \(newCatalog.manufacturers.count) manufacturers", category: .wingLibrary)
             return newCatalog
         } catch {
-            logWarning("Appwrite fetch failed: \(error.localizedDescription)", category: .wingLibrary)
+            Log.warning("Appwrite fetch failed: \(error.localizedDescription)", category: .wingLibrary)
 
             // Fallback to cache if available
             if let cached = catalog {
                 isOfflineMode = true
-                logInfo("Using cache in offline mode", category: .wingLibrary)
+                Log.info("Using cache in offline mode", category: .wingLibrary)
                 return cached
             }
 
@@ -356,7 +356,7 @@ final class WingLibraryService {
             loadCachedCatalog()
             if let cached = catalog {
                 isOfflineMode = true
-                logInfo("Using persistent cache in offline mode", category: .wingLibrary)
+                Log.info("Using persistent cache in offline mode", category: .wingLibrary)
                 return cached
             }
 
@@ -392,7 +392,7 @@ final class WingLibraryService {
                 }
 
                 guard httpResponse.statusCode == 200 else {
-                    logWarning("Image fetch failed with status \(httpResponse.statusCode) for \(imageFileId)", category: .wingLibrary)
+                    Log.warning("Image fetch failed with status \(httpResponse.statusCode) for \(imageFileId)", category: .wingLibrary)
                     throw WingLibraryError.invalidResponse
                 }
 
@@ -412,7 +412,7 @@ final class WingLibraryService {
         // Clear image cache via actor (thread-safe)
         await wingImageCache.clearAll()
 
-        logInfo("Cache cleared", category: .wingLibrary)
+        Log.info("Cache cleared", category: .wingLibrary)
     }
 
     /// Get wings filtered by manufacturer
@@ -424,7 +424,7 @@ final class WingLibraryService {
 
     private func fetchFromAppwrite() async throws -> WingCatalog {
         // Fetch manufacturers
-        let manufacturersResponse = try await databases.listDocuments<[String: AnyCodable]>(
+        let manufacturersResponse = try await databases.listDocuments(
             databaseId: AppwriteConfig.databaseId,
             collectionId: AppwriteConfig.manufacturersCollectionId,
             queries: [
@@ -439,7 +439,7 @@ final class WingLibraryService {
         let manufacturerNames = Dictionary(uniqueKeysWithValues: manufacturers.map { ($0.id, $0.name) })
 
         // Fetch wings
-        let wingsResponse = try await databases.listDocuments<[String: AnyCodable]>(
+        let wingsResponse = try await databases.listDocuments(
             databaseId: AppwriteConfig.databaseId,
             collectionId: AppwriteConfig.wingsCollectionId,
             queries: [
@@ -471,9 +471,9 @@ final class WingLibraryService {
             let decoder = JSONDecoder()
             decoder.dateDecodingStrategy = .iso8601
             catalog = try decoder.decode(WingCatalog.self, from: data)
-            logInfo("Loaded cached catalog: \(catalog?.wings.count ?? 0) wings", category: .wingLibrary)
+            Log.info("Loaded cached catalog: \(catalog?.wings.count ?? 0) wings", category: .wingLibrary)
         } catch {
-            logWarning("Failed to decode cached catalog: \(error.localizedDescription)", category: .wingLibrary)
+            Log.warning("Failed to decode cached catalog: \(error.localizedDescription)", category: .wingLibrary)
         }
     }
 
@@ -485,7 +485,7 @@ final class WingLibraryService {
             UserDefaults.standard.set(data, forKey: catalogCacheKey)
             UserDefaults.standard.set(Date(), forKey: catalogCacheDateKey)
         } catch {
-            logWarning("Failed to cache catalog: \(error.localizedDescription)", category: .wingLibrary)
+            Log.warning("Failed to cache catalog: \(error.localizedDescription)", category: .wingLibrary)
         }
     }
 

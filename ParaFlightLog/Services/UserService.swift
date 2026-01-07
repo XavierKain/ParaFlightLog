@@ -647,7 +647,7 @@ final class UserService {
             return profile
         } catch let error as UserProfileError {
             throw error
-        } catch let error as AppwriteError {
+        } catch _ as AppwriteError {
             // Si le profil n'existe pas, essayer avec authUserId
             let response = try await databases.listDocuments(
                 databaseId: AppwriteConfig.databaseId,

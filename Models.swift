@@ -87,21 +87,21 @@ final class Wing {
     func toDTOWithThumbnail() -> WingDTO {
         // Pas de photo = pas de miniature
         guard let originalData = photoData else {
-            logInfo("Wing \(name): no photo data", category: .watchSync)
+            Log.info("Wing \(name): no photo data", category: .watchSync)
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
         guard let image = UIImage(data: originalData) else {
-            logWarning("Wing \(name): failed to create UIImage from \(originalData.count) bytes", category: .watchSync)
+            Log.warning("Wing \(name): failed to create UIImage from \(originalData.count) bytes", category: .watchSync)
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
         guard let thumbnailData = image.thumbnailForWatch() else {
-            logWarning("Wing \(name): thumbnailForWatch() returned nil", category: .watchSync)
+            Log.warning("Wing \(name): thumbnailForWatch() returned nil", category: .watchSync)
             return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
         }
 
-        logInfo("Wing \(name): thumbnail created, \(thumbnailData.count) bytes", category: .watchSync)
+        Log.info("Wing \(name): thumbnail created, \(thumbnailData.count) bytes", category: .watchSync)
         return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)
     }
 }
@@ -215,7 +215,7 @@ final class Flight {
         do {
             return try JSONDecoder().decode([GPSTrackPoint].self, from: data)
         } catch {
-            logError("Failed to decode GPS track: \(error.localizedDescription)", category: .flight)
+            Log.error("Failed to decode GPS track: \(error.localizedDescription)", category: .flight)
             return nil
         }
     }
@@ -225,7 +225,7 @@ final class Flight {
         do {
             gpsTrackData = try JSONEncoder().encode(points)
         } catch {
-            logError("Failed to encode GPS track: \(error.localizedDescription)", category: .flight)
+            Log.error("Failed to encode GPS track: \(error.localizedDescription)", category: .flight)
         }
     }
 

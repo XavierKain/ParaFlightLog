@@ -304,11 +304,7 @@ final class BadgeService {
                 // Convertir AnyCodable en types natifs
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
-                    if let anyCodable = value as? AnyCodable {
-                        nativeData[key] = anyCodable.value
-                    } else {
-                        nativeData[key] = value
-                    }
+                    nativeData[key] = value.value
                 }
 
                 if let badge = try? Badge(from: nativeData) {
@@ -355,11 +351,7 @@ final class BadgeService {
             for doc in documents.documents {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
-                    if let anyCodable = value as? AnyCodable {
-                        nativeData[key] = anyCodable.value
-                    } else {
-                        nativeData[key] = value
-                    }
+                    nativeData[key] = value.value
                 }
 
                 if let badge = try? UserBadge(from: nativeData) {
@@ -411,11 +403,7 @@ final class BadgeService {
             for doc in documents.documents {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
-                    if let anyCodable = value as? AnyCodable {
-                        nativeData[key] = anyCodable.value
-                    } else {
-                        nativeData[key] = value
-                    }
+                    nativeData[key] = value.value
                 }
 
                 if let userBadge = try? UserBadge(from: nativeData),
@@ -588,11 +576,7 @@ final class BadgeService {
         // Mettre à jour le cache local
         var nativeData: [String: Any] = [:]
         for (key, value) in document.data {
-            if let anyCodable = value as? AnyCodable {
-                nativeData[key] = anyCodable.value
-            } else {
-                nativeData[key] = value
-            }
+            nativeData[key] = value.value
         }
 
         if let userBadge = try? UserBadge(from: nativeData) {

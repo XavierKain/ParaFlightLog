@@ -223,7 +223,7 @@ final class LeaderboardService {
 
             // Filtrer par pays
             let filteredDocs = documents.documents.filter { doc in
-                if let location = (doc.data["homeLocationName"] as? AnyCodable)?.value as? String {
+                if let location = doc.data["homeLocationName"]?.value as? String {
                     return location.localizedCaseInsensitiveContains(country)
                 }
                 return false
@@ -323,12 +323,9 @@ final class LeaderboardService {
         for (index, doc) in documents.enumerated() {
             let data = doc.data
 
-            // Extraire les valeurs
+            // Extraire les valeurs (doc.data est [String: AnyCodable])
             let getValue: (String) -> Any? = { key in
-                if let anyCodable = data[key] as? AnyCodable {
-                    return anyCodable.value
-                }
-                return data[key]
+                return data[key]?.value
             }
 
             let value: Int

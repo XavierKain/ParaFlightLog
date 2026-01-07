@@ -750,7 +750,7 @@ struct SettingsView: View {
                     // Parse le fichier en arrière-plan
                     let data = try ExcelImporter.parseExcelFile(at: url)
 
-                    logInfo("Parsed \(data.flights.count) flights from file", category: .dataController)
+                    Log.info("Parsed \(data.flights.count) flights from file", category: .dataController)
 
                     // Import dans la base DOIT être sur le main thread (SwiftData requirement)
                     DispatchQueue.main.async {

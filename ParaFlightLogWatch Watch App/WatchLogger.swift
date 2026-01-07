@@ -13,7 +13,7 @@ import os.log
 // MARK: - Log Categories
 
 /// Catégories de log pour filtrer dans Console.app
-enum WatchLogCategory: String {
+enum WatchLogCategory: String, Sendable {
     case general = "General"
     case watchSync = "WatchSync"
     case location = "Location"
@@ -23,80 +23,74 @@ enum WatchLogCategory: String {
     case settings = "Settings"
 }
 
-// MARK: - Watch Logger
+// MARK: - WatchLog Enum (Thread-safe, accessible depuis n'importe quel contexte)
 
-/// Logger centralisé pour l'Apple Watch
-/// Les logs debug/info sont désactivés par défaut pour optimiser les performances
-/// Activer le Mode Développeur dans les réglages iPhone pour les voir
-final class WatchLogger {
-    static let shared = WatchLogger()
+/// API de logging principale pour Watch - utilisable depuis n'importe quel contexte de concurrence
+/// Usage: WatchLog.info("Message", category: .watchSync)
+/// Toute la logique est encapsulée pour éviter l'inférence MainActor
+enum WatchLog: Sendable {
+    /// Cache thread-safe des loggers OSLog par catégorie
+    nonisolated(unsafe) private static var loggerLock = NSLock()
+    nonisolated(unsafe) private static var loggerCache: [WatchLogCategory: Logger] = [:]
+    nonisolated(unsafe) private static var subsystem = "com.xavierkain.ParaFlightLog.watchkitapp"
+    /// Clé UserDefaults - copie locale pour éviter l'inférence MainActor
+    nonisolated(unsafe) private static var developerModeKey = "developerModeEnabled"
 
-    private let subsystem = "com.xavierkain.ParaFlightLog.watchkitapp"
+    /// Récupère ou crée un logger OSLog pour une catégorie (thread-safe)
+    nonisolated private static func getOSLogger(for category: WatchLogCategory) -> Logger {
+        loggerLock.lock()
+        defer { loggerLock.unlock() }
 
-    // Cache des loggers par catégorie pour éviter de les recréer
-    private var loggers: [WatchLogCategory: Logger] = [:]
-    private let queue = DispatchQueue(label: "com.paraflightlog.watchlogger")
-
-    /// Mode développeur : si false, seuls les logs warning/error sont émis
-    /// Lecture depuis UserDefaults pour éviter une dépendance circulaire avec WatchSettings
-    private var isDeveloperModeEnabled: Bool {
-        UserDefaults.standard.bool(forKey: "developerModeEnabled")
-    }
-
-    private init() {}
-
-    /// Récupère ou crée un logger pour une catégorie donnée
-    private func logger(for category: WatchLogCategory) -> Logger {
-        if let existing = loggers[category] {
+        if let existing = loggerCache[category] {
             return existing
         }
 
         let newLogger = Logger(subsystem: subsystem, category: category.rawValue)
-        queue.sync {
-            loggers[category] = newLogger
-        }
+        loggerCache[category] = newLogger
         return newLogger
     }
 
-    // MARK: - Log Methods
-
-    /// Log de niveau debug (visible uniquement en mode développeur)
-    func debug(_ message: String, category: WatchLogCategory = .general) {
-        guard isDeveloperModeEnabled else { return }
-        logger(for: category).debug("\(message, privacy: .public)")
+    /// Vérifie si le mode développeur est activé
+    nonisolated private static func isDeveloperModeEnabled() -> Bool {
+        UserDefaults.standard.bool(forKey: developerModeKey)
     }
 
-    /// Log de niveau info (visible uniquement en mode développeur)
-    func info(_ message: String, category: WatchLogCategory = .general) {
-        guard isDeveloperModeEnabled else { return }
-        logger(for: category).info("\(message, privacy: .public)")
+    nonisolated static func debug(_ message: String, category: WatchLogCategory = .general) {
+        guard isDeveloperModeEnabled() else { return }
+        getOSLogger(for: category).debug("\(message, privacy: .public)")
     }
 
-    /// Log de niveau warning (toujours actif - problèmes potentiels)
-    func warning(_ message: String, category: WatchLogCategory = .general) {
-        logger(for: category).warning("\(message, privacy: .public)")
+    nonisolated static func info(_ message: String, category: WatchLogCategory = .general) {
+        guard isDeveloperModeEnabled() else { return }
+        getOSLogger(for: category).info("\(message, privacy: .public)")
     }
 
-    /// Log de niveau error (toujours actif - erreurs récupérables)
-    func error(_ message: String, category: WatchLogCategory = .general) {
-        logger(for: category).error("\(message, privacy: .public)")
+    nonisolated static func warning(_ message: String, category: WatchLogCategory = .general) {
+        getOSLogger(for: category).warning("\(message, privacy: .public)")
+    }
+
+    nonisolated static func error(_ message: String, category: WatchLogCategory = .general) {
+        getOSLogger(for: category).error("\(message, privacy: .public)")
     }
 }
 
-// MARK: - Global Convenience Functions
+// MARK: - Legacy Global Convenience Functions (MainActor only)
 
-func watchLogDebug(_ message: String, category: WatchLogCategory = .general) {
-    WatchLogger.shared.debug(message, category: category)
+/// Fonctions globales pour la compatibilité avec le code existant
+/// Pour du code hors MainActor, utiliser WatchLog.info(), etc.
+
+@MainActor func watchLogDebug(_ message: String, category: WatchLogCategory = .general) {
+    WatchLog.debug(message, category: category)
 }
 
-func watchLogInfo(_ message: String, category: WatchLogCategory = .general) {
-    WatchLogger.shared.info(message, category: category)
+@MainActor func watchLogInfo(_ message: String, category: WatchLogCategory = .general) {
+    WatchLog.info(message, category: category)
 }
 
-func watchLogWarning(_ message: String, category: WatchLogCategory = .general) {
-    WatchLogger.shared.warning(message, category: category)
+@MainActor func watchLogWarning(_ message: String, category: WatchLogCategory = .general) {
+    WatchLog.warning(message, category: category)
 }
 
-func watchLogError(_ message: String, category: WatchLogCategory = .general) {
-    WatchLogger.shared.error(message, category: category)
+@MainActor func watchLogError(_ message: String, category: WatchLogCategory = .general) {
+    WatchLog.error(message, category: category)
 }

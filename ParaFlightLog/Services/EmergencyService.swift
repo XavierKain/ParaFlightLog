@@ -204,11 +204,7 @@ final class EmergencyService {
             for doc in documents.documents {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
-                    if let anyCodable = value as? AnyCodable {
-                        nativeData[key] = anyCodable.value
-                    } else {
-                        nativeData[key] = value
-                    }
+                    nativeData[key] = value.value
                 }
 
                 if let contact = try? EmergencyContact(from: nativeData) {
@@ -259,11 +255,7 @@ final class EmergencyService {
 
             var nativeData: [String: Any] = [:]
             for (key, value) in document.data {
-                if let anyCodable = value as? AnyCodable {
-                    nativeData[key] = anyCodable.value
-                } else {
-                    nativeData[key] = value
-                }
+                nativeData[key] = value.value
             }
 
             let contact = try EmergencyContact(from: nativeData)
@@ -377,11 +369,7 @@ final class EmergencyService {
 
             var nativeData: [String: Any] = [:]
             for (key, value) in document.data {
-                if let anyCodable = value as? AnyCodable {
-                    nativeData[key] = anyCodable.value
-                } else {
-                    nativeData[key] = value
-                }
+                nativeData[key] = value.value
             }
 
             let alert = try SOSAlert(from: nativeData)
@@ -441,11 +429,7 @@ final class EmergencyService {
             if let doc = documents.documents.first {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
-                    if let anyCodable = value as? AnyCodable {
-                        nativeData[key] = anyCodable.value
-                    } else {
-                        nativeData[key] = value
-                    }
+                    nativeData[key] = value.value
                 }
 
                 if let alert = try? SOSAlert(from: nativeData) {

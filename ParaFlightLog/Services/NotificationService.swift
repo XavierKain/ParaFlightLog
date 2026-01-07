@@ -304,11 +304,7 @@ final class NotificationService {
             for doc in documents.documents {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
-                    if let anyCodable = value as? AnyCodable {
-                        nativeData[key] = anyCodable.value
-                    } else {
-                        nativeData[key] = value
-                    }
+                    nativeData[key] = value.value
                 }
 
                 if let notification = try? AppNotification(from: nativeData) {

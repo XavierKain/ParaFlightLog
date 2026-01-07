@@ -185,7 +185,7 @@ struct CachedWingImage: View {
 
         // Si pas en cache, décoder en arrière-plan pour ne pas bloquer l'UI
         guard let data = wing.photoData else {
-            watchLogInfo("Wing \(wing.name): no photoData", category: .watchSync)
+            WatchLog.info("Wing \(wing.name): no photoData", category: .watchSync)
             return
         }
 
@@ -195,7 +195,7 @@ struct CachedWingImage: View {
         Task.detached(priority: .userInitiated) {
             // Décoder l'image en arrière-plan
             guard let image = UIImage(data: data) else {
-                watchLogWarning("Wing \(wingName): UIImage(data:) failed for \(data.count) bytes", category: .watchSync)
+                WatchLog.warning("Wing \(wingName): UIImage(data:) failed for \(data.count) bytes", category: .watchSync)
                 return
             }
 
@@ -203,7 +203,7 @@ struct CachedWingImage: View {
                 // Mettre en cache et afficher
                 _ = WatchImageCache.shared.image(for: wingId, data: data)
                 cachedImage = image
-                watchLogInfo("Wing \(wingName): image loaded \(image.size.width)x\(image.size.height)", category: .watchSync)
+                WatchLog.info("Wing \(wingName): image loaded \(image.size.width)x\(image.size.height)", category: .watchSync)
             }
         }
     }

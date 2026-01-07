@@ -321,7 +321,7 @@ final class NOTAMService {
 
             var zones: [AlertZone] = []
             for doc in documents.documents {
-                if let zone = try? parseAlertZone(from: doc.data) {
+                if let zone = parseAlertZone(from: doc.data) {
                     zones.append(zone)
                 }
             }
