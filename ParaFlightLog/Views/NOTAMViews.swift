@@ -370,16 +370,17 @@ struct NOTAMDetailView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 
                 // Carte
-                Map(coordinateRegion: .constant(mapRegion), annotationItems: [notam]) { item in
-                    MapAnnotation(coordinate: mapRegion.center) {
-                        Image(systemName: item.type.iconName)
+                Map {
+                    Annotation("", coordinate: mapRegion.center) {
+                        Image(systemName: notam.type.iconName)
                             .font(.title)
-                            .foregroundStyle(Color(item.type.color))
+                            .foregroundStyle(Color(notam.type.color))
                             .padding(8)
                             .background(.ultraThinMaterial)
                             .clipShape(Circle())
                     }
                 }
+                .mapStyle(.standard)
                 .frame(height: 200)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
 

@@ -137,6 +137,7 @@ final class FlightSyncService {
     // MARK: - Properties
 
     private let databases: Databases
+    private let tablesDB: TablesDB
     private let storage: Storage
 
     private(set) var isSyncing: Bool = false
@@ -148,6 +149,7 @@ final class FlightSyncService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
         self.storage = AppwriteService.shared.storage
         loadLastSyncDate()
     }
@@ -286,23 +288,23 @@ final class FlightSyncService {
         }
 
         do {
-            let document: Document<[String: AnyCodable]>
+            let document: Row<[String: AnyCodable]>
 
             // Créer ou mettre à jour selon si le vol existe déjà dans le cloud
             if let cloudId = flight.cloudId {
                 // Mise à jour
-                document = try await databases.updateDocument(
+                document = try await tablesDB.updateRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.flightsCollectionId,
-                    documentId: cloudId,
+                    tableId: AppwriteConfig.flightsCollectionId,
+                    rowId: cloudId,
                     data: flightData
                 )
             } else {
                 // Création
-                document = try await databases.createDocument(
+                document = try await tablesDB.createRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.flightsCollectionId,
-                    documentId: ID.unique(),
+                    tableId: AppwriteConfig.flightsCollectionId,
+                    rowId: ID.unique(),
                     data: flightData
                 )
             }
@@ -314,10 +316,10 @@ final class FlightSyncService {
                 do {
                     let fileId = try await uploadGPSTrack(flightId: cloudFlight.id, trackData: gpsData)
                     // Mettre à jour le document avec le fileId
-                    _ = try await databases.updateDocument(
+                    _ = try await tablesDB.updateRow(
                         databaseId: AppwriteConfig.databaseId,
-                        collectionId: AppwriteConfig.flightsCollectionId,
-                        documentId: cloudFlight.id,
+                        tableId: AppwriteConfig.flightsCollectionId,
+                        rowId: cloudFlight.id,
                         data: ["gpsTrackFileId": fileId, "hasGpsTrack": true]
                     )
                 } catch {
@@ -410,10 +412,10 @@ final class FlightSyncService {
         if !uploadedFileIds.isEmpty {
             do {
                 // Récupérer les photos existantes
-                let document = try await databases.getDocument(
+                let document = try await tablesDB.getRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.flightsCollectionId,
-                    documentId: flightId
+                    tableId: AppwriteConfig.flightsCollectionId,
+                    rowId: flightId
                 )
 
                 var existingPhotoIds: [String] = []
@@ -424,10 +426,10 @@ final class FlightSyncService {
                 // Combiner avec les nouvelles photos
                 let allPhotoIds = existingPhotoIds + uploadedFileIds
 
-                _ = try await databases.updateDocument(
+                _ = try await tablesDB.updateRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.flightsCollectionId,
-                    documentId: flightId,
+                    tableId: AppwriteConfig.flightsCollectionId,
+                    rowId: flightId,
                     data: [
                         "photoFileIds": allPhotoIds,
                         "hasPhotos": true,
@@ -462,10 +464,10 @@ final class FlightSyncService {
             logInfo("Flight photo deleted: \(photoId)", category: .sync)
 
             // Mettre à jour le document du vol
-            let document = try await databases.getDocument(
+            let document = try await tablesDB.getRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
-                documentId: flightId
+                tableId: AppwriteConfig.flightsCollectionId,
+                rowId: flightId
             )
 
             var photoIds: [String] = []
@@ -473,10 +475,10 @@ final class FlightSyncService {
                 photoIds = photoIdsData.filter { $0 != photoId }
             }
 
-            _ = try await databases.updateDocument(
+            _ = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
-                documentId: flightId,
+                tableId: AppwriteConfig.flightsCollectionId,
+                rowId: flightId,
                 data: [
                     "photoFileIds": photoIds,
                     "hasPhotos": !photoIds.isEmpty,
@@ -513,10 +515,10 @@ final class FlightSyncService {
     /// - Returns: Liste des IDs des photos
     func getFlightPhotoIds(flightId: String) async throws -> [String] {
         do {
-            let document = try await databases.getDocument(
+            let document = try await tablesDB.getRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
-                documentId: flightId
+                tableId: AppwriteConfig.flightsCollectionId,
+                rowId: flightId
             )
 
             if let photoIds = document.data["photoFileIds"]?.value as? [String] {
@@ -551,14 +553,14 @@ final class FlightSyncService {
         }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
+                tableId: AppwriteConfig.flightsCollectionId,
                 queries: queries
             )
 
             var flights: [CloudFlight] = []
-            for doc in documents.documents {
+            for doc in documents.rows {
                 if let flight = try? parseCloudFlight(from: doc.data) {
                     flights.append(flight)
                 }
@@ -579,10 +581,10 @@ final class FlightSyncService {
     /// Modifie la visibilité d'un vol (public/privé)
     func setFlightPrivacy(flightId: String, isPrivate: Bool) async throws {
         do {
-            _ = try await databases.updateDocument(
+            _ = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
-                documentId: flightId,
+                tableId: AppwriteConfig.flightsCollectionId,
+                rowId: flightId,
                 data: [
                     "isPrivate": isPrivate,
                     "syncedAt": Date().ISO8601Format()
@@ -598,10 +600,10 @@ final class FlightSyncService {
     func deleteCloudFlight(flightId: String) async throws {
         do {
             // D'abord récupérer le document pour voir s'il y a une trace GPS à supprimer
-            let document = try await databases.getDocument(
+            let document = try await tablesDB.getRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
-                documentId: flightId
+                tableId: AppwriteConfig.flightsCollectionId,
+                rowId: flightId
             )
 
             // Supprimer la trace GPS si elle existe
@@ -613,10 +615,10 @@ final class FlightSyncService {
             }
 
             // Supprimer le document
-            _ = try await databases.deleteDocument(
+            _ = try await tablesDB.deleteRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
-                documentId: flightId
+                tableId: AppwriteConfig.flightsCollectionId,
+                rowId: flightId
             )
 
             logInfo("Flight deleted from cloud: \(flightId)", category: .sync)

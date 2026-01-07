@@ -63,6 +63,7 @@ final class DemoDataService {
     // MARK: - Properties
 
     private let databases: Databases
+    private let tablesDB: TablesDB
 
     /// Indique si le mode démo est activé
     var isDemoModeEnabled: Bool {
@@ -173,6 +174,7 @@ final class DemoDataService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
 
         // Restaurer le timer si le mode démo était activé
         if UserDefaults.standard.bool(forKey: UserDefaultsKeys.demoModeEnabled) {
@@ -289,10 +291,10 @@ final class DemoDataService {
             }
 
             do {
-                let document = try await databases.createDocument(
+                let document = try await tablesDB.createRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.liveFlightsCollectionId,
-                    documentId: pilot.id, // Utiliser l'ID du pilote comme ID document
+                    tableId: AppwriteConfig.liveFlightsCollectionId,
+                    rowId: pilot.id, // Utiliser l'ID du pilote comme ID document
                     data: flightData
                 )
 
@@ -308,10 +310,10 @@ final class DemoDataService {
                 // Si le document existe déjà, essayer de le mettre à jour
                 if error.message.contains("already exists") {
                     do {
-                        _ = try await databases.updateDocument(
+                        _ = try await tablesDB.updateRow(
                             databaseId: AppwriteConfig.databaseId,
-                            collectionId: AppwriteConfig.liveFlightsCollectionId,
-                            documentId: pilot.id,
+                            tableId: AppwriteConfig.liveFlightsCollectionId,
+                            rowId: pilot.id,
                             data: flightData
                         )
 
@@ -371,10 +373,10 @@ final class DemoDataService {
                 let altitude = pilot.simulatedAltitude(elapsedMinutes: max(0, pilotElapsedMinutes))
 
                 do {
-                    _ = try await databases.updateDocument(
+                    _ = try await tablesDB.updateRow(
                         databaseId: AppwriteConfig.databaseId,
-                        collectionId: AppwriteConfig.liveFlightsCollectionId,
-                        documentId: pilot.id,
+                        tableId: AppwriteConfig.liveFlightsCollectionId,
+                        rowId: pilot.id,
                         data: [
                             "latitude": coordinate.latitude,
                             "longitude": coordinate.longitude,
@@ -400,10 +402,10 @@ final class DemoDataService {
     /// Marque un pilote comme ayant atterri
     private func markPilotAsLanded(_ pilot: DemoPilot) async {
         do {
-            _ = try await databases.updateDocument(
+            _ = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.liveFlightsCollectionId,
-                documentId: pilot.id,
+                tableId: AppwriteConfig.liveFlightsCollectionId,
+                rowId: pilot.id,
                 data: ["isActive": false]
             )
         } catch {
@@ -448,10 +450,10 @@ final class DemoDataService {
         // Supprimer les documents qu'on a créés
         for docId in createdDocumentIds {
             do {
-                _ = try await databases.deleteDocument(
+                _ = try await tablesDB.deleteRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.liveFlightsCollectionId,
-                    documentId: docId
+                    tableId: AppwriteConfig.liveFlightsCollectionId,
+                    rowId: docId
                 )
                 logInfo("Deleted demo flight: \(docId)", category: .sync)
             } catch {
@@ -461,28 +463,28 @@ final class DemoDataService {
 
         // Aussi chercher et supprimer tous les documents avec isDemo=true (au cas où)
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.liveFlightsCollectionId,
+                tableId: AppwriteConfig.liveFlightsCollectionId,
                 queries: [
                     Query.equal("isDemo", value: true)
                 ]
             )
 
-            for doc in documents.documents {
+            for doc in documents.rows {
                 do {
-                    _ = try await databases.deleteDocument(
+                    _ = try await tablesDB.deleteRow(
                         databaseId: AppwriteConfig.databaseId,
-                        collectionId: AppwriteConfig.liveFlightsCollectionId,
-                        documentId: doc.id
+                        tableId: AppwriteConfig.liveFlightsCollectionId,
+                        rowId: doc.id
                     )
                 } catch {
                     // Ignore
                 }
             }
 
-            if documents.documents.count > 0 {
-                logInfo("Cleaned up \(documents.documents.count) demo flights from Appwrite", category: .sync)
+            if documents.rows.count > 0 {
+                logInfo("Cleaned up \(documents.rows.count) demo flights from Appwrite", category: .sync)
             }
         } catch {
             // Collection might not have isDemo attribute yet

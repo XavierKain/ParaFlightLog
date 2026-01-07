@@ -147,11 +147,13 @@ final class NotificationService {
     private(set) var isLoadingNotifications: Bool = false
 
     private let databases: Databases
+    private let tablesDB: TablesDB
 
     // MARK: - Init
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
         Task {
             await checkCurrentStatus()
         }
@@ -290,9 +292,9 @@ final class NotificationService {
         defer { isLoadingNotifications = false }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.notificationsCollectionId,
+                tableId: AppwriteConfig.notificationsCollectionId,
                 queries: [
                     Query.equal("userId", value: userId),
                     Query.orderDesc("$createdAt"),
@@ -301,7 +303,7 @@ final class NotificationService {
             )
 
             var fetchedNotifications: [AppNotification] = []
-            for doc in documents.documents {
+            for doc in documents.rows {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
                     nativeData[key] = value.value
@@ -338,10 +340,10 @@ final class NotificationService {
         }
 
         do {
-            _ = try await databases.updateDocument(
+            _ = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.notificationsCollectionId,
-                documentId: notificationId,
+                tableId: AppwriteConfig.notificationsCollectionId,
+                rowId: notificationId,
                 data: ["isRead": true]
             )
 
@@ -373,10 +375,10 @@ final class NotificationService {
 
         for notification in unreadNotifications {
             do {
-                _ = try await databases.updateDocument(
+                _ = try await tablesDB.updateRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.notificationsCollectionId,
-                    documentId: notification.id,
+                    tableId: AppwriteConfig.notificationsCollectionId,
+                    rowId: notification.id,
                     data: ["isRead": true]
                 )
             } catch {
@@ -404,9 +406,9 @@ final class NotificationService {
         }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.notificationsCollectionId,
+                tableId: AppwriteConfig.notificationsCollectionId,
                 queries: [
                     Query.equal("userId", value: userId),
                     Query.equal("isRead", value: false),
@@ -432,10 +434,10 @@ final class NotificationService {
         }
 
         do {
-            _ = try await databases.deleteDocument(
+            _ = try await tablesDB.deleteRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.notificationsCollectionId,
-                documentId: notificationId
+                tableId: AppwriteConfig.notificationsCollectionId,
+                rowId: notificationId
             )
 
             await MainActor.run {

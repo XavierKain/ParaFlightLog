@@ -152,6 +152,7 @@ final class SpotService {
     static let shared = SpotService()
 
     private let databases: Databases
+    private let tablesDB: TablesDB
     private let storage: Storage
 
     // Cache
@@ -162,6 +163,7 @@ final class SpotService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
         self.storage = AppwriteService.shared.storage
     }
 
@@ -200,10 +202,10 @@ final class SpotService {
         }
 
         do {
-            let doc = try await databases.getDocument(
+            let doc = try await tablesDB.getRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.spotsCollectionId,
-                documentId: spotId
+                tableId: AppwriteConfig.spotsCollectionId,
+                rowId: spotId
             )
 
             let spot = try parseSpot(from: doc.data, id: spotId)
@@ -219,9 +221,9 @@ final class SpotService {
     /// Recherche de spots par nom
     func searchSpots(query: String, limit: Int = 20) async throws -> [Spot] {
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.spotsCollectionId,
+                tableId: AppwriteConfig.spotsCollectionId,
                 queries: [
                     Query.search("name", value: query),
                     Query.orderDesc("totalFlights"),
@@ -229,7 +231,7 @@ final class SpotService {
                 ]
             )
 
-            return response.documents.compactMap { doc in
+            return response.rows.compactMap { doc in
                 try? parseSpot(from: doc.data, id: doc.id)
             }
         } catch let error as AppwriteError {
@@ -248,9 +250,9 @@ final class SpotService {
         let lonDelta = radiusKm / (111.0 * cos(coordinate.latitude * .pi / 180))
 
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.spotsCollectionId,
+                tableId: AppwriteConfig.spotsCollectionId,
                 queries: [
                     Query.greaterThanEqual("latitude", value: coordinate.latitude - latDelta),
                     Query.lessThanEqual(attribute: "latitude", value: coordinate.latitude + latDelta),
@@ -261,7 +263,7 @@ final class SpotService {
                 ]
             )
 
-            return response.documents.compactMap { doc in
+            return response.rows.compactMap { doc in
                 try? parseSpot(from: doc.data, id: doc.id)
             }
         } catch let error as AppwriteError {
@@ -276,16 +278,16 @@ final class SpotService {
     /// Récupère les spots les plus populaires
     func getPopularSpots(limit: Int = 20) async throws -> [Spot] {
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.spotsCollectionId,
+                tableId: AppwriteConfig.spotsCollectionId,
                 queries: [
                     Query.orderDesc("totalFlights"),
                     Query.limit(limit)
                 ]
             )
 
-            return response.documents.compactMap { doc in
+            return response.rows.compactMap { doc in
                 try? parseSpot(from: doc.data, id: doc.id)
             }
         } catch let error as AppwriteError {
@@ -314,13 +316,13 @@ final class SpotService {
         }
 
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.spotsCollectionId,
+                tableId: AppwriteConfig.spotsCollectionId,
                 queries: queries
             )
 
-            return response.documents.compactMap { doc in
+            return response.rows.compactMap { doc in
                 try? parseSpot(from: doc.data, id: doc.id)
             }
         } catch let error as AppwriteError {
@@ -335,9 +337,9 @@ final class SpotService {
     /// Récupère les vols sur un spot
     func getFlightsAtSpot(spotId: String, page: Int = 0, limit: Int = 20) async throws -> [PublicFlight] {
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
+                tableId: AppwriteConfig.flightsCollectionId,
                 queries: [
                     Query.equal("spotId", value: spotId),
                     Query.equal("isPrivate", value: false),
@@ -347,7 +349,7 @@ final class SpotService {
                 ]
             )
 
-            return response.documents.compactMap { doc in
+            return response.rows.compactMap { doc in
                 try? parsePublicFlight(from: doc.data)
             }
         } catch let error as AppwriteError {
@@ -467,10 +469,10 @@ final class SpotService {
         }
 
         do {
-            _ = try await databases.createDocument(
+            _ = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.spotSubscriptionsCollectionId,
-                documentId: ID.unique(),
+                tableId: AppwriteConfig.spotSubscriptionsCollectionId,
+                rowId: ID.unique(),
                 data: [
                     "userId": userId,
                     "spotId": spotId,
@@ -493,9 +495,9 @@ final class SpotService {
         }
 
         // Trouver l'abonnement
-        let response = try await databases.listDocuments(
+        let response = try await tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.spotSubscriptionsCollectionId,
+            tableId: AppwriteConfig.spotSubscriptionsCollectionId,
             queries: [
                 Query.equal("userId", value: userId),
                 Query.equal("spotId", value: spotId),
@@ -503,14 +505,14 @@ final class SpotService {
             ]
         )
 
-        guard let subscription = response.documents.first else {
+        guard let subscription = response.rows.first else {
             throw SpotError.notSubscribed
         }
 
-        _ = try await databases.deleteDocument(
+        _ = try await tablesDB.deleteRow(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.spotSubscriptionsCollectionId,
-            documentId: subscription.id
+            tableId: AppwriteConfig.spotSubscriptionsCollectionId,
+            rowId: subscription.id
         )
 
         // Invalider le cache
@@ -523,9 +525,9 @@ final class SpotService {
             return false
         }
 
-        let response = try await databases.listDocuments(
+        let response = try await tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.spotSubscriptionsCollectionId,
+            tableId: AppwriteConfig.spotSubscriptionsCollectionId,
             queries: [
                 Query.equal("userId", value: userId),
                 Query.equal("spotId", value: spotId),
@@ -533,7 +535,7 @@ final class SpotService {
             ]
         )
 
-        return !response.documents.isEmpty
+        return !response.rows.isEmpty
     }
 
     /// Récupère les spots auxquels l'utilisateur est abonné
@@ -543,16 +545,16 @@ final class SpotService {
         }
 
         // Récupérer les abonnements
-        let response = try await databases.listDocuments(
+        let response = try await tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.spotSubscriptionsCollectionId,
+            tableId: AppwriteConfig.spotSubscriptionsCollectionId,
             queries: [
                 Query.equal("userId", value: userId),
                 Query.limit(100)
             ]
         )
 
-        let spotIds = response.documents.compactMap { doc in
+        let spotIds = response.rows.compactMap { doc in
             doc.data["spotId"]?.value as? String
         }
 
@@ -573,10 +575,10 @@ final class SpotService {
         let userId = AuthService.shared.currentUserId
 
         do {
-            let doc = try await databases.createDocument(
+            let doc = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.spotsCollectionId,
-                documentId: ID.unique(),
+                tableId: AppwriteConfig.spotsCollectionId,
+                rowId: ID.unique(),
                 data: [
                     "name": name,
                     "normalizedName": normalizedName,
@@ -606,9 +608,9 @@ final class SpotService {
         let latDelta = radiusKm / 111.0
         let lonDelta = radiusKm / (111.0 * cos(coordinate.latitude * .pi / 180))
 
-        let response = try await databases.listDocuments(
+        let response = try await tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.spotsCollectionId,
+            tableId: AppwriteConfig.spotsCollectionId,
             queries: [
                 Query.equal("normalizedName", value: name),
                 Query.greaterThanEqual("latitude", value: coordinate.latitude - latDelta),
@@ -619,7 +621,7 @@ final class SpotService {
             ]
         )
 
-        return response.documents.compactMap { doc in
+        return response.rows.compactMap { doc in
             try? parseSpot(from: doc.data, id: doc.id)
         }
     }

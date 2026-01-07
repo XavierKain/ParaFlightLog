@@ -186,11 +186,11 @@ struct WingManufacturer: Codable, Identifiable, Hashable {
         self.displayOrder = displayOrder
     }
 
-    /// Init from Appwrite document
-    init(from document: Document<[String: AnyCodable]>) {
-        self.id = document.id
-        self.name = document.data["name"]?.value as? String ?? ""
-        self.displayOrder = document.data["displayOrder"]?.value as? Int ?? 0
+    /// Init from Appwrite row
+    init(from row: Row<[String: AnyCodable]>) {
+        self.id = row.id
+        self.name = row.data["name"]?.value as? String ?? ""
+        self.displayOrder = row.data["displayOrder"]?.value as? Int ?? 0
     }
 }
 
@@ -219,22 +219,22 @@ struct LibraryWing: Codable, Identifiable, Hashable {
     }
 
     /// Init from Appwrite document
-    init(from document: Document<[String: AnyCodable]>, manufacturerName: String) {
-        self.id = document.id
-        self.manufacturer = document.data["manufacturerId"]?.value as? String ?? ""
-        self.model = document.data["model"]?.value as? String ?? ""
-        self.type = document.data["type"]?.value as? String ?? ""
-        self.year = document.data["year"]?.value as? Int
-        self.displayOrder = document.data["displayOrder"]?.value as? Int ?? 0
+    init(from row: Row<[String: AnyCodable]>, manufacturerName: String) {
+        self.id = row.id
+        self.manufacturer = row.data["manufacturerId"]?.value as? String ?? ""
+        self.model = row.data["model"]?.value as? String ?? ""
+        self.type = row.data["type"]?.value as? String ?? ""
+        self.year = row.data["year"]?.value as? Int
+        self.displayOrder = row.data["displayOrder"]?.value as? Int ?? 0
 
         // Handle sizes array
-        if let sizesArray = document.data["sizes"]?.value as? [Any] {
+        if let sizesArray = row.data["sizes"]?.value as? [Any] {
             self.sizes = sizesArray.compactMap { $0 as? String }
         } else {
             self.sizes = []
         }
 
-        self.imageFileId = document.data["imageFileId"]?.value as? String
+        self.imageFileId = row.data["imageFileId"]?.value as? String
         self.fullName = "\(manufacturerName) \(self.model)"
     }
 
@@ -424,24 +424,24 @@ final class WingLibraryService {
 
     private func fetchFromAppwrite() async throws -> WingCatalog {
         // Fetch manufacturers
-        let manufacturersResponse = try await databases.listDocuments(
+        let manufacturersResponse = try await AppwriteService.shared.tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.manufacturersCollectionId,
+            tableId: AppwriteConfig.manufacturersCollectionId,
             queries: [
                 Query.orderAsc("displayOrder"),
                 Query.limit(100)
             ]
         )
 
-        let manufacturers = manufacturersResponse.documents.map { WingManufacturer(from: $0) }
+        let manufacturers = manufacturersResponse.rows.map { WingManufacturer(from: $0) }
 
         // Create a lookup dictionary for manufacturer names
         let manufacturerNames = Dictionary(uniqueKeysWithValues: manufacturers.map { ($0.id, $0.name) })
 
         // Fetch wings
-        let wingsResponse = try await databases.listDocuments(
+        let wingsResponse = try await AppwriteService.shared.tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.wingsCollectionId,
+            tableId: AppwriteConfig.wingsCollectionId,
             queries: [
                 Query.orderAsc("displayOrder"),
                 Query.orderAsc("model"),
@@ -449,7 +449,7 @@ final class WingLibraryService {
             ]
         )
 
-        let wings = wingsResponse.documents.map { doc in
+        let wings = wingsResponse.rows.map { doc in
             let manufacturerId = doc.data["manufacturerId"]?.value as? String ?? ""
             let manufacturerName = manufacturerNames[manufacturerId] ?? ""
             return LibraryWing(from: doc, manufacturerName: manufacturerName)

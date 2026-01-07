@@ -161,6 +161,7 @@ final class EmergencyService {
     // MARK: - Properties
 
     private let databases: Databases
+    private let tablesDB: TablesDB
 
     /// Contacts d'urgence de l'utilisateur
     private(set) var contacts: [EmergencyContact] = []
@@ -178,6 +179,7 @@ final class EmergencyService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
     }
 
     // MARK: - Contacts Management
@@ -190,9 +192,9 @@ final class EmergencyService {
         defer { isLoading = false }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.emergencyContactsCollectionId,
+                tableId: AppwriteConfig.emergencyContactsCollectionId,
                 queries: [
                     Query.equal("userId", value: userId),
                     Query.orderDesc("isPrimary"),
@@ -201,7 +203,7 @@ final class EmergencyService {
             )
 
             var loadedContacts: [EmergencyContact] = []
-            for doc in documents.documents {
+            for doc in documents.rows {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
                     nativeData[key] = value.value
@@ -238,10 +240,10 @@ final class EmergencyService {
         let shouldBePrimary = isPrimary || contacts.isEmpty
 
         do {
-            let document = try await databases.createDocument(
+            let document = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.emergencyContactsCollectionId,
-                documentId: ID.unique(),
+                tableId: AppwriteConfig.emergencyContactsCollectionId,
+                rowId: ID.unique(),
                 data: [
                     "userId": userId,
                     "name": name,
@@ -275,10 +277,10 @@ final class EmergencyService {
     /// Met à jour un contact d'urgence
     func updateContact(_ contact: EmergencyContact) async throws {
         do {
-            _ = try await databases.updateDocument(
+            _ = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.emergencyContactsCollectionId,
-                documentId: contact.id,
+                tableId: AppwriteConfig.emergencyContactsCollectionId,
+                rowId: contact.id,
                 data: [
                     "name": contact.name,
                     "phoneNumber": contact.phoneNumber,
@@ -304,10 +306,10 @@ final class EmergencyService {
     /// Supprime un contact d'urgence
     func deleteContact(_ contact: EmergencyContact) async throws {
         do {
-            _ = try await databases.deleteDocument(
+            _ = try await tablesDB.deleteRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.emergencyContactsCollectionId,
-                documentId: contact.id
+                tableId: AppwriteConfig.emergencyContactsCollectionId,
+                rowId: contact.id
             )
 
             await MainActor.run {
@@ -352,10 +354,10 @@ final class EmergencyService {
         }
 
         do {
-            let document = try await databases.createDocument(
+            let document = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.sosAlertsCollectionId,
-                documentId: ID.unique(),
+                tableId: AppwriteConfig.sosAlertsCollectionId,
+                rowId: ID.unique(),
                 data: [
                     "userId": userId,
                     "latitude": location.latitude,
@@ -391,10 +393,10 @@ final class EmergencyService {
         guard let alert = activeAlert else { return }
 
         do {
-            _ = try await databases.updateDocument(
+            _ = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.sosAlertsCollectionId,
-                documentId: alert.id,
+                tableId: AppwriteConfig.sosAlertsCollectionId,
+                rowId: alert.id,
                 data: [
                     "isActive": false,
                     "resolvedAt": Date().ISO8601Format()
@@ -416,9 +418,9 @@ final class EmergencyService {
         guard let userId = AuthService.shared.currentUserId else { return }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.sosAlertsCollectionId,
+                tableId: AppwriteConfig.sosAlertsCollectionId,
                 queries: [
                     Query.equal("userId", value: userId),
                     Query.equal("isActive", value: true),
@@ -426,7 +428,7 @@ final class EmergencyService {
                 ]
             )
 
-            if let doc = documents.documents.first {
+            if let doc = documents.rows.first {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
                     nativeData[key] = value.value

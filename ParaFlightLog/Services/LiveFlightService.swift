@@ -143,6 +143,7 @@ final class LiveFlightService {
     // MARK: - Properties
 
     private let databases: Databases
+    private let tablesDB: TablesDB
 
     /// Vol en cours de l'utilisateur actuel
     private(set) var currentLiveFlight: LiveFlight?
@@ -163,6 +164,7 @@ final class LiveFlightService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
     }
 
     // MARK: - Public Methods
@@ -220,10 +222,10 @@ final class LiveFlightService {
         }
 
         do {
-            let document = try await databases.createDocument(
+            let document = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.liveFlightsCollectionId,
-                documentId: ID.unique(),
+                tableId: AppwriteConfig.liveFlightsCollectionId,
+                rowId: ID.unique(),
                 data: flightData
             )
 
@@ -260,10 +262,10 @@ final class LiveFlightService {
         }
 
         do {
-            let document = try await databases.updateDocument(
+            let document = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.liveFlightsCollectionId,
-                documentId: docId,
+                tableId: AppwriteConfig.liveFlightsCollectionId,
+                rowId: docId,
                 data: updateData
             )
 
@@ -289,10 +291,10 @@ final class LiveFlightService {
 
         do {
             // Supprimer le document (le vol n'est plus "live")
-            _ = try await databases.deleteDocument(
+            _ = try await tablesDB.deleteRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.liveFlightsCollectionId,
-                documentId: docId
+                tableId: AppwriteConfig.liveFlightsCollectionId,
+                rowId: docId
             )
 
             await MainActor.run {
@@ -317,9 +319,9 @@ final class LiveFlightService {
 
         // Récupérer les vols réels depuis Appwrite
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.liveFlightsCollectionId,
+                tableId: AppwriteConfig.liveFlightsCollectionId,
                 queries: [
                     Query.equal("isActive", value: true),
                     Query.orderDesc("startedAt"),
@@ -327,7 +329,7 @@ final class LiveFlightService {
                 ]
             )
 
-            for doc in documents.documents {
+            for doc in documents.rows {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
                     nativeData[key] = value.value
@@ -360,9 +362,9 @@ final class LiveFlightService {
         }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.liveFlightsCollectionId,
+                tableId: AppwriteConfig.liveFlightsCollectionId,
                 queries: [
                     Query.equal("userId", value: profile.id),
                     Query.equal("isActive", value: true),
@@ -370,7 +372,7 @@ final class LiveFlightService {
                 ]
             )
 
-            if let doc = documents.documents.first {
+            if let doc = documents.rows.first {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
                     nativeData[key] = value.value

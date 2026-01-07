@@ -153,10 +153,10 @@ extension UserService {
             var tokens: [String] = []
 
             // Récupérer le document actuel pour obtenir les tokens existants
-            let document = try await AppwriteService.shared.databases.getDocument(
+            let document = try await AppwriteService.shared.tablesDB.getRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                documentId: profile.id
+                tableId: AppwriteConfig.usersCollectionId,
+                rowId: profile.id
             )
 
             if let existingTokens = document.data["deviceTokens"]?.value as? [String] {
@@ -173,10 +173,10 @@ extension UserService {
                 }
 
                 // Mettre à jour le document
-                _ = try await AppwriteService.shared.databases.updateDocument(
+                _ = try await AppwriteService.shared.tablesDB.updateRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.usersCollectionId,
-                    documentId: profile.id,
+                    tableId: AppwriteConfig.usersCollectionId,
+                    rowId: profile.id,
                     data: [
                         "deviceTokens": tokens,
                         "lastActiveAt": Date().ISO8601Format()
@@ -197,19 +197,19 @@ extension UserService {
         }
 
         do {
-            let document = try await AppwriteService.shared.databases.getDocument(
+            let document = try await AppwriteService.shared.tablesDB.getRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                documentId: profile.id
+                tableId: AppwriteConfig.usersCollectionId,
+                rowId: profile.id
             )
 
             if var tokens = document.data["deviceTokens"]?.value as? [String] {
                 tokens.removeAll { $0 == token }
 
-                _ = try await AppwriteService.shared.databases.updateDocument(
+                _ = try await AppwriteService.shared.tablesDB.updateRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.usersCollectionId,
-                    documentId: profile.id,
+                    tableId: AppwriteConfig.usersCollectionId,
+                    rowId: profile.id,
                     data: [
                         "deviceTokens": tokens
                     ]

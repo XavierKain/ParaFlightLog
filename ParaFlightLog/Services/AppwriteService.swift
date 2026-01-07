@@ -63,6 +63,7 @@ final class AppwriteService {
     let client: Client
     let account: Account
     let databases: Databases
+    let tablesDB: TablesDB
     let storage: Storage
 
     private init() {
@@ -72,6 +73,7 @@ final class AppwriteService {
 
         account = Account(client)
         databases = Databases(client)
+        tablesDB = TablesDB(client)
         storage = Storage(client)
     }
 }

@@ -188,6 +188,7 @@ final class UserService {
     // MARK: - Properties
 
     private let databases: Databases
+    private let tablesDB: TablesDB
     private let storage: Storage
 
     private(set) var currentUserProfile: CloudUserProfile?
@@ -200,6 +201,7 @@ final class UserService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
         self.storage = AppwriteService.shared.storage
     }
 
@@ -256,10 +258,10 @@ final class UserService {
         logInfo("createProfile: Sending data to Appwrite...", category: .auth)
 
         do {
-            let document = try await databases.createDocument(
+            let document = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                documentId: ID.unique(),
+                tableId: AppwriteConfig.usersCollectionId,
+                rowId: ID.unique(),
                 data: profileData
             )
 
@@ -298,18 +300,18 @@ final class UserService {
         defer { isLoading = false }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
+                tableId: AppwriteConfig.usersCollectionId,
                 queries: [
                     Query.equal("authUserId", value: authUserId),
                     Query.limit(1)
                 ]
             )
 
-            logInfo("getCurrentProfile: Found \(documents.documents.count) document(s)", category: .auth)
+            logInfo("getCurrentProfile: Found \(documents.rows.count) document(s)", category: .auth)
 
-            if let doc = documents.documents.first {
+            if let doc = documents.rows.first {
                 logInfo("getCurrentProfile: Parsing document \(doc.id)", category: .auth)
                 let profile = try parseProfile(from: doc.data)
                 currentUserProfile = profile
@@ -338,10 +340,10 @@ final class UserService {
         }
 
         do {
-            let document = try await databases.getDocument(
+            let document = try await tablesDB.getRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                documentId: userId
+                tableId: AppwriteConfig.usersCollectionId,
+                rowId: userId
             )
 
             let profile = try parseProfile(from: document.data)
@@ -355,16 +357,16 @@ final class UserService {
     /// Récupère le profil par username
     func getProfileByUsername(_ username: String) async throws -> CloudUserProfile? {
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
+                tableId: AppwriteConfig.usersCollectionId,
                 queries: [
                     Query.equal("username", value: username.lowercased()),
                     Query.limit(1)
                 ]
             )
 
-            if let doc = documents.documents.first {
+            if let doc = documents.rows.first {
                 let profile = try parseProfile(from: doc.data)
                 profileCache[profile.id] = profile
                 return profile
@@ -434,10 +436,10 @@ final class UserService {
         }
 
         do {
-            let document = try await databases.updateDocument(
+            let document = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                documentId: profile.id,
+                tableId: AppwriteConfig.usersCollectionId,
+                rowId: profile.id,
                 data: updateData
             )
 
@@ -480,10 +482,10 @@ final class UserService {
             )
 
             // Mettre à jour le profil avec le nouveau fileId
-            let _ = try await databases.updateDocument(
+            let _ = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                documentId: profile.id,
+                tableId: AppwriteConfig.usersCollectionId,
+                rowId: profile.id,
                 data: [
                     "profilePhotoFileId": file.id,
                     "lastActiveAt": Date().ISO8601Format()
@@ -507,16 +509,16 @@ final class UserService {
 
     /// Vérifie si un username est disponible
     func isUsernameAvailable(_ username: String) async throws -> Bool {
-        let documents = try await databases.listDocuments(
+        let documents = try await tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.usersCollectionId,
+            tableId: AppwriteConfig.usersCollectionId,
             queries: [
                 Query.equal("username", value: username.lowercased()),
                 Query.limit(1)
             ]
         )
 
-        return documents.documents.isEmpty
+        return documents.rows.isEmpty
     }
 
     /// Vérifie si un username est valide (format)
@@ -550,10 +552,10 @@ final class UserService {
         let newLevel = calculateLevel(xp: newXP)
 
         do {
-            let document = try await databases.updateDocument(
+            let document = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                documentId: profile.id,
+                tableId: AppwriteConfig.usersCollectionId,
+                rowId: profile.id,
                 data: [
                     "totalFlights": newTotalFlights,
                     "totalFlightSeconds": newTotalSeconds,
@@ -586,10 +588,10 @@ final class UserService {
         }
 
         do {
-            let document = try await databases.updateDocument(
+            let document = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
-                documentId: profile.id,
+                tableId: AppwriteConfig.usersCollectionId,
+                rowId: profile.id,
                 data: [
                     "totalFlights": totalFlights,
                     "totalFlightSeconds": totalFlightSeconds,
@@ -628,16 +630,16 @@ final class UserService {
         }
 
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
+                tableId: AppwriteConfig.usersCollectionId,
                 queries: [
                     Query.equal("$id", value: userId),
                     Query.limit(1)
                 ]
             )
 
-            guard let document = response.documents.first else {
+            guard let document = response.rows.first else {
                 throw UserProfileError.profileNotFound
             }
 
@@ -649,16 +651,16 @@ final class UserService {
             throw error
         } catch _ as AppwriteError {
             // Si le profil n'existe pas, essayer avec authUserId
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
+                tableId: AppwriteConfig.usersCollectionId,
                 queries: [
                     Query.equal("authUserId", value: userId),
                     Query.limit(1)
                 ]
             )
 
-            guard let document = response.documents.first else {
+            guard let document = response.rows.first else {
                 throw UserProfileError.profileNotFound
             }
 
@@ -676,16 +678,16 @@ final class UserService {
         }
 
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.followsCollectionId,
+                tableId: AppwriteConfig.followsCollectionId,
                 queries: [
                     Query.equal("followerId", value: currentUserId),
                     Query.equal("followedId", value: userId),
                     Query.limit(1)
                 ]
             )
-            return !response.documents.isEmpty
+            return !response.rows.isEmpty
         } catch {
             return false
         }
@@ -702,9 +704,9 @@ final class UserService {
 
         if isCurrentlyFollowing {
             // Trouver et supprimer le document de follow
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.followsCollectionId,
+                tableId: AppwriteConfig.followsCollectionId,
                 queries: [
                     Query.equal("followerId", value: currentUserId),
                     Query.equal("followedId", value: userId),
@@ -712,21 +714,21 @@ final class UserService {
                 ]
             )
 
-            if let doc = response.documents.first {
-                _ = try await databases.deleteDocument(
+            if let doc = response.rows.first {
+                _ = try await tablesDB.deleteRow(
                     databaseId: AppwriteConfig.databaseId,
-                    collectionId: AppwriteConfig.followsCollectionId,
-                    documentId: doc.id
+                    tableId: AppwriteConfig.followsCollectionId,
+                    rowId: doc.id
                 )
             }
             logInfo("Unfollowed user \(userId)", category: .auth)
             return false
         } else {
             // Créer un nouveau follow
-            _ = try await databases.createDocument(
+            _ = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.followsCollectionId,
-                documentId: ID.unique(),
+                tableId: AppwriteConfig.followsCollectionId,
+                rowId: ID.unique(),
                 data: [
                     "followerId": currentUserId,
                     "followedId": userId,

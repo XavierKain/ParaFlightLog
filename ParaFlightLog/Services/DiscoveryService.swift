@@ -194,6 +194,7 @@ final class DiscoveryService {
     static let shared = DiscoveryService()
 
     private let databases: Databases
+    private let tablesDB: TablesDB
     private let storage: Storage
 
     // Cache
@@ -203,6 +204,7 @@ final class DiscoveryService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
         self.storage = AppwriteService.shared.storage
     }
 
@@ -213,9 +215,9 @@ final class DiscoveryService {
         let offset = page * limit
 
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
+                tableId: AppwriteConfig.flightsCollectionId,
                 queries: [
                     Query.equal("isPrivate", value: false),
                     Query.orderDesc("startDate"),
@@ -224,10 +226,10 @@ final class DiscoveryService {
                 ]
             )
 
-            logInfo("Global feed: fetched \(response.documents.count) documents", category: .sync)
+            logInfo("Global feed: fetched \(response.rows.count) documents", category: .sync)
 
             var flights: [PublicFlight] = []
-            for doc in response.documents {
+            for doc in response.rows {
                 do {
                     let flight = try parsePublicFlight(from: doc.data)
                     flights.append(flight)
@@ -274,9 +276,9 @@ final class DiscoveryService {
         let offset = page * limit
 
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
+                tableId: AppwriteConfig.flightsCollectionId,
                 queries: [
                     Query.equal("isPrivate", value: false),
                     Query.equal("userId", value: followedIds),
@@ -286,7 +288,7 @@ final class DiscoveryService {
                 ]
             )
 
-            return try response.documents.compactMap { doc -> PublicFlight? in
+            return try response.rows.compactMap { doc -> PublicFlight? in
                 try parsePublicFlight(from: doc.data)
             }
         } catch let error as AppwriteError {
@@ -303,9 +305,9 @@ final class DiscoveryService {
         let offset = page * limit
 
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
+                tableId: AppwriteConfig.flightsCollectionId,
                 queries: [
                     Query.equal("isPrivate", value: false),
                     Query.greaterThanEqual("latitude", value: bounds.southWest.latitude),
@@ -318,7 +320,7 @@ final class DiscoveryService {
                 ]
             )
 
-            return try response.documents.compactMap { doc -> PublicFlight? in
+            return try response.rows.compactMap { doc -> PublicFlight? in
                 try parsePublicFlight(from: doc.data)
             }
         } catch let error as AppwriteError {
@@ -397,13 +399,13 @@ final class DiscoveryService {
         }
 
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
+                tableId: AppwriteConfig.flightsCollectionId,
                 queries: queries
             )
 
-            return try response.documents.compactMap { doc -> PublicFlight? in
+            return try response.rows.compactMap { doc -> PublicFlight? in
                 try parsePublicFlight(from: doc.data)
             }
         } catch let error as AppwriteError {
@@ -418,10 +420,10 @@ final class DiscoveryService {
     /// Récupère les détails complets d'un vol (avec commentaires et likes)
     func getFlightDetails(flightId: String) async throws -> FlightDetails {
         // 1. Récupérer le vol
-        let flightDoc = try await databases.getDocument(
+        let flightDoc = try await tablesDB.getRow(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.flightsCollectionId,
-            documentId: flightId
+            tableId: AppwriteConfig.flightsCollectionId,
+            rowId: flightId
         )
 
         guard let flight = try? parsePublicFlight(from: flightDoc.data) else {
@@ -429,9 +431,9 @@ final class DiscoveryService {
         }
 
         // 2. Récupérer les commentaires
-        let commentsResponse = try await databases.listDocuments(
+        let commentsResponse = try await tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.flightCommentsCollectionId,
+            tableId: AppwriteConfig.flightCommentsCollectionId,
             queries: [
                 Query.equal("flightId", value: flightId),
                 Query.orderDesc("createdAt"),
@@ -439,21 +441,21 @@ final class DiscoveryService {
             ]
         )
 
-        let comments = commentsResponse.documents.compactMap { doc -> FlightComment? in
+        let comments = commentsResponse.rows.compactMap { doc -> FlightComment? in
             try? parseFlightComment(from: doc.data)
         }
 
         // 3. Récupérer les likes (juste les premiers)
-        let likesResponse = try await databases.listDocuments(
+        let likesResponse = try await tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.flightLikesCollectionId,
+            tableId: AppwriteConfig.flightLikesCollectionId,
             queries: [
                 Query.equal("flightId", value: flightId),
                 Query.limit(20)
             ]
         )
 
-        let likes = likesResponse.documents.compactMap { doc -> PilotSummary? in
+        let likes = likesResponse.rows.compactMap { doc -> PilotSummary? in
             // Récupérer les infos du pilote depuis le like
             guard let userId = doc.data["userId"]?.value as? String else { return nil }
             // Pour l'instant, on retourne juste l'ID - les vraies infos seront fetchées à la demande
@@ -484,9 +486,9 @@ final class DiscoveryService {
     /// Recherche de pilotes par nom ou username
     func searchPilots(query: String, page: Int = 0, limit: Int = 20) async throws -> [PilotSummary] {
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.pilotsCollectionId,
+                tableId: AppwriteConfig.pilotsCollectionId,
                 queries: [
                     Query.or([
                         Query.search("displayName", value: query),
@@ -497,7 +499,7 @@ final class DiscoveryService {
                 ]
             )
 
-            return response.documents.compactMap { doc -> PilotSummary? in
+            return response.rows.compactMap { doc -> PilotSummary? in
                 guard let id = doc.data["userId"]?.value as? String,
                       let displayName = doc.data["displayName"]?.value as? String,
                       let username = doc.data["username"]?.value as? String else {
@@ -525,9 +527,9 @@ final class DiscoveryService {
         let offset = page * limit
 
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.flightsCollectionId,
+                tableId: AppwriteConfig.flightsCollectionId,
                 queries: [
                     Query.equal("userId", value: userId),
                     Query.equal("isPrivate", value: false),
@@ -537,7 +539,7 @@ final class DiscoveryService {
                 ]
             )
 
-            return try response.documents.compactMap { doc -> PublicFlight? in
+            return try response.rows.compactMap { doc -> PublicFlight? in
                 try parsePublicFlight(from: doc.data)
             }
         } catch let error as AppwriteError {
@@ -601,16 +603,16 @@ final class DiscoveryService {
 
     private func getFollowedUserIds(userId: String) async throws -> [String] {
         do {
-            let response = try await databases.listDocuments(
+            let response = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.followsCollectionId,
+                tableId: AppwriteConfig.followsCollectionId,
                 queries: [
                     Query.equal("followerId", value: userId),
                     Query.limit(500)  // Max 500 follows pour cette requête
                 ]
             )
 
-            return response.documents.compactMap { doc in
+            return response.rows.compactMap { doc in
                 doc.data["followedId"]?.value as? String
             }
         } catch let error as AppwriteError {

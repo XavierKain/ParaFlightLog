@@ -149,6 +149,7 @@ final class LeaderboardService {
     // MARK: - Properties
 
     private let databases: Databases
+    private let tablesDB: TablesDB
 
     /// Cache des classements (type -> scope -> entries)
     private var leaderboardCache: [LeaderboardType: [LeaderboardScope: [LeaderboardEntry]]] = [:]
@@ -168,6 +169,7 @@ final class LeaderboardService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
     }
 
     // MARK: - Public Methods
@@ -183,16 +185,16 @@ final class LeaderboardService {
         defer { isLoading = false }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
+                tableId: AppwriteConfig.usersCollectionId,
                 queries: [
                     Query.orderDesc(type.sortField),
                     Query.limit(limit)
                 ]
             )
 
-            let entries = parseLeaderboardEntries(from: documents.documents, type: type)
+            let entries = parseLeaderboardEntries(from: documents.rows, type: type)
 
             // Mettre en cache
             cacheLeaderboard(entries, type: type, scope: .global)
@@ -212,9 +214,9 @@ final class LeaderboardService {
         do {
             // Note: Appwrite ne supporte pas les requêtes LIKE/CONTAINS facilement
             // On récupère plus de résultats et on filtre côté client
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
+                tableId: AppwriteConfig.usersCollectionId,
                 queries: [
                     Query.orderDesc(type.sortField),
                     Query.limit(500)  // Récupérer plus pour filtrer
@@ -222,7 +224,7 @@ final class LeaderboardService {
             )
 
             // Filtrer par pays
-            let filteredDocs = documents.documents.filter { doc in
+            let filteredDocs = documents.rows.filter { doc in
                 if let location = doc.data["homeLocationName"]?.value as? String {
                     return location.localizedCaseInsensitiveContains(country)
                 }
@@ -266,9 +268,9 @@ final class LeaderboardService {
 
         do {
             // Compter combien d'utilisateurs ont une valeur supérieure
-            let aboveCount = try await databases.listDocuments(
+            let aboveCount = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
+                tableId: AppwriteConfig.usersCollectionId,
                 queries: [
                     Query.greaterThan(type.sortField, value: userValue),
                     Query.limit(1)  // On veut juste le count
@@ -276,9 +278,9 @@ final class LeaderboardService {
             )
 
             // Compter le total d'utilisateurs
-            let totalCount = try await databases.listDocuments(
+            let totalCount = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.usersCollectionId,
+                tableId: AppwriteConfig.usersCollectionId,
                 queries: [Query.limit(1)]
             )
 
@@ -317,7 +319,7 @@ final class LeaderboardService {
 
     // MARK: - Private Methods
 
-    private func parseLeaderboardEntries(from documents: [Document<[String: AnyCodable]>], type: LeaderboardType) -> [LeaderboardEntry] {
+    private func parseLeaderboardEntries(from documents: [Row<[String: AnyCodable]>], type: LeaderboardType) -> [LeaderboardEntry] {
         var entries: [LeaderboardEntry] = []
 
         for (index, doc) in documents.enumerated() {

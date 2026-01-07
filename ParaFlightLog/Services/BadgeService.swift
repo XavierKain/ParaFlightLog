@@ -262,6 +262,7 @@ final class BadgeService {
     // MARK: - Properties
 
     private let databases: Databases
+    private let tablesDB: TablesDB
 
     /// Cache des badges disponibles
     private(set) var allBadges: [Badge] = []
@@ -278,6 +279,7 @@ final class BadgeService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
 
         // Charger les badges prédéfinis si pas encore en base
         Task {
@@ -293,14 +295,14 @@ final class BadgeService {
         defer { isLoading = false }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.badgesCollectionId,
+                tableId: AppwriteConfig.badgesCollectionId,
                 queries: [Query.limit(100)]
             )
 
             var badges: [Badge] = []
-            for doc in documents.documents {
+            for doc in documents.rows {
                 // Convertir AnyCodable en types natifs
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
@@ -338,9 +340,9 @@ final class BadgeService {
         defer { isLoading = false }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.userBadgesCollectionId,
+                tableId: AppwriteConfig.userBadgesCollectionId,
                 queries: [
                     Query.equal("userId", value: userId),
                     Query.limit(100)
@@ -348,7 +350,7 @@ final class BadgeService {
             )
 
             var badges: [UserBadge] = []
-            for doc in documents.documents {
+            for doc in documents.rows {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
                     nativeData[key] = value.value
@@ -389,9 +391,9 @@ final class BadgeService {
         }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: AppwriteConfig.userBadgesCollectionId,
+                tableId: AppwriteConfig.userBadgesCollectionId,
                 queries: [
                     Query.equal("userId", value: userId),
                     Query.orderDesc("earnedAt"),
@@ -400,7 +402,7 @@ final class BadgeService {
             )
 
             var earnedBadges: [EarnedBadge] = []
-            for doc in documents.documents {
+            for doc in documents.rows {
                 var nativeData: [String: Any] = [:]
                 for (key, value) in doc.data {
                     nativeData[key] = value.value
@@ -566,10 +568,10 @@ final class BadgeService {
             "earnedAt": Date().ISO8601Format()
         ]
 
-        let document = try await databases.createDocument(
+        let document = try await tablesDB.createRow(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.userBadgesCollectionId,
-            documentId: ID.unique(),
+            tableId: AppwriteConfig.userBadgesCollectionId,
+            rowId: ID.unique(),
             data: data
         )
 

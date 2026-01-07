@@ -141,6 +141,7 @@ final class NOTAMService {
     // MARK: - Properties
 
     private let databases: Databases
+    private let tablesDB: TablesDB
 
     /// Cache local des NOTAM
     private(set) var cachedNOTAMs: [NOTAM] = []
@@ -175,6 +176,7 @@ final class NOTAMService {
 
     private init() {
         self.databases = AppwriteService.shared.databases
+        self.tablesDB = AppwriteService.shared.tablesDB
         loadLocalCache()
     }
 
@@ -310,9 +312,9 @@ final class NOTAMService {
         }
 
         do {
-            let documents = try await databases.listDocuments(
+            let documents = try await tablesDB.listRows(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: "alert_zones",
+                tableId: "alert_zones",
                 queries: [
                     Query.equal("userId", value: profile.id),
                     Query.orderDesc("createdAt")
@@ -320,7 +322,7 @@ final class NOTAMService {
             )
 
             var zones: [AlertZone] = []
-            for doc in documents.documents {
+            for doc in documents.rows {
                 if let zone = parseAlertZone(from: doc.data) {
                     zones.append(zone)
                 }
@@ -772,18 +774,18 @@ final class NOTAMService {
         ]
 
         do {
-            _ = try await databases.createDocument(
+            _ = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: "alert_zones",
-                documentId: zone.id.uuidString,
+                tableId: "alert_zones",
+                rowId: zone.id.uuidString,
                 data: data
             )
         } catch {
             // Si le document existe déjà, le mettre à jour
-            _ = try await databases.updateDocument(
+            _ = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: "alert_zones",
-                documentId: zone.id.uuidString,
+                tableId: "alert_zones",
+                rowId: zone.id.uuidString,
                 data: data
             )
         }
@@ -793,10 +795,10 @@ final class NOTAMService {
         guard AuthService.shared.isAuthenticated else { return }
 
         do {
-            _ = try await databases.deleteDocument(
+            _ = try await tablesDB.deleteRow(
                 databaseId: AppwriteConfig.databaseId,
-                collectionId: "alert_zones",
-                documentId: zone.id.uuidString
+                tableId: "alert_zones",
+                rowId: zone.id.uuidString
             )
         } catch {
             logWarning("Failed to delete alert zone from cloud: \(error.localizedDescription)", category: .sync)
