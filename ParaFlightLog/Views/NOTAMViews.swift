@@ -644,6 +644,7 @@ struct AlertZoneMiniMap: UIViewRepresentable {
 
 struct AddAlertZoneView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(LocationService.self) private var locationService
     @State private var notamService = NOTAMService.shared
 
     @State private var name = ""
@@ -652,9 +653,10 @@ struct AddAlertZoneView: View {
     @State private var notifyBeforeFlight = true
     @State private var notifyOnExpiration = false
 
-    // Position sur la carte
+    // Position sur la carte (sera mise à jour avec la localisation GPS)
     @State private var centerCoordinate = CLLocationCoordinate2D(latitude: 45.0, longitude: 6.0)
     @State private var radiusKm: Double = 1.0
+    @State private var hasSetInitialLocation = false
 
     @State private var isSaving = false
     @State private var showingSettings = false
@@ -737,6 +739,23 @@ struct AddAlertZoneView: View {
                 )
                 .presentationDetents([.medium])
             }
+            .onAppear {
+                // Utiliser la dernière position GPS connue, ou demander la position
+                if !hasSetInitialLocation {
+                    if let lastLocation = locationService.lastKnownLocation {
+                        centerCoordinate = lastLocation.coordinate
+                        hasSetInitialLocation = true
+                    } else {
+                        // Demander la position GPS
+                        locationService.requestLocation { location in
+                            if let location = location {
+                                centerCoordinate = location.coordinate
+                            }
+                            hasSetInitialLocation = true
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -774,10 +793,12 @@ struct AddAlertZoneView: View {
 struct AlertZoneMapEditor: UIViewRepresentable {
     @Binding var centerCoordinate: CLLocationCoordinate2D
     @Binding var radiusKm: Double
+    var shouldRecenter: Bool = false
 
     func makeUIView(context: Context) -> MKMapView {
         let mapView = MKMapView()
         mapView.delegate = context.coordinator
+        mapView.showsUserLocation = true
 
         // Région initiale centrée sur le point avec un zoom adapté au rayon
         let region = MKCoordinateRegion(
@@ -786,6 +807,7 @@ struct AlertZoneMapEditor: UIViewRepresentable {
             longitudinalMeters: radiusKm * 1000 * 4
         )
         mapView.setRegion(region, animated: false)
+        context.coordinator.lastCenteredCoordinate = centerCoordinate
 
         return mapView
     }
@@ -804,6 +826,20 @@ struct AlertZoneMapEditor: UIViewRepresentable {
         annotation.coordinate = centerCoordinate
         annotation.title = "Centre de la zone"
         mapView.addAnnotation(annotation)
+
+        // Recentrer si les coordonnées ont changé significativement (GPS arrivé)
+        let lastCoord = context.coordinator.lastCenteredCoordinate
+        let distanceMoved = sqrt(pow(centerCoordinate.latitude - lastCoord.latitude, 2) +
+                                  pow(centerCoordinate.longitude - lastCoord.longitude, 2))
+        if distanceMoved > 0.1 {  // Plus de 0.1 degré de différence = recentrer
+            let region = MKCoordinateRegion(
+                center: centerCoordinate,
+                latitudinalMeters: radiusKm * 1000 * 4,
+                longitudinalMeters: radiusKm * 1000 * 4
+            )
+            mapView.setRegion(region, animated: true)
+            context.coordinator.lastCenteredCoordinate = centerCoordinate
+        }
     }
 
     func makeCoordinator() -> Coordinator {
@@ -812,6 +848,7 @@ struct AlertZoneMapEditor: UIViewRepresentable {
 
     class Coordinator: NSObject, MKMapViewDelegate {
         var parent: AlertZoneMapEditor
+        var lastCenteredCoordinate: CLLocationCoordinate2D = CLLocationCoordinate2D()
 
         init(_ parent: AlertZoneMapEditor) {
             self.parent = parent
@@ -820,6 +857,7 @@ struct AlertZoneMapEditor: UIViewRepresentable {
         func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
             // Mettre à jour les coordonnées du centre quand la carte bouge
             parent.centerCoordinate = mapView.centerCoordinate
+            lastCenteredCoordinate = mapView.centerCoordinate
         }
 
         func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
@@ -907,11 +945,24 @@ struct EditAlertZoneView: View {
     @State private var notifyOnNewNOTAM: Bool = true
     @State private var notifyBeforeFlight: Bool = true
     @State private var notifyOnExpiration: Bool = false
-    @State private var centerCoordinate: CLLocationCoordinate2D = CLLocationCoordinate2D()
-    @State private var radiusKm: Double = 1.0
+    @State private var centerCoordinate: CLLocationCoordinate2D
+    @State private var radiusKm: Double
 
     @State private var isSaving = false
     @State private var showingDeleteConfirmation = false
+
+    init(zone: AlertZone) {
+        self.zone = zone
+        // Initialiser les coordonnées directement depuis la zone
+        switch zone.geometry {
+        case .circle(let center, let radiusMeters):
+            _centerCoordinate = State(initialValue: center)
+            _radiusKm = State(initialValue: radiusMeters / 1000.0)
+        case .polygon:
+            _centerCoordinate = State(initialValue: zone.geometry.center)
+            _radiusKm = State(initialValue: zone.geometry.approximateRadius / 1000.0)
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -1023,15 +1074,7 @@ struct EditAlertZoneView: View {
         notifyOnNewNOTAM = zone.notifyOnNewNOTAM
         notifyBeforeFlight = zone.notifyBeforeFlight
         notifyOnExpiration = zone.notifyOnExpiration
-
-        switch zone.geometry {
-        case .circle(let center, let radiusMeters):
-            centerCoordinate = center
-            radiusKm = radiusMeters / 1000.0
-        case .polygon(let coords):
-            centerCoordinate = zone.geometry.center
-            radiusKm = zone.geometry.approximateRadius / 1000.0
-        }
+        // Les coordonnées sont déjà initialisées dans init()
     }
 
     private func saveChanges() {

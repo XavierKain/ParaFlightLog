@@ -1802,6 +1802,9 @@
         }
       }
     },
+    "Cette action est irréversible" : {
+
+    },
     "Cette voile a %lld vol%@ enregistré%@. L'archivage conservera les données, la suppression les effacera." : {
       "localizations" : {
         "en" : {
@@ -2219,9 +2222,6 @@
           }
         }
       }
-    },
-    "Déplacez la carte pour positionner le centre" : {
-
     },
     "Dernier vol" : {
       "localizations" : {
@@ -3082,6 +3082,9 @@
           }
         }
       }
+    },
+    "Modifier la zone" : {
+
     },
     "Modifier le vol" : {
       "localizations" : {
@@ -4054,6 +4057,12 @@
       }
     },
     "Supprimer ce vol ?" : {
+
+    },
+    "Supprimer cette zone" : {
+
+    },
+    "Supprimer cette zone ?" : {
 
     },
     "Supprimer définitivement" : {
