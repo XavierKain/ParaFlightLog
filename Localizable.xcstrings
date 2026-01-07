@@ -1474,6 +1474,9 @@
         }
       }
     },
+    "Appliquer" : {
+
+    },
     "Archiver" : {
       "localizations" : {
         "en" : {
@@ -2217,6 +2220,9 @@
         }
       }
     },
+    "Déplacez la carte pour positionner le centre" : {
+
+    },
     "Dernier vol" : {
       "localizations" : {
         "en" : {
@@ -2488,6 +2494,9 @@
           }
         }
       }
+    },
+    "Filtres" : {
+
     },
     "Fin" : {
       "localizations" : {
@@ -2850,9 +2859,6 @@
     "kg" : {
 
     },
-    "km" : {
-
-    },
     "Lancer un vol" : {
       "localizations" : {
         "en" : {
@@ -2918,9 +2924,6 @@
         }
       }
     },
-    "Latitude" : {
-
-    },
     "Les spots apparaîtront ici une fois que vous aurez enregistré des vols" : {
       "localizations" : {
         "en" : {
@@ -2952,9 +2955,6 @@
           }
         }
       }
-    },
-    "Longitude" : {
-
     },
     "m²" : {
       "localizations" : {
@@ -3388,6 +3388,12 @@
         }
       }
     },
+    "Paramètres" : {
+
+    },
+    "Paramètres de notification" : {
+
+    },
     "Partager / Enregistrer" : {
 
     },
@@ -3406,6 +3412,12 @@
           }
         }
       }
+    },
+    "Pays" : {
+
+    },
+    "Pays sélectionnés" : {
+
     },
     "Période" : {
       "extractionState" : "stale",
@@ -3492,9 +3504,6 @@
       }
     },
     "Portée" : {
-
-    },
-    "Position" : {
 
     },
     "Position indisponible" : {
@@ -3585,6 +3594,9 @@
     "Rayon" : {
 
     },
+    "Rayon: %lld km" : {
+
+    },
     "Recalculer tous les badges" : {
 
     },
@@ -3638,6 +3650,9 @@
       }
     },
     "Rechercher un lieu..." : {
+
+    },
+    "Régions" : {
 
     },
     "Réglages" : {
@@ -3801,6 +3816,9 @@
           }
         }
       }
+    },
+    "Sélectionnez les pays pour lesquels vous souhaitez voir les NOTAM" : {
+
     },
     "session%@" : {
       "localizations" : {

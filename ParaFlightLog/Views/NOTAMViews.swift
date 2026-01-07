@@ -469,6 +469,7 @@ struct AlertZonesView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var notamService = NOTAMService.shared
     @State private var showingAddZone = false
+    @State private var selectedZone: AlertZone?
 
     var body: some View {
         NavigationStack {
@@ -482,6 +483,10 @@ struct AlertZonesView: View {
                 } else {
                     ForEach(notamService.alertZones) { zone in
                         AlertZoneRowView(zone: zone)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                selectedZone = zone
+                            }
                     }
                     .onDelete { indexSet in
                         Task {
@@ -510,6 +515,9 @@ struct AlertZonesView: View {
             .sheet(isPresented: $showingAddZone) {
                 AddAlertZoneView()
             }
+            .sheet(item: $selectedZone) { zone in
+                EditAlertZoneView(zone: zone)
+            }
         }
     }
 }
@@ -521,40 +529,113 @@ struct AlertZoneRowView: View {
     @State private var notamService = NOTAMService.shared
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(zone.name)
-                    .font(.headline)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(zone.name)
+                        .font(.headline)
 
-                if let description = zone.description {
-                    Text(description)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                    if let description = zone.description {
+                        Text(description)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack(spacing: 12) {
+                        if zone.notifyOnNewNOTAM {
+                            Label("Nouveaux", systemImage: "bell.fill")
+                        }
+                        if zone.notifyBeforeFlight {
+                            Label("Pré-vol", systemImage: "airplane.departure")
+                        }
+                    }
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 }
 
-                HStack(spacing: 12) {
-                    if zone.notifyOnNewNOTAM {
-                        Label("Nouveaux", systemImage: "bell.fill")
+                Spacer()
+
+                Toggle("", isOn: Binding(
+                    get: { zone.isEnabled },
+                    set: { _ in
+                        Task {
+                            try? await notamService.toggleAlertZone(zone)
+                        }
                     }
-                    if zone.notifyBeforeFlight {
-                        Label("Pré-vol", systemImage: "airplane.departure")
-                    }
-                }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                ))
+                .labelsHidden()
             }
 
-            Spacer()
+            // Mini-carte de la zone
+            AlertZoneMiniMap(zone: zone)
+                .frame(height: 100)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+        }
+        .padding(.vertical, 4)
+    }
+}
 
-            Toggle("", isOn: Binding(
-                get: { zone.isEnabled },
-                set: { _ in
-                    Task {
-                        try? await notamService.toggleAlertZone(zone)
-                    }
-                }
-            ))
-            .labelsHidden()
+// MARK: - Alert Zone Mini Map
+
+struct AlertZoneMiniMap: UIViewRepresentable {
+    let zone: AlertZone
+
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView()
+        mapView.isUserInteractionEnabled = false
+        mapView.delegate = context.coordinator
+        return mapView
+    }
+
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        mapView.removeOverlays(mapView.overlays)
+
+        let center = zone.geometry.center
+        let radiusMeters: Double
+
+        switch zone.geometry {
+        case .circle(_, let r):
+            radiusMeters = r
+            let circle = MKCircle(center: center, radius: r)
+            mapView.addOverlay(circle)
+        case .polygon(let coords):
+            radiusMeters = zone.geometry.approximateRadius
+            var coordinates = coords
+            let polygon = MKPolygon(coordinates: &coordinates, count: coords.count)
+            mapView.addOverlay(polygon)
+        }
+
+        // Ajuster la région pour montrer toute la zone
+        let regionRadius = radiusMeters * 1.5
+        let region = MKCoordinateRegion(
+            center: center,
+            latitudinalMeters: regionRadius * 2,
+            longitudinalMeters: regionRadius * 2
+        )
+        mapView.setRegion(region, animated: false)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    class Coordinator: NSObject, MKMapViewDelegate {
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let circle = overlay as? MKCircle {
+                let renderer = MKCircleRenderer(circle: circle)
+                renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.15)
+                renderer.strokeColor = UIColor.systemBlue.withAlphaComponent(0.6)
+                renderer.lineWidth = 2
+                return renderer
+            }
+            if let polygon = overlay as? MKPolygon {
+                let renderer = MKPolygonRenderer(polygon: polygon)
+                renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.15)
+                renderer.strokeColor = UIColor.systemBlue.withAlphaComponent(0.6)
+                renderer.lineWidth = 2
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
         }
     }
 }
@@ -573,7 +654,7 @@ struct AddAlertZoneView: View {
 
     // Position sur la carte
     @State private var centerCoordinate = CLLocationCoordinate2D(latitude: 45.0, longitude: 6.0)
-    @State private var radiusKm: Double = 30.0
+    @State private var radiusKm: Double = 1.0
 
     @State private var isSaving = false
     @State private var showingSettings = false
@@ -603,7 +684,7 @@ struct AddAlertZoneView: View {
                                 Spacer()
                             }
 
-                            Slider(value: $radiusKm, in: 5...200, step: 5) {
+                            Slider(value: $radiusKm, in: 1...200, step: 1) {
                                 Text("Rayon")
                             }
                             .tint(Color.accentColor)
@@ -690,78 +771,85 @@ struct AddAlertZoneView: View {
 
 // MARK: - Alert Zone Map Editor
 
-struct AlertZoneMapEditor: View {
+struct AlertZoneMapEditor: UIViewRepresentable {
     @Binding var centerCoordinate: CLLocationCoordinate2D
     @Binding var radiusKm: Double
 
-    @State private var region: MKCoordinateRegion
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView()
+        mapView.delegate = context.coordinator
 
-    init(centerCoordinate: Binding<CLLocationCoordinate2D>, radiusKm: Binding<Double>) {
-        self._centerCoordinate = centerCoordinate
-        self._radiusKm = radiusKm
-
-        let span = MKCoordinateSpan(
-            latitudeDelta: radiusKm.wrappedValue / 50.0,
-            longitudeDelta: radiusKm.wrappedValue / 50.0
+        // Région initiale centrée sur le point avec un zoom adapté au rayon
+        let region = MKCoordinateRegion(
+            center: centerCoordinate,
+            latitudinalMeters: radiusKm * 1000 * 4,
+            longitudinalMeters: radiusKm * 1000 * 4
         )
-        self._region = State(initialValue: MKCoordinateRegion(
-            center: centerCoordinate.wrappedValue,
-            span: span
-        ))
+        mapView.setRegion(region, animated: false)
+
+        return mapView
     }
 
-    var body: some View {
-        ZStack {
-            Map(coordinateRegion: $region, interactionModes: .all)
-                .onChange(of: region.center.latitude) { _, _ in
-                    centerCoordinate = region.center
-                }
-                .onChange(of: region.center.longitude) { _, _ in
-                    centerCoordinate = region.center
-                }
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        // Mettre à jour le cercle
+        mapView.removeOverlays(mapView.overlays)
+        mapView.removeAnnotations(mapView.annotations.filter { !($0 is MKUserLocation) })
 
-            // Cercle de la zone (overlay visuel)
-            Circle()
-                .stroke(Color.accentColor, lineWidth: 3)
-                .fill(Color.accentColor.opacity(0.15))
-                .frame(width: circleSize, height: circleSize)
+        // Ajouter le cercle de la zone
+        let circle = MKCircle(center: centerCoordinate, radius: radiusKm * 1000)
+        mapView.addOverlay(circle)
 
-            // Point central
-            Circle()
-                .fill(Color.accentColor)
-                .frame(width: 12, height: 12)
+        // Ajouter un pin au centre
+        let annotation = MKPointAnnotation()
+        annotation.coordinate = centerCoordinate
+        annotation.title = "Centre de la zone"
+        mapView.addAnnotation(annotation)
+    }
 
-            // Instructions
-            VStack {
-                Text("Déplacez la carte pour positionner le centre")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(.ultraThinMaterial)
-                    .clipShape(Capsule())
-                    .padding(.top, 60)
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
 
-                Spacer()
-            }
+    class Coordinator: NSObject, MKMapViewDelegate {
+        var parent: AlertZoneMapEditor
+
+        init(_ parent: AlertZoneMapEditor) {
+            self.parent = parent
         }
-    }
 
-    // Calcul de la taille du cercle en pixels basé sur le rayon et le zoom
-    private var circleSize: CGFloat {
-        // Approximation: 1 degré de latitude ≈ 111 km
-        let degreesPerKm = 1.0 / 111.0
-        let radiusDegrees = radiusKm * degreesPerKm
-        let spanDegrees = region.span.latitudeDelta
+        func mapView(_ mapView: MKMapView, regionDidChangeAnimated animated: Bool) {
+            // Mettre à jour les coordonnées du centre quand la carte bouge
+            parent.centerCoordinate = mapView.centerCoordinate
+        }
 
-        // Taille de l'écran (approximation)
-        let screenHeight: CGFloat = UIScreen.main.bounds.height
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let circle = overlay as? MKCircle {
+                let renderer = MKCircleRenderer(circle: circle)
+                renderer.fillColor = UIColor.systemBlue.withAlphaComponent(0.15)
+                renderer.strokeColor = UIColor.systemBlue.withAlphaComponent(0.8)
+                renderer.lineWidth = 3
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
+        }
 
-        // Ratio entre le rayon et la span visible
-        let ratio = radiusDegrees / spanDegrees
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard !(annotation is MKUserLocation) else { return nil }
 
-        // Taille du cercle en pixels (diamètre)
-        return min(screenHeight * ratio * 2, screenHeight * 0.8)
+            let identifier = "CenterPin"
+            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier) as? MKMarkerAnnotationView
+
+            if annotationView == nil {
+                annotationView = MKMarkerAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                annotationView?.canShowCallout = false
+                annotationView?.markerTintColor = .systemBlue
+                annotationView?.glyphImage = UIImage(systemName: "scope")
+            } else {
+                annotationView?.annotation = annotation
+            }
+
+            return annotationView
+        }
     }
 }
 
@@ -802,6 +890,184 @@ struct AlertZoneSettingsSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("OK") { dismiss() }
                 }
+            }
+        }
+    }
+}
+
+// MARK: - Edit Alert Zone View
+
+struct EditAlertZoneView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var notamService = NOTAMService.shared
+    let zone: AlertZone
+
+    @State private var name: String = ""
+    @State private var description: String = ""
+    @State private var notifyOnNewNOTAM: Bool = true
+    @State private var notifyBeforeFlight: Bool = true
+    @State private var notifyOnExpiration: Bool = false
+    @State private var centerCoordinate: CLLocationCoordinate2D = CLLocationCoordinate2D()
+    @State private var radiusKm: Double = 1.0
+
+    @State private var isSaving = false
+    @State private var showingDeleteConfirmation = false
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Carte de la zone
+                    AlertZoneMapEditor(
+                        centerCoordinate: $centerCoordinate,
+                        radiusKm: $radiusKm
+                    )
+                    .frame(height: 250)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal)
+
+                    // Slider pour le rayon
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Image(systemName: "circle.dashed")
+                                .foregroundStyle(Color.accentColor)
+                            Text("Rayon: \(Int(radiusKm)) km")
+                                .font(.headline)
+                            Spacer()
+                        }
+
+                        Slider(value: $radiusKm, in: 1...200, step: 1) {
+                            Text("Rayon")
+                        }
+                        .tint(Color.accentColor)
+                    }
+                    .padding(.horizontal)
+
+                    // Informations
+                    VStack(spacing: 16) {
+                        TextField("Nom de la zone", text: $name)
+                            .textFieldStyle(.roundedBorder)
+
+                        TextField("Description (optionnel)", text: $description, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(2...4)
+                    }
+                    .padding(.horizontal)
+
+                    // Options de notification
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Notifications")
+                            .font(.headline)
+
+                        Toggle(isOn: $notifyOnNewNOTAM) {
+                            Label("Nouveaux NOTAM", systemImage: "bell.badge")
+                        }
+
+                        Toggle(isOn: $notifyBeforeFlight) {
+                            Label("Avant chaque vol", systemImage: "airplane.departure")
+                        }
+
+                        Toggle(isOn: $notifyOnExpiration) {
+                            Label("Expiration de NOTAM", systemImage: "clock.badge.exclamationmark")
+                        }
+                    }
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .padding(.horizontal)
+
+                    // Bouton supprimer
+                    Button(role: .destructive) {
+                        showingDeleteConfirmation = true
+                    } label: {
+                        Label("Supprimer cette zone", systemImage: "trash")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.horizontal)
+                    .padding(.top, 10)
+                }
+                .padding(.vertical)
+            }
+            .navigationTitle("Modifier la zone")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Annuler") { dismiss() }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Enregistrer") {
+                        saveChanges()
+                    }
+                    .disabled(name.isEmpty || isSaving)
+                }
+            }
+            .confirmationDialog("Supprimer cette zone ?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+                Button("Supprimer", role: .destructive) {
+                    deleteZone()
+                }
+                Button("Annuler", role: .cancel) {}
+            } message: {
+                Text("Cette action est irréversible")
+            }
+            .onAppear {
+                loadZoneData()
+            }
+        }
+    }
+
+    private func loadZoneData() {
+        name = zone.name
+        description = zone.description ?? ""
+        notifyOnNewNOTAM = zone.notifyOnNewNOTAM
+        notifyBeforeFlight = zone.notifyBeforeFlight
+        notifyOnExpiration = zone.notifyOnExpiration
+
+        switch zone.geometry {
+        case .circle(let center, let radiusMeters):
+            centerCoordinate = center
+            radiusKm = radiusMeters / 1000.0
+        case .polygon(let coords):
+            centerCoordinate = zone.geometry.center
+            radiusKm = zone.geometry.approximateRadius / 1000.0
+        }
+    }
+
+    private func saveChanges() {
+        isSaving = true
+
+        let updatedZone = AlertZone(
+            id: zone.id,
+            name: name,
+            description: description.isEmpty ? nil : description,
+            isEnabled: zone.isEnabled,
+            notifyOnNewNOTAM: notifyOnNewNOTAM,
+            notifyBeforeFlight: notifyBeforeFlight,
+            notifyOnExpiration: notifyOnExpiration,
+            geometry: .circle(center: centerCoordinate, radiusMeters: radiusKm * 1000),
+            createdAt: zone.createdAt,
+            updatedAt: Date()
+        )
+
+        Task {
+            do {
+                try await notamService.updateAlertZone(updatedZone)
+                await MainActor.run {
+                    dismiss()
+                }
+            } catch {
+                logError("Failed to update alert zone: \(error.localizedDescription)", category: .notification)
+                isSaving = false
+            }
+        }
+    }
+
+    private func deleteZone() {
+        Task {
+            try? await notamService.deleteAlertZone(zone)
+            await MainActor.run {
+                dismiss()
             }
         }
     }
