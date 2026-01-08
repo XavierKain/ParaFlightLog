@@ -24,6 +24,7 @@ struct ParaFlightLogApp: App {
     private var watchConnectivityManager: WatchConnectivityManager { WatchConnectivityManager.shared }
     private var localizationManager: LocalizationManager { LocalizationManager.shared }
     private var authService: AuthService { AuthService.shared }
+    private var userService: UserService { UserService.shared }
 
     var body: some Scene {
         WindowGroup {
@@ -33,6 +34,7 @@ struct ParaFlightLogApp: App {
                 .environment(locationService)
                 .environment(localizationManager)
                 .environment(authService)
+                .environment(userService)
                 .environment(\.locale, localizationManager.locale)
                 .registerOAuthHandler() // Gestionnaire pour les callbacks OAuth Appwrite
         }
