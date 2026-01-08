@@ -33,10 +33,10 @@ struct ContentView: View {
 
     // Labels des onglets calculés dynamiquement
     private var discoverLabel: String { "Découvrir".localized }
-    private var flightsLabel: String { "Vols".localized }
-    private var statsLabel: String { "Stats".localized }
-    private var chartsLabel: String { "Graphiques".localized }
+    private var logbookLabel: String { "Logbook".localized }
+    private var mapLabel: String { "Carte".localized }
     private var profileLabel: String { "Profil".localized }
+    private var settingsLabel: String { "Réglages".localized }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -46,27 +46,27 @@ struct ContentView: View {
                 }
                 .tag(0)
 
-            FlightsView()
+            LogbookView()
                 .tabItem {
-                    Label(flightsLabel, systemImage: "airplane")
+                    Label(logbookLabel, systemImage: "book.closed")
                 }
                 .tag(1)
 
-            StatsView()
+            MapTabView()
                 .tabItem {
-                    Label(statsLabel, systemImage: "chart.bar")
+                    Label(mapLabel, systemImage: "map")
                 }
                 .tag(2)
-
-            ChartsView()
-                .tabItem {
-                    Label(chartsLabel, systemImage: "chart.xyaxis.line")
-                }
-                .tag(3)
 
             ProfileView()
                 .tabItem {
                     Label(profileLabel, systemImage: "person.circle")
+                }
+                .tag(3)
+
+            SettingsTabView()
+                .tabItem {
+                    Label(settingsLabel, systemImage: "gearshape")
                 }
                 .tag(4)
         }
