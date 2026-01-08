@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct SettingsGearButton: View {
     @Environment(UserService.self) private var userService
