@@ -9,6 +9,12 @@
 import SwiftUI
 
 struct SettingsGearButton: View {
+    @Environment(UserService.self) private var userService
+    @Environment(AuthService.self) private var authService
+    @Environment(LocalizationManager.self) private var localizationManager
+    @Environment(WatchConnectivityManager.self) private var watchManager
+    @Environment(DataController.self) private var dataController
+
     @State private var showSettings = false
 
     var body: some View {
@@ -19,6 +25,12 @@ struct SettingsGearButton: View {
         }
         .sheet(isPresented: $showSettings) {
             SettingsTabView()
+                .environment(userService)
+                .environment(authService)
+                .environment(localizationManager)
+                .environment(watchManager)
+                .environment(dataController)
+                .modelContainer(dataController.modelContainer)
         }
     }
 }
