@@ -82,6 +82,10 @@ struct DiscoverView: View {
                         Image(systemName: "magnifyingglass")
                     }
                 }
+
+                ToolbarItem(placement: .topBarTrailing) {
+                    SettingsGearButton()
+                }
             }
             .sheet(isPresented: $showingSearch) {
                 SearchView()
