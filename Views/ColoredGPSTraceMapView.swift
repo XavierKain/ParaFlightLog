@@ -110,25 +110,23 @@ struct ColoredGPSTraceMapView: UIViewRepresentable {
 
 // MARK: - SpeedLegendView
 
-/// Légende des couleurs de vitesse
+/// Légende des couleurs de vitesse (horizontale par défaut)
 struct SpeedLegendView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Vitesse".localized)
-                .font(.caption.bold())
-
+        HStack(spacing: 12) {
             ForEach(GPSTraceColorMapper.getSpeedLegend(), id: \.speed) { item in
-                HStack(spacing: 8) {
+                HStack(spacing: 4) {
                     Circle()
                         .fill(item.color)
-                        .frame(width: 12, height: 12)
+                        .frame(width: 10, height: 10)
 
                     Text(item.speed)
                         .font(.caption2)
                 }
             }
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
         .background(
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(.systemBackground))

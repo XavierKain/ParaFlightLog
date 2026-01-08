@@ -1632,82 +1632,56 @@ struct FullScreenMapView: View {
     let flight: Flight
     let initialRegion: MKCoordinateRegion
 
-    @State private var mapStyle: MapStyle = .standard(elevation: .realistic)
     @State private var selectedMapStyle: Int = 0  // 0 = standard, 1 = satellite, 2 = hybrid
+    @State private var showColoredTrace = true
+
+    // Calculer les segments colorés si trace GPS disponible
+    private var coloredSegments: [SpeedSegment] {
+        guard let track = flight.gpsTrack, track.count >= 2 else { return [] }
+        return GPSTraceColorMapper.generateColoredSegments(points: track)
+    }
 
     var body: some View {
         NavigationStack {
             ZStack {
-                Map(initialPosition: .region(initialRegion)) {
-                    // Afficher la trace GPS si disponible
-                    if let track = flight.gpsTrack, track.count >= 2 {
-                        MapPolyline(coordinates: track.map {
-                            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
-                        })
-                        .stroke(.blue, lineWidth: 4)
-
-                        // Marker de départ (vert)
-                        if let first = track.first {
-                            Annotation("Départ", coordinate: CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude)) {
-                                VStack(spacing: 2) {
-                                    Image(systemName: "flag.fill")
-                                        .font(.title2)
-                                        .foregroundStyle(.white)
-                                        .padding(8)
-                                        .background(.green)
-                                        .clipShape(Circle())
-                                    if let alt = first.altitude {
-                                        Text("\(Int(alt))m")
-                                            .font(.caption2)
-                                            .fontWeight(.semibold)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(.green)
-                                            .foregroundStyle(.white)
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                            }
-                        }
-
-                        // Marker d'arrivée (rouge)
-                        if let last = track.last {
-                            Annotation("Arrivée", coordinate: CLLocationCoordinate2D(latitude: last.latitude, longitude: last.longitude)) {
-                                VStack(spacing: 2) {
-                                    Image(systemName: "flag.checkered")
-                                        .font(.title2)
-                                        .foregroundStyle(.white)
-                                        .padding(8)
-                                        .background(.red)
-                                        .clipShape(Circle())
-                                    if let alt = last.altitude {
-                                        Text("\(Int(alt))m")
-                                            .font(.caption2)
-                                            .fontWeight(.semibold)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(.red)
-                                            .foregroundStyle(.white)
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                            }
-                        }
-                    } else if let lat = flight.latitude, let lon = flight.longitude {
-                        Marker(flight.spotName ?? "Vol", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
-                            .tint(.blue)
-                    }
-                }
-                .mapStyle(mapStyle)
-                .mapControls {
-                    MapCompass()
-                    MapScaleView()
-                }
+                // Carte avec trace colorée (UIViewRepresentable)
+                FullScreenColoredMapView(
+                    flight: flight,
+                    segments: showColoredTrace ? coloredSegments : [],
+                    initialRegion: initialRegion,
+                    mapType: selectedMapStyle
+                )
                 .ignoresSafeArea(edges: .bottom)
 
-                // Contrôles en bas
+                // Contrôles overlay
                 VStack {
+                    // Toggle trace colorée en haut à droite
+                    HStack {
+                        Spacer()
+                        if !coloredSegments.isEmpty {
+                            Button {
+                                withAnimation(.spring(response: 0.3)) {
+                                    showColoredTrace.toggle()
+                                }
+                            } label: {
+                                Image(systemName: showColoredTrace ? "paintpalette.fill" : "paintpalette")
+                                    .font(.title3)
+                                    .padding(10)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Circle())
+                            }
+                            .padding(.trailing, 16)
+                            .padding(.top, 8)
+                        }
+                    }
+
                     Spacer()
+
+                    // Légende des couleurs si trace colorée active
+                    if showColoredTrace && !coloredSegments.isEmpty {
+                        SpeedLegendView()
+                            .padding(.bottom, 8)
+                    }
 
                     // Infos du vol
                     HStack(spacing: 16) {
@@ -1742,20 +1716,6 @@ struct FullScreenMapView: View {
                     .pickerStyle(.segmented)
                     .padding(.horizontal)
                     .padding(.bottom, 16)
-                    .onChange(of: selectedMapStyle) { _, newValue in
-                        withAnimation {
-                            switch newValue {
-                            case 0:
-                                mapStyle = .standard(elevation: .realistic)
-                            case 1:
-                                mapStyle = .imagery(elevation: .realistic)
-                            case 2:
-                                mapStyle = .hybrid(elevation: .realistic)
-                            default:
-                                mapStyle = .standard(elevation: .realistic)
-                            }
-                        }
-                    }
                 }
             }
             .navigationTitle(flight.spotName ?? String(localized: "Trace GPS"))
@@ -1781,6 +1741,190 @@ struct FullScreenMapView: View {
         } else {
             return "\(Int(distance)) m"
         }
+    }
+}
+
+// MARK: - FullScreenColoredMapView (UIViewRepresentable pour carte avec trace colorée)
+
+struct FullScreenColoredMapView: UIViewRepresentable {
+    let flight: Flight
+    let segments: [SpeedSegment]
+    let initialRegion: MKCoordinateRegion
+    let mapType: Int  // 0 = standard, 1 = satellite, 2 = hybrid
+
+    func makeUIView(context: Context) -> MKMapView {
+        let mapView = MKMapView()
+        mapView.delegate = context.coordinator
+        mapView.showsCompass = true
+        mapView.showsScale = true
+        mapView.setRegion(initialRegion, animated: false)
+        return mapView
+    }
+
+    func updateUIView(_ mapView: MKMapView, context: Context) {
+        // Mettre à jour le type de carte
+        switch mapType {
+        case 1:
+            mapView.mapType = .satellite
+        case 2:
+            mapView.mapType = .hybrid
+        default:
+            mapView.mapType = .standard
+        }
+
+        // Supprimer les overlays et annotations existants
+        mapView.removeOverlays(mapView.overlays)
+        mapView.removeAnnotations(mapView.annotations)
+
+        // Si on a des segments colorés, les afficher
+        if !segments.isEmpty {
+            for segment in segments {
+                let coordinates = [
+                    CLLocationCoordinate2D(
+                        latitude: segment.startPoint.latitude,
+                        longitude: segment.startPoint.longitude
+                    ),
+                    CLLocationCoordinate2D(
+                        latitude: segment.endPoint.latitude,
+                        longitude: segment.endPoint.longitude
+                    )
+                ]
+                let polyline = ColoredPolyline(coordinates: coordinates, count: 2)
+                polyline.color = UIColor(segment.color)
+                mapView.addOverlay(polyline)
+            }
+        } else if let track = flight.gpsTrack, track.count >= 2 {
+            // Trace bleue standard si pas de segments colorés
+            let coordinates = track.map {
+                CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+            }
+            let polyline = MKPolyline(coordinates: coordinates, count: coordinates.count)
+            mapView.addOverlay(polyline)
+        }
+
+        // Ajouter les annotations de départ et arrivée
+        if let track = flight.gpsTrack, track.count >= 2 {
+            if let first = track.first {
+                let startAnnotation = FlightPointAnnotation(
+                    coordinate: CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude),
+                    title: "Départ",
+                    altitude: first.altitude,
+                    isStart: true
+                )
+                mapView.addAnnotation(startAnnotation)
+            }
+
+            if let last = track.last {
+                let endAnnotation = FlightPointAnnotation(
+                    coordinate: CLLocationCoordinate2D(latitude: last.latitude, longitude: last.longitude),
+                    title: "Arrivée",
+                    altitude: last.altitude,
+                    isStart: false
+                )
+                mapView.addAnnotation(endAnnotation)
+            }
+        } else if let lat = flight.latitude, let lon = flight.longitude {
+            let annotation = MKPointAnnotation()
+            annotation.coordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+            annotation.title = flight.spotName ?? "Vol"
+            mapView.addAnnotation(annotation)
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator()
+    }
+
+    class Coordinator: NSObject, MKMapViewDelegate {
+        func mapView(_ mapView: MKMapView, rendererFor overlay: MKOverlay) -> MKOverlayRenderer {
+            if let coloredPolyline = overlay as? ColoredPolyline {
+                let renderer = MKPolylineRenderer(polyline: coloredPolyline)
+                renderer.strokeColor = coloredPolyline.color
+                renderer.lineWidth = 5
+                renderer.lineCap = .round
+                renderer.lineJoin = .round
+                return renderer
+            } else if let polyline = overlay as? MKPolyline {
+                let renderer = MKPolylineRenderer(polyline: polyline)
+                renderer.strokeColor = .systemBlue
+                renderer.lineWidth = 4
+                renderer.lineCap = .round
+                renderer.lineJoin = .round
+                return renderer
+            }
+            return MKOverlayRenderer(overlay: overlay)
+        }
+
+        func mapView(_ mapView: MKMapView, viewFor annotation: MKAnnotation) -> MKAnnotationView? {
+            guard let flightAnnotation = annotation as? FlightPointAnnotation else {
+                return nil
+            }
+
+            let identifier = flightAnnotation.isStart ? "StartAnnotation" : "EndAnnotation"
+            var annotationView = mapView.dequeueReusableAnnotationView(withIdentifier: identifier)
+
+            if annotationView == nil {
+                annotationView = MKAnnotationView(annotation: annotation, reuseIdentifier: identifier)
+                annotationView?.canShowCallout = true
+            } else {
+                annotationView?.annotation = annotation
+            }
+
+            // Créer la vue personnalisée pour l'annotation
+            let containerView = UIView(frame: CGRect(x: 0, y: 0, width: 50, height: 60))
+
+            let circleView = UIView(frame: CGRect(x: 9, y: 0, width: 32, height: 32))
+            circleView.backgroundColor = flightAnnotation.isStart ? .systemGreen : .systemRed
+            circleView.layer.cornerRadius = 16
+
+            let imageView = UIImageView(frame: CGRect(x: 6, y: 6, width: 20, height: 20))
+            let imageName = flightAnnotation.isStart ? "flag.fill" : "flag.checkered"
+            imageView.image = UIImage(systemName: imageName)
+            imageView.tintColor = .white
+            imageView.contentMode = .scaleAspectFit
+            circleView.addSubview(imageView)
+            containerView.addSubview(circleView)
+
+            // Badge altitude si disponible
+            if let altitude = flightAnnotation.altitude {
+                let altLabel = UILabel(frame: CGRect(x: 0, y: 34, width: 50, height: 18))
+                altLabel.text = "\(Int(altitude))m"
+                altLabel.font = UIFont.systemFont(ofSize: 10, weight: .semibold)
+                altLabel.textColor = .white
+                altLabel.textAlignment = .center
+                altLabel.backgroundColor = flightAnnotation.isStart ? .systemGreen : .systemRed
+                altLabel.layer.cornerRadius = 9
+                altLabel.layer.masksToBounds = true
+                containerView.addSubview(altLabel)
+            }
+
+            // Convertir la vue en image
+            let renderer = UIGraphicsImageRenderer(bounds: containerView.bounds)
+            let image = renderer.image { context in
+                containerView.layer.render(in: context.cgContext)
+            }
+            annotationView?.image = image
+            annotationView?.centerOffset = CGPoint(x: 0, y: -25)
+
+            return annotationView
+        }
+    }
+}
+
+// MARK: - FlightPointAnnotation (Annotation personnalisée pour départ/arrivée)
+
+class FlightPointAnnotation: NSObject, MKAnnotation {
+    let coordinate: CLLocationCoordinate2D
+    let title: String?
+    let altitude: Double?
+    let isStart: Bool
+
+    init(coordinate: CLLocationCoordinate2D, title: String?, altitude: Double?, isStart: Bool) {
+        self.coordinate = coordinate
+        self.title = title
+        self.altitude = altitude
+        self.isStart = isStart
+        super.init()
     }
 }
 

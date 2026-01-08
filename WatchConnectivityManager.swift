@@ -359,6 +359,12 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
         logInfo("Received data from Watch", category: .watchSync)
 
+        // Vérifier si c'est une mise à jour des settings Watch
+        if let action = userInfo["action"] as? String, action == "updateWatchSettings" {
+            handleWatchSettingsUpdate(userInfo)
+            return
+        }
+
         // Vérifier si c'est un vol
         if let flightData = userInfo["flight"] as? [String: Any],
            let jsonData = try? JSONSerialization.data(withJSONObject: flightData),
@@ -392,7 +398,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             return
         }
 
-        logWarning("Received userInfo is not a flight - ignoring", category: .watchSync)
+        logWarning("Received userInfo is not a flight or settings - ignoring", category: .watchSync)
     }
 
     /// Reçoit un message instantané depuis la Watch (alternative plus rapide)
@@ -406,6 +412,14 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                 self?.sendWingsToWatch()
             }
             replyHandler(["status": "success", "message": "Wings sync triggered"])
+            return
+        }
+
+        // Vérifier si c'est une mise à jour des settings Watch
+        if let action = message["action"] as? String, action == "updateWatchSettings" {
+            logInfo("Watch sent settings update", category: .watchSync)
+            handleWatchSettingsUpdate(message)
+            replyHandler(["status": "success", "message": "Settings updated"])
             return
         }
 
@@ -538,6 +552,47 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    // MARK: - Receive Watch Settings
+
+    /// Gère la mise à jour des paramètres Watch reçus depuis la Watch
+    /// Met à jour UserDefaults sur l'iPhone pour refléter les changements faits sur la Watch
+    private func handleWatchSettingsUpdate(_ data: [String: Any]) {
+        DispatchQueue.main.async {
+            var updated = false
+
+            if let autoWaterLock = data["watchAutoWaterLock"] as? Bool {
+                let currentValue = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+                if currentValue != autoWaterLock {
+                    UserDefaults.standard.set(autoWaterLock, forKey: UserDefaultsKeys.watchAutoWaterLock)
+                    updated = true
+                }
+            }
+
+            if let allowDismiss = data["watchAllowSessionDismiss"] as? Bool {
+                let currentValue = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
+                if currentValue != allowDismiss {
+                    UserDefaults.standard.set(allowDismiss, forKey: UserDefaultsKeys.watchAllowSessionDismiss)
+                    updated = true
+                }
+            }
+
+            if let devMode = data["developerModeEnabled"] as? Bool {
+                let currentValue = UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled)
+                if currentValue != devMode {
+                    UserDefaults.standard.set(devMode, forKey: UserDefaultsKeys.developerModeEnabled)
+                    updated = true
+                }
+            }
+
+            if updated {
+                logInfo("Watch settings updated from Watch: autoWaterLock=\(data["watchAutoWaterLock"] ?? "nil"), allowDismiss=\(data["watchAllowSessionDismiss"] ?? "nil"), devMode=\(data["developerModeEnabled"] ?? "nil")", category: .watchSync)
+
+                // Poster une notification pour que l'UI se mette à jour si nécessaire
+                NotificationCenter.default.post(name: .watchSettingsDidUpdate, object: nil)
+            }
+        }
+    }
+
     /// Reçoit un message sans réponse attendue
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         logDebug("Received message from Watch (no reply): \(message.keys)", category: .watchSync)
@@ -549,5 +604,18 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                 self?.sendWingsToWatch()
             }
         }
+
+        // Vérifier si c'est une mise à jour des settings Watch
+        if let action = message["action"] as? String, action == "updateWatchSettings" {
+            logInfo("Watch sent settings update (no reply)", category: .watchSync)
+            handleWatchSettingsUpdate(message)
+        }
     }
+}
+
+// MARK: - Notification Name Extension
+
+extension Notification.Name {
+    /// Notification envoyée quand les paramètres Watch sont mis à jour depuis la Watch
+    static let watchSettingsDidUpdate = Notification.Name("watchSettingsDidUpdate")
 }

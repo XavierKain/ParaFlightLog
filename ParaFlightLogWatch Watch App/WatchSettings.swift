@@ -2,7 +2,7 @@
 //  WatchSettings.swift
 //  ParaFlightLogWatch Watch App
 //
-//  Gestion des paramètres de l'Apple Watch synchronisés depuis l'iPhone
+//  Gestion des paramètres de l'Apple Watch synchronisés avec l'iPhone
 //  Target: Watch only
 //
 
@@ -15,11 +15,15 @@ final class WatchSettings {
 
     // MARK: - Settings Properties
 
+    /// Flag pour éviter les boucles de sync (ne pas renvoyer les settings reçus de l'iPhone)
+    private var isUpdatingFromPhone = false
+
     /// Active le waterlock automatiquement pendant un vol
     /// Empêche les touches accidentelles sur l'écran
     var autoWaterLockEnabled: Bool {
         didSet {
             UserDefaults.standard.set(autoWaterLockEnabled, forKey: "autoWaterLockEnabled")
+            notifySettingsChanged()
         }
     }
 
@@ -28,6 +32,7 @@ final class WatchSettings {
     var allowSessionDismiss: Bool {
         didSet {
             UserDefaults.standard.set(allowSessionDismiss, forKey: "allowSessionDismiss")
+            notifySettingsChanged()
         }
     }
 
@@ -36,6 +41,7 @@ final class WatchSettings {
     var developerModeEnabled: Bool {
         didSet {
             UserDefaults.standard.set(developerModeEnabled, forKey: "developerModeEnabled")
+            notifySettingsChanged()
         }
     }
 
@@ -48,10 +54,28 @@ final class WatchSettings {
         self.developerModeEnabled = UserDefaults.standard.object(forKey: "developerModeEnabled") as? Bool ?? false
     }
 
+    // MARK: - Sync to iPhone
+
+    /// Envoie les paramètres modifiés vers l'iPhone
+    /// Ne fait rien si on est en train de recevoir des settings de l'iPhone (évite les boucles)
+    private func notifySettingsChanged() {
+        guard !isUpdatingFromPhone else { return }
+
+        WatchConnectivityManager.shared.sendSettingsToPhone(
+            autoWaterLock: autoWaterLockEnabled,
+            allowSessionDismiss: allowSessionDismiss,
+            developerMode: developerModeEnabled
+        )
+    }
+
     // MARK: - Update from iPhone
 
     /// Met à jour les paramètres depuis un contexte reçu de l'iPhone
     func updateFromContext(_ context: [String: Any]) {
+        // Marquer qu'on reçoit depuis l'iPhone pour ne pas renvoyer les mêmes settings
+        isUpdatingFromPhone = true
+        defer { isUpdatingFromPhone = false }
+
         if let autoWaterLock = context["watchAutoWaterLock"] as? Bool {
             autoWaterLockEnabled = autoWaterLock
         }
@@ -66,7 +90,7 @@ final class WatchSettings {
 
         // Log uniquement si mode dev activé (évite le log au démarrage si désactivé)
         if developerModeEnabled {
-            watchLogDebug("Settings updated: autoWaterLock=\(autoWaterLockEnabled), allowDismiss=\(allowSessionDismiss), devMode=\(developerModeEnabled)", category: .settings)
+            watchLogDebug("Settings updated from iPhone: autoWaterLock=\(autoWaterLockEnabled), allowDismiss=\(allowSessionDismiss), devMode=\(developerModeEnabled)", category: .settings)
         }
     }
 

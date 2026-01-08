@@ -138,6 +138,53 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    // MARK: - Send Settings to iPhone
+
+    /// Envoie les paramètres Watch vers l'iPhone
+    /// Appelé quand un paramètre change sur la Watch
+    func sendSettingsToPhone(autoWaterLock: Bool, allowSessionDismiss: Bool, developerMode: Bool) {
+        guard sessionActivated else {
+            watchLogWarning("Cannot send settings: session not activated", category: .watchSync)
+            return
+        }
+
+        let message: [String: Any] = [
+            "action": "updateWatchSettings",
+            "watchAutoWaterLock": autoWaterLock,
+            "watchAllowSessionDismiss": allowSessionDismiss,
+            "developerModeEnabled": developerMode
+        ]
+
+        if isPhoneReachable {
+            // Envoi instantané si iPhone joignable
+            WCSession.default.sendMessage(message, replyHandler: { reply in
+                let status = reply["status"] as? String
+                if status == "success" {
+                    watchLogInfo("Settings synced to iPhone", category: .watchSync)
+                }
+            }, errorHandler: { [weak self] error in
+                watchLogWarning("sendSettingsToPhone failed, using transferUserInfo: \(error.localizedDescription)", category: .watchSync)
+                // Fallback sur transferUserInfo
+                self?.sendSettingsViaTransfer(autoWaterLock: autoWaterLock, allowSessionDismiss: allowSessionDismiss, developerMode: developerMode)
+            })
+        } else {
+            // iPhone non joignable, utiliser transferUserInfo
+            sendSettingsViaTransfer(autoWaterLock: autoWaterLock, allowSessionDismiss: allowSessionDismiss, developerMode: developerMode)
+        }
+    }
+
+    /// Envoie les paramètres via transferUserInfo (quand iPhone non joignable)
+    private func sendSettingsViaTransfer(autoWaterLock: Bool, allowSessionDismiss: Bool, developerMode: Bool) {
+        let userInfo: [String: Any] = [
+            "action": "updateWatchSettings",
+            "watchAutoWaterLock": autoWaterLock,
+            "watchAllowSessionDismiss": allowSessionDismiss,
+            "developerModeEnabled": developerMode
+        ]
+        WCSession.default.transferUserInfo(userInfo)
+        watchLogInfo("Settings sent to iPhone via transferUserInfo", category: .watchSync)
+    }
+
     // MARK: - Live Flight
 
     /// Notifie l'iPhone qu'un vol en direct démarre
