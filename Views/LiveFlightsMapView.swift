@@ -193,15 +193,17 @@ struct LiveFlightMarker: View {
                     .offset(x: 16, y: -16)
             }
 
-            // Durée du vol
-            Text(flight.formattedDuration)
-                .font(.caption2)
-                .fontWeight(.medium)
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
-                .background(Color.black.opacity(0.7))
-                .foregroundStyle(.white)
-                .clipShape(Capsule())
+            // Durée du vol - utilise TimelineView pour mettre à jour automatiquement
+            TimelineView(.periodic(from: Date(), by: 10.0)) { context in
+                Text(flight.formattedDuration)
+                    .font(.caption2)
+                    .fontWeight(.medium)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(Color.black.opacity(0.7))
+                    .foregroundStyle(.white)
+                    .clipShape(Capsule())
+            }
         }
     }
 }
@@ -239,120 +241,127 @@ struct LiveFlightDetailSheet: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                // Header pilote
-                HStack(spacing: 16) {
-                    if let photoId = flight.pilotPhotoFileId {
-                        ProfilePhotoView(fileId: photoId, displayName: flight.pilotName, size: 60)
-                    } else {
-                        Circle()
-                            .fill(Color.blue.opacity(0.2))
-                            .frame(width: 60, height: 60)
-                            .overlay {
-                                Text(flight.pilotName.prefix(1).uppercased())
-                                    .font(.title)
-                                    .fontWeight(.bold)
-                                    .foregroundStyle(.blue)
-                            }
-                    }
+            // Utiliser TimelineView pour mettre à jour automatiquement la durée
+            TimelineView(.periodic(from: Date(), by: 10.0)) { context in
+                sheetContent
+            }
+        }
+    }
 
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(flight.pilotName)
-                            .font(.title2)
-                            .fontWeight(.bold)
-
-                        Text("@\(flight.pilotUsername)")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Spacer()
-
-                    // Badge "En vol"
-                    HStack(spacing: 4) {
-                        Circle()
-                            .fill(Color.green)
-                            .frame(width: 8, height: 8)
-                        Text("En vol".localized)
-                            .font(.caption)
-                            .fontWeight(.medium)
-                    }
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(Color.green.opacity(0.15))
-                    .foregroundStyle(.green)
-                    .clipShape(Capsule())
+    private var sheetContent: some View {
+        VStack(spacing: 20) {
+            // Header pilote
+            HStack(spacing: 16) {
+                if let photoId = flight.pilotPhotoFileId {
+                    ProfilePhotoView(fileId: photoId, displayName: flight.pilotName, size: 60)
+                } else {
+                    Circle()
+                        .fill(Color.blue.opacity(0.2))
+                        .frame(width: 60, height: 60)
+                        .overlay {
+                            Text(flight.pilotName.prefix(1).uppercased())
+                                .font(.title)
+                                .fontWeight(.bold)
+                                .foregroundStyle(.blue)
+                        }
                 }
-                .padding()
 
-                Divider()
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(flight.pilotName)
+                        .font(.title2)
+                        .fontWeight(.bold)
 
-                // Stats du vol
-                LazyVGrid(columns: [
-                    GridItem(.flexible()),
-                    GridItem(.flexible()),
-                    GridItem(.flexible())
-                ], spacing: 16) {
-                    LiveFlightStatCard(
-                        icon: "clock.fill",
-                        value: flight.formattedDuration,
-                        label: "Durée".localized
-                    )
-
-                    if let altitude = flight.altitude {
-                        LiveFlightStatCard(
-                            icon: "arrow.up",
-                            value: "\(Int(altitude))m",
-                            label: "Altitude".localized
-                        )
-                    } else {
-                        LiveFlightStatCard(
-                            icon: "arrow.up",
-                            value: "—",
-                            label: "Altitude".localized
-                        )
-                    }
-
-                    if let spotName = flight.spotName {
-                        LiveFlightStatCard(
-                            icon: "mappin",
-                            value: spotName,
-                            label: "Spot".localized
-                        )
-                    } else {
-                        LiveFlightStatCard(
-                            icon: "mappin",
-                            value: "—",
-                            label: "Spot".localized
-                        )
-                    }
-                }
-                .padding(.horizontal)
-
-                // Voile
-                if let wingName = flight.wingName {
-                    HStack {
-                        Image(systemName: "wind")
-                            .foregroundStyle(.blue)
-                        Text(wingName)
-                            .font(.subheadline)
-                        Spacer()
-                    }
-                    .padding()
-                    .background(Color.blue.opacity(0.1))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-                    .padding(.horizontal)
+                    Text("@\(flight.pilotUsername)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                 }
 
                 Spacer()
+
+                // Badge "En vol"
+                HStack(spacing: 4) {
+                    Circle()
+                        .fill(Color.green)
+                        .frame(width: 8, height: 8)
+                    Text("En vol".localized)
+                        .font(.caption)
+                        .fontWeight(.medium)
+                }
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(Color.green.opacity(0.15))
+                .foregroundStyle(.green)
+                .clipShape(Capsule())
             }
-            .navigationTitle("Vol en direct".localized)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fermer".localized) {
-                        dismiss()
-                    }
+            .padding()
+
+            Divider()
+
+            // Stats du vol
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: 16) {
+                LiveFlightStatCard(
+                    icon: "clock.fill",
+                    value: flight.formattedDuration,
+                    label: "Durée".localized
+                )
+
+                if let altitude = flight.altitude {
+                    LiveFlightStatCard(
+                        icon: "arrow.up",
+                        value: "\(Int(altitude))m",
+                        label: "Altitude".localized
+                    )
+                } else {
+                    LiveFlightStatCard(
+                        icon: "arrow.up",
+                        value: "—",
+                        label: "Altitude".localized
+                    )
+                }
+
+                if let spotName = flight.spotName {
+                    LiveFlightStatCard(
+                        icon: "mappin",
+                        value: spotName,
+                        label: "Spot".localized
+                    )
+                } else {
+                    LiveFlightStatCard(
+                        icon: "mappin",
+                        value: "—",
+                        label: "Spot".localized
+                    )
+                }
+            }
+            .padding(.horizontal)
+
+            // Voile
+            if let wingName = flight.wingName {
+                HStack {
+                    Image(systemName: "wind")
+                        .foregroundStyle(.blue)
+                    Text(wingName)
+                        .font(.subheadline)
+                    Spacer()
+                }
+                .padding()
+                .background(Color.blue.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .padding(.horizontal)
+            }
+
+            Spacer()
+        }
+        .navigationTitle("Vol en direct".localized)
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Fermer".localized) {
+                    dismiss()
                 }
             }
         }

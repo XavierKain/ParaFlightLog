@@ -436,6 +436,8 @@ final class UserService {
         }
 
         do {
+            logInfo("updateProfile: Starting with data: \(updateData)", category: .auth)
+
             let document = try await tablesDB.updateRow(
                 databaseId: AppwriteConfig.databaseId,
                 tableId: AppwriteConfig.usersCollectionId,
@@ -444,13 +446,19 @@ final class UserService {
             )
 
             let updatedProfile = try parseProfile(from: document.data)
-            currentUserProfile = updatedProfile
-            profileCache[updatedProfile.id] = updatedProfile
 
-            logInfo("Profile updated", category: .auth)
+            // S'assurer que la mise à jour est faite sur le main actor pour la réactivité SwiftUI
+            await MainActor.run {
+                currentUserProfile = updatedProfile
+                profileCache[updatedProfile.id] = updatedProfile
+            }
+
+            logInfo("updateProfile: currentUserProfile updated to: \(updatedProfile.displayName)", category: .auth)
         } catch let error as AppwriteError {
+            logError("updateProfile: Appwrite error - message: \(error.message), code: \(error.code ?? 0), type: \(error.type ?? "unknown")", category: .auth)
             throw UserProfileError.unknown(error.message)
         } catch {
+            logError("updateProfile: Unknown error - \(error.localizedDescription)", category: .auth)
             throw UserProfileError.unknown(error.localizedDescription)
         }
     }

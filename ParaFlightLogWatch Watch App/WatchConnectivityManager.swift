@@ -344,7 +344,4 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         return false
     }
 
-    #if os(watchOS)
-    // Pas besoin d'implémenter sessionDidBecomeInactive/sessionDidDeactivate sur watchOS
-    #endif
 }

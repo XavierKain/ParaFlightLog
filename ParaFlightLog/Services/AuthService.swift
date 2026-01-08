@@ -180,6 +180,18 @@ final class AuthService {
         currentUserId = nil
         currentEmail = nil
         authState = .unauthenticated
+
+        // Nettoyer tous les caches de services pour éviter les fuites de données entre utilisateurs
+        await MainActor.run {
+            UserService.shared.clearLocalData()
+            BadgeService.shared.clearLocalData()
+            // TODO: Ajouter d'autres services si nécessaire (LiveFlightService, DiscoveryService, etc.)
+        }
+
+        // Nettoyer UserDefaults
+        UserDefaults.standard.removeObject(forKey: "lastAuthenticatedUserId")
+
+        logInfo("Full logout completed with service cleanup", category: .auth)
     }
 
     // MARK: - Sign Up

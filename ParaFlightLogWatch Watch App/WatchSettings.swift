@@ -7,7 +7,6 @@
 //
 
 import Foundation
-import WatchKit
 
 /// Singleton pour gérer les paramètres de la Watch
 @Observable
@@ -74,9 +73,10 @@ final class WatchSettings {
     // MARK: - Water Lock Control
 
     /// Active le water lock sur l'Apple Watch
+    /// Note: WKInterfaceDevice.enableWaterLock() est déprécié sur watchOS 10+
+    /// L'utilisateur doit activer Water Lock manuellement
     func enableWaterLock() {
-        #if os(watchOS)
-        WKInterfaceDevice.current().enableWaterLock()
-        #endif
+        // Water Lock doit être activé manuellement par l'utilisateur sur watchOS 10+
+        watchLogInfo("Water Lock should be enabled manually by user (WKInterfaceDevice deprecated)", category: .workout)
     }
 }

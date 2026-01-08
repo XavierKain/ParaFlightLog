@@ -17,14 +17,16 @@ struct GPSTrackPoint: Codable, Identifiable {
     let longitude: Double
     let altitude: Double?
     let speed: Double?       // Vitesse en m/s
+    let accuracy: Double?    // Précision horizontale en mètres
 
-    init(id: UUID = UUID(), timestamp: Date = Date(), latitude: Double, longitude: Double, altitude: Double? = nil, speed: Double? = nil) {
+    init(id: UUID = UUID(), timestamp: Date = Date(), latitude: Double, longitude: Double, altitude: Double? = nil, speed: Double? = nil, accuracy: Double? = nil) {
         self.id = id
         self.timestamp = timestamp
         self.latitude = latitude
         self.longitude = longitude
         self.altitude = altitude
         self.speed = speed
+        self.accuracy = accuracy
     }
 }
 

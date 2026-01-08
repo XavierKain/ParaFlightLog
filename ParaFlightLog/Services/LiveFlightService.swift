@@ -68,10 +68,31 @@ struct LiveFlight: Identifiable, Equatable, Hashable {
         self.wingName = data["wingName"] as? String
         self.isActive = data["isActive"] as? Bool ?? true
 
-        if let startedAtStr = data["startedAt"] as? String,
-           let startedAt = ISO8601DateFormatter().date(from: startedAtStr) {
-            self.startedAt = startedAt
+        if let startedAtStr = data["startedAt"] as? String {
+            // Essayer plusieurs formats de date
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+            if let date = formatter.date(from: startedAtStr) {
+                self.startedAt = date
+            } else {
+                // Fallback: essayer sans fractions de secondes
+                formatter.formatOptions = [.withInternetDateTime]
+                if let date = formatter.date(from: startedAtStr) {
+                    self.startedAt = date
+                } else {
+                    // Fallback: essayer le format compact
+                    formatter.formatOptions = [.withYear, .withMonth, .withDay, .withTime, .withColonSeparatorInTime, .withTimeZone]
+                    if let date = formatter.date(from: startedAtStr) {
+                        self.startedAt = date
+                    } else {
+                        logError("Failed to parse startedAt date: \(startedAtStr), using current date", category: .sync)
+                        self.startedAt = Date()
+                    }
+                }
+            }
         } else {
+            logError("No startedAt string in live flight data, using current date", category: .sync)
             self.startedAt = Date()
         }
     }

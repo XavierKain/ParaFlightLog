@@ -435,6 +435,7 @@ struct QuickBadgeShareButton: View {
         pilotName: "Jean Dupont",
         pilotUsername: "jeandupont",
         pilotPhotoFileId: nil,
+        pilotLevel: 3,
         startDate: Date(),
         durationSeconds: 5400,
         spotId: "spot1",

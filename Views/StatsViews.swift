@@ -24,6 +24,9 @@ struct StatsView: View {
                     // Carte totale
                     TotalStatsCard(flights: flights)
 
+                    // Personal Records section
+                    PersonalRecordsCard(flights: flights)
+
                     // Tableau et graphique par voile
                     StatsByWingSection(flights: flights, wings: wings)
 
@@ -89,6 +92,146 @@ struct TotalStatsCard: View {
         .background(Color(.systemBackground))
         .cornerRadius(16)
         .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+}
+
+// MARK: - PersonalRecordsCard
+
+struct PersonalRecordsCard: View {
+    let flights: [Flight]
+
+    private var longestFlight: Flight? {
+        flights.max(by: { $0.durationSeconds < $1.durationSeconds })
+    }
+
+    private var highestAltitude: Flight? {
+        flights.compactMap { flight in
+            flight.maxAltitude != nil ? flight : nil
+        }.max(by: { ($0.maxAltitude ?? 0) < ($1.maxAltitude ?? 0) })
+    }
+
+    private var longestDistance: Flight? {
+        flights.compactMap { flight in
+            flight.totalDistance != nil ? flight : nil
+        }.max(by: { ($0.totalDistance ?? 0) < ($1.totalDistance ?? 0) })
+    }
+
+    private var fastestSpeed: Flight? {
+        flights.compactMap { flight in
+            flight.maxSpeed != nil ? flight : nil
+        }.max(by: { ($0.maxSpeed ?? 0) < ($1.maxSpeed ?? 0) })
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Image(systemName: "trophy.fill")
+                    .foregroundStyle(.orange)
+                Text("Records Personnels")
+                    .font(.title3)
+                    .fontWeight(.bold)
+            }
+
+            LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+                // Longest flight
+                if let flight = longestFlight {
+                    RecordItem(
+                        icon: "clock.fill",
+                        color: .blue,
+                        title: "Vol le plus long",
+                        value: formatDuration(flight.durationSeconds),
+                        subtitle: flight.spotName ?? "N/A"
+                    )
+                }
+
+                // Highest altitude
+                if let flight = highestAltitude, let altitude = flight.maxAltitude {
+                    RecordItem(
+                        icon: "arrow.up.circle.fill",
+                        color: .orange,
+                        title: "Altitude max",
+                        value: "\(Int(altitude)) m",
+                        subtitle: flight.spotName ?? "N/A"
+                    )
+                }
+
+                // Longest distance
+                if let flight = longestDistance, let distance = flight.totalDistance {
+                    RecordItem(
+                        icon: "point.topleft.down.to.point.bottomright.curvepath.fill",
+                        color: .cyan,
+                        title: "Distance max",
+                        value: distance >= 1000 ? String(format: "%.1f km", distance / 1000) : "\(Int(distance)) m",
+                        subtitle: flight.spotName ?? "N/A"
+                    )
+                }
+
+                // Fastest speed
+                if let flight = fastestSpeed, let speed = flight.maxSpeed {
+                    RecordItem(
+                        icon: "speedometer",
+                        color: .purple,
+                        title: "Vitesse max",
+                        value: "\(Int(speed * 3.6)) km/h",
+                        subtitle: flight.spotName ?? "N/A"
+                    )
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+
+    private func formatDuration(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        if hours > 0 {
+            return "\(hours)h \(minutes)min"
+        } else {
+            return "\(minutes) min"
+        }
+    }
+}
+
+struct RecordItem: View {
+    let icon: String
+    let color: Color
+    let title: String
+    let value: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Image(systemName: icon)
+                    .font(.title3)
+                    .foregroundStyle(color)
+
+                Spacer()
+            }
+
+            Text(value)
+                .font(.title2)
+                .fontWeight(.bold)
+                .foregroundStyle(color)
+
+            Text(title)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(.primary)
+
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(color.opacity(0.1))
+        .cornerRadius(12)
     }
 }
 

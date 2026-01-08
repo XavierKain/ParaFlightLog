@@ -227,8 +227,7 @@ struct ParaFlightLogWidget: Widget {
         .supportedFamilies([
             .accessoryCircular,
             .accessoryRectangular,
-            .accessoryInline,
-            .accessoryCorner
+            .accessoryInline
         ])
     }
 }

@@ -226,7 +226,7 @@ struct LeaderboardRow: View {
     let type: LeaderboardType
 
     private var isCurrentUser: Bool {
-        entry.oderId == UserService.shared.currentUserProfile?.id
+        entry.userId == UserService.shared.currentUserProfile?.id
     }
 
     var body: some View {

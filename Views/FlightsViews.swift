@@ -369,6 +369,13 @@ struct FlightDetailView: View {
     let flight: Flight
     @State private var showingEditSheet = false
     @State private var showingFullScreenMap = false
+    @State private var showColoredTrace = true  // Toggle pour afficher la trace colorée
+
+    // Calculer les segments colorés si trace GPS disponible
+    private var coloredSegments: [SpeedSegment] {
+        guard let track = flight.gpsTrack, track.count >= 2 else { return [] }
+        return GPSTraceColorMapper.generateColoredSegments(points: track)
+    }
 
     // Calcul de la région pour afficher toute la trace GPS
     private var mapRegion: MKCoordinateRegion {
@@ -407,47 +414,79 @@ struct FlightDetailView: View {
                 VStack(spacing: 20) {
                     // Map avec trace GPS ou simple marker (cliquable pour plein écran)
                     if flight.gpsTrack != nil || (flight.latitude != nil && flight.longitude != nil) {
-                        Map(initialPosition: .region(mapRegion)) {
-                            // Afficher la trace GPS si disponible
-                            if let track = flight.gpsTrack, track.count >= 2 {
-                                MapPolyline(coordinates: track.map {
-                                    CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
-                                })
-                                .stroke(.blue, lineWidth: 3)
+                        ZStack(alignment: .topTrailing) {
+                            // Afficher trace GPS colorée ou carte standard
+                            if showColoredTrace && !coloredSegments.isEmpty {
+                                ColoredGPSTraceMapView(segments: coloredSegments, showLegend: false)
+                                    .frame(height: 220)
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                            } else {
+                                Map(initialPosition: .region(mapRegion)) {
+                                    // Afficher la trace GPS si disponible
+                                    if let track = flight.gpsTrack, track.count >= 2 {
+                                        MapPolyline(coordinates: track.map {
+                                            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+                                        })
+                                        .stroke(.blue, lineWidth: 3)
 
-                                // Marker de départ (vert)
-                                if let first = track.first {
-                                    Marker("Départ", systemImage: "flag.fill", coordinate:
-                                        CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude))
-                                        .tint(.green)
-                                }
+                                        // Marker de départ (vert)
+                                        if let first = track.first {
+                                            Marker("Départ", systemImage: "flag.fill", coordinate:
+                                                CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude))
+                                                .tint(.green)
+                                        }
 
-                                // Marker d'arrivée (rouge)
-                                if let last = track.last {
-                                    Marker("Arrivée", systemImage: "flag.checkered", coordinate:
-                                        CLLocationCoordinate2D(latitude: last.latitude, longitude: last.longitude))
-                                        .tint(.red)
+                                        // Marker d'arrivée (rouge)
+                                        if let last = track.last {
+                                            Marker("Arrivée", systemImage: "flag.checkered", coordinate:
+                                                CLLocationCoordinate2D(latitude: last.latitude, longitude: last.longitude))
+                                                .tint(.red)
+                                        }
+                                    } else if let lat = flight.latitude, let lon = flight.longitude {
+                                        Marker(flight.spotName ?? "Vol", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+                                            .tint(.blue)
+                                    }
                                 }
-                            } else if let lat = flight.latitude, let lon = flight.longitude {
-                                Marker(flight.spotName ?? "Vol", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
-                                    .tint(.blue)
+                                .frame(height: 220)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
                             }
-                        }
-                        .frame(height: 220)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .overlay(alignment: .topTrailing) {
-                            // Icône pour indiquer que la carte est cliquable
-                            Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                .font(.caption)
-                                .padding(6)
-                                .background(.ultraThinMaterial)
-                                .clipShape(Circle())
-                                .padding(8)
+
+                            // Overlay controls
+                            VStack(spacing: 8) {
+                                // Toggle colored trace (only if GPS data available)
+                                if !coloredSegments.isEmpty {
+                                    Button {
+                                        withAnimation(.spring(response: 0.3)) {
+                                            showColoredTrace.toggle()
+                                        }
+                                    } label: {
+                                        Image(systemName: showColoredTrace ? "paintpalette.fill" : "paintpalette")
+                                            .font(.caption)
+                                            .padding(6)
+                                            .background(.ultraThinMaterial)
+                                            .clipShape(Circle())
+                                    }
+                                }
+
+                                // Full screen icon
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .font(.caption)
+                                    .padding(6)
+                                    .background(.ultraThinMaterial)
+                                    .clipShape(Circle())
+                            }
+                            .padding(8)
                         }
                         .onTapGesture {
                             showingFullScreenMap = true
                         }
                         .padding(.horizontal)
+
+                        // Legend when colored trace is active
+                        if showColoredTrace && !coloredSegments.isEmpty {
+                            SpeedLegendView()
+                                .padding(.horizontal)
+                        }
 
                         // Info sur la trace GPS
                         if let track = flight.gpsTrack, !track.isEmpty {

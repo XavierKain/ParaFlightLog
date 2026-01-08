@@ -180,7 +180,7 @@ struct Badge: Identifiable, Codable, Equatable {
 /// Badge obtenu par un utilisateur
 struct UserBadge: Identifiable, Codable, Equatable {
     let id: String
-    let oderId: String
+    let userId: String
     let badgeId: String
     let earnedAt: Date
 
@@ -191,7 +191,7 @@ struct UserBadge: Identifiable, Codable, Equatable {
         }
 
         self.id = id
-        self.oderId = data["userId"] as? String ?? ""
+        self.userId = data["userId"] as? String ?? ""
         self.badgeId = data["badgeId"] as? String ?? ""
 
         if let earnedAtStr = data["earnedAt"] as? String,
@@ -204,7 +204,7 @@ struct UserBadge: Identifiable, Codable, Equatable {
 
     init(id: String, userId: String, badgeId: String, earnedAt: Date) {
         self.id = id
-        self.oderId = userId
+        self.userId = userId
         self.badgeId = badgeId
         self.earnedAt = earnedAt
     }
@@ -265,7 +265,7 @@ final class BadgeService {
     private let tablesDB: TablesDB
 
     /// Cache des badges disponibles
-    private(set) var allBadges: [Badge] = []
+    private(set) var allBadges: [Badge]
 
     /// Badges obtenus par l'utilisateur courant
     private(set) var userBadges: [UserBadge] = []
@@ -274,17 +274,24 @@ final class BadgeService {
     private var earnedBadgeIds: Set<String> = []
 
     private(set) var isLoading = false
+    private(set) var isInitialized = false
 
     // MARK: - Init
 
     private init() {
         self.databases = AppwriteService.shared.databases
         self.tablesDB = AppwriteService.shared.tablesDB
+        self.allBadges = BadgeService.predefinedBadges // Initialize with predefined badges
+        // Ne PAS charger les badges ici pour éviter la condition de course
+    }
 
-        // Charger les badges prédéfinis si pas encore en base
-        Task {
-            await loadAllBadges()
-        }
+    /// Initialise le service en chargeant les badges
+    /// À appeler explicitement au lancement de l'app
+    @MainActor
+    func initialize() async {
+        guard !isInitialized else { return }
+        await loadAllBadges()
+        isInitialized = true
     }
 
     // MARK: - Public Methods

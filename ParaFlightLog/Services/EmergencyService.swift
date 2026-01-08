@@ -74,7 +74,7 @@ struct EmergencyContact: Identifiable, Codable, Equatable {
 /// Alerte SOS
 struct SOSAlert: Identifiable, Codable {
     let id: String
-    let oderId: String
+    let userId: String
     let latitude: Double
     let longitude: Double
     let altitude: Double?
@@ -90,7 +90,7 @@ struct SOSAlert: Identifiable, Codable {
         }
 
         self.id = id
-        self.oderId = data["userId"] as? String ?? ""
+        self.userId = data["userId"] as? String ?? ""
         self.latitude = data["latitude"] as? Double ?? 0
         self.longitude = data["longitude"] as? Double ?? 0
         self.altitude = data["altitude"] as? Double

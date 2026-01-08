@@ -875,10 +875,9 @@ struct ProfileView: View {
                 if let profile = userProfile {
                     Section {
                         ProfileHeaderView(profile: profile)
-                            .onTapGesture {
-                                showingEditProfile = true
-                            }
                     }
+                    .listRowInsets(EdgeInsets())  // Full width header
+                    .listRowBackground(Color.clear)
 
                     // Stats rapides
                     Section("Statistiques") {
@@ -1803,84 +1802,188 @@ struct ProfilePhotoView: View {
 
 struct ProfileHeaderView: View {
     let profile: CloudUserProfile
+    @State private var isAnimatingStreak = false
 
     var body: some View {
-        VStack(spacing: 16) {
-            HStack(spacing: 16) {
-                // Avatar
-                ProfilePhotoView(
-                    fileId: profile.profilePhotoFileId,
-                    displayName: profile.displayName,
-                    size: 80
+        VStack(spacing: 0) {
+            // Cover image / Hero section
+            ZStack(alignment: .bottom) {
+                // Gradient cover (placeholder - could be custom image in future)
+                LinearGradient(
+                    colors: [.blue.opacity(0.6), .cyan.opacity(0.4), .teal.opacity(0.3)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
                 )
+                .frame(height: 120)
+                .overlay {
+                    // Optional: Sky/paragliding themed pattern
+                    Image(systemName: "cloud.fill")
+                        .font(.system(size: 80))
+                        .foregroundStyle(.white.opacity(0.1))
+                        .offset(x: -50, y: -10)
+                    Image(systemName: "cloud.fill")
+                        .font(.system(size: 60))
+                        .foregroundStyle(.white.opacity(0.08))
+                        .offset(x: 80, y: 15)
+                }
 
-                VStack(alignment: .leading, spacing: 4) {
+                // Profile photo overlapping cover
+                VStack(spacing: 0) {
+                    Spacer()
+                    ProfilePhotoView(
+                        fileId: profile.profilePhotoFileId,
+                        displayName: profile.displayName,
+                        size: 100
+                    )
+                    .overlay(
+                        Circle()
+                            .strokeBorder(Color(.systemBackground), lineWidth: 4)
+                    )
+                    .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 2)
+                    .offset(y: 50)
+                }
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+
+            // Profile info section (with padding for overlapping photo)
+            VStack(spacing: 12) {
+                Spacer()
+                    .frame(height: 60)
+
+                // Name and username
+                VStack(spacing: 4) {
                     Text(profile.displayName)
-                        .font(.title3)
-                        .fontWeight(.semibold)
+                        .font(.title2)
+                        .fontWeight(.bold)
 
                     Text("@\(profile.username)")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+                }
 
-                    // Level badge
-                    HStack(spacing: 4) {
-                        Image(systemName: "star.fill")
-                            .font(.caption2)
-                            .foregroundStyle(.orange)
-                        Text("Niveau \(profile.level)")
+                // Level badge with prominent display
+                HStack(spacing: 8) {
+                    Image(systemName: "star.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(levelColor(for: profile.level))
+                    Text("Niveau \(profile.level)")
+                        .font(.subheadline)
+                        .fontWeight(.semibold)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .background(levelColor(for: profile.level).opacity(0.15))
+                .clipShape(Capsule())
+
+                // XP Progress bar
+                VStack(spacing: 6) {
+                    HStack {
+                        Text("\(profile.xpTotal) XP")
                             .font(.caption)
                             .fontWeight(.medium)
-                        Text("• \(profile.xpTotal) XP")
+                        Spacer()
+                        Text("Prochain niveau: \(xpForLevel(profile.level + 1)) XP")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    GeometryReader { geometry in
+                        ZStack(alignment: .leading) {
+                            // Background track
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(Color(.systemGray5))
+
+                            // Progress fill
+                            RoundedRectangle(cornerRadius: 8)
+                                .fill(LinearGradient(
+                                    colors: [levelColor(for: profile.level), levelColor(for: profile.level).opacity(0.7)],
+                                    startPoint: .leading,
+                                    endPoint: .trailing
+                                ))
+                                .frame(width: geometry.size.width * levelProgress(for: profile))
+                        }
+                    }
+                    .frame(height: 10)
+                }
+                .padding(.horizontal)
+
+                // Streak with animation
+                if profile.currentStreak > 0 {
+                    HStack(spacing: 6) {
+                        Image(systemName: "flame.fill")
+                            .foregroundStyle(.orange)
+                            .scaleEffect(isAnimatingStreak ? 1.2 : 1.0)
+                            .animation(
+                                .easeInOut(duration: 0.6)
+                                .repeatForever(autoreverses: true),
+                                value: isAnimatingStreak
+                            )
+                        Text("\(profile.currentStreak) jour\(profile.currentStreak > 1 ? "s" : "") de série")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Text("🔥")
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.orange.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .onAppear {
+                        isAnimatingStreak = true
+                    }
+                }
+
+                // Bio
+                if let bio = profile.bio, !bio.isEmpty {
+                    Text(bio)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                // Additional info
+                HStack(spacing: 20) {
+                    if let weight = profile.pilotWeight {
+                        Label("\(Int(weight)) kg", systemImage: "scalemass")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                }
 
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(.secondary)
-            }
-
-            // Bio si présente
-            if let bio = profile.bio, !bio.isEmpty {
-                Text(bio)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-
-            // Informations supplémentaires
-            HStack(spacing: 16) {
-                if let weight = profile.pilotWeight {
-                    Label("\(Int(weight)) kg", systemImage: "scalemass")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if let location = profile.homeLocationName, !location.isEmpty {
-                    Label(location, systemImage: "location.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-
-                Spacer()
-
-                // Série actuelle
-                if profile.currentStreak > 0 {
-                    HStack(spacing: 2) {
-                        Image(systemName: "flame.fill")
-                            .foregroundStyle(.orange)
-                        Text("\(profile.currentStreak)")
-                            .fontWeight(.semibold)
+                    if let location = profile.homeLocationName, !location.isEmpty {
+                        Label(location, systemImage: "location.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
                     }
-                    .font(.caption)
                 }
             }
+            .padding(.bottom, 16)
         }
-        .padding(.vertical, 8)
+        .background(Color(.systemBackground))
+    }
+
+    private func levelColor(for level: Int) -> Color {
+        switch level {
+        case 1...5: return .green
+        case 6...10: return .blue
+        case 11...20: return .purple
+        case 21...50: return .orange
+        default: return .red
+        }
+    }
+
+    private func xpForLevel(_ level: Int) -> Int {
+        // Simple progression: level * 100 XP
+        return level * 100
+    }
+
+    private func levelProgress(for profile: CloudUserProfile) -> Double {
+        let currentLevelXP = xpForLevel(profile.level)
+        let nextLevelXP = xpForLevel(profile.level + 1)
+        let xpInCurrentLevel = profile.xpTotal - currentLevelXP
+
+        let progress = Double(xpInCurrentLevel) / Double(nextLevelXP - currentLevelXP)
+        return min(max(progress, 0), 1)
     }
 }
 

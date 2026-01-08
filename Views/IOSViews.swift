@@ -70,6 +70,7 @@ struct ContentView: View {
                 }
                 .tag(4)
         }
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedTab)
         .id(localizationManager.currentLanguage) // Force re-render de tout le TabView quand la langue change
     }
 }

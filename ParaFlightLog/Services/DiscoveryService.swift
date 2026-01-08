@@ -49,6 +49,7 @@ struct PublicFlight: Identifiable, Codable {
     let pilotName: String
     let pilotUsername: String
     let pilotPhotoFileId: String?
+    let pilotLevel: Int?
 
     let startDate: Date
     let durationSeconds: Int
@@ -707,6 +708,7 @@ final class DiscoveryService {
             pilotName: data["pilotName"]?.value as? String ?? "Pilote",
             pilotUsername: data["pilotUsername"]?.value as? String ?? "pilot",
             pilotPhotoFileId: data["pilotPhotoFileId"]?.value as? String,
+            pilotLevel: data["pilotLevel"]?.value as? Int,
             startDate: startDate,
             durationSeconds: durationSeconds,
             spotId: data["spotId"]?.value as? String,

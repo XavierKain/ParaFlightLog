@@ -8,7 +8,6 @@
 
 import Foundation
 import HealthKit
-import WatchKit
 
 @Observable
 final class WorkoutManager: NSObject {
@@ -101,15 +100,11 @@ final class WorkoutManager: NSObject {
 
             watchLogInfo("Workout session started (required for continuous GPS)", category: .workout)
 
-            // Activer le Water Lock seulement si le paramètre est activé
-            // Note: La session workout est TOUJOURS démarrée pour maintenir le GPS actif
-            await MainActor.run {
-                if WatchSettings.shared.autoWaterLockEnabled {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        watchLogDebug("Activating Water Lock", category: .workout)
-                        WKInterfaceDevice.current().enableWaterLock()
-                    }
-                }
+            // Note: La session workout est démarrée pour maintenir le GPS actif
+            // Water Lock est géré manuellement par l'utilisateur sur watchOS 10+
+            // (WKInterfaceDevice.enableWaterLock() est déprécié)
+            if WatchSettings.shared.autoWaterLockEnabled {
+                watchLogInfo("Water Lock should be enabled manually by user", category: .workout)
             }
 
         } catch {

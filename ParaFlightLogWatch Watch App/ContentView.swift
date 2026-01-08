@@ -7,6 +7,7 @@
 //
 
 import SwiftUI
+import CoreLocation
 
 struct ContentView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager

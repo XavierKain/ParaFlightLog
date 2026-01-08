@@ -76,7 +76,7 @@ enum LeaderboardScope: String, CaseIterable, Identifiable {
 struct LeaderboardEntry: Identifiable, Equatable {
     let id: String
     let rank: Int
-    let oderId: String
+    let userId: String
     let displayName: String
     let username: String
     let profilePhotoFileId: String?
@@ -345,7 +345,7 @@ final class LeaderboardService {
             let entry = LeaderboardEntry(
                 id: doc.id,
                 rank: index + 1,
-                oderId: doc.id,
+                userId: doc.id,
                 displayName: getValue("displayName") as? String ?? "Pilote",
                 username: getValue("username") as? String ?? "pilot",
                 profilePhotoFileId: getValue("profilePhotoFileId") as? String,

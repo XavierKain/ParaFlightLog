@@ -520,6 +520,16 @@
         }
       }
     },
+    "%lld jour%@ de série" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld jour%2$@ de série"
+          }
+        }
+      }
+    },
     "%lld kg" : {
 
     },
@@ -834,9 +844,6 @@
     "• %@m²" : {
 
     },
-    "• %lld XP" : {
-
-    },
     "+ %lld autre%@ spot%@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -954,6 +961,9 @@
           }
         }
       }
+    },
+    "🔥" : {
+
     },
     "1" : {
       "extractionState" : "stale",
@@ -2840,6 +2850,9 @@
         }
       }
     },
+    "J'aime" : {
+
+    },
     "Joignable" : {
       "localizations" : {
         "en" : {
@@ -3291,6 +3304,9 @@
     "Nouvelle zone" : {
 
     },
+    "Nv.%lld" : {
+
+    },
     "Obtenu le %@" : {
 
     },
@@ -3374,27 +3390,13 @@
         }
       }
     },
-    "ParaFlightLog" : {
-      "extractionState" : "stale",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ParaFlightLog"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "ParaFlightLog"
-          }
-        }
-      }
-    },
     "Paramètres" : {
 
     },
     "Paramètres de notification" : {
+
+    },
+    "Partager" : {
 
     },
     "Partager / Enregistrer" : {
@@ -3577,6 +3579,9 @@
         }
       }
     },
+    "Prochain niveau: %lld XP" : {
+
+    },
     "Que voulez-vous faire ?" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3653,6 +3658,9 @@
       }
     },
     "Rechercher un lieu..." : {
+
+    },
+    "Records Personnels" : {
 
     },
     "Régions" : {
@@ -3851,6 +3859,23 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sessions"
+          }
+        }
+      }
+    },
+    "SoarX" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SoarX"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SoarX"
           }
         }
       }

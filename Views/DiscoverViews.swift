@@ -144,6 +144,7 @@ struct FeedFilters: Equatable {
 struct FeedFilterBar: View {
     @Binding var filters: FeedFilters
     let availableCountries: [String]  // Pays extraits des vols chargés (noms de spots)
+    let resultsCount: Int  // Nombre de résultats après filtrage
     @State private var showingCountryPicker = false
 
     // Tous les pays supportés avec leur drapeau
@@ -258,6 +259,17 @@ struct FeedFilterBar: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+
+                // Compteur de résultats si filtres actifs
+                if filters.hasActiveFilters {
+                    Text("\(resultsCount) résultat\(resultsCount > 1 ? "s" : "")".localized)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Color(.systemGray6))
+                        .clipShape(Capsule())
+                }
             }
             .padding(.horizontal)
             .padding(.vertical, 8)
@@ -320,13 +332,20 @@ struct GlobalFeedView: View {
     var body: some View {
         VStack(spacing: 0) {
             // Barre de filtres (avec pays disponibles)
-            FeedFilterBar(filters: $filters, availableCountries: availableCountries)
+            FeedFilterBar(filters: $filters, availableCountries: availableCountries, resultsCount: filteredFlights.count)
 
             // Contenu
             Group {
                 if isLoading && flights.isEmpty {
-                    ProgressView("Chargement...".localized)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    // Skeleton loading state
+                    ScrollView {
+                        LazyVStack(spacing: 16) {
+                            ForEach(0..<3, id: \.self) { _ in
+                                FlightCardSkeleton()
+                            }
+                        }
+                        .padding()
+                    }
                 } else if let error = error, flights.isEmpty {
                     ErrorView(message: error) {
                         Task { await loadFlights(refresh: true) }
@@ -338,22 +357,15 @@ struct GlobalFeedView: View {
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 16) {
-                            // Premier vol avec carte (style featured)
-                            if let firstFlight = filteredFlights.first {
-                                NavigationLink {
-                                    PublicFlightDetailView(flightId: firstFlight.id)
-                                } label: {
-                                    PublicFlightCardView(flight: firstFlight, showMap: true)
-                                }
-                                .buttonStyle(.plain)
-                            }
-
-                            // Autres vols sans carte (plus léger)
-                            ForEach(Array(filteredFlights.dropFirst())) { flight in
+                            // Tous les vols avec carte miniature si GPS disponible
+                            ForEach(filteredFlights) { flight in
                                 NavigationLink {
                                     PublicFlightDetailView(flightId: flight.id)
                                 } label: {
-                                    PublicFlightCardView(flight: flight, showMap: false)
+                                    PublicFlightCardView(
+                                        flight: flight,
+                                        showMap: flight.latitude != nil && flight.longitude != nil
+                                    )
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -852,9 +864,23 @@ struct PublicFlightCardView: View {
                     )
 
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(flight.pilotName)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
+                        HStack(spacing: 6) {
+                            Text(flight.pilotName)
+                                .font(.subheadline)
+                                .fontWeight(.semibold)
+
+                            // Pilot level badge
+                            if let level = flight.pilotLevel, level > 0 {
+                                Text("Nv.\(level)")
+                                    .font(.caption2)
+                                    .fontWeight(.bold)
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(levelColor(for: level))
+                                    .clipShape(Capsule())
+                            }
+                        }
 
                         Text("@\(flight.pilotUsername)")
                             .font(.caption)
@@ -975,6 +1001,59 @@ struct PublicFlightCardView: View {
                         .font(.caption)
                         .foregroundStyle(.tertiary)
                 }
+
+                // Quick action buttons
+                Divider()
+
+                HStack(spacing: 20) {
+                    // Like button
+                    Button {
+                        // TODO: Implement like action
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "heart")
+                                .font(.subheadline)
+                            Text("J'aime")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+
+                    Divider()
+                        .frame(height: 20)
+
+                    // Bookmark button
+                    Button {
+                        // TODO: Implement bookmark action
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "bookmark")
+                                .font(.subheadline)
+                            Text("Sauvegarder")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+
+                    Divider()
+                        .frame(height: 20)
+
+                    // Share button
+                    Button {
+                        // TODO: Implement share action
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "square.and.arrow.up")
+                                .font(.subheadline)
+                            Text("Partager")
+                                .font(.caption)
+                        }
+                        .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+                }
+                .buttonStyle(.plain)
             }
             .padding()
             .background(Color(.systemBackground))
@@ -982,6 +1061,16 @@ struct PublicFlightCardView: View {
         .background(Color(.systemBackground))
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 4)
+    }
+
+    private func levelColor(for level: Int) -> Color {
+        switch level {
+        case 1...5: return .green
+        case 6...10: return .blue
+        case 11...20: return .purple
+        case 21...50: return .orange
+        default: return .red
+        }
     }
 
     private func formatDistanceValue(_ distance: Double) -> String {
@@ -994,6 +1083,73 @@ struct PublicFlightCardView: View {
 
     private func formatDistanceUnit(_ distance: Double) -> String {
         return distance >= 1000 ? "km" : "m"
+    }
+}
+
+// MARK: - FlightCardSkeleton (Loading State)
+
+struct FlightCardSkeleton: View {
+    @State private var isAnimating = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Map skeleton
+            Rectangle()
+                .fill(LinearGradient(
+                    colors: [Color(.systemGray5), Color(.systemGray6), Color(.systemGray5)],
+                    startPoint: isAnimating ? .leading : .trailing,
+                    endPoint: isAnimating ? .trailing : .leading
+                ))
+                .frame(height: 140)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            VStack(spacing: 12) {
+                // Header skeleton
+                HStack(spacing: 12) {
+                    Circle()
+                        .fill(Color(.systemGray5))
+                        .frame(width: 44, height: 44)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color(.systemGray5))
+                            .frame(width: 120, height: 16)
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(Color(.systemGray6))
+                            .frame(width: 80, height: 12)
+                    }
+
+                    Spacer()
+
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(Color(.systemGray5))
+                        .frame(width: 60, height: 32)
+                }
+
+                // Stats skeleton
+                HStack(spacing: 16) {
+                    ForEach(0..<3) { _ in
+                        VStack(spacing: 4) {
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(.systemGray5))
+                                .frame(width: 40, height: 20)
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color(.systemGray6))
+                                .frame(width: 60, height: 12)
+                        }
+                    }
+                }
+            }
+            .padding()
+        }
+        .background(Color(.systemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.08), radius: 10, x: 0, y: 4)
+        .onAppear {
+            withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) {
+                isAnimating = true
+            }
+        }
     }
 }
 

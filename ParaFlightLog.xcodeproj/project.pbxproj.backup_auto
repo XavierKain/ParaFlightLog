@@ -41,15 +41,11 @@
 		AA00001D2EEBB0000000000F /* FlightPhotosViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00001C2EEBB0000000000F /* FlightPhotosViews.swift */; };
 		AA00001F2EEBB00000000010 /* LiveFlightsMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00001E2EEBB00000000010 /* LiveFlightsMapView.swift */; };
 		AA0000212EEBB00000000011 /* ShareViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000202EEBB00000000011 /* ShareViews.swift */; };
-		AA0000232EEBB00000000012 /* OfflineViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000222EEBB00000000012 /* OfflineViews.swift */;
-		AA0000252EEBB00000000013 /* ColoredGPSTraceMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColoredGPSTraceMapView.swift; sourceTree = "<group>"; };
-		AA0000272EEBB00000000014 /* GPSTraceColorMapper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GPSTraceColorMapper.swift; sourceTree = "<group>"; }; };
+		AA0000232EEBB00000000012 /* OfflineViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000222EEBB00000000012 /* OfflineViews.swift */; };
 		C841AFFD7BE2509F251B21C5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D6E3BD81946B048929752FA /* Foundation.framework */; };
 		D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 362EAB42550846EE9491A703 /* ZipBackup.swift */; };
 		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
 		F14343D9399ADC201677F237 /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 536A65B8BA7237382742B91A /* SnapshotHelper.swift */; };
-		AA0000242EEBB00000000013 /* ColoredGPSTraceMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000252EEBB00000000013 /* ColoredGPSTraceMapView.swift */; };
-		AA0000262EEBB00000000014 /* GPSTraceColorMapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000272EEBB00000000014 /* GPSTraceColorMapper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -252,7 +248,6 @@
 				AA00001E2EEBB00000000010 /* LiveFlightsMapView.swift */,
 				AA0000202EEBB00000000011 /* ShareViews.swift */,
 				AA0000222EEBB00000000012 /* OfflineViews.swift */,
-				AA0000252EEBB00000000013 /* ColoredGPSTraceMapView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -512,8 +507,6 @@
 				AA00001F2EEBB00000000010 /* LiveFlightsMapView.swift in Sources */,
 				AA0000212EEBB00000000011 /* ShareViews.swift in Sources */,
 				AA0000232EEBB00000000012 /* OfflineViews.swift in Sources */,
-				AA0000242EEBB00000000013 /* ColoredGPSTraceMapView.swift in Sources */,
-				AA0000262EEBB00000000014 /* GPSTraceColorMapper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -178,7 +178,7 @@ final class ShareService {
             }
         }
 
-        text += "\n#Parapente #Paragliding #ParaFlightLog"
+        text += "\n#Parapente #Paragliding #SoarX"
 
         return text
     }
@@ -188,7 +188,7 @@ final class ShareService {
         var text = "Badge obtenu: \(badge.localizedName)!\n\n"
         text += badge.localizedDescription
         text += "\n\n+\(badge.xpReward) XP"
-        text += "\n\n#Parapente #Paragliding #ParaFlightLog #\(badge.tier.displayName)"
+        text += "\n\n#Parapente #Paragliding #SoarX #\(badge.tier.displayName)"
 
         return text
     }
@@ -568,7 +568,7 @@ final class ShareService {
             .font: brandingFont,
             .foregroundColor: UIColor.white.withAlphaComponent(0.4)
         ]
-        let brandingText = "ParaFlightLog"
+        let brandingText = "SoarX"
         let brandingSize = brandingText.size(withAttributes: brandingAttrs)
         let brandingRect = CGRect(
             x: (rect.width - brandingSize.width) / 2,

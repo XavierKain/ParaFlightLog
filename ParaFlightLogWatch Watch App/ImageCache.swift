@@ -8,7 +8,6 @@
 //
 
 import SwiftUI
-import WatchKit
 
 /// Wrapper pour stocker UIImage dans NSCache (qui nécessite des objets NSObject)
 private final class ImageWrapper: NSObject {

@@ -65,6 +65,12 @@ private struct IOSRootView: View {
 
                     locationService.requestAuthorization()
 
+                    // Initialiser le BadgeService pour charger les badges
+                    Task {
+                        await BadgeService.shared.initialize()
+                        logInfo("BadgeService initialized", category: .general)
+                    }
+
                     // Forcer l'envoi des voiles à la Watch après activation
                     DispatchQueue.main.asyncAfter(deadline: .now() + WatchSyncConstants.initialSyncDelay) {
                         watchManager.sendWingsToWatch()

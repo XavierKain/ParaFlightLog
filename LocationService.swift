@@ -137,7 +137,18 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         isTracking = false
         let endAltitude = currentAltitude
         previousLocation = nil
-        logInfo("Flight tracking stopped - Distance: \(totalDistance)m, Max Alt: \(maxAltitude ?? 0)m", category: .location)
+
+        // Recalculer la distance totale depuis la trace GPS complète avec filtrage intelligent
+        let gpsTrack = getGPSTrack()
+        if !gpsTrack.isEmpty {
+            let recalculatedDistance = GPSDistanceCalculator.calculateTrackDistance(points: gpsTrack, filterOutliers: true)
+            let oldDistance = totalDistance
+            totalDistance = recalculatedDistance
+            logInfo("Flight tracking stopped - Recalculated distance: \(totalDistance)m (old: \(oldDistance)m), Max Alt: \(maxAltitude ?? 0)m", category: .location)
+        } else {
+            logInfo("Flight tracking stopped - Distance: \(totalDistance)m, Max Alt: \(maxAltitude ?? 0)m", category: .location)
+        }
+
         return endAltitude
     }
 
@@ -299,7 +310,8 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
                         latitude: location.coordinate.latitude,
                         longitude: location.coordinate.longitude,
                         altitude: altitude,
-                        speed: location.speed > 0 ? location.speed : nil
+                        speed: location.speed > 0 ? location.speed : nil,
+                        accuracy: location.horizontalAccuracy > 0 ? location.horizontalAccuracy : nil
                     )
                     gpsTrackPoints.append(trackPoint)
                     lastTrackPointTime = now
