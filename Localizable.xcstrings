@@ -2290,6 +2290,9 @@
         }
       }
     },
+    "Développé avec ❤️ pour la communauté parapente" : {
+
+    },
     "Développeur" : {
       "localizations" : {
         "en" : {
@@ -2340,6 +2343,9 @@
           }
         }
       }
+    },
+    "Done" : {
+
     },
     "Données" : {
       "localizations" : {
@@ -2421,6 +2427,9 @@
           }
         }
       }
+    },
+    "En direct" : {
+
     },
     "Enregistrer" : {
       "localizations" : {
@@ -2969,6 +2978,9 @@
         }
       }
     },
+    "Logbook" : {
+
+    },
     "m²" : {
       "localizations" : {
         "en" : {
@@ -2986,6 +2998,9 @@
       }
     },
     "Màj: %@" : {
+
+    },
+    "Maps" : {
 
     },
     "Marque" : {
@@ -3389,6 +3404,9 @@
           }
         }
       }
+    },
+    "ParaFlightLog" : {
+
     },
     "Paramètres" : {
 
@@ -3863,6 +3881,9 @@
         }
       }
     },
+    "Settings" : {
+
+    },
     "SoarX" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4008,7 +4029,6 @@
       }
     },
     "Stats" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -4486,6 +4506,16 @@
         }
       }
     },
+    "Version %@ (%@)" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ (%2$@)"
+          }
+        }
+      }
+    },
     "Veuillez patienter" : {
       "localizations" : {
         "en" : {
@@ -4501,6 +4531,9 @@
           }
         }
       }
+    },
+    "View" : {
+
     },
     "Vitesse" : {
       "localizations" : {

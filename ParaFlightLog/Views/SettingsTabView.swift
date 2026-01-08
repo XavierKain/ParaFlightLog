@@ -18,6 +18,7 @@ struct SettingsTabView: View {
     @Environment(AuthService.self) private var authService
     @Environment(LocalizationManager.self) private var localizationManager
     @Environment(WatchConnectivityManager.self) private var watchManager
+    @Environment(DataController.self) private var dataController
     @Environment(\.dismiss) private var dismiss
 
     // Pour les wings et flights (nécessaires pour BackupExportView)
@@ -26,6 +27,9 @@ struct SettingsTabView: View {
 
     // État pour l'opération de développeur en cours
     @State private var isDevOperationRunning = false
+
+    // État pour la synchronisation cloud
+    @State private var syncStatus: SyncStatus = .idle
 
     var body: some View {
         NavigationStack {
@@ -151,6 +155,42 @@ struct SettingsTabView: View {
 
                 // 4. DATA & BACKUP
                 Section("Data & Backup".localized) {
+                    // Cloud synchronisation (si authentifié)
+                    if authService.isAuthenticated {
+                        SyncStatusView(status: syncStatus)
+
+                        Button {
+                            Task {
+                                await performSync()
+                            }
+                        } label: {
+                            HStack {
+                                Label("Synchroniser maintenant".localized, systemImage: "arrow.triangle.2.circlepath")
+                                Spacer()
+                                if case .syncing = syncStatus {
+                                    ProgressView()
+                                }
+                            }
+                        }
+                        .disabled(syncStatus.isSyncing)
+
+                        // Vols en attente
+                        let pendingCount = flights.filter { $0.needsSync }.count
+                        if pendingCount > 0 {
+                            HStack {
+                                Label("\(pendingCount) vol(s) en attente".localized, systemImage: "clock.arrow.circlepath")
+                                    .foregroundStyle(.orange)
+                                Spacer()
+                            }
+                        }
+
+                        if let date = FlightSyncService.shared.lastSyncDate {
+                            Text("Dernière sync: \(date.formatted(date: .abbreviated, time: .shortened))".localized)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
                     NavigationLink {
                         BackupExportView(wings: wings, flights: flights)
                     } label: {
@@ -284,6 +324,24 @@ struct SettingsTabView: View {
         }
     }
 
+    // MARK: - Cloud Sync
+
+    private func performSync() async {
+        syncStatus = .syncing
+
+        do {
+            let modelContext = dataController.modelContext
+            let result = try await FlightSyncService.shared.performFullSync(modelContext: modelContext)
+            syncStatus = .success(result.uploaded, result.downloaded)
+
+            // Reset après 3 secondes
+            try? await Task.sleep(for: .seconds(3))
+            syncStatus = .idle
+        } catch {
+            syncStatus = .error(error.localizedDescription)
+        }
+    }
+
     // MARK: - Developer Operations
 
     private func reuploadAllFlights() {
@@ -346,9 +404,12 @@ struct SettingsTabView: View {
 }
 
 #Preview {
-    SettingsTabView()
+    let dataController = DataController()
+    return SettingsTabView()
         .environment(UserService.shared)
         .environment(AuthService.shared)
         .environment(LocalizationManager.shared)
         .environment(WatchConnectivityManager.shared)
+        .environment(dataController)
+        .modelContainer(dataController.modelContainer)
 }

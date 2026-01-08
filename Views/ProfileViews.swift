@@ -13,6 +13,20 @@ import AppwriteEnums
 import NIOCore
 import NIOFoundationCompat
 
+// MARK: - SyncStatus (shared)
+
+enum SyncStatus: Equatable {
+    case idle
+    case syncing
+    case success(Int, Int) // uploaded, downloaded
+    case error(String)
+
+    var isSyncing: Bool {
+        if case .syncing = self { return true }
+        return false
+    }
+}
+
 // MARK: - AuthContainerView (Gestion de l'état d'authentification)
 
 /// Vue conteneur qui affiche soit l'écran de connexion soit l'app principale
@@ -851,22 +865,9 @@ struct ProfileView: View {
     @State private var isLoading = false
     @State private var showingEditProfile = false
     @State private var showingSettings = false
-    @State private var syncStatus: SyncStatus = .idle
     @State private var showingDevAlert = false
     @State private var devAlertMessage = ""
     @State private var isDevOperationRunning = false
-
-    enum SyncStatus: Equatable {
-        case idle
-        case syncing
-        case success(Int, Int) // uploaded, downloaded
-        case error(String)
-
-        var isSyncing: Bool {
-            if case .syncing = self { return true }
-            return false
-        }
-    }
 
     var body: some View {
         NavigationStack {
@@ -973,41 +974,6 @@ struct ProfileView: View {
                         }
                     }
 
-                    // Synchronisation Cloud
-                    Section {
-                        SyncStatusView(status: syncStatus)
-
-                        Button {
-                            Task {
-                                await performSync()
-                            }
-                        } label: {
-                            HStack {
-                                Label("Synchroniser maintenant".localized, systemImage: "arrow.triangle.2.circlepath")
-                                Spacer()
-                                if case .syncing = syncStatus {
-                                    ProgressView()
-                                }
-                            }
-                        }
-                        .disabled(syncStatus.isSyncing)
-
-                        // Vols en attente
-                        let pendingCount = flights.filter { $0.needsSync }.count
-                        if pendingCount > 0 {
-                            HStack {
-                                Label("\(pendingCount) vol(s) en attente".localized, systemImage: "clock.arrow.circlepath")
-                                    .foregroundStyle(.orange)
-                                Spacer()
-                            }
-                        }
-                    } header: {
-                        Text("Cloud".localized)
-                    } footer: {
-                        if let date = FlightSyncService.shared.lastSyncDate {
-                            Text("Dernière sync: \(date.formatted(date: .abbreviated, time: .shortened))".localized)
-                        }
-                    }
                 } else if isLoading {
                     Section {
                         HStack {
@@ -1412,20 +1378,6 @@ struct ProfileView: View {
         return "\(base)\(randomSuffix)"
     }
 
-    private func performSync() async {
-        syncStatus = .syncing
-
-        do {
-            let result = try await FlightSyncService.shared.performFullSync(modelContext: modelContext)
-            syncStatus = .success(result.uploaded, result.downloaded)
-
-            // Reset après 3 secondes
-            try? await Task.sleep(for: .seconds(3))
-            syncStatus = .idle
-        } catch {
-            syncStatus = .error(error.localizedDescription)
-        }
-    }
 
     private func formatTotalDuration() -> String {
         let totalSeconds = flights.reduce(0) { $0 + $1.durationSeconds }
@@ -1792,7 +1744,7 @@ struct StatItem: View {
 // MARK: - SyncStatusView
 
 struct SyncStatusView: View {
-    let status: ProfileView.SyncStatus
+    let status: SyncStatus
 
     var body: some View {
         switch status {
