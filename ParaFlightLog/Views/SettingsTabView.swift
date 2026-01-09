@@ -288,11 +288,15 @@ struct SettingsTabView: View {
                     // Section À propos
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Image("logo")
+                            Image(systemName: "paraglider.fill")
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 48, height: 48)
-                                .clipShape(RoundedRectangle(cornerRadius: 10))
+                                .foregroundStyle(.blue)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 10)
+                                        .fill(Color.blue.opacity(0.1))
+                                )
 
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("ParaFlightLog")
