@@ -25,42 +25,41 @@ struct WingsView: View {
     @State private var showingDeleteConfirmation = false
 
     var body: some View {
-        NavigationStack {
-            List {
-                if wings.isEmpty {
-                    ContentUnavailableView(
-                        "Aucune voile",
-                        systemImage: "wind",
-                        description: Text("Ajoutez votre première voile")
-                    )
-                } else {
-                    ForEach(wings) { wing in
-                        WingListRow(wing: wing, onDeleteTapped: {
-                            wingToDelete = wing
-                            showingDeleteConfirmation = true
-                        })
-                    }
-                    .onMove(perform: moveWing)
+        List {
+            if wings.isEmpty {
+                ContentUnavailableView(
+                    "Aucune voile",
+                    systemImage: "wind",
+                    description: Text("Ajoutez votre première voile")
+                )
+            } else {
+                ForEach(wings) { wing in
+                    WingListRow(wing: wing, onDeleteTapped: {
+                        wingToDelete = wing
+                        showingDeleteConfirmation = true
+                    })
+                }
+                .onMove(perform: moveWing)
+            }
+        }
+        .navigationTitle(String(localized: "Mes voiles"))
+        .id(localizationManager.currentLanguage)
+        .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                EditButton()
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingAddWing = true
+                } label: {
+                    Label("Ajouter", systemImage: "plus")
                 }
             }
-            .navigationTitle(String(localized: "Mes voiles"))
-            .id(localizationManager.currentLanguage)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
-                    EditButton()
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingAddWing = true
-                    } label: {
-                        Label("Ajouter", systemImage: "plus")
-                    }
-                }
-            }
-            .sheet(isPresented: $showingAddWing) {
-                AddWingView()
-            }
-            .alert(
+        }
+        .sheet(isPresented: $showingAddWing) {
+            AddWingView()
+        }
+        .alert(
                 wingToDelete.map { "Supprimer \"\($0.name)\" ?" } ?? "Supprimer ?",
                 isPresented: $showingDeleteConfirmation
             ) {
@@ -86,14 +85,13 @@ struct WingsView: View {
                 Button("Annuler", role: .cancel) {
                     wingToDelete = nil
                 }
-            } message: {
-                if let wing = wingToDelete {
-                    let flightCount = wing.flights?.count ?? 0
-                    if flightCount > 0 {
-                        Text("Cette voile a \(flightCount) vol\(flightCount > 1 ? "s" : "") enregistré\(flightCount > 1 ? "s" : ""). L'archivage conservera les données, la suppression les effacera.")
-                    } else {
-                        Text("Cette voile n'a aucun vol enregistré.")
-                    }
+        } message: {
+            if let wing = wingToDelete {
+                let flightCount = wing.flights?.count ?? 0
+                if flightCount > 0 {
+                    Text("Cette voile a \(flightCount) vol\(flightCount > 1 ? "s" : "") enregistré\(flightCount > 1 ? "s" : ""). L'archivage conservera les données, la suppression les effacera.")
+                } else {
+                    Text("Cette voile n'a aucun vol enregistré.")
                 }
             }
         }
@@ -149,26 +147,47 @@ struct WingListRow: View {
 struct WingRow: View {
     let wing: Wing
     @Environment(DataController.self) private var dataController
+    @State private var photoData: Data?
+    @State private var isLoadingPhoto = true
 
     private let thumbnailSize = CGSize(width: 60, height: 60)
 
     var body: some View {
         HStack(spacing: 12) {
             // Photo de la voile avec cache ou icône par défaut
-            CachedImage(
-                data: wing.photoData,
-                key: wing.id.uuidString,
-                size: thumbnailSize
-            ) {
+            if isLoadingPhoto {
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color.gray.opacity(0.2))
+                    .frame(width: thumbnailSize.width, height: thumbnailSize.height)
+                    .overlay {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    }
+            } else if let data = photoData {
+                CachedImage(
+                    data: data,
+                    key: wing.id.uuidString,
+                    size: thumbnailSize
+                ) {
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill((wing.color ?? "Gris").toColor().opacity(0.3))
+                        .overlay {
+                            Image(systemName: "wind")
+                                .font(.title2)
+                                .foregroundStyle((wing.color ?? "Gris").toColor())
+                        }
+                }
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            } else {
                 RoundedRectangle(cornerRadius: 8)
                     .fill((wing.color ?? "Gris").toColor().opacity(0.3))
+                    .frame(width: thumbnailSize.width, height: thumbnailSize.height)
                     .overlay {
                         Image(systemName: "wind")
                             .font(.title2)
                             .foregroundStyle((wing.color ?? "Gris").toColor())
                     }
             }
-            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 4) {
                 // Titre : nom du modèle
@@ -212,6 +231,14 @@ struct WingRow: View {
             }
         }
         .padding(.vertical, 4)
+        .task {
+            // Charger photoData sur un thread background
+            let data = await Task.detached(priority: .userInitiated) { [wing] in
+                return wing.photoData
+            }.value
+            photoData = data
+            isLoadingPhoto = false
+        }
     }
 }
 
@@ -537,6 +564,7 @@ struct EditWingView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
 
     let wing: Wing
+    private let wingId: UUID
 
     @State private var name: String
     @State private var brand: String
@@ -546,6 +574,7 @@ struct EditWingView: View {
     @State private var customColor: String
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
+    @State private var isLoadingPhoto: Bool = true
     @State private var showSaveError: Bool = false
 
     let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
@@ -553,6 +582,7 @@ struct EditWingView: View {
 
     init(wing: Wing) {
         self.wing = wing
+        self.wingId = wing.id
         _name = State(initialValue: wing.name)
         _brand = State(initialValue: wing.brand ?? "")
         _size = State(initialValue: wing.size ?? "")
@@ -567,7 +597,9 @@ struct EditWingView: View {
             _color = State(initialValue: "Autre...")
             _customColor = State(initialValue: existingColor)
         }
-        _photoData = State(initialValue: wing.photoData)
+        // Ne pas accéder à photoData dans l'init - sera chargé dans .task
+        _photoData = State(initialValue: nil)
+        _isLoadingPhoto = State(initialValue: true)
     }
 
     var body: some View {
@@ -576,7 +608,14 @@ struct EditWingView: View {
                 Section("Photo") {
                     HStack {
                         Spacer()
-                        if let photoData = photoData, let uiImage = UIImage(data: photoData) {
+                        if isLoadingPhoto {
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.gray.opacity(0.2))
+                                .frame(width: 120, height: 120)
+                                .overlay {
+                                    ProgressView()
+                                }
+                        } else if let photoData = photoData, let uiImage = UIImage(data: photoData) {
                             Image(uiImage: uiImage)
                                 .resizable()
                                 .scaledToFill()
@@ -660,6 +699,15 @@ struct EditWingView: View {
                     .disabled(name.isEmpty)
                 }
             }
+            .task {
+                // Charger la photo sur un thread background pour éviter le freeze
+                // L'accès à wing.photoData peut déclencher un chargement SwiftData synchrone
+                let loadedData = await Task.detached(priority: .userInitiated) { [wing] in
+                    return wing.photoData
+                }.value
+                photoData = loadedData
+                isLoadingPhoto = false
+            }
             .onChange(of: selectedPhoto) { _, newValue in
                 Task {
                     if let data = try? await newValue?.loadTransferable(type: Data.self) {
@@ -708,13 +756,15 @@ struct WingDetailView: View {
     let wing: Wing
     @Environment(\.dismiss) private var dismiss
     @Environment(DataController.self) private var dataController
-    @Query private var allFlights: [Flight]
     @State private var showingEditWing = false
     @State private var selectedFlight: Flight?
     @State private var showingFullScreenPhoto = false
+    @State private var photoImage: UIImage?
+    @State private var isLoadingPhoto = true
 
+    /// Utilise la relation inverse wing.flights au lieu de @Query pour éviter de charger tous les vols
     var flights: [Flight] {
-        allFlights.filter { $0.wing?.id == wing.id }
+        wing.flights ?? []
     }
 
     var body: some View {
@@ -722,7 +772,14 @@ struct WingDetailView: View {
             Section {
                 VStack(spacing: 16) {
                     // Photo de la voile (tappable pour afficher en plein écran)
-                    if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
+                    if isLoadingPhoto {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(height: 150)
+                            .overlay {
+                                ProgressView()
+                            }
+                    } else if let uiImage = photoImage {
                         Image(uiImage: uiImage)
                             .resizable()
                             .scaledToFit()
@@ -830,18 +887,19 @@ struct WingDetailView: View {
                     }
                 }
         }
-        .onChange(of: allFlights.count) { oldValue, newValue in
-            // Si un vol est supprimé, fermer immédiatement la sheet
-            if let selected = selectedFlight {
-                if selected.isDeleted || !allFlights.contains(where: { $0.id == selected.id }) {
-                    selectedFlight = nil
-                }
-            }
-        }
         .fullScreenCover(isPresented: $showingFullScreenPhoto) {
-            if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
+            if let uiImage = photoImage {
                 FullScreenPhotoView(image: uiImage, wingName: wing.name)
             }
+        }
+        .task {
+            // Charger la photo sur un thread background pour éviter le freeze
+            let loadedImage = await Task.detached(priority: .userInitiated) { [wing] in
+                guard let data = wing.photoData else { return nil as UIImage? }
+                return UIImage(data: data)
+            }.value
+            photoImage = loadedImage
+            isLoadingPhoto = false
         }
     }
 }
