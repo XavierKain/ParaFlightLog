@@ -268,6 +268,17 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     // MARK: - WCSessionDelegate
 
+    #if os(iOS)
+    func sessionDidBecomeInactive(_ session: WCSession) {
+        // Required on iOS but not used on Watch
+    }
+
+    func sessionDidDeactivate(_ session: WCSession) {
+        // Required on iOS but not used on Watch
+        session.activate()
+    }
+    #endif
+
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if let error = error {
             watchLogError("WCSession activation failed: \(error.localizedDescription)", category: .watchSync)
