@@ -8,6 +8,13 @@
 
 import Foundation
 
+// MARK: - Notification Names
+
+extension Notification.Name {
+    /// Posted when settings are updated from iPhone
+    static let watchSettingsUpdatedFromPhone = Notification.Name("watchSettingsUpdatedFromPhone")
+}
+
 /// Singleton pour gérer les paramètres de la Watch
 @Observable
 final class WatchSettings {
@@ -71,26 +78,38 @@ final class WatchSettings {
     // MARK: - Update from iPhone
 
     /// Met à jour les paramètres depuis un contexte reçu de l'iPhone
+    /// Note: Cette méthode peut être appelée depuis un thread background (WatchConnectivity)
     func updateFromContext(_ context: [String: Any]) {
-        // Marquer qu'on reçoit depuis l'iPhone pour ne pas renvoyer les mêmes settings
-        isUpdatingFromPhone = true
-        defer { isUpdatingFromPhone = false }
+        // Extraire les valeurs du contexte
+        let newAutoWaterLock = context["watchAutoWaterLock"] as? Bool
+        let newAllowDismiss = context["watchAllowSessionDismiss"] as? Bool
+        let newDevMode = context["developerModeEnabled"] as? Bool
 
-        if let autoWaterLock = context["watchAutoWaterLock"] as? Bool {
-            autoWaterLockEnabled = autoWaterLock
-        }
+        // Mettre à jour sur le MainActor pour éviter "Publishing changes from background threads"
+        Task { @MainActor in
+            // Marquer qu'on reçoit depuis l'iPhone pour ne pas renvoyer les mêmes settings
+            isUpdatingFromPhone = true
+            defer { isUpdatingFromPhone = false }
 
-        if let allowDismiss = context["watchAllowSessionDismiss"] as? Bool {
-            allowSessionDismiss = allowDismiss
-        }
+            if let autoWaterLock = newAutoWaterLock {
+                autoWaterLockEnabled = autoWaterLock
+            }
 
-        if let devMode = context["developerModeEnabled"] as? Bool {
-            developerModeEnabled = devMode
-        }
+            if let allowDismiss = newAllowDismiss {
+                allowSessionDismiss = allowDismiss
+            }
 
-        // Log uniquement si mode dev activé (évite le log au démarrage si désactivé)
-        if developerModeEnabled {
-            watchLogDebug("Settings updated from iPhone: autoWaterLock=\(autoWaterLockEnabled), allowDismiss=\(allowSessionDismiss), devMode=\(developerModeEnabled)", category: .settings)
+            if let devMode = newDevMode {
+                developerModeEnabled = devMode
+            }
+
+            // Log uniquement si mode dev activé (évite le log au démarrage si désactivé)
+            if developerModeEnabled {
+                watchLogDebug("Settings updated from iPhone: autoWaterLock=\(autoWaterLockEnabled), allowDismiss=\(allowSessionDismiss), devMode=\(developerModeEnabled)", category: .settings)
+            }
+
+            // Notifier les vues pour qu'elles se mettent à jour
+            NotificationCenter.default.post(name: .watchSettingsUpdatedFromPhone, object: nil)
         }
     }
 

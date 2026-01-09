@@ -62,6 +62,7 @@ final class AuthService {
     private(set) var currentUserId: String?
     private(set) var currentEmail: String?
     private(set) var isLoading: Bool = false
+    private var isRestoring: Bool = false  // Empêche les appels multiples simultanés
 
     var isAuthenticated: Bool {
         if case .authenticated = authState {
@@ -90,8 +91,24 @@ final class AuthService {
 
     /// Restaure la session au lancement de l'app
     func restoreSession() async {
+        // Éviter les appels multiples simultanés
+        guard !isRestoring else {
+            logInfo("Session restore already in progress, skipping...", category: .auth)
+            return
+        }
+
+        // Si on est déjà authentifié, pas besoin de restaurer
+        if case .authenticated = authState {
+            logInfo("Already authenticated, skipping session restore", category: .auth)
+            return
+        }
+
+        isRestoring = true
         isLoading = true
-        defer { isLoading = false }
+        defer {
+            isLoading = false
+            isRestoring = false
+        }
 
         logInfo("Attempting to restore session...", category: .auth)
 
@@ -107,15 +124,45 @@ final class AuthService {
             authState = .authenticated(userId: user.id)
             logInfo("Session restored successfully for user: \(user.email) (id: \(user.id))", category: .auth)
         } catch let error as AppwriteError {
-            currentUserId = nil
-            currentEmail = nil
-            authState = .unauthenticated
-            logInfo("No active session - Appwrite: \(error.message) (type: \(error.type ?? "unknown"))", category: .auth)
+            // Distinguer entre "pas de session" et "erreur réseau"
+            let message = error.message.lowercased()
+            let errorType = error.type?.lowercased() ?? ""
+
+            // Erreurs qui indiquent clairement "pas de session valide"
+            let noSessionErrors = ["unauthorized", "missing scope", "user not found", "invalid session", "session not found", "401"]
+            let isNoSessionError = noSessionErrors.contains { message.contains($0) || errorType.contains($0) }
+
+            if isNoSessionError {
+                // Vraiment pas de session valide
+                currentUserId = nil
+                currentEmail = nil
+                authState = .unauthenticated
+                logInfo("No valid session - Appwrite: \(error.message) (type: \(error.type ?? "unknown"))", category: .auth)
+            } else {
+                // Erreur réseau ou autre - garder l'état actuel si on était déjà authentifié
+                // ou skipped, sinon marquer comme unauthenticated
+                if case .unknown = authState {
+                    // Premier lancement avec erreur réseau - on ne peut pas savoir
+                    // Essayer de détecter une session locale ou garder unknown
+                    currentUserId = nil
+                    currentEmail = nil
+                    authState = .unauthenticated
+                    logWarning("Network error during session restore, no cached session: \(error.message)", category: .auth)
+                } else {
+                    // On avait déjà un état - le garder en cas d'erreur réseau temporaire
+                    logWarning("Network error during session check, keeping current state: \(error.message)", category: .auth)
+                }
+            }
         } catch {
-            currentUserId = nil
-            currentEmail = nil
-            authState = .unauthenticated
-            logInfo("No active session - error: \(error.localizedDescription)", category: .auth)
+            // Erreur générique - probablement réseau
+            if case .unknown = authState {
+                currentUserId = nil
+                currentEmail = nil
+                authState = .unauthenticated
+                logWarning("Error during session restore: \(error.localizedDescription)", category: .auth)
+            } else {
+                logWarning("Network error during session check, keeping current state: \(error.localizedDescription)", category: .auth)
+            }
         }
     }
 

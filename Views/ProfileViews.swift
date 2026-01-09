@@ -2126,6 +2126,10 @@ struct WatchSettingsView: View {
     @State private var showingImportSuccess = false
     @State private var importMessage = ""
 
+    // États locaux pour les settings Watch - permettent le rafraîchissement instantané
+    @State private var autoWaterLock: Bool = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+    @State private var allowSessionDismiss: Bool = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
+
     var body: some View {
         List {
             Section("Statut".localized) {
@@ -2175,14 +2179,7 @@ struct WatchSettingsView: View {
             }
 
             Section {
-                Toggle(isOn: Binding(
-                    get: { UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock) },
-                    set: { newValue in
-                        UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.watchAutoWaterLock)
-                        let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
-                        watchManager.sendWatchSettings(autoWaterLock: newValue, allowSessionDismiss: allowDismiss)
-                    }
-                )) {
+                Toggle(isOn: $autoWaterLock) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Verrouillage automatique".localized)
                         Text("Active le Water Lock au début d'un vol".localized)
@@ -2190,21 +2187,22 @@ struct WatchSettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .onChange(of: autoWaterLock) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.watchAutoWaterLock)
+                    watchManager.sendWatchSettings(autoWaterLock: newValue, allowSessionDismiss: allowSessionDismiss)
+                }
 
-                Toggle(isOn: Binding(
-                    get: { UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true },
-                    set: { newValue in
-                        UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.watchAllowSessionDismiss)
-                        let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
-                        watchManager.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: newValue)
-                    }
-                )) {
+                Toggle(isOn: $allowSessionDismiss) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Autoriser l'annulation".localized)
                         Text("Permet d'annuler un vol sans le sauvegarder".localized)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+                }
+                .onChange(of: allowSessionDismiss) { _, newValue in
+                    UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.watchAllowSessionDismiss)
+                    watchManager.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: newValue)
                 }
             } header: {
                 Text("Options".localized)
@@ -2217,6 +2215,17 @@ struct WatchSettingsView: View {
             Button("OK") { }
         } message: {
             Text(importMessage)
+        }
+        .onAppear {
+            // Rafraîchir les états locaux depuis UserDefaults à chaque apparition de la vue
+            // Cela garantit que les valeurs affichées sont toujours à jour
+            autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+            allowSessionDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .watchSettingsDidUpdate)) { _ in
+            // Rafraîchir les états locaux quand la Watch envoie des changements
+            autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+            allowSessionDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
         }
     }
 }

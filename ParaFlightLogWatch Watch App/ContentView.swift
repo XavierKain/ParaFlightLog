@@ -971,7 +971,9 @@ struct StatBox: View {
 // MARK: - WatchSettingsView (Écran Settings)
 
 struct WatchSettingsView: View {
-    @State private var settings = WatchSettings.shared
+    // États locaux synchronisés avec WatchSettings
+    @State private var autoWaterLock: Bool = WatchSettings.shared.autoWaterLockEnabled
+    @State private var allowDismiss: Bool = WatchSettings.shared.allowSessionDismiss
 
     var body: some View {
         ScrollView {
@@ -988,7 +990,7 @@ struct WatchSettingsView: View {
 
                 // Water Lock Toggle
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle(isOn: $settings.autoWaterLockEnabled) {
+                    Toggle(isOn: $autoWaterLock) {
                         HStack(spacing: 8) {
                             Image(systemName: "drop.fill")
                                 .foregroundStyle(.cyan)
@@ -997,6 +999,9 @@ struct WatchSettingsView: View {
                         }
                     }
                     .tint(.cyan)
+                    .onChange(of: autoWaterLock) { _, newValue in
+                        WatchSettings.shared.autoWaterLockEnabled = newValue
+                    }
 
                     Text("Verrouille l'écran pendant le vol")
                         .font(.caption2)
@@ -1009,7 +1014,7 @@ struct WatchSettingsView: View {
 
                 // Allow Dismiss Toggle
                 VStack(alignment: .leading, spacing: 4) {
-                    Toggle(isOn: $settings.allowSessionDismiss) {
+                    Toggle(isOn: $allowDismiss) {
                         HStack(spacing: 8) {
                             Image(systemName: "xmark.circle")
                                 .foregroundStyle(.orange)
@@ -1018,6 +1023,9 @@ struct WatchSettingsView: View {
                         }
                     }
                     .tint(.orange)
+                    .onChange(of: allowDismiss) { _, newValue in
+                        WatchSettings.shared.allowSessionDismiss = newValue
+                    }
 
                     Text("Permet d'annuler un vol en cours")
                         .font(.caption2)
@@ -1041,6 +1049,16 @@ struct WatchSettingsView: View {
                 .padding(.top, 8)
             }
             .padding(.horizontal, 8)
+        }
+        .onAppear {
+            // Recharger les valeurs depuis WatchSettings au cas où elles auraient changé
+            autoWaterLock = WatchSettings.shared.autoWaterLockEnabled
+            allowDismiss = WatchSettings.shared.allowSessionDismiss
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .watchSettingsUpdatedFromPhone)) { _ in
+            // Rafraîchir les états locaux quand l'iPhone envoie des changements
+            autoWaterLock = WatchSettings.shared.autoWaterLockEnabled
+            allowDismiss = WatchSettings.shared.allowSessionDismiss
         }
     }
 }
