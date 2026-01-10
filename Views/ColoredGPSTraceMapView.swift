@@ -110,20 +110,30 @@ struct ColoredGPSTraceMapView: UIViewRepresentable {
 
 // MARK: - SpeedLegendView
 
-/// Légende des couleurs de vitesse (horizontale par défaut)
+/// Légende des couleurs de vitesse avec barre de gradient
 struct SpeedLegendView: View {
     var body: some View {
-        HStack(spacing: 12) {
-            ForEach(GPSTraceColorMapper.getSpeedLegend(), id: \.speed) { item in
-                HStack(spacing: 4) {
-                    Circle()
-                        .fill(item.color)
-                        .frame(width: 10, height: 10)
+        HStack(spacing: 8) {
+            // Label vitesse min
+            Text("0")
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
 
-                    Text(item.speed)
-                        .font(.caption2)
-                }
-            }
+            // Barre de gradient
+            LinearGradient(
+                colors: GPSTraceColorMapper.getGradientColors(),
+                startPoint: .leading,
+                endPoint: .trailing
+            )
+            .frame(width: 120, height: 8)
+            .clipShape(Capsule())
+
+            // Label vitesse max
+            Text("60+ km/h")
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

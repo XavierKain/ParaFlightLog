@@ -3,6 +3,7 @@
 //  ParaFlightLog
 //
 //  Utilitaire pour générer des segments GPS colorés par vitesse
+//  Utilise un gradient continu pour une visualisation fluide
 //  Target: iOS only
 //
 
@@ -20,7 +21,13 @@ struct SpeedSegment: Identifiable {
 }
 
 /// Mapper de couleurs pour traces GPS basées sur la vitesse
+/// Utilise un gradient continu: Bleu (lent) → Cyan → Vert → Jaune → Orange → Rouge (rapide)
 class GPSTraceColorMapper {
+
+    /// Vitesse minimale pour le gradient (km/h)
+    static let minSpeed: Double = 0
+    /// Vitesse maximale pour le gradient (km/h)
+    static let maxSpeed: Double = 60
 
     /// Calcule les vitesses et assigne les couleurs pour chaque segment
     static func generateColoredSegments(points: [GPSTrackPoint]) -> [SpeedSegment] {
@@ -58,42 +65,28 @@ class GPSTraceColorMapper {
         return segments
     }
 
-    /// Map vitesse → couleur (gradient discret)
+    /// Map vitesse → couleur avec gradient continu
+    /// 0 km/h = Bleu → 30 km/h = Vert/Jaune → 60+ km/h = Rouge
     static func colorForSpeed(_ speedKmh: Double) -> Color {
-        switch speedKmh {
-        case ..<10:
-            return .blue      // Très lent (thermique, atterrissage)
-        case 10..<25:
-            return .green     // Lent (vol normal)
-        case 25..<40:
-            return .yellow    // Moyen (transition)
-        case 40..<60:
-            return .orange    // Rapide (accélération)
-        default:
-            return .red       // Très rapide (piqué, descente rapide)
-        }
+        // Normaliser la vitesse entre 0 et 1
+        let normalized = min(max(speedKmh / maxSpeed, 0), 1)
+
+        // Utiliser l'espace HSB pour un gradient fluide
+        // Hue: 240° (bleu) → 180° (cyan) → 120° (vert) → 60° (jaune) → 30° (orange) → 0° (rouge)
+        // On inverse: 0 = bleu (hue ~0.66), 1 = rouge (hue = 0)
+        let hue = (1.0 - normalized) * 0.66  // 0.66 = 240°/360° (bleu)
+
+        return Color(hue: hue, saturation: 0.85, brightness: 0.95)
     }
 
-    /// Variante avec gradient continu (optionnel)
-    static func colorForSpeedGradient(_ speedKmh: Double) -> Color {
-        // Mapping: 0 km/h = bleu, 60+ km/h = rouge
-        let normalized = min(max(speedKmh / 60.0, 0), 1)
-
-        // Interpolation HSB (Hue-Saturation-Brightness)
-        // Bleu (240°) → Vert (120°) → Jaune (60°) → Rouge (0°)
-        let hue = (1.0 - normalized) * 240.0 / 360.0
-
-        return Color(hue: hue, saturation: 0.8, brightness: 0.9)
-    }
-
-    /// Obtient la légende des couleurs pour affichage
-    static func getSpeedLegend() -> [(speed: String, color: Color)] {
+    /// Obtient les couleurs du gradient pour la légende
+    static func getGradientColors() -> [Color] {
         return [
-            ("<10 km/h", .blue),
-            ("10-25 km/h", .green),
-            ("25-40 km/h", .yellow),
-            ("40-60 km/h", .orange),
-            ("60+ km/h", .red)
+            Color(hue: 0.66, saturation: 0.85, brightness: 0.95),  // Bleu (0 km/h)
+            Color(hue: 0.50, saturation: 0.85, brightness: 0.95),  // Cyan
+            Color(hue: 0.33, saturation: 0.85, brightness: 0.95),  // Vert
+            Color(hue: 0.16, saturation: 0.85, brightness: 0.95),  // Jaune/Orange
+            Color(hue: 0.00, saturation: 0.85, brightness: 0.95)   // Rouge (60+ km/h)
         ]
     }
 }
