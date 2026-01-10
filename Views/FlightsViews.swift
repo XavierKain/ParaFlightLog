@@ -369,6 +369,7 @@ struct FlightDetailView: View {
     let flight: Flight
     @State private var showingEditSheet = false
     @State private var showingFullScreenMap = false
+    @State private var showingShareSheet = false
     @State private var showColoredTrace = true  // Toggle pour afficher la trace colorée
 
     // Calculer les segments colorés si trace GPS disponible
@@ -691,7 +692,13 @@ struct FlightDetailView: View {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button {
+                        showingShareSheet = true
+                    } label: {
+                        Label("Partager", systemImage: "square.and.arrow.up")
+                    }
+
                     Button {
                         showingEditSheet = true
                     } label: {
@@ -701,6 +708,9 @@ struct FlightDetailView: View {
             }
             .sheet(isPresented: $showingEditSheet) {
                 EditFlightView(flight: flight)
+            }
+            .sheet(isPresented: $showingShareSheet) {
+                LocalFlightShareView(flight: flight)
             }
             .fullScreenCover(isPresented: $showingFullScreenMap) {
                 FullScreenMapView(flight: flight, initialRegion: mapRegion)

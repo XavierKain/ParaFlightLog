@@ -11,12 +11,14 @@
 import Foundation
 import SwiftUI
 import UIKit
+import MapKit
 
 // MARK: - Share Models
 
 /// Type de contenu à partager
 enum ShareContentType {
     case flight(PublicFlight)
+    case localFlight(Flight)
     case badge(Badge, Date)
     case achievement(String, String, String)  // title, description, icon
 }
@@ -99,7 +101,7 @@ final class ShareService {
 
     // MARK: - Flight Share Image Generation
 
-    /// Génère une image de partage pour un vol
+    /// Génère une image de partage pour un vol public
     func generateFlightShareImage(
         flight: PublicFlight,
         config: ShareImageConfig
@@ -123,6 +125,154 @@ final class ShareService {
                 drawAppBranding(in: context, rect: rect, config: config)
             }
         }
+    }
+
+    // MARK: - Local Flight Share Image Generation
+
+    /// Génère une image de partage pour un vol local avec carte GPS
+    func generateLocalFlightShareImage(
+        flight: Flight,
+        mapSnapshot: UIImage?,
+        config: ShareImageConfig
+    ) -> UIImage {
+        isGenerating = true
+        defer { isGenerating = false }
+
+        let renderer = UIGraphicsImageRenderer(size: CGSize(width: config.width, height: config.height))
+
+        return renderer.image { context in
+            let rect = CGRect(x: 0, y: 0, width: config.width, height: config.height)
+
+            // Background gradient
+            drawGradientBackground(in: context, rect: rect, config: config)
+
+            // Map snapshot (si disponible)
+            if let mapImage = mapSnapshot {
+                drawMapSnapshot(mapImage, in: context, rect: rect, config: config)
+            }
+
+            // Content avec nouveau design
+            drawLocalFlightContent(flight: flight, hasMap: mapSnapshot != nil, in: context, rect: rect, config: config)
+
+            // App branding
+            if config.includeAppBranding {
+                drawAppBranding(in: context, rect: rect, config: config)
+            }
+        }
+    }
+
+    /// Génère un snapshot de la carte avec trace GPS colorée
+    func generateMapSnapshot(
+        for flight: Flight,
+        size: CGSize,
+        completion: @escaping (UIImage?) -> Void
+    ) {
+        guard let track = flight.gpsTrack, track.count >= 2 else {
+            completion(nil)
+            return
+        }
+
+        // Calculer la région
+        let lats = track.map { $0.latitude }
+        let lons = track.map { $0.longitude }
+        let minLat = lats.min() ?? 0
+        let maxLat = lats.max() ?? 0
+        let minLon = lons.min() ?? 0
+        let maxLon = lons.max() ?? 0
+
+        let centerLat = (minLat + maxLat) / 2
+        let centerLon = (minLon + maxLon) / 2
+        let spanLat = max(0.01, (maxLat - minLat) * 1.4)
+        let spanLon = max(0.01, (maxLon - minLon) * 1.4)
+
+        let region = MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: centerLat, longitude: centerLon),
+            span: MKCoordinateSpan(latitudeDelta: spanLat, longitudeDelta: spanLon)
+        )
+
+        let options = MKMapSnapshotter.Options()
+        options.region = region
+        options.size = size
+        options.mapType = .hybrid
+        options.showsBuildings = false
+
+        let snapshotter = MKMapSnapshotter(options: options)
+        snapshotter.start { snapshot, error in
+            guard let snapshot = snapshot, error == nil else {
+                DispatchQueue.main.async { completion(nil) }
+                return
+            }
+
+            // Dessiner la trace GPS colorée sur le snapshot
+            UIGraphicsBeginImageContextWithOptions(snapshot.image.size, true, snapshot.image.scale)
+            snapshot.image.draw(at: .zero)
+
+            guard let context = UIGraphicsGetCurrentContext() else {
+                DispatchQueue.main.async { completion(snapshot.image) }
+                return
+            }
+
+            // Générer les segments colorés
+            let segments = GPSTraceColorMapper.generateColoredSegments(points: track)
+
+            context.setLineCap(.round)
+            context.setLineJoin(.round)
+            context.setLineWidth(4.0)
+
+            for segment in segments {
+                let startPoint = snapshot.point(for: CLLocationCoordinate2D(
+                    latitude: segment.startPoint.latitude,
+                    longitude: segment.startPoint.longitude
+                ))
+                let endPoint = snapshot.point(for: CLLocationCoordinate2D(
+                    latitude: segment.endPoint.latitude,
+                    longitude: segment.endPoint.longitude
+                ))
+
+                context.setStrokeColor(UIColor(segment.color).cgColor)
+                context.move(to: startPoint)
+                context.addLine(to: endPoint)
+                context.strokePath()
+            }
+
+            // Markers départ/arrivée
+            if let first = track.first {
+                let startPoint = snapshot.point(for: CLLocationCoordinate2D(
+                    latitude: first.latitude, longitude: first.longitude
+                ))
+                self.drawMarker(at: startPoint, color: .systemGreen, in: context)
+            }
+
+            if let last = track.last {
+                let endPoint = snapshot.point(for: CLLocationCoordinate2D(
+                    latitude: last.latitude, longitude: last.longitude
+                ))
+                self.drawMarker(at: endPoint, color: .systemRed, in: context)
+            }
+
+            let finalImage = UIGraphicsGetImageFromCurrentImageContext()
+            UIGraphicsEndImageContext()
+
+            DispatchQueue.main.async { completion(finalImage) }
+        }
+    }
+
+    private func drawMarker(at point: CGPoint, color: UIColor, in context: CGContext) {
+        let markerSize: CGFloat = 16
+        let rect = CGRect(
+            x: point.x - markerSize / 2,
+            y: point.y - markerSize / 2,
+            width: markerSize,
+            height: markerSize
+        )
+
+        // Cercle extérieur blanc
+        context.setFillColor(UIColor.white.cgColor)
+        context.fillEllipse(in: rect.insetBy(dx: -2, dy: -2))
+
+        // Cercle intérieur coloré
+        context.setFillColor(color.cgColor)
+        context.fillEllipse(in: rect)
     }
 
     // MARK: - Badge Share Image Generation
@@ -577,5 +727,257 @@ final class ShareService {
             height: brandingSize.height
         )
         brandingText.draw(in: brandingRect, withAttributes: brandingAttrs)
+    }
+
+    // MARK: - Map Snapshot Drawing
+
+    private func drawMapSnapshot(_ mapImage: UIImage, in context: UIGraphicsImageRendererContext, rect: CGRect, config: ShareImageConfig) {
+        let mapHeight = rect.height * 0.40
+        let mapPadding: CGFloat = 40
+        let mapWidth = rect.width - (mapPadding * 2)
+
+        let mapRect = CGRect(
+            x: mapPadding,
+            y: rect.height * 0.08,
+            width: mapWidth,
+            height: mapHeight
+        )
+
+        // Dessiner l'ombre
+        let cgContext = context.cgContext
+        cgContext.saveGState()
+        cgContext.setShadow(offset: CGSize(width: 0, height: 8), blur: 20, color: UIColor.black.withAlphaComponent(0.4).cgColor)
+
+        // Dessiner le cadre arrondi
+        let path = UIBezierPath(roundedRect: mapRect, cornerRadius: 20)
+        cgContext.addPath(path.cgPath)
+        cgContext.clip()
+
+        // Dessiner l'image de la carte
+        mapImage.draw(in: mapRect)
+
+        cgContext.restoreGState()
+
+        // Bordure subtile
+        UIColor.white.withAlphaComponent(0.3).setStroke()
+        let borderPath = UIBezierPath(roundedRect: mapRect, cornerRadius: 20)
+        borderPath.lineWidth = 2
+        borderPath.stroke()
+    }
+
+    // MARK: - Local Flight Content Drawing (Nouveau design)
+
+    private func drawLocalFlightContent(flight: Flight, hasMap: Bool, in context: UIGraphicsImageRendererContext, rect: CGRect, config: ShareImageConfig) {
+        let padding: CGFloat = 50
+
+        // Position de départ du contenu (après la carte si présente)
+        let contentStartY = hasMap ? rect.height * 0.52 : rect.height * 0.15
+
+        // Titre "VOL PARAPENTE" en haut
+        let titleFont = UIFont.systemFont(ofSize: 36, weight: .bold)
+        let titleAttrs: [NSAttributedString.Key: Any] = [
+            .font: titleFont,
+            .foregroundColor: UIColor.white.withAlphaComponent(0.5)
+        ]
+        let titleText = "VOL PARAPENTE"
+        let titleSize = titleText.size(withAttributes: titleAttrs)
+        let titleY = hasMap ? rect.height * 0.03 : rect.height * 0.08
+        let titleRect = CGRect(
+            x: (rect.width - titleSize.width) / 2,
+            y: titleY,
+            width: titleSize.width,
+            height: titleSize.height
+        )
+        titleText.draw(in: titleRect, withAttributes: titleAttrs)
+
+        // Durée en grand (centré)
+        let durationFont = UIFont.systemFont(ofSize: 100, weight: .bold)
+        let durationAttrs: [NSAttributedString.Key: Any] = [
+            .font: durationFont,
+            .foregroundColor: UIColor.white
+        ]
+        let durationText = flight.durationFormatted
+        let durationSize = durationText.size(withAttributes: durationAttrs)
+        let durationRect = CGRect(
+            x: (rect.width - durationSize.width) / 2,
+            y: contentStartY,
+            width: durationSize.width,
+            height: durationSize.height
+        )
+        durationText.draw(in: durationRect, withAttributes: durationAttrs)
+
+        // Spot (si disponible)
+        var nextY = durationRect.maxY + 15
+        if let spotName = flight.spotName, !spotName.isEmpty {
+            let spotFont = UIFont.systemFont(ofSize: 36, weight: .medium)
+            let spotAttrs: [NSAttributedString.Key: Any] = [
+                .font: spotFont,
+                .foregroundColor: UIColor.systemBlue
+            ]
+            let spotSize = spotName.size(withAttributes: spotAttrs)
+            let spotRect = CGRect(
+                x: (rect.width - spotSize.width) / 2,
+                y: nextY,
+                width: spotSize.width,
+                height: spotSize.height
+            )
+            spotName.draw(in: spotRect, withAttributes: spotAttrs)
+            nextY = spotRect.maxY + 30
+        } else {
+            nextY += 20
+        }
+
+        // Stats en grille 2x2 (nouveau layout)
+        let statsY = nextY + 10
+        let cardWidth = (rect.width - padding * 3) / 2
+        let cardHeight: CGFloat = 90
+
+        var stats: [(label: String, value: String, icon: String)] = []
+
+        if let altitude = flight.maxAltitude {
+            stats.append(("ALT. MAX", "\(Int(altitude)) m", "arrow.up"))
+        }
+        if let distance = flight.totalDistance {
+            let distStr = distance >= 1000 ? String(format: "%.1f km", distance / 1000) : "\(Int(distance)) m"
+            stats.append(("DISTANCE", distStr, "point.topleft.down.to.point.bottomright.curvepath"))
+        }
+        if let speed = flight.maxSpeed {
+            stats.append(("VITESSE MAX", "\(Int(speed * 3.6)) km/h", "speedometer"))
+        }
+        if let startAlt = flight.startAltitude, let endAlt = flight.endAltitude {
+            let gain = startAlt - endAlt
+            let gainStr = gain >= 0 ? "+\(Int(gain)) m" : "\(Int(gain)) m"
+            stats.append(("DÉNIVELÉ", gainStr, "arrow.up.arrow.down"))
+        }
+
+        // Dessiner les cartes de stats
+        for (index, stat) in stats.prefix(4).enumerated() {
+            let col = index % 2
+            let row = index / 2
+
+            let cardX = padding + CGFloat(col) * (cardWidth + padding)
+            let cardY = statsY + CGFloat(row) * (cardHeight + 15)
+
+            drawStatCardLocal(
+                label: stat.label,
+                value: stat.value,
+                in: CGRect(x: cardX, y: cardY, width: cardWidth, height: cardHeight),
+                context: context
+            )
+        }
+
+        // Date et voile en bas
+        let bottomY = rect.height * 0.88
+
+        // Date
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .long
+        dateFormatter.locale = Locale(identifier: "fr_FR")
+        let dateStr = dateFormatter.string(from: flight.date)
+
+        let dateFont = UIFont.systemFont(ofSize: 28, weight: .regular)
+        let dateAttrs: [NSAttributedString.Key: Any] = [
+            .font: dateFont,
+            .foregroundColor: UIColor.white.withAlphaComponent(0.6)
+        ]
+        let dateSize = dateStr.size(withAttributes: dateAttrs)
+        let dateRect = CGRect(
+            x: (rect.width - dateSize.width) / 2,
+            y: bottomY,
+            width: dateSize.width,
+            height: dateSize.height
+        )
+        dateStr.draw(in: dateRect, withAttributes: dateAttrs)
+
+        // Voile (si disponible)
+        if let wing = flight.wing {
+            let wingFont = UIFont.systemFont(ofSize: 24, weight: .medium)
+            let wingAttrs: [NSAttributedString.Key: Any] = [
+                .font: wingFont,
+                .foregroundColor: UIColor.white.withAlphaComponent(0.5)
+            ]
+            let wingText = "\(wing.brand) \(wing.model)"
+            let wingSize = wingText.size(withAttributes: wingAttrs)
+            let wingRect = CGRect(
+                x: (rect.width - wingSize.width) / 2,
+                y: dateRect.maxY + 8,
+                width: wingSize.width,
+                height: wingSize.height
+            )
+            wingText.draw(in: wingRect, withAttributes: wingAttrs)
+        }
+    }
+
+    private func drawStatCardLocal(label: String, value: String, in rect: CGRect, context: UIGraphicsImageRendererContext) {
+        let cgContext = context.cgContext
+
+        // Fond semi-transparent
+        cgContext.setFillColor(UIColor.white.withAlphaComponent(0.1).cgColor)
+        let path = UIBezierPath(roundedRect: rect, cornerRadius: 12)
+        cgContext.addPath(path.cgPath)
+        cgContext.fillPath()
+
+        // Label
+        let labelFont = UIFont.systemFont(ofSize: 16, weight: .semibold)
+        let labelAttrs: [NSAttributedString.Key: Any] = [
+            .font: labelFont,
+            .foregroundColor: UIColor.white.withAlphaComponent(0.6)
+        ]
+        let labelSize = label.size(withAttributes: labelAttrs)
+        let labelRect = CGRect(
+            x: rect.midX - labelSize.width / 2,
+            y: rect.minY + 15,
+            width: labelSize.width,
+            height: labelSize.height
+        )
+        label.draw(in: labelRect, withAttributes: labelAttrs)
+
+        // Value
+        let valueFont = UIFont.systemFont(ofSize: 32, weight: .bold)
+        let valueAttrs: [NSAttributedString.Key: Any] = [
+            .font: valueFont,
+            .foregroundColor: UIColor.white
+        ]
+        let valueSize = value.size(withAttributes: valueAttrs)
+        let valueRect = CGRect(
+            x: rect.midX - valueSize.width / 2,
+            y: labelRect.maxY + 8,
+            width: valueSize.width,
+            height: valueSize.height
+        )
+        value.draw(in: valueRect, withAttributes: valueAttrs)
+    }
+
+    // MARK: - Local Flight Share Text
+
+    /// Génère le texte de partage pour un vol local
+    func generateLocalFlightShareText(flight: Flight) -> String {
+        var text = "Vol de \(flight.durationFormatted)"
+
+        if let spotName = flight.spotName, !spotName.isEmpty {
+            text += " @ \(spotName)"
+        }
+
+        text += "\n\n"
+
+        if let altitude = flight.maxAltitude {
+            text += "Alt. max: \(Int(altitude))m\n"
+        }
+
+        if let distance = flight.totalDistance {
+            if distance >= 1000 {
+                text += "Distance: \(String(format: "%.1f", distance / 1000))km\n"
+            } else {
+                text += "Distance: \(Int(distance))m\n"
+            }
+        }
+
+        if let wing = flight.wing {
+            text += "Voile: \(wing.brand) \(wing.model)\n"
+        }
+
+        text += "\n#Parapente #Paragliding #SoarX"
+
+        return text
     }
 }
