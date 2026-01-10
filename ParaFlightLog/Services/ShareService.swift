@@ -873,7 +873,7 @@ final class ShareService {
         let dateFormatter = DateFormatter()
         dateFormatter.dateStyle = .long
         dateFormatter.locale = Locale(identifier: "fr_FR")
-        let dateStr = dateFormatter.string(from: flight.date)
+        let dateStr = dateFormatter.string(from: flight.startDate)
 
         let dateFont = UIFont.systemFont(ofSize: 28, weight: .regular)
         let dateAttrs: [NSAttributedString.Key: Any] = [
@@ -896,7 +896,7 @@ final class ShareService {
                 .font: wingFont,
                 .foregroundColor: UIColor.white.withAlphaComponent(0.5)
             ]
-            let wingText = "\(wing.brand) \(wing.model)"
+            let wingText = [wing.brand, wing.name].compactMap { $0 }.joined(separator: " ")
             let wingSize = wingText.size(withAttributes: wingAttrs)
             let wingRect = CGRect(
                 x: (rect.width - wingSize.width) / 2,
@@ -973,7 +973,7 @@ final class ShareService {
         }
 
         if let wing = flight.wing {
-            text += "Voile: \(wing.brand) \(wing.model)\n"
+            text += "Voile: \([wing.brand, wing.name].compactMap { $0 }.joined(separator: " "))\n"
         }
 
         text += "\n#Parapente #Paragliding #SoarX"
