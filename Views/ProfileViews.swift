@@ -1295,6 +1295,10 @@ struct ProfileView: View {
                     userProfile = profile
                     logInfo("Cloud profile loaded successfully: \(profile.email)", category: .auth)
                 }
+                // Load user badges if not already loaded
+                if BadgeService.shared.userBadges.isEmpty {
+                    await BadgeService.shared.loadUserBadges(userId: profile.id)
+                }
                 return
             }
         } catch {
@@ -1321,6 +1325,8 @@ struct ProfileView: View {
                     userProfile = newProfile
                     logInfo("Cloud profile created successfully: \(newProfile.email)", category: .auth)
                 }
+                // Load user badges for new profile
+                await BadgeService.shared.loadUserBadges(userId: newProfile.id)
                 return
             } catch {
                 logError("Failed to create cloud profile: \(error.localizedDescription)", category: .auth)
@@ -1708,16 +1714,27 @@ struct ProfileHeaderView: View {
     }
 
     private func xpForLevel(_ level: Int) -> Int {
-        // Simple progression: level * 100 XP
+        // XP required to reach this level (cumulative)
+        // Level 1: 0 XP (starting level)
+        // Level 2: 100 XP
+        // Level 3: 300 XP (100 + 200)
+        // Level N: sum of (i * 100) for i in 1..<level
+        guard level > 1 else { return 0 }
+        return (1..<level).reduce(0) { $0 + $1 * 100 }
+    }
+
+    private func xpNeededForNextLevel(_ level: Int) -> Int {
+        // XP needed to go from current level to next level
         return level * 100
     }
 
     private func levelProgress(for profile: CloudUserProfile) -> Double {
-        let currentLevelXP = xpForLevel(profile.level)
-        let nextLevelXP = xpForLevel(profile.level + 1)
-        let xpInCurrentLevel = profile.xpTotal - currentLevelXP
+        let currentLevelStartXP = xpForLevel(profile.level)
+        let xpNeeded = xpNeededForNextLevel(profile.level)
+        let xpInCurrentLevel = profile.xpTotal - currentLevelStartXP
 
-        let progress = Double(xpInCurrentLevel) / Double(nextLevelXP - currentLevelXP)
+        guard xpNeeded > 0 else { return 1.0 }
+        let progress = Double(xpInCurrentLevel) / Double(xpNeeded)
         return min(max(progress, 0), 1)
     }
 }

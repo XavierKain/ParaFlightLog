@@ -545,6 +545,7 @@ struct PilotProfileView: View {
     @State private var isTogglingFollow = false
     @State private var errorMessage: String?
     @State private var selectedSegment = 0
+    @State private var isAnimatingStreak = false
 
     private let segments = ["Vols", "Badges", "Stats"]
 
@@ -600,107 +601,208 @@ struct PilotProfileView: View {
     // MARK: - Profile Header
 
     private var profileHeader: some View {
-        VStack(spacing: 16) {
-            // Photo et niveau
-            ZStack(alignment: .bottomTrailing) {
-                if let photoId = profile?.profilePhotoFileId {
-                    ProfilePhotoView(fileId: photoId, displayName: profile?.displayName ?? "", size: 100)
-                } else {
-                    Circle()
-                        .fill(Color.blue.opacity(0.15))
-                        .frame(width: 100, height: 100)
-                        .overlay {
-                            Text(profile?.displayName.prefix(1).uppercased() ?? "?")
-                                .font(.system(size: 40, weight: .bold))
-                                .foregroundStyle(.blue)
-                        }
+        VStack(spacing: 0) {
+            // Cover image / Hero section (same as ProfileHeaderView)
+            ZStack(alignment: .bottom) {
+                // Gradient cover
+                LinearGradient(
+                    colors: [.blue.opacity(0.6), .cyan.opacity(0.4), .teal.opacity(0.3)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+                .frame(height: 120)
+                .overlay {
+                    Image(systemName: "cloud.fill")
+                        .font(.system(size: 80))
+                        .foregroundStyle(.white.opacity(0.1))
+                        .offset(x: -50, y: -10)
+                    Image(systemName: "cloud.fill")
+                        .font(.system(size: 60))
+                        .foregroundStyle(.white.opacity(0.08))
+                        .offset(x: 80, y: 15)
                 }
 
-                // Badge niveau
-                if let level = profile?.level {
-                    Text("Niv. \(level)")
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .foregroundStyle(.white)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(levelColor(level))
-                        .clipShape(Capsule())
-                        .offset(x: 5, y: 5)
-                }
-            }
-
-            // Nom et username
-            VStack(spacing: 4) {
-                Text(profile?.displayName ?? "Pilote")
-                    .font(.title2)
-                    .fontWeight(.bold)
-
-                Text("@\(profile?.username ?? "pilot")")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
-
-            // Bio
-            if let bio = profile?.bio, !bio.isEmpty {
-                Text(bio)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal)
-            }
-
-            // Stats en ligne
-            HStack(spacing: 24) {
-                PilotStatItem(
-                    value: "\(profile?.totalFlights ?? 0)",
-                    label: "Vols".localized
-                )
-
-                PilotStatItem(
-                    value: formatFlightHours(profile?.totalFlightSeconds ?? 0),
-                    label: "Heures".localized
-                )
-
-                PilotStatItem(
-                    value: "\(profile?.xpTotal ?? 0)",
-                    label: "XP"
-                )
-
-                PilotStatItem(
-                    value: "\(profile?.longestStreak ?? 0)",
-                    label: "Streak".localized
-                )
-            }
-            .padding(.vertical, 8)
-
-            // Bouton suivre (sauf si c'est notre propre profil)
-            if profile?.authUserId != AuthService.shared.currentUserId {
-                Button {
-                    Task { await toggleFollow() }
-                } label: {
-                    HStack(spacing: 6) {
-                        if isTogglingFollow {
-                            ProgressView()
-                                .scaleEffect(0.8)
-                        } else {
-                            Image(systemName: isFollowing ? "person.badge.minus" : "person.badge.plus")
-                        }
-                        Text(isFollowing ? "Ne plus suivre".localized : "Suivre".localized)
+                // Profile photo overlapping cover
+                VStack(spacing: 0) {
+                    Spacer()
+                    if let photoId = profile?.profilePhotoFileId {
+                        ProfilePhotoView(fileId: photoId, displayName: profile?.displayName ?? "", size: 100)
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(Color(.systemBackground), lineWidth: 4)
+                            )
+                            .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 2)
+                    } else {
+                        Circle()
+                            .fill(Color.blue.opacity(0.15))
+                            .frame(width: 100, height: 100)
+                            .overlay {
+                                Text(profile?.displayName.prefix(1).uppercased() ?? "?")
+                                    .font(.system(size: 40, weight: .bold))
+                                    .foregroundStyle(.blue)
+                            }
+                            .overlay(
+                                Circle()
+                                    .strokeBorder(Color(.systemBackground), lineWidth: 4)
+                            )
+                            .shadow(color: .black.opacity(0.15), radius: 8, x: 0, y: 2)
                     }
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 12)
-                    .background(isFollowing ? Color.secondary.opacity(0.2) : Color.blue)
-                    .foregroundColor(isFollowing ? .primary : .white)
+                }
+                .offset(y: 50)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+
+            // Profile info section (with padding for overlapping photo)
+            VStack(spacing: 12) {
+                Spacer()
+                    .frame(height: 60)
+
+                // Name and username
+                VStack(spacing: 4) {
+                    Text(profile?.displayName ?? "Pilote")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("@\(profile?.username ?? "pilot")")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+
+                // Level badge with prominent display
+                if let level = profile?.level {
+                    HStack(spacing: 8) {
+                        Image(systemName: "star.fill")
+                            .font(.subheadline)
+                            .foregroundStyle(levelColor(level))
+                        Text("Niveau \(level)")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .background(levelColor(level).opacity(0.15))
                     .clipShape(Capsule())
                 }
-                .disabled(isTogglingFollow)
+
+                // XP Progress bar
+                if let xp = profile?.xpTotal, let level = profile?.level {
+                    VStack(spacing: 6) {
+                        HStack {
+                            Text("\(xp) XP")
+                                .font(.caption)
+                                .fontWeight(.medium)
+                            Spacer()
+                            Text("Prochain niveau: \(xpForLevel(level + 1)) XP")
+                                .font(.caption2)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        GeometryReader { geometry in
+                            ZStack(alignment: .leading) {
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(Color(.systemGray5))
+
+                                RoundedRectangle(cornerRadius: 8)
+                                    .fill(LinearGradient(
+                                        colors: [levelColor(level), levelColor(level).opacity(0.7)],
+                                        startPoint: .leading,
+                                        endPoint: .trailing
+                                    ))
+                                    .frame(width: geometry.size.width * levelProgress(for: level, xp: xp))
+                            }
+                        }
+                        .frame(height: 10)
+                    }
+                    .padding(.horizontal)
+                }
+
+                // Streak with animation
+                if let streak = profile?.currentStreak, streak > 0 {
+                    HStack(spacing: 6) {
+                        Image(systemName: "flame.fill")
+                            .foregroundStyle(.orange)
+                            .scaleEffect(isAnimatingStreak ? 1.2 : 1.0)
+                            .animation(
+                                .easeInOut(duration: 0.6)
+                                .repeatForever(autoreverses: true),
+                                value: isAnimatingStreak
+                            )
+                        Text("\(streak) jour\(streak > 1 ? "s" : "") de série")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(Color.orange.opacity(0.1))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .onAppear {
+                        isAnimatingStreak = true
+                    }
+                }
+
+                // Bio
+                if let bio = profile?.bio, !bio.isEmpty {
+                    Text(bio)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+                }
+
+                // Additional info
+                HStack(spacing: 20) {
+                    if let weight = profile?.pilotWeight {
+                        Label("\(Int(weight)) kg", systemImage: "scalemass")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let location = profile?.homeLocationName, !location.isEmpty {
+                        Label(location, systemImage: "location.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+                }
+
+                // Bouton suivre (sauf si c'est notre propre profil)
+                if profile?.authUserId != AuthService.shared.currentUserId {
+                    Button {
+                        Task { await toggleFollow() }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if isTogglingFollow {
+                                ProgressView()
+                                    .scaleEffect(0.8)
+                            } else {
+                                Image(systemName: isFollowing ? "person.badge.minus" : "person.badge.plus")
+                            }
+                            Text(isFollowing ? "Ne plus suivre".localized : "Suivre".localized)
+                        }
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 12)
+                        .background(isFollowing ? Color.secondary.opacity(0.2) : Color.blue)
+                        .foregroundColor(isFollowing ? .primary : .white)
+                        .clipShape(Capsule())
+                    }
+                    .disabled(isTogglingFollow)
+                }
             }
+            .padding(.bottom, 16)
         }
-        .padding()
-        .background(Color(.secondarySystemBackground))
+        .background(Color(.systemBackground))
+    }
+
+    private func levelProgress(for level: Int, xp: Int) -> Double {
+        let currentLevelStartXP = xpForLevel(level)
+        let xpNeeded = level * 100 // XP needed for next level
+        let xpInCurrentLevel = xp - currentLevelStartXP
+
+        guard xpNeeded > 0 else { return 1.0 }
+        let progress = Double(xpInCurrentLevel) / Double(xpNeeded)
+        return min(max(progress, 0), 1)
     }
 
     // MARK: - Flights Section

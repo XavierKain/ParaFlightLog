@@ -41,36 +41,41 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
             DiscoverView()
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 .tabItem {
                     Label(discoverLabel, systemImage: "globe")
                 }
                 .tag(0)
 
             LogbookView()
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 .tabItem {
                     Label(logbookLabel, systemImage: "book.closed")
                 }
                 .tag(1)
 
             MapTabView()
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 .tabItem {
                     Label(mapLabel, systemImage: "map")
                 }
                 .tag(2)
 
             ProfileView()
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 .tabItem {
                     Label(profileLabel, systemImage: "person.circle")
                 }
                 .tag(3)
 
             SettingsTabView()
+                .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 .tabItem {
                     Label(settingsLabel, systemImage: "gearshape")
                 }
                 .tag(4)
         }
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: selectedTab)
+        .animation(.easeInOut(duration: 0.2), value: selectedTab)
         .id(localizationManager.currentLanguage) // Force re-render de tout le TabView quand la langue change
     }
 }
