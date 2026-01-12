@@ -26,20 +26,20 @@ struct LogbookView: View {
                 .padding()
 
                 // Contenu basé sur le segment sélectionné
-                TabView(selection: $selectedSegment) {
-                    // Timeline : Liste chronologique des vols
-                    FlightsView()
-                        .tag(0)
-
-                    // Stats : Statistiques agrégées
-                    StatsView()
-                        .tag(1)
-
-                    // Maps : Visualisations cartographiques
-                    ChartsView()
-                        .tag(2)
+                // Note: On utilise un switch au lieu de TabView(.page) pour éviter
+                // le conflit entre le swipe horizontal et le swipe-to-delete des vols
+                Group {
+                    switch selectedSegment {
+                    case 0:
+                        FlightsView()
+                    case 1:
+                        StatsView()
+                    case 2:
+                        ChartsView()
+                    default:
+                        FlightsView()
+                    }
                 }
-                .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .navigationTitle("Logbook")
             .toolbar {
