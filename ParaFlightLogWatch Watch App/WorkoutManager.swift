@@ -8,6 +8,7 @@
 
 import Foundation
 import HealthKit
+import WatchKit
 
 @Observable
 final class WorkoutManager: NSObject {
@@ -19,6 +20,9 @@ final class WorkoutManager: NSObject {
 
     var isWorkoutActive: Bool = false
     var isAuthorized: Bool = false
+
+    /// Flag pour activer le Water Lock une fois la session running
+    private var shouldEnableWaterLockWhenRunning: Bool = false
 
     private override init() {
         super.init()
@@ -85,27 +89,29 @@ final class WorkoutManager: NSObject {
             let session = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
             let builder = session.associatedWorkoutBuilder()
 
+            // Configurer le delegate pour savoir quand la session est vraiment running
+            session.delegate = self
+
             // Configurer le builder
             builder.dataSource = HKLiveWorkoutDataSource(healthStore: healthStore, workoutConfiguration: configuration)
+
+            // Marquer qu'on veut activer le Water Lock quand la session sera running
+            shouldEnableWaterLockWhenRunning = WatchSettings.shared.autoWaterLockEnabled
+
+            await MainActor.run {
+                self.workoutSession = session
+                self.workoutBuilder = builder
+            }
 
             // Démarrer la session
             session.startActivity(with: Date())
             try await builder.beginCollection(at: Date())
 
             await MainActor.run {
-                self.workoutSession = session
-                self.workoutBuilder = builder
                 self.isWorkoutActive = true
             }
 
             watchLogInfo("Workout session started (required for continuous GPS)", category: .workout)
-
-            // Note: La session workout est démarrée pour maintenir le GPS actif
-            // Water Lock est géré manuellement par l'utilisateur sur watchOS 10+
-            // (WKInterfaceDevice.enableWaterLock() est déprécié)
-            if WatchSettings.shared.autoWaterLockEnabled {
-                watchLogInfo("Water Lock should be enabled manually by user", category: .workout)
-            }
 
         } catch {
             watchLogError("Failed to start workout session: \(error.localizedDescription)", category: .workout)
@@ -144,5 +150,29 @@ final class WorkoutManager: NSObject {
         workoutSession = nil
         workoutBuilder = nil
         isWorkoutActive = false
+        shouldEnableWaterLockWhenRunning = false
+    }
+}
+
+// MARK: - HKWorkoutSessionDelegate
+
+extension WorkoutManager: HKWorkoutSessionDelegate {
+    func workoutSession(_ workoutSession: HKWorkoutSession, didChangeTo toState: HKWorkoutSessionState, from fromState: HKWorkoutSessionState, date: Date) {
+        watchLogDebug("Workout session state changed: \(fromState.rawValue) -> \(toState.rawValue)", category: .workout)
+
+        // Activer le Water Lock seulement quand la session passe à "running"
+        if toState == .running && shouldEnableWaterLockWhenRunning {
+            shouldEnableWaterLockWhenRunning = false
+            // Attendre un court instant pour que le système enregistre vraiment la session
+            // Le callback arrive parfois avant que watchOS ait fini d'initialiser la session
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                WKInterfaceDevice.current().enableWaterLock()
+                watchLogInfo("Water Lock activated (session is now running)", category: .workout)
+            }
+        }
+    }
+
+    func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        watchLogError("Workout session failed: \(error.localizedDescription)", category: .workout)
     }
 }
