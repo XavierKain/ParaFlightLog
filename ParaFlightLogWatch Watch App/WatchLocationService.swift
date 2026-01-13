@@ -35,6 +35,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             emergencyManager.delegate = self
             emergencyManager.desiredAccuracy = kCLLocationAccuracyBest
             emergencyManager.distanceFilter = kCLDistanceFilterNone
+            emergencyManager.activityType = .otherNavigation
             _locationManager = emergencyManager
             watchLogWarning("Emergency CLLocationManager creation - this should never happen", category: .location)
         }
@@ -93,8 +94,10 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         // Sinon, en vol stationnaire (thermique, soaring), on ne reçoit pas de mises à jour
         // et la trace GPS est très incomplète
         manager.distanceFilter = kCLDistanceFilterNone
-        // Note: allowsBackgroundLocationUpdates n'est pas nécessaire sur watchOS
-        // Les updates continuent automatiquement pendant que l'app est active
+        // Type d'activité pour optimiser la consommation batterie en vol
+        // Note: Sur watchOS, le background location est géré par HKWorkoutSession,
+        // pas par allowsBackgroundLocationUpdates (qui nécessite UIBackgroundModes)
+        manager.activityType = .otherNavigation
         _locationManager = manager
         authorizationStatus = manager.authorizationStatus
     }

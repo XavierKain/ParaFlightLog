@@ -151,30 +151,29 @@ struct ContentView: View {
         // Démarrer la session de persistance pour sauvegarder automatiquement
         sessionManager.startSession(wing: wing, spotName: locationService.currentSpotName)
 
-        // Démarrer la session workout TOUJOURS pour maintenir les mises à jour GPS
-        // La session workout est NÉCESSAIRE pour que watchOS continue à envoyer
-        // les mises à jour de localisation quand l'écran s'éteint.
-        // Sans ça, après quelques secondes, l'app passe en background et le GPS s'arrête.
-        Task.detached(priority: .high) { [workoutManager] in
-            await workoutManager.startWorkoutSession()
-        }
-
         // Assigner activeFlightWing déclenche automatiquement le fullScreenCover(item:)
         // SwiftUI passe cette valeur directement au closure, donc pas de problème de timing
         activeFlightWing = wing
 
-        // Démarrer les services de localisation après un court délai
+        // IMPORTANT: Démarrer la session workout AVANT le tracking GPS
+        // La session workout est NÉCESSAIRE pour que watchOS continue à envoyer
+        // les mises à jour de localisation quand l'écran s'éteint ou que l'app passe en background.
+        // Sans ça, après quelques secondes, le GPS s'arrête.
         let wingName = wing.name
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            self.locationService.startUpdatingLocation()
-            self.locationService.startFlightTracking()
+        Task { @MainActor [workoutManager, locationService, watchManager] in
+            // Démarrer la session workout et attendre qu'elle soit active
+            await workoutManager.startWorkoutSession()
+
+            // Maintenant que la session workout est active, démarrer le tracking GPS
+            locationService.startUpdatingLocation()
+            locationService.startFlightTracking()
 
             // Notifier l'iPhone pour démarrer le live flight (si connecté)
-            self.watchManager.notifyLiveFlightStart(
+            watchManager.notifyLiveFlightStart(
                 wingName: wingName,
-                latitude: self.locationService.lastKnownLocation?.coordinate.latitude,
-                longitude: self.locationService.lastKnownLocation?.coordinate.longitude,
-                altitude: self.locationService.currentAltitude
+                latitude: locationService.lastKnownLocation?.coordinate.latitude,
+                longitude: locationService.lastKnownLocation?.coordinate.longitude,
+                altitude: locationService.currentAltitude
             ) { success, _ in
                 if success {
                     watchLogInfo("Live flight started on iPhone", category: .watchSync)
