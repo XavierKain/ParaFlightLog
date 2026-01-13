@@ -692,6 +692,16 @@
         }
       }
     },
+    "%lld vote%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld vote%2$@"
+          }
+        }
+      }
+    },
     "%lld XP" : {
 
     },
@@ -706,6 +716,9 @@
       }
     },
     "%lld%%" : {
+
+    },
+    "%lld%% pour" : {
 
     },
     "%lld°" : {
@@ -864,6 +877,9 @@
     "+%lld XP" : {
 
     },
+    "×%@" : {
+
+    },
     "⚠️ Cette action est irréversible ! La voile \"%@\" et ses %lld vol%@ seront définitivement supprimés." : {
       "localizations" : {
         "en" : {
@@ -969,7 +985,6 @@
 
     },
     "1" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -1502,6 +1517,15 @@
     "Appliquer" : {
 
     },
+    "Approuvé" : {
+
+    },
+    "Approuver" : {
+
+    },
+    "Appui long pour créer une zone" : {
+
+    },
     "Archiver" : {
       "localizations" : {
         "en" : {
@@ -1651,6 +1675,9 @@
           }
         }
       }
+    },
+    "Aucune proposition" : {
+
     },
     "Aucune voile" : {
       "localizations" : {
@@ -1897,6 +1924,9 @@
     "Chargement des NOTAM..." : {
 
     },
+    "Chargement..." : {
+
+    },
     "Choisir la période" : {
       "localizations" : {
         "en" : {
@@ -2043,6 +2073,9 @@
           }
         }
       }
+    },
+    "Continuez ou appuyez sur Terminer" : {
+
     },
     "Coordonnées" : {
       "localizations" : {
@@ -2273,6 +2306,12 @@
     "Description (optionnel)" : {
 
     },
+    "Dessiner une zone" : {
+
+    },
+    "Dessiner une zone précise" : {
+
+    },
     "Détail du vol" : {
       "localizations" : {
         "en" : {
@@ -2443,7 +2482,13 @@
         }
       }
     },
+    "Effacer" : {
+
+    },
     "En direct" : {
+
+    },
+    "En tant qu'expert, vous pouvez définir une zone polygonale au lieu d'un cercle de 300m" : {
 
     },
     "Enregistrer" : {
@@ -2781,6 +2826,9 @@
     "Hybride" : {
 
     },
+    "Il n'y a pas de propositions de zones en cours près de chez vous" : {
+
+    },
     "Import en cours..." : {
       "localizations" : {
         "en" : {
@@ -2893,6 +2941,9 @@
         }
       }
     },
+    "Justification" : {
+
+    },
     "kg" : {
 
     },
@@ -2963,6 +3014,9 @@
           }
         }
       }
+    },
+    "Le nouveau nom sera soumis au vote de la communauté" : {
+
     },
     "Les spots apparaîtront ici une fois que vous aurez enregistré des vols" : {
       "localizations" : {
@@ -3040,6 +3094,9 @@
         }
       }
     },
+    "Mes propositions" : {
+
+    },
     "Mes voiles" : {
       "localizations" : {
         "en" : {
@@ -3087,6 +3144,15 @@
           }
         }
       }
+    },
+    "Minimum 20 caractères pour expliquer votre choix" : {
+
+    },
+    "Minimum 20 caractères pour justifier le nom" : {
+
+    },
+    "Minimum 20 caractères pour la raison" : {
+
     },
     "Mode démo Live" : {
 
@@ -3180,6 +3246,9 @@
         }
       }
     },
+    "Niveau insuffisant" : {
+
+    },
     "Nom" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3250,6 +3319,9 @@
           }
         }
       }
+    },
+    "Nommer la zone" : {
+
     },
     "Non" : {
       "localizations" : {
@@ -3544,7 +3616,16 @@
         }
       }
     },
+    "Poids de vote" : {
+
+    },
+    "Points" : {
+
+    },
     "Portée" : {
+
+    },
+    "Position" : {
 
     },
     "Position indisponible" : {
@@ -3580,7 +3661,13 @@
         }
       }
     },
+    "Pourquoi ce nom ?" : {
+
+    },
     "Pré-vol" : {
+
+    },
+    "Près de moi" : {
 
     },
     "Prêt à exporter" : {
@@ -3616,6 +3703,18 @@
       }
     },
     "Prochain niveau: %lld XP" : {
+
+    },
+    "Proposé par" : {
+
+    },
+    "Proposer un nom" : {
+
+    },
+    "Proposition" : {
+
+    },
+    "Propositions de zones" : {
 
     },
     "Que voulez-vous faire ?" : {
@@ -3718,6 +3817,15 @@
         }
       }
     },
+    "Rejeté" : {
+
+    },
+    "Rejeter" : {
+
+    },
+    "Renommage de spot" : {
+
+    },
     "Renommer" : {
 
     },
@@ -3812,6 +3920,9 @@
           }
         }
       }
+    },
+    "Se termine dans %@" : {
+
     },
     "Searching..." : {
       "localizations" : {
@@ -3923,6 +4034,9 @@
 
     },
     "SOS" : {
+
+    },
+    "Soumettre" : {
 
     },
     "Source: %@" : {
@@ -4227,6 +4341,9 @@
     "sur %lld" : {
 
     },
+    "Surface" : {
+
+    },
     "Swipe pour continuer" : {
 
     },
@@ -4433,6 +4550,9 @@
       }
     },
     "Toucher pour agrandir" : {
+
+    },
+    "Touchez la carte pour ajouter des points" : {
 
     },
     "Toutes" : {
@@ -4767,6 +4887,27 @@
         }
       }
     },
+    "Vote en cours" : {
+
+    },
+    "Votes (%lld)" : {
+
+    },
+    "Votre niveau" : {
+
+    },
+    "Votre profil" : {
+
+    },
+    "Vous devez avoir au moins 3 vols enregistrés pour proposer un renommage de spot." : {
+
+    },
+    "Vous devez avoir volé près de ce spot pour voter" : {
+
+    },
+    "Vous n'avez pas encore proposé de zone" : {
+
+    },
     "Water Lock" : {
 
     },
@@ -4949,6 +5090,12 @@
           }
         }
       }
+    },
+    "Zone" : {
+
+    },
+    "Zone trop grande" : {
+
     },
     "Zones d'alerte" : {
 

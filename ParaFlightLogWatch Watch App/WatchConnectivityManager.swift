@@ -340,6 +340,11 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         // Extraire les paramètres Watch si présents
         WatchSettings.shared.updateFromContext(context)
 
+        // Extraire les zones de spots si présentes
+        if let zonesData = context["spotZones"] as? [[String: Any]] {
+            WatchZoneCache.shared.updateFromDictionary(zonesData)
+        }
+
         // Nouveau format : wingsData en Base64 - Décoder en background
         if let base64String = context["wingsData"] as? String,
            let jsonData = Data(base64Encoded: base64String) {

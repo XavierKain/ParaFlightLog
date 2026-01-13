@@ -398,6 +398,14 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         gForceBuffer = []
     }
 
+    // MARK: - Zone Matching (Community Spots)
+
+    /// Vérifie si la position correspond à une zone communautaire
+    /// Retourne le nom du spot si trouvé, nil sinon
+    private func checkCommunityZone(location: CLLocation) -> String? {
+        return WatchZoneCache.shared.findSpotName(at: location.coordinate)
+    }
+
     // MARK: - Reverse Geocoding avec MKReverseGeocodingRequest (watchOS 26+)
 
     private var isGeocodingInProgress = false
@@ -407,6 +415,22 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private let geocodingMinInterval: TimeInterval = 5.0
 
     private func reverseGeocode(location: CLLocation) {
+        // Vérifier d'abord si une zone communautaire couvre cette position
+        if let communitySpotName = checkCommunityZone(location: location) {
+            // Zone communautaire trouvée - utiliser son nom
+            if isTracking {
+                if lockedSpotName == nil {
+                    lockedSpotName = communitySpotName
+                }
+                currentSpotName = lockedSpotName ?? communitySpotName
+            } else {
+                currentSpotName = communitySpotName
+                lastGeocodedSpot = communitySpotName
+            }
+            return
+        }
+
+        // Pas de zone communautaire - continuer avec le reverse geocoding classique
         // Si un vol est en cours et qu'on a un spot verrouillé, ne pas changer le nom
         if isTracking, let locked = lockedSpotName {
             // Garder le nom verrouillé pendant le vol

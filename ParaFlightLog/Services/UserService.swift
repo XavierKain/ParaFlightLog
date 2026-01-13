@@ -796,3 +796,22 @@ final class UserService {
         return level
     }
 }
+
+// MARK: - Trust Level Extension
+
+extension UserService {
+    /// Récupère le trust info de l'utilisateur actuel
+    func getTrustInfo() async throws -> TrustInfo {
+        try await TrustService.shared.getCurrentUserTrustInfo()
+    }
+
+    /// Vérifie si l'utilisateur peut proposer un nom de spot
+    func canProposeSpotName() async -> Bool {
+        await TrustService.shared.canProposeName()
+    }
+
+    /// Vérifie si l'utilisateur peut dessiner une zone
+    func canDrawSpotZone() async -> Bool {
+        await TrustService.shared.canDrawZone()
+    }
+}

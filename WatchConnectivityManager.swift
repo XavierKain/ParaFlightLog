@@ -101,6 +101,53 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    // MARK: - Send Spot Zones to Watch
+
+    /// Envoie les zones de spots approuvées vers la Watch
+    /// Ces zones permettent à la Watch de déterminer le nom du spot sans reverse geocoding
+    func sendSpotZonesToWatch(near coordinate: CLLocationCoordinate2D?) async {
+        guard WCSession.default.activationState == .activated else {
+            logWarning("WCSession not activated, cannot send spot zones", category: .watchSync)
+            return
+        }
+
+        // Récupérer les zones approuvées près de la position
+        let zones: [SpotZone]
+        if let coord = coordinate {
+            zones = await SpotZoneService.shared.findNearbyZones(coordinate: coord, radiusKm: 100)
+        } else {
+            zones = []
+        }
+
+        // Convertir en format léger pour la Watch
+        let zonesData: [[String: Any]] = zones.prefix(50).map { zone in
+            let bb = zone.boundingBox
+            return [
+                "id": zone.id,
+                "name": zone.name,
+                "centerLat": zone.coordinate.latitude,
+                "centerLon": zone.coordinate.longitude,
+                "radiusMeters": sqrt(zone.areaKm2) * 1000,  // Approximation du rayon
+                "boundingBox": [
+                    "minLat": bb.minLat,
+                    "maxLat": bb.maxLat,
+                    "minLon": bb.minLon,
+                    "maxLon": bb.maxLon
+                ]
+            ]
+        }
+
+        var context = WCSession.default.applicationContext
+        context["spotZones"] = zonesData
+
+        do {
+            try WCSession.default.updateApplicationContext(context)
+            logInfo("Sent \(zonesData.count) spot zones to Watch", category: .watchSync)
+        } catch {
+            logError("Failed to send spot zones: \(error.localizedDescription)", category: .watchSync)
+        }
+    }
+
     // MARK: - Send Wings to Watch
 
     /// Envoie la liste des voiles vers la Watch avec debouncing

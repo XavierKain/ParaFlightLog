@@ -28,7 +28,7 @@ struct DiscoverView: View {
         case global = "Tous"
         case friends = "Amis"
         case live = "Live"
-        case map = "Carte"
+        case zones = "Zones"
 
         var localized: String {
             rawValue.localized
@@ -60,8 +60,8 @@ struct DiscoverView: View {
                     }
                 case .live:
                     LiveFlightsMapView()
-                case .map:
-                    MapDiscoveryView()
+                case .zones:
+                    ZoneProposalsListView()
                 }
             }
             .navigationTitle("Découvrir".localized)

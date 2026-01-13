@@ -45,6 +45,10 @@ enum AppwriteConfig {
     static let sosAlertsCollectionId = "sos_alerts"
     static let spotWeatherCacheCollectionId = "spot_weather_cache"
 
+    // Collections - Spot Zones (Community spot naming)
+    static let spotZonesCollectionId = "spot_zones"
+    static let zoneVotesCollectionId = "zone_votes"
+
     // Storage - Wing Library
     static let wingImagesBucketId = "wing-images"
 

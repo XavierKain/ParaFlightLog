@@ -170,7 +170,35 @@ final class SpotService {
     // MARK: - Get or Create Spot
 
     /// Récupère un spot existant ou en crée un nouveau basé sur le nom et la position
+    /// Vérifie d'abord si une zone communautaire couvre cette position
     func getOrCreateSpot(name: String, coordinate: CLLocationCoordinate2D) async throws -> Spot {
+        // 0. Vérifier si une zone communautaire couvre cette position
+        if let matchingZone = await SpotZoneService.shared.findMatchingZone(coordinate: coordinate) {
+            // Utiliser le nom de la zone communautaire
+            let zoneName = matchingZone.name
+            let normalizedZoneName = normalizeName(zoneName)
+
+            // Chercher un spot existant avec le nom de la zone
+            let existingSpots = try await searchNearbySpotsByName(
+                name: normalizedZoneName,
+                coordinate: coordinate,
+                radiusKm: 5.0
+            )
+
+            if let existing = existingSpots.first {
+                return existing
+            }
+
+            // Créer un spot avec le nom de la zone
+            return try await createSpot(
+                name: zoneName,
+                normalizedName: normalizedZoneName,
+                coordinate: coordinate,
+                zoneId: matchingZone.id
+            )
+        }
+
+        // Fallback: comportement original avec reverse geocoding
         let normalizedName = normalizeName(name)
 
         // 1. Chercher un spot existant avec ce nom dans un rayon de 5km
@@ -190,6 +218,15 @@ final class SpotService {
             normalizedName: normalizedName,
             coordinate: coordinate
         )
+    }
+
+    /// Récupère le nom du spot pour une position donnée
+    /// Retourne le nom de la zone communautaire si elle existe, sinon nil
+    func getSpotNameForLocation(coordinate: CLLocationCoordinate2D) async -> String? {
+        if let matchingZone = await SpotZoneService.shared.findMatchingZone(coordinate: coordinate) {
+            return matchingZone.name
+        }
+        return nil
     }
 
     // MARK: - Get Spot
@@ -571,31 +608,38 @@ final class SpotService {
 
     // MARK: - Private Helpers
 
-    private func createSpot(name: String, normalizedName: String, coordinate: CLLocationCoordinate2D) async throws -> Spot {
+    private func createSpot(name: String, normalizedName: String, coordinate: CLLocationCoordinate2D, zoneId: String? = nil) async throws -> Spot {
         let userId = AuthService.shared.currentUserId
+
+        var data: [String: Any] = [
+            "name": name,
+            "normalizedName": normalizedName,
+            "latitude": coordinate.latitude,
+            "longitude": coordinate.longitude,
+            "geohash": calculateGeohash(coordinate: coordinate),
+            "createdByUserId": userId as Any,
+            "createdAt": Date().ISO8601Format(),
+            "totalFlights": 0,
+            "totalFlightSeconds": 0,
+            "avgFlightSeconds": 0,
+            "longestFlightSeconds": 0,
+            "subscriberCount": 0,
+            "isVerified": false,
+            "windDirections": [] as [String],
+            "photoFileIds": [] as [String]
+        ]
+
+        // Ajouter la référence à la zone communautaire si présente
+        if let zoneId = zoneId {
+            data["customZoneId"] = zoneId
+        }
 
         do {
             let doc = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
                 tableId: AppwriteConfig.spotsCollectionId,
                 rowId: ID.unique(),
-                data: [
-                    "name": name,
-                    "normalizedName": normalizedName,
-                    "latitude": coordinate.latitude,
-                    "longitude": coordinate.longitude,
-                    "geohash": calculateGeohash(coordinate: coordinate),
-                    "createdByUserId": userId as Any,
-                    "createdAt": Date().ISO8601Format(),
-                    "totalFlights": 0,
-                    "totalFlightSeconds": 0,
-                    "avgFlightSeconds": 0,
-                    "longestFlightSeconds": 0,
-                    "subscriberCount": 0,
-                    "isVerified": false,
-                    "windDirections": [] as [String],
-                    "photoFileIds": [] as [String]
-                ]
+                data: data
             )
 
             return try parseSpot(from: doc.data, id: doc.id)

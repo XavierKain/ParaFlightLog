@@ -371,6 +371,7 @@ struct FlightDetailView: View {
     @State private var showingFullScreenMap = false
     @State private var showingShareSheet = false
     @State private var showColoredTrace = true  // Toggle pour afficher la trace colorée
+    @State private var showingRenameSpotSheet = false
 
     // Calculer les segments colorés si trace GPS disponible
     private var coloredSegments: [SpeedSegment] {
@@ -657,6 +658,17 @@ struct FlightDetailView: View {
                                         .font(.headline)
                                 }
                                 Spacer()
+
+                                // Bouton pour proposer un renommage
+                                if flight.latitude != nil && flight.longitude != nil {
+                                    Button {
+                                        showingRenameSpotSheet = true
+                                    } label: {
+                                        Image(systemName: "pencil.circle")
+                                            .font(.title2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
                             }
                             .padding()
                             .background(Color(.secondarySystemBackground))
@@ -714,6 +726,14 @@ struct FlightDetailView: View {
             }
             .fullScreenCover(isPresented: $showingFullScreenMap) {
                 FullScreenMapView(flight: flight, initialRegion: mapRegion)
+            }
+            .sheet(isPresented: $showingRenameSpotSheet) {
+                if let lat = flight.latitude, let lon = flight.longitude {
+                    RenameSpotSheet(
+                        coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
+                        currentName: flight.spotName ?? "Spot inconnu"
+                    )
+                }
             }
         }
     }
