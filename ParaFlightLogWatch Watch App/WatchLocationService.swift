@@ -73,6 +73,13 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private let maxGPSPointsInMemory = 1000
     private let compactionThreshold = 800  // Déclencher la compaction à 80% de la limite
 
+    // MARK: - Filtrage GPS par fenêtre glissante (Sliding Window Filter)
+    // Garde les N dernières positions valides pour détecter les outliers
+    private var recentValidLocations: [CLLocation] = []
+    private let slidingWindowSize = 5  // Nombre de points pour calculer la tendance
+    private var recentSpeeds: [Double] = []  // Vitesses récentes pour calcul médiane
+    private let speedWindowSize = 10  // Fenêtre pour la médiane des vitesses
+
     override init() {
         super.init()
         // Initialiser le CLLocationManager immédiatement sur le main thread
@@ -136,6 +143,10 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         maxGForce = 1.0
         previousLocation = nil
         gForceBuffer = []
+
+        // Reset des buffers de filtrage GPS
+        recentValidLocations = []
+        recentSpeeds = []
 
         // Verrouiller le nom du spot actuel seulement s'il ne s'agit pas de "Searching..."
         // Sinon, on attendra la première vraie localisation
@@ -207,6 +218,118 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         }
 
         gpsTrackPoints = compacted
+    }
+
+    // MARK: - GPS Outlier Detection (Sliding Window Filter)
+
+    /// Vérifie si un point GPS est un outlier en utilisant une fenêtre glissante
+    /// Retourne true si le point est valide, false s'il doit être rejeté
+    private func isValidGPSPoint(_ location: CLLocation) -> Bool {
+        // Vérification de base de la précision GPS
+        guard location.horizontalAccuracy > 0 && location.horizontalAccuracy < 50 else {
+            return false
+        }
+
+        // Premier point : toujours accepté si précision OK
+        guard let lastValid = recentValidLocations.last else {
+            return true
+        }
+
+        // Calcul de la distance et du temps depuis le dernier point valide
+        let distance = location.distance(from: lastValid)
+        let timeDelta = location.timestamp.timeIntervalSince(lastValid.timestamp)
+
+        // Rejeter si le temps est invalide
+        guard timeDelta > 0 && timeDelta < 60 else {
+            // Si > 60s, accepter le point comme nouveau départ (gap dans les données)
+            return timeDelta >= 60
+        }
+
+        // Vitesse implicite calculée entre les deux points
+        let implicitSpeed = distance / timeDelta
+
+        // Vitesse max absolue pour parapente : 30 m/s (108 km/h)
+        // Même en conditions extrêmes, c'est rare de dépasser
+        guard implicitSpeed < 30 else {
+            return false
+        }
+
+        // Si on a assez de données historiques, utiliser la médiane pour détecter les anomalies
+        if recentSpeeds.count >= 3 {
+            let medianSpeed = calculateMedianSpeed()
+
+            // Un point est suspect si sa vitesse implicite est > 5x la médiane récente
+            // ET que la médiane n'est pas quasi-nulle (évite division par 0 et faux positifs au décollage)
+            if medianSpeed > 1.0 && implicitSpeed > medianSpeed * 5 {
+                // Vérification supplémentaire : comparer avec plusieurs points précédents
+                // Si le point est cohérent avec un point plus ancien, c'est peut-être le point
+                // intermédiaire qui était faux (cas rare mais possible)
+                if recentValidLocations.count >= 2 {
+                    let olderPoint = recentValidLocations[recentValidLocations.count - 2]
+                    let distanceFromOlder = location.distance(from: olderPoint)
+                    let timeDeltaFromOlder = location.timestamp.timeIntervalSince(olderPoint.timestamp)
+                    if timeDeltaFromOlder > 0 {
+                        let speedFromOlder = distanceFromOlder / timeDeltaFromOlder
+                        // Si cohérent avec le point plus ancien, accepter quand même
+                        if speedFromOlder < medianSpeed * 3 {
+                            return true
+                        }
+                    }
+                }
+                return false
+            }
+        }
+
+        // Vérification de l'accélération (changement brusque de vitesse)
+        // En parapente, l'accélération est limitée physiquement
+        if let previousSpeed = recentSpeeds.last, previousSpeed > 0.5 {
+            let speedChange = abs(implicitSpeed - previousSpeed)
+            let maxAcceleration = 5.0  // m/s² - accélération max réaliste
+            let expectedMaxSpeedChange = maxAcceleration * timeDelta
+
+            // Si le changement de vitesse est trop brutal, c'est suspect
+            if speedChange > expectedMaxSpeedChange * 3 && speedChange > 10 {
+                return false
+            }
+        }
+
+        return true
+    }
+
+    /// Calcule la médiane des vitesses récentes
+    private func calculateMedianSpeed() -> Double {
+        guard !recentSpeeds.isEmpty else { return 0 }
+        let sorted = recentSpeeds.sorted()
+        let count = sorted.count
+        if count % 2 == 0 {
+            return (sorted[count / 2 - 1] + sorted[count / 2]) / 2
+        } else {
+            return sorted[count / 2]
+        }
+    }
+
+    /// Ajoute un point valide à la fenêtre glissante et met à jour les vitesses
+    private func addToSlidingWindow(_ location: CLLocation) {
+        // Calculer la vitesse si on a un point précédent
+        if let lastValid = recentValidLocations.last {
+            let distance = location.distance(from: lastValid)
+            let timeDelta = location.timestamp.timeIntervalSince(lastValid.timestamp)
+            if timeDelta > 0 {
+                let speed = distance / timeDelta
+                recentSpeeds.append(speed)
+                // Limiter la taille du buffer de vitesses
+                if recentSpeeds.count > speedWindowSize {
+                    recentSpeeds.removeFirst()
+                }
+            }
+        }
+
+        // Ajouter le point à la fenêtre
+        recentValidLocations.append(location)
+        // Limiter la taille de la fenêtre
+        if recentValidLocations.count > slidingWindowSize {
+            recentValidLocations.removeFirst()
+        }
     }
 
     // MARK: - Motion Tracking (G-Force)
@@ -376,7 +499,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         if isTracking {
             let altitude = location.altitude
 
-            // Altitude actuelle
+            // Altitude actuelle (mise à jour même si le point GPS horizontal est rejeté)
             currentAltitude = altitude
 
             // Altitude de départ (première mesure)
@@ -393,71 +516,77 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
                 maxAltitude = altitude
             }
 
-            // Distance et vitesse
-            if let previous = previousLocation {
-                // Distance parcourue depuis la dernière position
-                let distance = location.distance(from: previous)
+            // FILTRAGE GPS AVANCÉ avec fenêtre glissante
+            // Vérifie si le point est valide avant de l'utiliser pour distance/vitesse/trace
+            let isPointValid = isValidGPSPoint(location)
 
-                // Temps écoulé depuis la dernière position (pour filtrer les sauts temporels)
-                let timeDelta = location.timestamp.timeIntervalSince(previous.timestamp)
+            if isPointValid {
+                // Distance et vitesse - seulement avec des points valides
+                if let lastValid = recentValidLocations.last {
+                    let distance = location.distance(from: lastValid)
+                    let timeDelta = location.timestamp.timeIntervalSince(lastValid.timestamp)
 
-                // Filtres pour éviter le bruit GPS (ASSOUPLIS pour parapente) :
-                // 1. Distance minimale de 2m (le GPS peut fluctuer de 1-2m à l'arrêt)
-                // 2. Distance maximale de 200m entre 2 points (éviter les sauts GPS majeurs)
-                // 3. Précision horizontale acceptable (< 50m - en montagne c'est souvent 20-40m)
-                // 4. Temps entre 2 points raisonnable (< 30s, sinon c'est un gap)
-                let hasAcceptableAccuracy = location.horizontalAccuracy > 0 && location.horizontalAccuracy < 50
-                let isValidDistance = distance >= 2 && distance < 200
-                let isValidTimeDelta = timeDelta > 0 && timeDelta < 30
+                    // Ajouter à la distance totale si > 2m (évite le bruit GPS stationnaire)
+                    if distance >= 2 && timeDelta > 0 && timeDelta < 60 {
+                        totalDistance += distance
+                    }
 
-                // Calculer la vitesse implicite pour détecter les sauts GPS aberrants
-                // Si on "parcourt" 100m en 1s, c'est impossible en parapente (360 km/h)
-                let implicitSpeed = timeDelta > 0 ? distance / timeDelta : 0
-                let isRealisticSpeed = implicitSpeed < 30  // < 108 km/h max réaliste
+                    // Vitesse max : utiliser la vitesse GPS si disponible, sinon calculée
+                    let speed: Double
+                    if location.speed > 0 {
+                        speed = location.speed
+                    } else if timeDelta > 0 {
+                        speed = distance / timeDelta
+                    } else {
+                        speed = 0
+                    }
 
-                if isValidDistance && hasAcceptableAccuracy && isValidTimeDelta && isRealisticSpeed {
-                    totalDistance += distance
+                    // Mise à jour de la vitesse max avec filtre additionnel
+                    // La vitesse doit être cohérente avec la médiane récente
+                    if speed > 0 && speed < 30 {
+                        let medianSpeed = calculateMedianSpeed()
+                        // Accepter si pas assez de données OU si cohérent avec l'historique
+                        let isSpeedRealistic = recentSpeeds.count < 3 || medianSpeed < 1.0 || speed < medianSpeed * 4
+                        if isSpeedRealistic && speed > maxSpeed {
+                            maxSpeed = speed
+                        }
+                    }
                 }
 
-                // Vitesse max (location.speed est en m/s, -1 si invalide)
-                let speed = location.speed
-                if speed > 0 && speed < 30 {  // Filtrer les vitesses aberrantes (< 108 km/h)
-                    if speed > maxSpeed {
-                        maxSpeed = speed
+                // Ajouter le point à la fenêtre glissante
+                addToSlidingWindow(location)
+
+                // Ajouter un point à la trace GPS (tous les X secondes) - thread-safe
+                let now = Date()
+                gpsQueue.sync {
+                    let shouldAddPoint: Bool
+                    if let lastTime = lastTrackPointTime {
+                        shouldAddPoint = now.timeIntervalSince(lastTime) >= trackPointInterval
+                    } else {
+                        shouldAddPoint = true  // Pas de point précédent, on ajoute le premier
+                    }
+
+                    if shouldAddPoint {
+                        let trackPoint = GPSTrackPoint(
+                            timestamp: now,
+                            latitude: location.coordinate.latitude,
+                            longitude: location.coordinate.longitude,
+                            altitude: altitude,
+                            speed: location.speed > 0 ? location.speed : nil
+                        )
+                        gpsTrackPoints.append(trackPoint)
+                        lastTrackPointTime = now
+
+                        // Limiter le nombre de points en mémoire pour éviter les crashes
+                        // Compacter proactivement à 80% de la limite pour garder de la marge
+                        if gpsTrackPoints.count >= compactionThreshold {
+                            compactGPSTrackInternal()
+                        }
                     }
                 }
             }
-
-            previousLocation = location
-
-            // Ajouter un point à la trace GPS (tous les X secondes) - thread-safe
-            let now = Date()
-            gpsQueue.sync {
-                let shouldAddPoint: Bool
-                if let lastTime = lastTrackPointTime {
-                    shouldAddPoint = now.timeIntervalSince(lastTime) >= trackPointInterval
-                } else {
-                    shouldAddPoint = true  // Pas de point précédent, on ajoute le premier
-                }
-
-                if shouldAddPoint {
-                    let trackPoint = GPSTrackPoint(
-                        timestamp: now,
-                        latitude: location.coordinate.latitude,
-                        longitude: location.coordinate.longitude,
-                        altitude: altitude,
-                        speed: location.speed > 0 ? location.speed : nil
-                    )
-                    gpsTrackPoints.append(trackPoint)
-                    lastTrackPointTime = now
-
-                    // Limiter le nombre de points en mémoire pour éviter les crashes
-                    // Compacter proactivement à 80% de la limite pour garder de la marge
-                    if gpsTrackPoints.count >= compactionThreshold {
-                        compactGPSTrackInternal()
-                    }
-                }
-            }
+            // Si le point est un outlier, on ne met pas à jour previousLocation
+            // pour éviter de contaminer les calculs futurs
         }
 
         reverseGeocode(location: location)
