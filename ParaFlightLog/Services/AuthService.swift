@@ -90,8 +90,9 @@ final class AuthService {
     // MARK: - Session Management
 
     /// Restaure la session au lancement de l'app
+    @MainActor
     func restoreSession() async {
-        // Éviter les appels multiples simultanés
+        // Éviter les appels multiples simultanés (vérifié sur MainActor = thread-safe)
         guard !isRestoring else {
             logInfo("Session restore already in progress, skipping...", category: .auth)
             return

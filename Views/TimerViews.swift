@@ -23,7 +23,7 @@ struct TimerView: View {
     @State private var startDate: Date?
     @State private var elapsedSeconds: Int = 0
     @State private var backgroundTask: Timer?
-    @State private var currentSpot: String = "Recherche..."
+    @State private var currentSpot: String = "Recherche...".localized
     @State private var manualSpotOverride: String? = nil
     @State private var showingManualSpot = false
     @State private var showingWingPicker = false
@@ -326,7 +326,7 @@ struct TimerView: View {
         let finalSpot: String?
         if let manual = manualSpotOverride {
             finalSpot = manual
-        } else if currentSpot != "Recherche..." && currentSpot != "Position indisponible" {
+        } else if currentSpot != "Recherche...".localized && currentSpot != "Position indisponible".localized {
             finalSpot = currentSpot
         } else {
             finalSpot = nil
@@ -342,34 +342,43 @@ struct TimerView: View {
             }
         }
 
-        locationService.requestLocation { [self] location in
-            DispatchQueue.main.async {
-                let flight = Flight(
-                    wing: wing,
-                    startDate: start,
-                    endDate: end,
-                    durationSeconds: duration,
-                    spotName: finalSpot,
-                    latitude: location?.coordinate.latitude,
-                    longitude: location?.coordinate.longitude,
-                    startAltitude: flightData.startAlt,
-                    maxAltitude: flightData.maxAlt,
-                    endAltitude: endAltitude,
-                    totalDistance: flightData.distance > 0 ? flightData.distance : nil,
-                    maxSpeed: flightData.speed > 0 ? flightData.speed : nil,
-                    gpsTrackData: gpsTrackData
-                )
+        // Sauvegarder le vol - utiliser la dernière position connue si la requête GPS échoue
+        let lastKnownLocation = locationService.lastKnownLocation
 
-                dataController.modelContext.insert(flight)
-                do {
-                    try dataController.modelContext.save()
-                    // Afficher le récapitulatif
-                    completedFlight = flight
-                    showingFlightSummary = true
-                } catch {
-                    logError("Failed to save flight from timer: \(error.localizedDescription)", category: .dataController)
-                    showSaveError = true
-                }
+        let saveFlight: (CLLocation?) -> Void = { location in
+            let flight = Flight(
+                wing: wing,
+                startDate: start,
+                endDate: end,
+                durationSeconds: duration,
+                spotName: finalSpot,
+                latitude: location?.coordinate.latitude ?? lastKnownLocation?.coordinate.latitude,
+                longitude: location?.coordinate.longitude ?? lastKnownLocation?.coordinate.longitude,
+                startAltitude: flightData.startAlt,
+                maxAltitude: flightData.maxAlt,
+                endAltitude: endAltitude,
+                totalDistance: flightData.distance > 0 ? flightData.distance : nil,
+                maxSpeed: flightData.speed > 0 ? flightData.speed : nil,
+                gpsTrackData: gpsTrackData
+            )
+
+            self.dataController.modelContext.insert(flight)
+            do {
+                try self.dataController.modelContext.save()
+                self.completedFlight = flight
+                self.showingFlightSummary = true
+
+                // Sync cloud en arrière-plan
+                self.dataController.statsCache.invalidate()
+            } catch {
+                logError("Failed to save flight from timer: \(error.localizedDescription)", category: .dataController)
+                self.showSaveError = true
+            }
+        }
+
+        locationService.requestLocation { location in
+            DispatchQueue.main.async {
+                saveFlight(location)
             }
         }
 
@@ -377,7 +386,7 @@ struct TimerView: View {
         elapsedSeconds = 0
         startDate = nil
         selectedWing = nil
-        currentSpot = "Recherche..."
+        currentSpot = "Recherche...".localized
         manualSpotOverride = nil
     }
 

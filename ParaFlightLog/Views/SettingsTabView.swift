@@ -362,15 +362,13 @@ struct SettingsTabView: View {
                     flight.needsSync = true
                 }
 
-                // Lancer la synchronisation complète
-                let modelContext = flights.first?.modelContext
-                if let context = modelContext {
-                    try context.save()
-                    _ = try await FlightSyncService.shared.performFullSync(modelContext: context)
-                    logInfo("✅ All flights re-uploaded successfully", category: .sync)
-                }
+                // Utiliser le modelContext du DataController (fiable même si flights est vide)
+                let context = dataController.modelContext
+                try context.save()
+                _ = try await FlightSyncService.shared.performFullSync(modelContext: context)
+                logInfo("All flights re-uploaded successfully", category: .sync)
             } catch {
-                logError("❌ Failed to re-upload flights: \(error)", category: .sync)
+                logError("Failed to re-upload flights: \(error)", category: .sync)
             }
         }
     }

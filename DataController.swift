@@ -78,15 +78,24 @@ final class DataController {
                     statsCache.dataController = self
                 } catch {
                     // Dernier recours absolu: créer un container in-memory sans configuration
-                    // Ceci ne devrait jamais échouer, mais si c'est le cas, l'app affichera un état dégradé
                     logError("CRITICAL: All ModelContainer attempts failed: \(error)", category: .dataController)
-                    let emergencyContainer = try! ModelContainer(for: schema, configurations: [
-                        ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-                    ])
-                    self.modelContainer = emergencyContainer
-                    self.modelContext = ModelContext(emergencyContainer)
-                    self.isUsingFallbackDatabase = true
-                    statsCache.dataController = self
+                    do {
+                        let emergencyContainer = try ModelContainer(for: schema, configurations: [
+                            ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+                        ])
+                        self.modelContainer = emergencyContainer
+                        self.modelContext = ModelContext(emergencyContainer)
+                        self.isUsingFallbackDatabase = true
+                        statsCache.dataController = self
+                    } catch {
+                        // Ultime fallback sans configuration personnalisée
+                        logError("FATAL: Cannot create any ModelContainer: \(error)", category: .dataController)
+                        let lastResort = try! ModelContainer(for: schema)
+                        self.modelContainer = lastResort
+                        self.modelContext = ModelContext(lastResort)
+                        self.isUsingFallbackDatabase = true
+                        statsCache.dataController = self
+                    }
                 }
             }
         }
@@ -303,22 +312,33 @@ final class DataController {
             return
         }
 
-        // Lancer la synchronisation en arrière-plan
+        // Lancer la synchronisation en arrière-plan avec retry
         Task {
-            do {
-                let cloudFlight = try await FlightSyncService.shared.uploadFlight(flight)
+            var lastError: Error?
+            for attempt in 1...3 {
+                do {
+                    let cloudFlight = try await FlightSyncService.shared.uploadFlight(flight)
 
-                // Mettre à jour le vol local avec les infos cloud sur le main thread
-                await MainActor.run {
-                    flight.cloudId = cloudFlight.id
-                    flight.cloudSyncedAt = Date()
-                    flight.needsSync = false
-                    flight.hasGpsTrackInCloud = cloudFlight.hasGpsTrack
-                    self.saveContext()
-                    logInfo("Flight auto-synced to cloud: \(cloudFlight.id)", category: .sync)
+                    // Mettre à jour le vol local avec les infos cloud sur le main thread
+                    await MainActor.run {
+                        flight.cloudId = cloudFlight.id
+                        flight.cloudSyncedAt = Date()
+                        flight.needsSync = false
+                        flight.hasGpsTrackInCloud = cloudFlight.hasGpsTrack
+                        self.saveContext()
+                        logInfo("Flight auto-synced to cloud: \(cloudFlight.id)", category: .sync)
+                    }
+                    return // Succès, sortir
+                } catch {
+                    lastError = error
+                    logWarning("Auto-sync attempt \(attempt)/3 failed: \(error.localizedDescription)", category: .sync)
+                    if attempt < 3 {
+                        try? await Task.sleep(nanoseconds: UInt64(attempt) * 2_000_000_000) // backoff 2s, 4s
+                    }
                 }
-            } catch {
-                logWarning("Auto-sync failed for flight: \(error.localizedDescription)", category: .sync)
+            }
+            if let error = lastError {
+                logWarning("Auto-sync failed after 3 attempts: \(error.localizedDescription)", category: .sync)
                 // Le vol reste marqué needsSync = true, sera synchronisé lors de la prochaine sync manuelle
             }
         }

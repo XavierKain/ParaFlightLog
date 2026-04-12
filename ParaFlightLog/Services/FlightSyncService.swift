@@ -311,19 +311,37 @@ final class FlightSyncService {
 
             let cloudFlight = try parseCloudFlight(from: document.data)
 
-            // Upload la trace GPS si présente
+            // Upload la trace GPS si présente (avec retry)
             if let gpsData = flight.gpsTrackData {
-                do {
-                    let fileId = try await uploadGPSTrack(flightId: cloudFlight.id, trackData: gpsData)
-                    // Mettre à jour le document avec le fileId
-                    _ = try await tablesDB.updateRow(
+                var gpsUploadSuccess = false
+                for attempt in 1...3 {
+                    do {
+                        let fileId = try await uploadGPSTrack(flightId: cloudFlight.id, trackData: gpsData)
+                        // Mettre à jour le document avec le fileId
+                        _ = try await tablesDB.updateRow(
+                            databaseId: AppwriteConfig.databaseId,
+                            tableId: AppwriteConfig.flightsCollectionId,
+                            rowId: cloudFlight.id,
+                            data: ["gpsTrackFileId": fileId, "hasGpsTrack": true]
+                        )
+                        gpsUploadSuccess = true
+                        break
+                    } catch {
+                        logWarning("GPS track upload attempt \(attempt)/3 failed: \(error.localizedDescription)", category: .sync)
+                        if attempt < 3 {
+                            try? await Task.sleep(nanoseconds: UInt64(attempt) * 1_000_000_000) // backoff 1s, 2s
+                        }
+                    }
+                }
+                if !gpsUploadSuccess {
+                    // Marquer que le GPS n'est PAS dans le cloud pour cohérence
+                    _ = try? await tablesDB.updateRow(
                         databaseId: AppwriteConfig.databaseId,
                         tableId: AppwriteConfig.flightsCollectionId,
                         rowId: cloudFlight.id,
-                        data: ["gpsTrackFileId": fileId, "hasGpsTrack": true]
+                        data: ["hasGpsTrack": false]
                     )
-                } catch {
-                    logWarning("GPS track upload failed: \(error.localizedDescription)", category: .sync)
+                    logError("GPS track upload failed after 3 attempts for flight \(cloudFlight.id)", category: .sync)
                 }
             }
 

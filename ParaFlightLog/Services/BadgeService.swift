@@ -256,6 +256,7 @@ enum BadgeError: LocalizedError {
 // MARK: - BadgeService
 
 @Observable
+@MainActor
 final class BadgeService {
     static let shared = BadgeService()
 
@@ -287,7 +288,6 @@ final class BadgeService {
 
     /// Initialise le service en chargeant les badges
     /// À appeler explicitement au lancement de l'app
-    @MainActor
     func initialize() async {
         guard !isInitialized else { return }
         await loadAllBadges()
@@ -327,17 +327,13 @@ final class BadgeService {
                 logInfo("Using predefined badges (no badges in database)", category: .general)
             }
 
-            await MainActor.run {
-                self.allBadges = badges.sorted { $0.tier < $1.tier }
-            }
+            self.allBadges = badges.sorted { $0.tier < $1.tier }
 
             logInfo("Loaded \(badges.count) badges", category: .general)
         } catch {
             logError("Failed to load badges: \(error.localizedDescription)", category: .general)
             // Utiliser les badges prédéfinis en cas d'erreur
-            await MainActor.run {
-                self.allBadges = Self.predefinedBadges
-            }
+            self.allBadges = Self.predefinedBadges
         }
     }
 
@@ -368,10 +364,8 @@ final class BadgeService {
                 }
             }
 
-            await MainActor.run {
-                self.userBadges = badges.sorted { $0.earnedAt > $1.earnedAt }
-                self.earnedBadgeIds = Set(badges.map { $0.badgeId })
-            }
+            self.userBadges = badges.sorted { $0.earnedAt > $1.earnedAt }
+            self.earnedBadgeIds = Set(badges.map { $0.badgeId })
 
             logInfo("Loaded \(badges.count) user badges", category: .general)
         } catch {
@@ -546,9 +540,7 @@ final class BadgeService {
         }
 
         // Sauvegarder les erreurs pour debug
-        await MainActor.run {
-            self.lastAwardErrors = errors
-        }
+        self.lastAwardErrors = errors
 
         // Ajouter l'XP pour les nouveaux badges
         if !newBadges.isEmpty {
@@ -589,10 +581,8 @@ final class BadgeService {
         }
 
         if let userBadge = try? UserBadge(from: nativeData) {
-            await MainActor.run {
-                self.userBadges.insert(userBadge, at: 0)
-                self.earnedBadgeIds.insert(badge.id)
-            }
+            self.userBadges.insert(userBadge, at: 0)
+            self.earnedBadgeIds.insert(badge.id)
         }
     }
 

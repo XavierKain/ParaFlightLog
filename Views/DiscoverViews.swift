@@ -1012,13 +1012,36 @@ struct PublicFlightCardView: View {
                 HStack(spacing: 20) {
                     // Like button
                     Button {
-                        // TODO: Implement like action
+                        Task {
+                            guard AuthService.shared.isAuthenticated,
+                                  let userId = AuthService.shared.currentUserId else { return }
+                            let tablesDB = AppwriteService.shared.tablesDB
+                            do {
+                                _ = try await tablesDB.createRow(
+                                    databaseId: AppwriteConfig.databaseId,
+                                    tableId: AppwriteConfig.flightLikesCollectionId,
+                                    rowId: ID.unique(),
+                                    data: [
+                                        "flightId": flight.id,
+                                        "userId": userId,
+                                        "createdAt": Date().ISO8601Format()
+                                    ]
+                                )
+                            } catch {
+                                logWarning("Like failed: \(error.localizedDescription)", category: .sync)
+                            }
+                        }
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "heart")
                                 .font(.subheadline)
-                            Text("J'aime")
-                                .font(.caption)
+                            if flight.likeCount > 0 {
+                                Text("\(flight.likeCount)")
+                                    .font(.caption)
+                            } else {
+                                Text("J'aime".localized)
+                                    .font(.caption)
+                            }
                         }
                         .foregroundStyle(.secondary)
                     }
@@ -1026,30 +1049,26 @@ struct PublicFlightCardView: View {
                     Divider()
                         .frame(height: 20)
 
-                    // Bookmark button
-                    Button {
-                        // TODO: Implement bookmark action
-                    } label: {
-                        HStack(spacing: 4) {
-                            Image(systemName: "bookmark")
-                                .font(.subheadline)
-                            Text("Sauvegarder")
+                    // Comment count
+                    HStack(spacing: 4) {
+                        Image(systemName: "bubble.right")
+                            .font(.subheadline)
+                        if flight.commentCount > 0 {
+                            Text("\(flight.commentCount)")
                                 .font(.caption)
                         }
-                        .foregroundStyle(.secondary)
                     }
+                    .foregroundStyle(.secondary)
 
                     Divider()
                         .frame(height: 20)
 
                     // Share button
-                    Button {
-                        // TODO: Implement share action
-                    } label: {
+                    ShareLink(item: "Vol de \(flight.pilotName) - \(flight.formattedDuration) à \(flight.spotName ?? "?")") {
                         HStack(spacing: 4) {
                             Image(systemName: "square.and.arrow.up")
                                 .font(.subheadline)
-                            Text("Partager")
+                            Text("Partager".localized)
                                 .font(.caption)
                         }
                         .foregroundStyle(.secondary)
@@ -1458,18 +1477,82 @@ struct PublicFlightDetailView: View {
     }
 
     private func toggleLike() async {
-        // TODO: Implement like/unlike
+        guard AuthService.shared.isAuthenticated,
+              let userId = AuthService.shared.currentUserId else { return }
+
         isLiked.toggle()
+
+        let tablesDB = AppwriteService.shared.tablesDB
+        do {
+            if isLiked {
+                // Ajouter le like
+                _ = try await tablesDB.createRow(
+                    databaseId: AppwriteConfig.databaseId,
+                    tableId: AppwriteConfig.flightLikesCollectionId,
+                    rowId: ID.unique(),
+                    data: [
+                        "flightId": flightId,
+                        "userId": userId,
+                        "createdAt": Date().ISO8601Format()
+                    ]
+                )
+            } else {
+                // Supprimer le like
+                let likes = try await tablesDB.listRows(
+                    databaseId: AppwriteConfig.databaseId,
+                    tableId: AppwriteConfig.flightLikesCollectionId,
+                    queries: [
+                        Query.equal("flightId", value: flightId),
+                        Query.equal("userId", value: userId),
+                        Query.limit(1)
+                    ]
+                )
+                if let likeDoc = likes.rows.first {
+                    try await tablesDB.deleteRow(
+                        databaseId: AppwriteConfig.databaseId,
+                        tableId: AppwriteConfig.flightLikesCollectionId,
+                        rowId: likeDoc.id
+                    )
+                }
+            }
+        } catch {
+            // Annuler le toggle en cas d'erreur
+            isLiked.toggle()
+            logWarning("Toggle like failed: \(error.localizedDescription)", category: .sync)
+        }
     }
 
     private func sendComment() async {
-        guard !newComment.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        let text = newComment.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return }
+        guard AuthService.shared.isAuthenticated,
+              let userId = AuthService.shared.currentUserId else { return }
+
         isSendingComment = true
-        // TODO: Implement send comment via SocialService
-        try? await Task.sleep(for: .seconds(1))
-        newComment = ""
+
+        let tablesDB = AppwriteService.shared.tablesDB
+        do {
+            let profile = UserService.shared.currentUserProfile
+            _ = try await tablesDB.createRow(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.flightCommentsCollectionId,
+                rowId: ID.unique(),
+                data: [
+                    "flightId": flightId,
+                    "userId": userId,
+                    "pilotName": profile?.displayName ?? "Pilote",
+                    "text": text,
+                    "createdAt": Date().ISO8601Format()
+                ]
+            )
+            newComment = ""
+            // Recharger les détails pour voir le nouveau commentaire
+            await loadDetails()
+        } catch {
+            logWarning("Send comment failed: \(error.localizedDescription)", category: .sync)
+        }
+
         isSendingComment = false
-        await loadDetails()
     }
 }
 

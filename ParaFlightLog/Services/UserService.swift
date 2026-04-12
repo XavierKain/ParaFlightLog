@@ -182,6 +182,7 @@ struct CloudUserProfile: Identifiable, Equatable {
 // MARK: - UserService
 
 @Observable
+@MainActor
 final class UserService {
     static let shared = UserService()
 

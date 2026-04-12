@@ -10,6 +10,7 @@
 import Foundation
 import Network
 import SwiftData
+import Appwrite
 
 // MARK: - Pending Action Types
 
@@ -93,6 +94,7 @@ enum OfflineSyncError: LocalizedError {
 // MARK: - OfflineSyncService
 
 @Observable
+@MainActor
 final class OfflineSyncService {
     static let shared = OfflineSyncService()
 
@@ -137,13 +139,15 @@ final class OfflineSyncService {
     /// Démarre la surveillance réseau
     private func startNetworkMonitoring() {
         networkMonitor.pathUpdateHandler = { [weak self] path in
-            Task { @MainActor in
-                let oldStatus = self?.networkStatus
-                self?.networkStatus = path.status == .satisfied ? .online : .offline
+            let newStatus: NetworkStatus = path.status == .satisfied ? .online : .offline
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let oldStatus = self.networkStatus
+                self.networkStatus = newStatus
 
                 // Tenter une sync quand on repasse en ligne
-                if oldStatus == .offline && self?.networkStatus == .online {
-                    await self?.processPendingActions()
+                if oldStatus == .offline && newStatus == .online {
+                    await self.processPendingActions()
                 }
             }
         }
@@ -222,16 +226,17 @@ final class OfflineSyncService {
             return (0, 0)
         }
 
-        await MainActor.run {
-            isSyncing = true
-        }
+        isSyncing = true
 
         var succeeded = 0
         var failed = 0
         var actionsToRemove: [String] = []
         var actionsToUpdate: [PendingAction] = []
 
-        for action in pendingActions {
+        // Snapshot pour itérer en toute sécurité
+        let actionsSnapshot = pendingActions
+
+        for action in actionsSnapshot {
             do {
                 try await processAction(action)
                 actionsToRemove.append(action.id)
@@ -253,26 +258,24 @@ final class OfflineSyncService {
             }
         }
 
-        await MainActor.run {
-            // Supprimer les actions terminées
-            pendingActions.removeAll { actionsToRemove.contains($0.id) }
+        // Supprimer les actions terminées
+        pendingActions.removeAll { actionsToRemove.contains($0.id) }
 
-            // Mettre à jour les actions échouées
-            for updated in actionsToUpdate {
-                if let index = pendingActions.firstIndex(where: { $0.id == updated.id }) {
-                    pendingActions[index] = updated
-                }
+        // Mettre à jour les actions échouées
+        for updated in actionsToUpdate {
+            if let index = pendingActions.firstIndex(where: { $0.id == updated.id }) {
+                pendingActions[index] = updated
             }
-
-            savePendingActions()
-
-            if succeeded > 0 {
-                lastSyncDate = Date()
-                saveLastSyncDate()
-            }
-
-            isSyncing = false
         }
+
+        savePendingActions()
+
+        if succeeded > 0 {
+            lastSyncDate = Date()
+            saveLastSyncDate()
+        }
+
+        isSyncing = false
 
         logInfo("Sync completed: \(succeeded) succeeded, \(failed) failed", category: .sync)
         return (succeeded, failed)
@@ -307,47 +310,141 @@ final class OfflineSyncService {
     // MARK: - Action Processors
 
     private func processFlightAction(_ action: PendingAction) async throws {
-        // Décoder le payload en données de vol
-        // Décoder le payload - on l'utilise simplement pour l'instant
-        // L'implémentation complète nécessite l'accès au ModelContext
-        _ = action.payload
-
-        // Utiliser FlightSyncService pour synchroniser
-        // Note: Cette implémentation nécessite que les données soient dans le bon format
         logInfo("Processing flight action: \(action.type.rawValue) for \(action.entityId)", category: .sync)
 
-        // Pour l'instant, on log simplement - l'implémentation complète
-        // nécessiterait l'accès au ModelContext pour récupérer le vol local
+        // Décoder le payload pour vérifier la validité
+        guard !action.payload.isEmpty else {
+            logWarning("Empty payload for flight action \(action.entityId)", category: .sync)
+            return
+        }
+
+        // Le vol est identifié par son entityId (UUID string)
+        // La sync effective est gérée par FlightSyncService qui a accès au ModelContext
+        // On marque simplement que cette action offline a été traitée
+        // Les vols avec needsSync=true seront uploadés lors du prochain performFullSync
+        logInfo("Flight action \(action.type.rawValue) queued for next full sync: \(action.entityId)", category: .sync)
     }
 
     private func processDeleteFlightAction(_ action: PendingAction) async throws {
         logInfo("Processing delete flight action for \(action.entityId)", category: .sync)
-        // Implémentation de la suppression cloud
+
+        // Tenter la suppression cloud si le vol a un cloudId
+        let tablesDB = AppwriteService.shared.tablesDB
+        do {
+            try await tablesDB.deleteRow(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.flightsCollectionId,
+                rowId: action.entityId
+            )
+            logInfo("Cloud flight deleted: \(action.entityId)", category: .sync)
+        } catch {
+            // Si le document n'existe pas, c'est OK (déjà supprimé)
+            logWarning("Cloud flight delete failed (may already be deleted): \(error.localizedDescription)", category: .sync)
+        }
     }
 
     private func processPhotoUploadAction(_ action: PendingAction) async throws {
         logInfo("Processing photo upload action for \(action.entityId)", category: .sync)
-        // Implémentation de l'upload photo
+
+        guard !action.payload.isEmpty else {
+            logWarning("Empty photo payload for \(action.entityId)", category: .sync)
+            return
+        }
+
+        let storage = AppwriteService.shared.storage
+        do {
+            _ = try await storage.createFile(
+                bucketId: AppwriteConfig.flightPhotosBucketId,
+                fileId: ID.unique(),
+                file: InputFile.fromData(action.payload, filename: "\(action.entityId).jpg", mimeType: "image/jpeg")
+            )
+            logInfo("Offline photo uploaded for \(action.entityId)", category: .sync)
+        } catch {
+            throw OfflineSyncError.syncFailed("Photo upload: \(error.localizedDescription)")
+        }
     }
 
     private func processPhotoDeleteAction(_ action: PendingAction) async throws {
         logInfo("Processing photo delete action for \(action.entityId)", category: .sync)
-        // Implémentation de la suppression photo
+
+        let storage = AppwriteService.shared.storage
+        do {
+            try await storage.deleteFile(
+                bucketId: AppwriteConfig.flightPhotosBucketId,
+                fileId: action.entityId
+            )
+            logInfo("Cloud photo deleted: \(action.entityId)", category: .sync)
+        } catch {
+            logWarning("Cloud photo delete failed (may already be deleted): \(error.localizedDescription)", category: .sync)
+        }
     }
 
     private func processProfileUpdateAction(_ action: PendingAction) async throws {
         logInfo("Processing profile update action", category: .sync)
-        // Implémentation de la mise à jour profil
+
+        guard !action.payload.isEmpty else { return }
+
+        // Décoder les données de profil et mettre à jour
+        do {
+            let profileData = try JSONDecoder().decode([String: String].self, from: action.payload)
+            let tablesDB = AppwriteService.shared.tablesDB
+
+            _ = try await tablesDB.updateRow(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.usersCollectionId,
+                rowId: action.entityId,
+                data: profileData
+            )
+            logInfo("Profile updated from offline queue", category: .sync)
+        } catch {
+            throw OfflineSyncError.syncFailed("Profile update: \(error.localizedDescription)")
+        }
     }
 
     private func processEmergencyContactAction(_ action: PendingAction) async throws {
         logInfo("Processing emergency contact action for \(action.entityId)", category: .sync)
-        // Implémentation contact d'urgence
+
+        guard !action.payload.isEmpty else { return }
+
+        do {
+            let contactData = try JSONDecoder().decode([String: String].self, from: action.payload)
+            let tablesDB = AppwriteService.shared.tablesDB
+
+            if action.type == .addEmergencyContact {
+                _ = try await tablesDB.createRow(
+                    databaseId: AppwriteConfig.databaseId,
+                    tableId: AppwriteConfig.emergencyContactsCollectionId,
+                    rowId: ID.unique(),
+                    data: contactData
+                )
+            } else {
+                _ = try await tablesDB.updateRow(
+                    databaseId: AppwriteConfig.databaseId,
+                    tableId: AppwriteConfig.emergencyContactsCollectionId,
+                    rowId: action.entityId,
+                    data: contactData
+                )
+            }
+            logInfo("Emergency contact synced: \(action.type.rawValue)", category: .sync)
+        } catch {
+            throw OfflineSyncError.syncFailed("Emergency contact: \(error.localizedDescription)")
+        }
     }
 
     private func processDeleteEmergencyContactAction(_ action: PendingAction) async throws {
         logInfo("Processing delete emergency contact action for \(action.entityId)", category: .sync)
-        // Implémentation suppression contact d'urgence
+
+        let tablesDB = AppwriteService.shared.tablesDB
+        do {
+            try await tablesDB.deleteRow(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.emergencyContactsCollectionId,
+                rowId: action.entityId
+            )
+            logInfo("Emergency contact deleted from cloud: \(action.entityId)", category: .sync)
+        } catch {
+            logWarning("Emergency contact delete failed: \(error.localizedDescription)", category: .sync)
+        }
     }
 
     // MARK: - Persistence
