@@ -10,19 +10,6 @@ import SwiftUI
 import SwiftData
 import MapKit
 
-// MARK: - FlightType Colors
-extension FlightType {
-    var color: Color {
-        switch self {
-        case .soaring:     return .blue
-        case .thermique:   return .orange
-        case .speedFlying: return .red
-        case .airsurfing:  return .cyan
-        case .volDePente:  return .green
-        }
-    }
-}
-
 // MARK: - FlightsView (Liste des vols avec dernier vol en vedette)
 
 struct FlightsView: View {
@@ -465,23 +452,13 @@ struct FlightDetailView: View {
                     // Infos principales
                     VStack(spacing: 16) {
                         // Durée en grand
-                        VStack(spacing: 6) {
+                        VStack(spacing: 4) {
                             Text(String(localized: "Durée du vol"))
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Text(flight.durationFormatted)
                                 .font(.system(size: 48, weight: .bold, design: .rounded))
                                 .foregroundStyle(.blue)
-                            if let typeStr = flight.flightType, let type = FlightType(rawValue: typeStr) {
-                                Label(type.displayName, systemImage: type.icon)
-                                    .font(.caption)
-                                    .fontWeight(.semibold)
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 4)
-                                    .background(type.color.opacity(0.15))
-                                    .foregroundStyle(type.color)
-                                    .clipShape(Capsule())
-                            }
                         }
                         .padding()
                         .frame(maxWidth: .infinity)
@@ -777,17 +754,6 @@ struct FlightRow: View {
                         .foregroundStyle(.secondary)
                 }
 
-                if let typeStr = flight.flightType, let type = FlightType(rawValue: typeStr) {
-                    Label(type.displayName, systemImage: type.icon)
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(type.color.opacity(0.15))
-                        .foregroundStyle(type.color)
-                        .clipShape(Capsule())
-                }
-
                 // Statistiques de vol (altitude, distance, vitesse, G-force)
                 if flight.maxAltitude != nil || flight.totalDistance != nil || flight.maxSpeed != nil || flight.maxGForce != nil {
                     HStack(spacing: 8) {
@@ -841,7 +807,6 @@ struct EditFlightView: View {
     @State private var endDate: Date
     @State private var spotName: String
     @State private var notes: String
-    @State private var selectedFlightType: String?
     @State private var isGeocodingSpot = false
     @State private var geocodingMessage: String?
     @State private var showingMapPicker = false
@@ -865,7 +830,6 @@ struct EditFlightView: View {
         _endDate = State(initialValue: flight.endDate)
         _spotName = State(initialValue: flight.spotName ?? "")
         _notes = State(initialValue: flight.notes ?? "")
-        _selectedFlightType = State(initialValue: flight.flightType)
         if let lat = flight.latitude, let lon = flight.longitude {
             _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
         }
@@ -947,17 +911,6 @@ struct EditFlightView: View {
                             Text(wing.name).tag(wing as Wing?)
                         }
                     }
-                }
-
-                Section("Type de vol") {
-                    Picker("Type", selection: $selectedFlightType) {
-                        Text("Non défini").tag(nil as String?)
-                        ForEach(FlightType.allCases, id: \.self) { type in
-                            Label(type.displayName, systemImage: type.icon)
-                                .tag(type.rawValue as String?)
-                        }
-                    }
-                    .pickerStyle(.menu)
                 }
 
                 Section("Spot") {
@@ -1180,7 +1133,6 @@ struct EditFlightView: View {
         flight.notes = notes.isEmpty ? nil : notes
         flight.latitude = selectedCoordinate?.latitude
         flight.longitude = selectedCoordinate?.longitude
-        flight.flightType = selectedFlightType
 
         // Les statistiques ne sont plus modifiables, elles sont préservées
 

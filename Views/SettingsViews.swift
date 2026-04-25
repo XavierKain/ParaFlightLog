@@ -519,13 +519,13 @@ struct SettingsView: View {
                     NavigationLink {
                         BackupExportView(wings: wings, flights: flights)
                     } label: {
-                        Label("Sauvegarder mes données", systemImage: "externaldrive.badge.plus")
+                        Label("Exporter backup complet", systemImage: "archivebox")
                     }
 
                     Button {
                         showingDocumentPicker = true
                     } label: {
-                        Label("Restaurer un backup", systemImage: "externaldrive.badge.arrow.up")
+                        Label("Importer backup ou Excel", systemImage: "square.and.arrow.down")
                     }
 
                     Button {
