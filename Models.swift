@@ -234,3 +234,25 @@ final class Flight {
         return formatter.string(from: startDate)
     }
 }
+
+// MARK: - FlightType
+/// Types de vol parapente
+enum FlightType: String, CaseIterable, Codable {
+    case soaring    = "Soaring"
+    case thermique  = "Thermique"
+    case speedFlying = "Speed Flying"
+    case airsurfing = "Airsurfing"
+    case volDePente = "Vol de pente"
+
+    var displayName: String { rawValue }
+
+    var icon: String {
+        switch self {
+        case .soaring:     return "wind"
+        case .thermique:   return "flame.fill"
+        case .speedFlying: return "hare.fill"
+        case .airsurfing:  return "water.waves"
+        case .volDePente:  return "arrow.down.right.circle.fill"
+        }
+    }
+}
