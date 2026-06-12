@@ -2,7 +2,7 @@
 //  ScreenshotTests.swift
 //  ParaFlightLogUITests
 //
-//  UI Tests for App Store screenshots
+//  Smoke test SoarX V10 : vérifie que les 4 onglets s'affichent sans crash
 //
 
 import XCTest
@@ -14,54 +14,25 @@ final class ScreenshotTests: XCTestCase {
     }
 
     @MainActor
-    func testScreenshots() throws {
+    func testFourTabsSmoke() throws {
         let app = XCUIApplication()
-        setupSnapshot(app)
         app.launch()
 
-        // Wait for app to load
-        sleep(2)
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 10), "La tab bar doit apparaître")
+        XCTAssertEqual(tabBar.buttons.count, 4, "L'app doit avoir exactement 4 onglets")
 
-        // 1. Home screen - Flight list
-        snapshot("01_Flights")
-
-        // 2. Navigate to Statistics tab
-        let statsTab = app.tabBars.buttons.element(boundBy: 1)
-        if statsTab.exists {
-            statsTab.tap()
+        // Parcourir chaque onglet et vérifier que l'app ne crash pas
+        for index in 0..<4 {
+            let tab = tabBar.buttons.element(boundBy: index)
+            XCTAssertTrue(tab.exists, "L'onglet \(index) doit exister")
+            tab.tap()
             sleep(1)
-            snapshot("02_Statistics")
-        }
-
-        // 3. Navigate to Wings tab
-        let wingsTab = app.tabBars.buttons.element(boundBy: 2)
-        if wingsTab.exists {
-            wingsTab.tap()
-            sleep(1)
-            snapshot("03_Wings")
-        }
-
-        // 4. Navigate to Settings tab
-        let settingsTab = app.tabBars.buttons.element(boundBy: 3)
-        if settingsTab.exists {
-            settingsTab.tap()
-            sleep(1)
-            snapshot("04_Settings")
-        }
-
-        // 5. Go back to Flights and try to open a flight detail if available
-        let flightsTab = app.tabBars.buttons.element(boundBy: 0)
-        if flightsTab.exists {
-            flightsTab.tap()
-            sleep(1)
-
-            // Try to tap on first flight cell if exists
-            let firstCell = app.cells.element(boundBy: 0)
-            if firstCell.exists {
-                firstCell.tap()
-                sleep(1)
-                snapshot("05_FlightDetail")
-            }
+            XCTAssertTrue(app.state == .runningForeground, "L'app doit rester au premier plan sur l'onglet \(index)")
+            let attachment = XCTAttachment(screenshot: app.screenshot())
+            attachment.name = "tab_\(index)"
+            attachment.lifetime = .keepAlways
+            add(attachment)
         }
     }
 }

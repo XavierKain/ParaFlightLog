@@ -66,7 +66,29 @@ private struct IOSRootView: View {
                     }
 
                     hasInitialized = true
+
+                    #if DEBUG
+                    runDebugBackupImportIfRequested()
+                    #endif
                 }
             }
     }
+
+    #if DEBUG
+    /// Hook de test : `-importBackupPath <chemin>` en argument de lancement déclenche
+    /// un import de backup au démarrage (utilisé par les vérifications automatisées).
+    private func runDebugBackupImportIfRequested() {
+        let args = ProcessInfo.processInfo.arguments
+        guard let idx = args.firstIndex(of: "-importBackupPath"), idx + 1 < args.count else { return }
+        let url = URL(fileURLWithPath: args[idx + 1])
+        ZipBackup.importFromZip(zipURL: url, dataController: dataController) { result in
+            switch result {
+            case .success(let summary):
+                logInfo("DEBUG import OK: \(summary.replacingOccurrences(of: "\n", with: " | "))", category: .dataController)
+            case .failure(let error):
+                logError("DEBUG import FAILED: \(error.localizedDescription)", category: .dataController)
+            }
+        }
+    }
+    #endif
 }
