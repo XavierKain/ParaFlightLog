@@ -32,7 +32,7 @@ enum WatchLog: Sendable {
     /// Cache thread-safe des loggers OSLog par catégorie
     nonisolated(unsafe) private static var loggerLock = NSLock()
     nonisolated(unsafe) private static var loggerCache: [WatchLogCategory: Logger] = [:]
-    nonisolated(unsafe) private static var subsystem = "com.xavierkain.ParaFlightLog.watchkitapp"
+    nonisolated(unsafe) private static var subsystem = "com.xavierkain.SoarX.watchkitapp"
     /// Clé UserDefaults - copie locale pour éviter l'inférence MainActor
     nonisolated(unsafe) private static var developerModeKey = "developerModeEnabled"
 

@@ -39,7 +39,7 @@ enum Log: Sendable {
     nonisolated(unsafe) private static var loggerLock = NSLock()
     nonisolated(unsafe) private static var loggerCache: [LogCategory: Logger] = [:]
     /// Bundle identifier - copie locale pour éviter l'accès à AppConstants (MainActor)
-    nonisolated(unsafe) private static var bundleId = "com.xavierkain.ParaFlightLog"
+    nonisolated(unsafe) private static var bundleId = "com.xavierkain.SoarX"
     /// Clé UserDefaults - copie locale pour éviter l'accès à UserDefaultsKeys (MainActor)
     nonisolated(unsafe) private static var developerModeKey = "developerModeEnabled"
 

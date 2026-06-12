@@ -14,10 +14,10 @@ import SwiftUI
 
 enum AppConstants {
     /// Bundle identifier pour OSLog
-    static let bundleIdentifier = "com.xavierkain.SOARX"
+    static let bundleIdentifier = "com.xavierkain.SoarX"
 
     /// Nom de l'application
-    static let appName = "SOARX"
+    static let appName = "SoarX"
 }
 
 // MARK: - Watch Sync Configuration

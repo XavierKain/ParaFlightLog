@@ -64,7 +64,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private var gpsTrackPoints: [GPSTrackPoint] = []
     private var lastTrackPointTime: Date?
     private let trackPointInterval: TimeInterval = 2.0  // Un point toutes les 2 secondes (meilleure précision trace)
-    private let gpsQueue = DispatchQueue(label: "com.paraflightlog.gpstrack", qos: .userInitiated)
+    private let gpsQueue = DispatchQueue(label: "com.soarx.gpstrack", qos: .userInitiated)
 
     // Limite de points GPS en mémoire pour éviter les crashes sur vols longs
     // 1000 points max * 2 secondes = ~33 minutes de vol détaillé

@@ -41,7 +41,7 @@ final class WatchImageCache {
 
     // NSCache gère automatiquement l'éviction des éléments en cas de pression mémoire
     private let cache = NSCache<UUIDKey, ImageWrapper>()
-    private let queue = DispatchQueue(label: "com.paraflightlog.imagecache", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.soarx.imagecache", qos: .userInitiated)
 
     // Configuration du cache
     private let maxCacheCount = 20  // Maximum 20 images en cache (suffisant pour les voiles)

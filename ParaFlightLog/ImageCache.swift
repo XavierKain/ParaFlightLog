@@ -25,7 +25,7 @@ final class ImageCacheManager {
 
     private init() {
         cache.countLimit = maxCacheCount
-        cache.name = "com.paraflightlog.imageCache"
+        cache.name = "com.soarx.imageCache"
 
         // Observer les warnings mémoire
         NotificationCenter.default.addObserver(

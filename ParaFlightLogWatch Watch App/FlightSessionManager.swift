@@ -60,7 +60,7 @@ final class FlightSessionManager {
     private var saveTimer: Timer?
 
     // Queue pour synchroniser l'accès à activeSession (thread safety)
-    private let sessionQueue = DispatchQueue(label: "com.paraflightlog.flightsession", qos: .userInitiated)
+    private let sessionQueue = DispatchQueue(label: "com.soarx.flightsession", qos: .userInitiated)
 
     // Session en cours - accès synchronisé via sessionQueue
     private var _activeSession: FlightSession?

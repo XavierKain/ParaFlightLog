@@ -58,7 +58,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
     private let trackPointInterval: TimeInterval = 2.0
 
     /// Queue pour la thread-safety de la trace GPS
-    private let gpsQueue = DispatchQueue(label: "com.paraflightlog.gpstrack", qos: .userInitiated)
+    private let gpsQueue = DispatchQueue(label: "com.soarx.gpstrack", qos: .userInitiated)
 
     /// Limite de points GPS en mémoire
     private let maxGPSPointsInMemory = 1000

@@ -567,7 +567,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ParaFlightLogWidgetExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "SOARX Beta";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -576,7 +576,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.beta.watchkitapp.ParaFlightLogWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.watchkitapp.ParaFlightLogWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -600,7 +600,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ParaFlightLogWidgetExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "SOARX Beta";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -609,7 +609,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.beta.watchkitapp.ParaFlightLogWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.watchkitapp.ParaFlightLogWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -759,7 +759,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ParaFlightLog/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "SOARX Beta";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -772,7 +772,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.beta;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -795,7 +795,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ParaFlightLog/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "SOARX Beta";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -808,7 +808,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.beta;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -831,19 +831,19 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "SOARX Beta";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "SOARX accède à vos données de santé pour enregistrer vos sessions de vol.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SOARX enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de vos vols.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog.beta;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.SoarX;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.beta.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -869,19 +869,19 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "SOARX Beta";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "SOARX accède à vos données de santé pour enregistrer vos sessions de vol.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SOARX enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de vos vols.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog.beta;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.SoarX;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.beta.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -909,7 +909,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLogUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -930,7 +930,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLogUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXUITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;

@@ -29,7 +29,7 @@ final class StatsCache {
     weak var dataController: DataController?
 
     // File d'attente pour les calculs asynchrones
-    private let queue = DispatchQueue(label: "com.xavierkain.ParaFlightLog.StatsCache", qos: .userInitiated)
+    private let queue = DispatchQueue(label: "com.xavierkain.SoarX.StatsCache", qos: .userInitiated)
 
     init() {
         // Le cache sera initialisé lors de l'injection du dataController
