@@ -308,8 +308,11 @@ private struct ReplayMapView: UIViewRepresentable {
             mapView.camera = camera
             mapView.setRegion(fullRegion, animated: animated)
         case .mode3D:
-            // Relief 3D réaliste, caméra inclinée qui suit le pilote
-            mapView.preferredConfiguration = MKHybridMapConfiguration(elevationStyle: .realistic)
+            // Imagerie satellite photoréaliste + relief 3D (rendu type Surfr/Wingman),
+            // caméra inclinée qui suit le pilote.
+            // NB : le simulateur charge ces tuiles en très basse résolution — sur un
+            // vrai appareil le rendu est photoréaliste.
+            mapView.preferredConfiguration = MKImageryMapConfiguration(elevationStyle: .realistic)
             mapView.isPitchEnabled = true
             coordinator.headingValue = sample.heading
             let camera = MKMapCamera(

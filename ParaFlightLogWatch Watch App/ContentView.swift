@@ -173,6 +173,13 @@ struct ContentView: View {
         // en surveillance d'atterrissage (uniquement si la détection est activée)
         stopTakeoffMonitoring()
         if UserDefaults.standard.bool(forKey: "autoDetect.enabled") {
+            // Comportement à l'atterrissage selon le type de vol :
+            // - Thermique : arrêt classique (compte à rebours 20 s)
+            // - Tous les autres (Soaring, Airsurfing, nil…) : pause au sol +
+            //   reprise au redécollage, arrêt auto si la pause dépasse 30 min
+            autoDetector.landingBehavior = (selectedFlightType == FlightTypes.thermal)
+                ? .stop
+                : .pauseAndResume(maxPause: 30 * 60)
             autoDetector.flightStarted()
         } else {
             autoDetector.disarm()
@@ -639,6 +646,12 @@ struct ActiveFlightView: View {
     @State private var timerUpdateCounter: Int = 0
     // Compte à rebours avant arrêt auto après détection d'atterrissage (nil = pas d'alerte)
     @State private var landingCountdown: Int?
+    // Pause au sol (mode soaring) : le chrono se fige, le vol reprend au redécollage
+    @State private var isPausedOnGround: Bool = false
+    // Début de la pause en cours (nil = pas en pause)
+    @State private var pauseStartDate: Date?
+    // Secondes cumulées des pauses terminées (exclues de la durée du vol)
+    @State private var completedPauseSeconds: Int = 0
 
     /// Service vario (singleton @Observable : son accès dans body suffit au tracking)
     private var vario: WatchVarioService { WatchVarioService.shared }
@@ -786,8 +799,11 @@ struct ActiveFlightView: View {
         .navigationBarBackButtonHidden(true) // Cacher le bouton retour
         .toolbar(.hidden, for: .navigationBar) // Cacher la barre de navigation
         // Alerte d'atterrissage détecté (compte à rebours avant arrêt auto)
+        // ou pause au sol (mode soaring : on attend le redécollage)
         .overlay {
-            if let countdown = landingCountdown {
+            if isPausedOnGround {
+                pausedOnGroundOverlay()
+            } else if let countdown = landingCountdown {
                 landingPromptOverlay(countdown: countdown)
             }
         }
@@ -852,10 +868,34 @@ struct ActiveFlightView: View {
             autoDetector.flightStarted()
         }
 
+        // Mode .stop (Thermique) : compte à rebours de 20 s avant arrêt auto
         autoDetector.onLandingDetected = { [self] in
             watchLogInfo("Auto-detect: landing detected, starting 20 s countdown", category: .flight)
             WKInterfaceDevice.current().play(.notification)
             landingCountdown = 20
+        }
+
+        // Mode .pauseAndResume (Soaring & co) : le vol passe en pause au sol
+        autoDetector.onPauseStarted = { [self] in
+            watchLogInfo("Auto-detect: landing detected, flight paused on ground (soaring mode)", category: .flight)
+            WKInterfaceDevice.current().play(.notification)
+            landingCountdown = nil
+            pauseStartDate = Date()
+            isPausedOnGround = true
+        }
+
+        // Redécollage détecté : reprise du MÊME vol, le chrono repart
+        autoDetector.onResumed = { [self] in
+            watchLogInfo("Auto-detect: re-takeoff detected, resuming flight", category: .flight)
+            WKInterfaceDevice.current().play(.start)
+            finalizeCurrentPause()
+            isPausedOnGround = false
+        }
+
+        // Garde-fou : pause trop longue → arrêt automatique du vol
+        autoDetector.onPauseTimeout = { [self] in
+            watchLogInfo("Auto-detect: ground pause exceeded max duration, stopping flight automatically", category: .flight)
+            endFlightFromPause()
         }
     }
 
@@ -901,6 +941,80 @@ struct ActiveFlightView: View {
         locationService.stopUpdatingLocation()
         showingStopSheet = false
         onStopFlight(duration)
+    }
+
+    // MARK: - Pause au sol (mode soaring)
+
+    /// Durée effective du vol (s) : temps écoulé moins les pauses au sol
+    /// (pauses terminées + pause en cours). En manuel ou en mode .stop,
+    /// aucune pause n'existe : équivaut au calcul historique.
+    private func effectiveElapsed(since start: Date) -> Int {
+        let raw = Int(Date().timeIntervalSince(start))
+        let currentPause = pauseStartDate.map { Int(Date().timeIntervalSince($0)) } ?? 0
+        return max(0, raw - completedPauseSeconds - currentPause)
+    }
+
+    /// Clôt la pause en cours : cumule ses secondes dans `completedPauseSeconds`
+    private func finalizeCurrentPause() {
+        if let pauseStart = pauseStartDate {
+            completedPauseSeconds += Int(Date().timeIntervalSince(pauseStart))
+        }
+        pauseStartDate = nil
+    }
+
+    /// Arrêt du vol depuis la pause au sol (« Terminer le vol » ou timeout 30 min).
+    /// La durée sauvegardée exclut les secondes passées en pause.
+    private func endFlightFromPause() {
+        guard isPausedOnGround else { return }
+        finalizeCurrentPause()
+        isPausedOnGround = false
+        watchLogInfo("Auto-detect: flight ended from ground pause", category: .flight)
+        WKInterfaceDevice.current().play(.stop)
+
+        // Même chemin que l'arrêt auto : timer + GPS puis sauvegarde
+        let duration = flightStartDate.map { effectiveElapsed(since: $0) } ?? elapsedSeconds
+        stopTimer()
+        locationService.stopUpdatingLocation()
+        showingStopSheet = false
+        onStopFlight(duration)
+    }
+
+    /// Overlay « Au sol » (mode soaring) : chrono figé, on attend le redécollage
+    private func pausedOnGroundOverlay() -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: "pause.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.orange)
+
+            Text("⏸ Au sol")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+
+            Text("Redécolle pour continuer le vol")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            // Chrono figé (durée effective, pauses exclues)
+            Text(formatElapsedTime(elapsedSeconds))
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.green)
+
+            Button {
+                endFlightFromPause()
+            } label: {
+                Text("Terminer le vol")
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.red)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.96))
     }
 
     /// Overlay « Atterrissage détecté » avec compte à rebours et choix utilisateur
@@ -950,9 +1064,9 @@ struct ActiveFlightView: View {
     }
 
     private func startTimerImmediately() {
-        // Calculer immédiatement le temps écoulé
+        // Calculer immédiatement le temps écoulé (durée effective, pauses exclues)
         if let start = flightStartDate {
-            elapsedSeconds = Int(Date().timeIntervalSince(start))
+            elapsedSeconds = effectiveElapsed(since: start)
         } else {
             elapsedSeconds = 0
         }
@@ -962,7 +1076,8 @@ struct ActiveFlightView: View {
         // Le timer est stocké dans @State et invalidé dans onDisappear
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
             if let start = flightStartDate {
-                elapsedSeconds = Int(Date().timeIntervalSince(start))
+                // En pause au sol : le chrono se fige (les secondes de pause sont exclues)
+                elapsedSeconds = effectiveElapsed(since: start)
             }
 
             // Mettre à jour les données dans le sessionManager toutes les 10 secondes
@@ -1307,6 +1422,7 @@ struct WatchSettingsView: View {
     @State private var allowDismiss: Bool = WatchSettings.shared.allowSessionDismiss
     // Réglages locaux à la Watch (UserDefaults simples)
     @State private var varioEnabled: Bool = UserDefaults.standard.bool(forKey: "vario.enabled")
+    @State private var varioSoundEnabled: Bool = UserDefaults.standard.bool(forKey: "vario.sound.enabled")
     @State private var autoDetectEnabled: Bool = UserDefaults.standard.bool(forKey: "autoDetect.enabled")
 
     var body: some View {
@@ -1394,6 +1510,33 @@ struct WatchSettingsView: View {
                 .background(Color.gray.opacity(0.15))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
 
+                // Sons du vario Toggle (en plus de l'haptique) — visible
+                // uniquement si le vario est activé
+                if varioEnabled {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(isOn: $varioSoundEnabled) {
+                            HStack(spacing: 8) {
+                                Image(systemName: "speaker.wave.2.fill")
+                                    .foregroundStyle(.mint)
+                                Text("Sons du vario")
+                                    .font(.subheadline)
+                            }
+                        }
+                        .tint(.mint)
+                        .onChange(of: varioSoundEnabled) { _, newValue in
+                            UserDefaults.standard.set(newValue, forKey: "vario.sound.enabled")
+                        }
+
+                        Text("Bips audio en plus de l'haptique")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 10)
+                    .background(Color.gray.opacity(0.15))
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                }
+
                 // Détection auto décollage/atterrissage Toggle
                 VStack(alignment: .leading, spacing: 4) {
                     Toggle(isOn: $autoDetectEnabled) {
@@ -1437,6 +1580,7 @@ struct WatchSettingsView: View {
             autoWaterLock = WatchSettings.shared.autoWaterLockEnabled
             allowDismiss = WatchSettings.shared.allowSessionDismiss
             varioEnabled = UserDefaults.standard.bool(forKey: "vario.enabled")
+            varioSoundEnabled = UserDefaults.standard.bool(forKey: "vario.sound.enabled")
             autoDetectEnabled = UserDefaults.standard.bool(forKey: "autoDetect.enabled")
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchSettingsUpdatedFromPhone)) { _ in

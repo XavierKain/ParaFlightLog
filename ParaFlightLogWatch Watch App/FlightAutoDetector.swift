@@ -22,6 +22,17 @@ enum FlightAutoDetectorState: Equatable {
     case flying
     /// Candidat atterrissage : vitesse faible, accumulation du temps de confirmation
     case landingCandidate
+    /// Vol en pause au sol (mode soaring) : attend un redécollage ou le timeout de pause
+    case pausedOnGround
+}
+
+/// Comportement à la confirmation d'un atterrissage
+enum LandingBehavior: Equatable {
+    /// Comportement classique (Thermique) : émet `onLandingDetected` → arrêt du vol
+    case stop
+    /// Mode soaring : le vol passe en pause au sol et reprend au redécollage.
+    /// `maxPause` : durée maximale de pause avant arrêt automatique (`onPauseTimeout`).
+    case pauseAndResume(maxPause: TimeInterval)
 }
 
 // MARK: - Machine à états
@@ -30,7 +41,10 @@ enum FlightAutoDetectorState: Equatable {
 /// par `update(speed:vz:gpsAltitude:timestamp:)`.
 /// - Décollage : vitesse sol > seuil pendant la durée de confirmation → `onTakeoffDetected`
 /// - Atterrissage : vitesse sol < seuil ET altitude stable (Vz vario si dispo,
-///   sinon altitude GPS ± tolérance) pendant la durée de confirmation → `onLandingDetected`
+///   sinon altitude GPS ± tolérance) pendant la durée de confirmation →
+///   selon `landingBehavior` : `onLandingDetected` (.stop) ou pause au sol
+///   (.pauseAndResume : `onPauseStarted` → `onResumed` au redécollage,
+///   ou `onPauseTimeout` si la pause dépasse la durée maximale)
 final class FlightAutoDetector {
 
     // MARK: - Réglages (exposés pour les tests)
@@ -47,13 +61,21 @@ final class FlightAutoDetector {
     var landingVzThreshold: Double = 0.5
     /// Tolérance de stabilité d'altitude GPS (m) quand la Vz n'est pas dispo
     var landingAltitudeTolerance: Double = 3.0
+    /// Comportement à la confirmation d'atterrissage (.stop par défaut = comportement historique)
+    var landingBehavior: LandingBehavior = .stop
 
     // MARK: - Callbacks
 
     /// Décollage confirmé (vitesse soutenue pendant la durée requise)
     var onTakeoffDetected: (() -> Void)?
-    /// Atterrissage confirmé (l'UI affiche alors son compte à rebours)
+    /// Atterrissage confirmé en mode .stop (l'UI affiche alors son compte à rebours)
     var onLandingDetected: (() -> Void)?
+    /// Atterrissage confirmé en mode .pauseAndResume : le vol passe en pause au sol
+    var onPauseStarted: (() -> Void)?
+    /// Redécollage détecté pendant la pause : le MÊME vol reprend
+    var onResumed: (() -> Void)?
+    /// La pause a dépassé `maxPause` : l'UI doit arrêter le vol
+    var onPauseTimeout: (() -> Void)?
 
     /// État courant (lecture seule)
     private(set) var state: FlightAutoDetectorState = .idle
@@ -68,6 +90,10 @@ final class FlightAutoDetector {
     private var landingReferenceAltitude: Double?
     /// Vrai quand `onLandingDetected` a été émis (compte à rebours UI en cours)
     private var landingNotified = false
+    /// Début de la pause au sol (mode .pauseAndResume)
+    private var pauseStartedAt: TimeInterval?
+    /// Vrai quand `onPauseTimeout` a été émis (l'UI arrête le vol)
+    private var pauseTimeoutNotified = false
 
     // MARK: - Transitions pilotées par l'UI
 
@@ -108,6 +134,8 @@ final class FlightAutoDetector {
         landingCandidateSince = nil
         landingReferenceAltitude = nil
         landingNotified = false
+        pauseStartedAt = nil
+        pauseTimeoutNotified = false
     }
 
     // MARK: - Mise à jour (logique pure)
@@ -126,6 +154,8 @@ final class FlightAutoDetector {
             updateTakeoff(speed: speed, timestamp: timestamp)
         case .flying, .landingCandidate:
             updateLanding(speed: speed, vz: vz, gpsAltitude: gpsAltitude, timestamp: timestamp)
+        case .pausedOnGround:
+            updatePausedOnGround(speed: speed, timestamp: timestamp)
         }
     }
 
@@ -187,8 +217,54 @@ final class FlightAutoDetector {
         }
 
         if timestamp - since >= landingConfirmation {
-            landingNotified = true
-            onLandingDetected?()
+            switch landingBehavior {
+            case .stop:
+                // Comportement classique (Thermique) : l'UI affiche son compte à rebours
+                landingNotified = true
+                onLandingDetected?()
+            case .pauseAndResume:
+                // Mode soaring : le vol passe en pause au sol, on attend le redécollage
+                state = .pausedOnGround
+                resetCandidates()
+                pauseStartedAt = timestamp
+                onPauseStarted?()
+            }
+        }
+    }
+
+    // MARK: - Pause au sol (mode soaring)
+
+    /// En pause : surveille le redécollage (même logique/seuils que le décollage
+    /// initial) et le dépassement de la durée maximale de pause.
+    private func updatePausedOnGround(speed: Double?, timestamp: TimeInterval) {
+        // Garde-fou : pause trop longue → arrêt automatique du vol (émis une seule fois)
+        if case .pauseAndResume(let maxPause) = landingBehavior,
+           let pauseStart = pauseStartedAt,
+           timestamp - pauseStart >= maxPause {
+            if !pauseTimeoutNotified {
+                pauseTimeoutNotified = true
+                onPauseTimeout?()
+            }
+            return
+        }
+        guard !pauseTimeoutNotified else { return }
+
+        // Redécollage : vitesse sol soutenue au-dessus du seuil de décollage
+        guard let speed, speed > takeoffSpeedThreshold else {
+            takeoffCandidateSince = nil
+            return
+        }
+
+        guard let since = takeoffCandidateSince else {
+            takeoffCandidateSince = timestamp
+            return
+        }
+
+        if timestamp - since >= takeoffConfirmation {
+            // Reprise du MÊME vol : retour en surveillance d'atterrissage
+            state = .flying
+            resetCandidates()
+            onResumed?()
         }
     }
 
