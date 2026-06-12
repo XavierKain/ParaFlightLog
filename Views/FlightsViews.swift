@@ -372,6 +372,7 @@ struct FlightDetailView: View {
     @State private var showingShareSheet = false
     @State private var showColoredTrace = true  // Toggle pour afficher la trace colorée
     @State private var showingRenameSpotSheet = false
+    @State private var renameSpotNewName = ""
 
     // Calculer les segments colorés si trace GPS disponible
     private var coloredSegments: [SpeedSegment] {
@@ -728,12 +729,20 @@ struct FlightDetailView: View {
                 FullScreenMapView(flight: flight, initialRegion: mapRegion)
             }
             .sheet(isPresented: $showingRenameSpotSheet) {
-                if let lat = flight.latitude, let lon = flight.longitude {
-                    RenameSpotSheet(
-                        coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon),
-                        currentName: flight.spotName ?? "Spot inconnu"
-                    )
-                }
+                SpotRenameSheet(
+                    originalName: flight.spotName ?? "Spot inconnu",
+                    newName: $renameSpotNewName,
+                    onRename: { oldName, newName in
+                        // Renommer le spot dans tous les vols (local)
+                        let descriptor = FetchDescriptor<Flight>()
+                        if let allFlights = try? modelContext.fetch(descriptor) {
+                            for f in allFlights where f.spotName == oldName {
+                                f.spotName = newName
+                            }
+                            try? modelContext.save()
+                        }
+                    }
+                )
             }
         }
     }
