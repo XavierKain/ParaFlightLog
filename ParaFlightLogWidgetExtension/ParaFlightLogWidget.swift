@@ -45,44 +45,45 @@ private enum WidgetStrings {
 struct FlightEntry: TimelineEntry {
     let date: Date
     let isFlying: Bool
-    let elapsedTime: String
+    let flightStartDate: Date?
     let wingName: String?
+
+    /// Entrée "au repos"
+    static func idle(date: Date = Date()) -> FlightEntry {
+        FlightEntry(date: date, isFlying: false, flightStartDate: nil, wingName: nil)
+    }
 }
 
 // MARK: - Timeline Provider
 
 struct FlightWidgetProvider: TimelineProvider {
+    /// Lit l'état du vol en cours depuis l'App Group (écrit par l'app Watch)
+    private func currentEntry(date: Date = Date()) -> FlightEntry {
+        let state = WidgetFlightState.read()
+        if state.isFlying, let startDate = state.startDate {
+            return FlightEntry(date: date, isFlying: true, flightStartDate: startDate, wingName: state.wingName)
+        }
+        return .idle(date: date)
+    }
+
     func placeholder(in context: Context) -> FlightEntry {
-        FlightEntry(
-            date: Date(),
-            isFlying: false,
-            elapsedTime: "00:00",
-            wingName: nil
-        )
+        .idle()
     }
 
     func getSnapshot(in context: Context, completion: @escaping (FlightEntry) -> Void) {
-        let entry = FlightEntry(
-            date: Date(),
-            isFlying: false,
-            elapsedTime: "00:00",
-            wingName: nil
-        )
-        completion(entry)
+        completion(currentEntry())
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<FlightEntry>) -> Void) {
-        let entry = FlightEntry(
-            date: Date(),
-            isFlying: false,
-            elapsedTime: "00:00",
-            wingName: nil
-        )
-
+        let entry = currentEntry()
         let now = Date()
-        let nextUpdate = Calendar.current.date(byAdding: .minute, value: 15, to: now) ?? now.addingTimeInterval(15 * 60)
-        let timeline = Timeline(entries: [entry], policy: .after(nextUpdate))
-        completion(timeline)
+
+        // En vol : le chrono est rendu par Text(style: .timer) qui tourne tout seul,
+        // on rafraîchit la timeline toutes les 30 min par sécurité.
+        // Au repos : rafraîchissement passif (l'app Watch force un reload au start/stop).
+        let refreshMinutes = entry.isFlying ? 30 : 60
+        let nextUpdate = Calendar.current.date(byAdding: .minute, value: refreshMinutes, to: now) ?? now.addingTimeInterval(1800)
+        completion(Timeline(entries: [entry], policy: .after(nextUpdate)))
     }
 }
 
@@ -117,17 +118,18 @@ struct CircularWidgetView: View {
     let entry: FlightEntry
 
     var body: some View {
-        if entry.isFlying {
-            // Pendant un vol : afficher le chrono
+        if entry.isFlying, let startDate = entry.flightStartDate {
+            // Pendant un vol : afficher le chrono (mis à jour en continu par le système)
             ZStack {
                 AccessoryWidgetBackground()
                 VStack(spacing: 0) {
                     Image(systemName: "timer")
                         .font(.system(size: 14))
                         .foregroundStyle(.green)
-                    Text(entry.elapsedTime)
+                    Text(startDate, style: .timer)
                         .font(.system(size: 12, weight: .semibold))
                         .monospacedDigit()
+                        .multilineTextAlignment(.center)
                 }
             }
         } else {
@@ -160,8 +162,8 @@ struct RectangularWidgetView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                if entry.isFlying {
-                    Text(entry.elapsedTime)
+                if entry.isFlying, let startDate = entry.flightStartDate {
+                    Text(startDate, style: .timer)
                         .font(.system(size: 16, weight: .bold))
                         .monospacedDigit()
 
@@ -172,7 +174,7 @@ struct RectangularWidgetView: View {
                             .lineLimit(1)
                     }
                 } else {
-                    Text("SOARX")
+                    Text("SoarX")
                         .font(.headline)
 
                     Text(WidgetStrings.startFlight)
@@ -204,11 +206,15 @@ struct InlineWidgetView: View {
     let entry: FlightEntry
 
     var body: some View {
-        if entry.isFlying {
-            Label(entry.elapsedTime, systemImage: "play.fill")
-                .fontWeight(.semibold)
+        if entry.isFlying, let startDate = entry.flightStartDate {
+            Label {
+                Text(startDate, style: .timer)
+            } icon: {
+                Image(systemName: "play.fill")
+            }
+            .fontWeight(.semibold)
         } else {
-            Label("SOARX", systemImage: "wind")
+            Label("SoarX", systemImage: "wind")
         }
     }
 }
@@ -222,7 +228,7 @@ struct ParaFlightLogWidget: Widget {
         StaticConfiguration(kind: kind, provider: FlightWidgetProvider()) { entry in
             FlightWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("SOARX")
+        .configurationDisplayName("SoarX")
         .description(WidgetStrings.description)
         .supportedFamilies([
             .accessoryCircular,
@@ -237,13 +243,13 @@ struct ParaFlightLogWidget: Widget {
 #Preview(as: .accessoryCircular) {
     ParaFlightLogWidget()
 } timeline: {
-    FlightEntry(date: .now, isFlying: false, elapsedTime: "00:00", wingName: nil)
-    FlightEntry(date: .now, isFlying: true, elapsedTime: "01:23", wingName: "Flare Props")
+    FlightEntry.idle()
+    FlightEntry(date: .now, isFlying: true, flightStartDate: .now.addingTimeInterval(-83 * 60), wingName: "Flare Props")
 }
 
 #Preview(as: .accessoryRectangular) {
     ParaFlightLogWidget()
 } timeline: {
-    FlightEntry(date: .now, isFlying: false, elapsedTime: "00:00", wingName: nil)
-    FlightEntry(date: .now, isFlying: true, elapsedTime: "01:23", wingName: "Flare Props")
+    FlightEntry.idle()
+    FlightEntry(date: .now, isFlying: true, flightStartDate: .now.addingTimeInterval(-83 * 60), wingName: "Flare Props")
 }

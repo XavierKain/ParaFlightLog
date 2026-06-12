@@ -3,10 +3,12 @@
 //  ParaFlightLog
 //
 //  Vues pour l'affichage des badges et de la progression
+//  Calcul 100 % local à partir des vols SwiftData
 //  Target: iOS only
 //
 
 import SwiftUI
+import SwiftData
 
 // MARK: - BadgesView
 
@@ -14,6 +16,9 @@ import SwiftUI
 struct BadgesView: View {
     @State private var selectedCategory: BadgeCategory?
     @State private var selectedBadge: Badge?
+
+    @Query(sort: \Flight.startDate, order: .reverse) private var flights: [Flight]
+    @Query private var wings: [Wing]
 
     private let badgeService = BadgeService.shared
 
@@ -39,8 +44,11 @@ struct BadgesView: View {
             .sheet(item: $selectedBadge) { badge in
                 BadgeDetailView(badge: badge)
             }
+            .task {
+                refreshBadges()
+            }
             .refreshable {
-                await refreshBadges()
+                refreshBadges()
             }
         }
     }
@@ -52,11 +60,9 @@ struct BadgesView: View {
         return badgeService.allBadges
     }
 
-    private func refreshBadges() async {
-        await badgeService.loadAllBadges()
-        if let userId = UserService.shared.currentUserProfile?.id {
-            await badgeService.loadUserBadges(userId: userId)
-        }
+    /// Vérifie et débloque les badges à partir des vols locaux
+    private func refreshBadges() {
+        badgeService.checkBadges(flights: flights, wings: wings)
     }
 }
 
@@ -153,21 +159,19 @@ struct ProgressSummaryCard: View {
                 .frame(width: 50, height: 50)
             }
 
-            // XP total
-            if let profile = UserService.shared.currentUserProfile {
-                HStack {
-                    Image(systemName: "star.fill")
-                        .foregroundStyle(.yellow)
-                    Text("\(profile.xpTotal) XP")
-                        .font(.subheadline)
-                        .fontWeight(.medium)
+            // XP total (calculé localement à partir des badges débloqués)
+            HStack {
+                Image(systemName: "star.fill")
+                    .foregroundStyle(.yellow)
+                Text("\(badgeService.totalXP) XP")
+                    .font(.subheadline)
+                    .fontWeight(.medium)
 
-                    Spacer()
+                Spacer()
 
-                    Text("Niveau \(profile.level)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
+                Text("Niveau \(badgeService.level)")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
             }
         }
         .padding()
@@ -272,6 +276,8 @@ struct BadgeDetailView: View {
     let badge: Badge
     @Environment(\.dismiss) private var dismiss
 
+    @Query private var flights: [Flight]
+
     private let badgeService = BadgeService.shared
 
     var body: some View {
@@ -331,38 +337,8 @@ struct BadgeDetailView: View {
                     .background(Color(.secondarySystemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                    // Progression
-                    if let profile = UserService.shared.currentUserProfile {
-                        let progress = badgeService.getProgress(for: badge, profile: profile)
-
-                        VStack(alignment: .leading, spacing: 12) {
-                            Text("Progression".localized)
-                                .font(.headline)
-
-                            HStack {
-                                ProgressView(value: progress.progress)
-                                    .tint(tierColor)
-
-                                Text(progress.progressText)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-
-                            if isEarned, let earnedDate = earnedDate {
-                                HStack {
-                                    Image(systemName: "checkmark.circle.fill")
-                                        .foregroundStyle(.green)
-                                    Text("Obtenu le \(earnedDate.formatted(date: .abbreviated, time: .omitted))")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
+                    // Progression (calculée localement à partir des vols)
+                    progressSection
 
                     // Récompense XP
                     HStack {
@@ -402,12 +378,44 @@ struct BadgeDetailView: View {
         }
     }
 
+    private var progressSection: some View {
+        let progress = badgeService.getProgress(for: badge, flights: flights)
+
+        return VStack(alignment: .leading, spacing: 12) {
+            Text("Progression".localized)
+                .font(.headline)
+
+            HStack {
+                ProgressView(value: progress.progress)
+                    .tint(tierColor)
+
+                Text(progress.progressText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            if isEarned, let earnedDate = earnedDate {
+                HStack {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Text("Obtenu le \(earnedDate.formatted(date: .abbreviated, time: .omitted))")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+    }
+
     private var isEarned: Bool {
         badgeService.hasBadge(badge.id)
     }
 
     private var earnedDate: Date? {
-        badgeService.userBadges.first { $0.badgeId == badge.id }?.earnedAt
+        badgeService.earnedDate(for: badge.id)
     }
 
     private var tierColor: Color {
@@ -423,32 +431,19 @@ struct BadgeDetailView: View {
 // MARK: - LevelProgressView
 
 /// Vue compacte de la progression de niveau (pour le profil)
+/// XP et niveau calculés localement à partir des badges débloqués
 struct LevelProgressView: View {
     let level: Int
     let xpTotal: Int
 
     private var xpForCurrentLevel: Int {
-        let thresholds = [
-            0, 100, 200, 300, 400, 500,
-            600, 800, 1000, 1200, 1400,
-            1600, 1800, 2000, 2200, 2500,
-            2800, 3100, 3500, 3900, 4300,
-            4700, 5100, 5600, 6100, 6700,
-            7300, 8000, 8700, 9500, 10500
-        ]
+        let thresholds = BadgeService.levelThresholds
         guard level > 0 && level <= thresholds.count else { return 0 }
         return thresholds[level - 1]
     }
 
     private var xpForNextLevel: Int {
-        let thresholds = [
-            0, 100, 200, 300, 400, 500,
-            600, 800, 1000, 1200, 1400,
-            1600, 1800, 2000, 2200, 2500,
-            2800, 3100, 3500, 3900, 4300,
-            4700, 5100, 5600, 6100, 6700,
-            7300, 8000, 8700, 9500, 10500
-        ]
+        let thresholds = BadgeService.levelThresholds
         guard level < thresholds.count else { return thresholds.last ?? 10500 }
         return thresholds[level]
     }

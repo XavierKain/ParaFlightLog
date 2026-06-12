@@ -25,6 +25,12 @@ final class DataController {
     // Indique si on utilise une base in-memory (fallback après erreur)
     private(set) var isUsingFallbackDatabase: Bool = false
 
+    // Indique si la sync iCloud (CloudKit) est active
+    private(set) var isCloudSyncEnabled: Bool = false
+
+    /// Identifiant du conteneur iCloud privé de SoarX
+    static let cloudKitContainerId = "iCloud.com.xavierkain.SoarX"
+
     init() {
         // Configuration du schema SwiftData
         let schema = Schema([
@@ -32,72 +38,62 @@ final class DataController {
             Flight.self
         ])
 
-        let modelConfiguration = ModelConfiguration(
+        // Store dédié à SoarX dans Application Support (sandbox propre à l'app,
+        // aucune interaction avec les données de l'ancienne app ParaFlightLog)
+        let storeURL = URL.applicationSupportDirectory.appending(path: "SoarX.store")
+
+        // 1) Essai avec CloudKit (sync iCloud privée automatique)
+        let cloudConfiguration = ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: false
+            url: storeURL,
+            cloudKitDatabase: .private(Self.cloudKitContainerId)
         )
 
-        do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+        if let container = try? ModelContainer(for: schema, configurations: [cloudConfiguration]) {
             self.modelContainer = container
             self.modelContext = ModelContext(container)
-
-            // Configurer le cache de statistiques
+            self.isCloudSyncEnabled = true
             statsCache.dataController = self
+            logInfo("ModelContainer created with CloudKit sync", category: .dataController)
+            return
+        }
 
-            logInfo("ModelContainer created successfully", category: .dataController)
+        logWarning("CloudKit container unavailable (no iCloud account or entitlement). Falling back to local store.", category: .dataController)
+
+        // 2) Fallback : store local pur (pas de sync, données persistées)
+        let localConfiguration = ModelConfiguration(
+            schema: schema,
+            url: storeURL,
+            cloudKitDatabase: .none
+        )
+
+        if let container = try? ModelContainer(for: schema, configurations: [localConfiguration]) {
+            self.modelContainer = container
+            self.modelContext = ModelContext(container)
+            statsCache.dataController = self
+            logInfo("ModelContainer created (local only)", category: .dataController)
+            return
+        }
+
+        // 3) Dernier recours : base in-memory — l'app ne crash jamais au démarrage
+        logError("Could not create persistent ModelContainer. Using in-memory fallback.", category: .dataController)
+        do {
+            let fallbackContainer = try ModelContainer(for: schema, configurations: [
+                ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            ])
+            self.modelContainer = fallbackContainer
+            self.modelContext = ModelContext(fallbackContainer)
+            self.isUsingFallbackDatabase = true
+            statsCache.dataController = self
+            logWarning("Using in-memory database - data will not persist", category: .dataController)
         } catch {
-            // Fallback: utiliser une base de données in-memory
-            // Les données ne seront pas persistées, mais l'app ne crashera pas
-            logError("Could not create ModelContainer: \(error). Using in-memory fallback.", category: .dataController)
-
-            let fallbackConfiguration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: true
-            )
-
-            do {
-                let fallbackContainer = try ModelContainer(for: schema, configurations: [fallbackConfiguration])
-                self.modelContainer = fallbackContainer
-                self.modelContext = ModelContext(fallbackContainer)
-                self.isUsingFallbackDatabase = true
-
-                // Configurer le cache de statistiques
-                statsCache.dataController = self
-
-                logWarning("Using in-memory database - data will not persist", category: .dataController)
-            } catch {
-                // Dernier recours: créer un container minimal
-                logError("Critical: Could not create fallback container: \(error)", category: .dataController)
-
-                do {
-                    let minimalContainer = try ModelContainer(for: schema)
-                    self.modelContainer = minimalContainer
-                    self.modelContext = ModelContext(minimalContainer)
-                    self.isUsingFallbackDatabase = true
-                    statsCache.dataController = self
-                } catch {
-                    // Dernier recours absolu: créer un container in-memory sans configuration
-                    logError("CRITICAL: All ModelContainer attempts failed: \(error)", category: .dataController)
-                    do {
-                        let emergencyContainer = try ModelContainer(for: schema, configurations: [
-                            ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
-                        ])
-                        self.modelContainer = emergencyContainer
-                        self.modelContext = ModelContext(emergencyContainer)
-                        self.isUsingFallbackDatabase = true
-                        statsCache.dataController = self
-                    } catch {
-                        // Ultime fallback sans configuration personnalisée
-                        logError("FATAL: Cannot create any ModelContainer: \(error)", category: .dataController)
-                        let lastResort = try! ModelContainer(for: schema)
-                        self.modelContainer = lastResort
-                        self.modelContext = ModelContext(lastResort)
-                        self.isUsingFallbackDatabase = true
-                        statsCache.dataController = self
-                    }
-                }
-            }
+            // Ultime fallback sans configuration personnalisée
+            logError("FATAL: Cannot create any ModelContainer: \(error)", category: .dataController)
+            let lastResort = try! ModelContainer(for: schema)
+            self.modelContainer = lastResort
+            self.modelContext = ModelContext(lastResort)
+            self.isUsingFallbackDatabase = true
+            statsCache.dataController = self
         }
     }
 
@@ -270,9 +266,6 @@ final class DataController {
         statsCache.invalidate()
 
         logInfo("Flight saved: \(flight.durationFormatted) with \(wing.name)", category: .flight)
-
-        // Synchroniser automatiquement vers le cloud si l'utilisateur est connecté
-        syncFlightToCloudIfNeeded(flight)
     }
 
     /// Ajoute un vol directement (pour les vols créés depuis l'iPhone)
@@ -296,52 +289,6 @@ final class DataController {
         statsCache.invalidate()
 
         logInfo("Flight saved: \(flight.durationFormatted) at \(spotName ?? "Unknown")", category: .flight)
-
-        // Synchroniser automatiquement vers le cloud si l'utilisateur est connecté
-        syncFlightToCloudIfNeeded(flight)
-    }
-
-    // MARK: - Cloud Sync
-
-    /// Synchronise automatiquement un vol vers le cloud si l'utilisateur est authentifié
-    private func syncFlightToCloudIfNeeded(_ flight: Flight) {
-        // Vérifier si l'utilisateur est authentifié avec un vrai compte (pas skipped)
-        guard AuthService.shared.isAuthenticated,
-              UserService.shared.currentUserProfile != nil else {
-            logDebug("Skipping cloud sync - user not authenticated", category: .sync)
-            return
-        }
-
-        // Lancer la synchronisation en arrière-plan avec retry
-        Task {
-            var lastError: Error?
-            for attempt in 1...3 {
-                do {
-                    let cloudFlight = try await FlightSyncService.shared.uploadFlight(flight)
-
-                    // Mettre à jour le vol local avec les infos cloud sur le main thread
-                    await MainActor.run {
-                        flight.cloudId = cloudFlight.id
-                        flight.cloudSyncedAt = Date()
-                        flight.needsSync = false
-                        flight.hasGpsTrackInCloud = cloudFlight.hasGpsTrack
-                        self.saveContext()
-                        logInfo("Flight auto-synced to cloud: \(cloudFlight.id)", category: .sync)
-                    }
-                    return // Succès, sortir
-                } catch {
-                    lastError = error
-                    logWarning("Auto-sync attempt \(attempt)/3 failed: \(error.localizedDescription)", category: .sync)
-                    if attempt < 3 {
-                        try? await Task.sleep(nanoseconds: UInt64(attempt) * 2_000_000_000) // backoff 2s, 4s
-                    }
-                }
-            }
-            if let error = lastError {
-                logWarning("Auto-sync failed after 3 attempts: \(error.localizedDescription)", category: .sync)
-                // Le vol reste marqué needsSync = true, sera synchronisé lors de la prochaine sync manuelle
-            }
-        }
     }
 
     /// Supprime un vol
@@ -482,7 +429,6 @@ final class DataController {
         for flight in flights {
             if flight.spotName == oldName {
                 flight.spotName = newName
-                flight.needsSync = true  // Marquer pour re-sync
                 renamedCount += 1
             }
         }

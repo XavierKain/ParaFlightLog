@@ -2,9 +2,8 @@
 //  ShareService.swift
 //  ParaFlightLog
 //
-//  Service de partage social
-//  Génère des images de partage pour vols et badges
-//  Gère les deep links et le partage vers les réseaux sociaux
+//  Service de partage
+//  Génère des images de partage locales pour vols et badges
 //  Target: iOS only
 //
 
@@ -14,14 +13,6 @@ import UIKit
 import MapKit
 
 // MARK: - Share Models
-
-/// Type de contenu à partager
-enum ShareContentType {
-    case flight(PublicFlight)
-    case localFlight(Flight)
-    case badge(Badge, Date)
-    case achievement(String, String, String)  // title, description, icon
-}
 
 /// Configuration de l'image de partage
 struct ShareImageConfig: Sendable {
@@ -69,63 +60,7 @@ final class ShareService {
     /// État de génération
     private(set) var isGenerating = false
 
-    /// Scheme de l'app pour les deep links
-    private let appScheme = "paraflightlog"
-
-    /// URL du site web (pour le partage)
-    private let websiteURL = "https://paraflightlog.app"
-
     private init() {}
-
-    // MARK: - Deep Links
-
-    /// Génère un deep link pour un vol
-    func getDeepLink(for flightId: String) -> URL {
-        URL(string: "\(appScheme)://flight/\(flightId)") ?? URL(string: websiteURL)!
-    }
-
-    /// Génère un deep link pour un badge
-    func getDeepLink(for badgeId: String, isBadge: Bool = true) -> URL {
-        URL(string: "\(appScheme)://badge/\(badgeId)") ?? URL(string: websiteURL)!
-    }
-
-    /// Génère un deep link pour un profil pilote
-    func getDeepLink(forPilot pilotId: String) -> URL {
-        URL(string: "\(appScheme)://pilot/\(pilotId)") ?? URL(string: websiteURL)!
-    }
-
-    /// Génère un lien web partageable
-    func getWebLink(for flightId: String) -> URL {
-        URL(string: "\(websiteURL)/flight/\(flightId)") ?? URL(string: websiteURL)!
-    }
-
-    // MARK: - Flight Share Image Generation
-
-    /// Génère une image de partage pour un vol public
-    func generateFlightShareImage(
-        flight: PublicFlight,
-        config: ShareImageConfig
-    ) -> UIImage {
-        isGenerating = true
-        defer { isGenerating = false }
-
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: config.width, height: config.height))
-
-        return renderer.image { context in
-            let rect = CGRect(x: 0, y: 0, width: config.width, height: config.height)
-
-            // Background gradient
-            drawGradientBackground(in: context, rect: rect, config: config)
-
-            // Content
-            drawFlightContent(flight: flight, in: context, rect: rect, config: config)
-
-            // App branding
-            if config.includeAppBranding {
-                drawAppBranding(in: context, rect: rect, config: config)
-            }
-        }
-    }
 
     // MARK: - Local Flight Share Image Generation
 
@@ -306,33 +241,6 @@ final class ShareService {
 
     // MARK: - Share Text Generation
 
-    /// Génère le texte de partage pour un vol
-    func generateFlightShareText(flight: PublicFlight) -> String {
-        var text = "Vol de \(flight.formattedDuration)"
-
-        if let spotName = flight.spotName {
-            text += " @ \(spotName)"
-        }
-
-        text += "\n\n"
-
-        if let altitude = flight.maxAltitude {
-            text += "Alt. max: \(Int(altitude))m\n"
-        }
-
-        if let distance = flight.totalDistance {
-            if distance >= 1000 {
-                text += "Distance: \(String(format: "%.1f", distance / 1000))km\n"
-            } else {
-                text += "Distance: \(Int(distance))m\n"
-            }
-        }
-
-        text += "\n#Parapente #Paragliding #SoarX"
-
-        return text
-    }
-
     /// Génère le texte de partage pour un badge
     func generateBadgeShareText(badge: Badge) -> String {
         var text = "Badge obtenu: \(badge.localizedName)!\n\n"
@@ -398,167 +306,6 @@ final class ShareService {
                 options: []
             )
         }
-    }
-
-    private func drawFlightContent(flight: PublicFlight, in context: UIGraphicsImageRendererContext, rect: CGRect, config: ShareImageConfig) {
-        let padding: CGFloat = 60
-        _ = rect.width - (padding * 2)  // contentWidth reserved for future use
-
-        // Titre "VOL PARAPENTE"
-        let titleFont = UIFont.systemFont(ofSize: 48, weight: .bold)
-        let titleAttrs: [NSAttributedString.Key: Any] = [
-            .font: titleFont,
-            .foregroundColor: UIColor.white.withAlphaComponent(0.6)
-        ]
-        let titleText = "VOL PARAPENTE"
-        let titleSize = titleText.size(withAttributes: titleAttrs)
-        let titleRect = CGRect(
-            x: (rect.width - titleSize.width) / 2,
-            y: rect.height * 0.12,
-            width: titleSize.width,
-            height: titleSize.height
-        )
-        titleText.draw(in: titleRect, withAttributes: titleAttrs)
-
-        // Durée en grand
-        let durationFont = UIFont.systemFont(ofSize: 120, weight: .bold)
-        let durationAttrs: [NSAttributedString.Key: Any] = [
-            .font: durationFont,
-            .foregroundColor: UIColor.white
-        ]
-        let durationText = flight.formattedDuration
-        let durationSize = durationText.size(withAttributes: durationAttrs)
-        let durationRect = CGRect(
-            x: (rect.width - durationSize.width) / 2,
-            y: rect.height * 0.25,
-            width: durationSize.width,
-            height: durationSize.height
-        )
-        durationText.draw(in: durationRect, withAttributes: durationAttrs)
-
-        // Spot
-        if let spotName = flight.spotName {
-            let spotFont = UIFont.systemFont(ofSize: 40, weight: .medium)
-            let spotAttrs: [NSAttributedString.Key: Any] = [
-                .font: spotFont,
-                .foregroundColor: UIColor.systemBlue
-            ]
-            let spotSize = spotName.size(withAttributes: spotAttrs)
-            let spotRect = CGRect(
-                x: (rect.width - spotSize.width) / 2,
-                y: durationRect.maxY + 30,
-                width: spotSize.width,
-                height: spotSize.height
-            )
-            spotName.draw(in: spotRect, withAttributes: spotAttrs)
-        }
-
-        // Stats
-        var statsY = rect.height * 0.50
-        let statSpacing: CGFloat = 80
-
-        let statFont = UIFont.systemFont(ofSize: 36, weight: .semibold)
-        let statValueFont = UIFont.systemFont(ofSize: 56, weight: .bold)
-        let statLabelAttrs: [NSAttributedString.Key: Any] = [
-            .font: statFont,
-            .foregroundColor: UIColor.white.withAlphaComponent(0.7)
-        ]
-        let statValueAttrs: [NSAttributedString.Key: Any] = [
-            .font: statValueFont,
-            .foregroundColor: UIColor.white
-        ]
-
-        if let altitude = flight.maxAltitude {
-            drawStatCard(
-                label: "ALTITUDE MAX",
-                value: "\(Int(altitude)) m",
-                at: CGPoint(x: rect.width / 2, y: statsY),
-                labelAttrs: statLabelAttrs,
-                valueAttrs: statValueAttrs
-            )
-            statsY += statSpacing
-        }
-
-        if let distance = flight.totalDistance {
-            let distanceStr = distance >= 1000
-                ? String(format: "%.1f km", distance / 1000)
-                : "\(Int(distance)) m"
-            drawStatCard(
-                label: "DISTANCE",
-                value: distanceStr,
-                at: CGPoint(x: rect.width / 2, y: statsY),
-                labelAttrs: statLabelAttrs,
-                valueAttrs: statValueAttrs
-            )
-            statsY += statSpacing
-        }
-
-        if let speed = flight.maxSpeed {
-            drawStatCard(
-                label: "VITESSE MAX",
-                value: "\(Int(speed * 3.6)) km/h",
-                at: CGPoint(x: rect.width / 2, y: statsY),
-                labelAttrs: statLabelAttrs,
-                valueAttrs: statValueAttrs
-            )
-        }
-
-        // Date
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateStyle = .long
-        dateFormatter.locale = Locale(identifier: "fr_FR")
-        let dateStr = dateFormatter.string(from: flight.startDate)
-
-        let dateFont = UIFont.systemFont(ofSize: 32, weight: .regular)
-        let dateAttrs: [NSAttributedString.Key: Any] = [
-            .font: dateFont,
-            .foregroundColor: UIColor.white.withAlphaComponent(0.6)
-        ]
-        let dateSize = dateStr.size(withAttributes: dateAttrs)
-        let dateRect = CGRect(
-            x: (rect.width - dateSize.width) / 2,
-            y: rect.height * 0.82,
-            width: dateSize.width,
-            height: dateSize.height
-        )
-        dateStr.draw(in: dateRect, withAttributes: dateAttrs)
-
-        // Pilote
-        let pilotFont = UIFont.systemFont(ofSize: 36, weight: .medium)
-        let pilotAttrs: [NSAttributedString.Key: Any] = [
-            .font: pilotFont,
-            .foregroundColor: UIColor.white
-        ]
-        let pilotText = flight.pilotName
-        let pilotSize = pilotText.size(withAttributes: pilotAttrs)
-        let pilotRect = CGRect(
-            x: (rect.width - pilotSize.width) / 2,
-            y: dateRect.maxY + 15,
-            width: pilotSize.width,
-            height: pilotSize.height
-        )
-        pilotText.draw(in: pilotRect, withAttributes: pilotAttrs)
-    }
-
-    private func drawStatCard(label: String, value: String, at point: CGPoint, labelAttrs: [NSAttributedString.Key: Any], valueAttrs: [NSAttributedString.Key: Any]) {
-        let labelSize = label.size(withAttributes: labelAttrs)
-        let valueSize = value.size(withAttributes: valueAttrs)
-
-        let labelRect = CGRect(
-            x: point.x - labelSize.width / 2,
-            y: point.y,
-            width: labelSize.width,
-            height: labelSize.height
-        )
-        label.draw(in: labelRect, withAttributes: labelAttrs)
-
-        let valueRect = CGRect(
-            x: point.x - valueSize.width / 2,
-            y: labelRect.maxY + 8,
-            width: valueSize.width,
-            height: valueSize.height
-        )
-        value.draw(in: valueRect, withAttributes: valueAttrs)
     }
 
     private func drawBadgeContent(badge: Badge, earnedAt: Date, in context: UIGraphicsImageRendererContext, rect: CGRect, config: ShareImageConfig) {

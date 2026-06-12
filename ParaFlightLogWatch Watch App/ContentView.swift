@@ -8,6 +8,7 @@
 
 import SwiftUI
 import CoreLocation
+import WidgetKit
 
 struct ContentView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
@@ -85,6 +86,12 @@ struct ContentView: View {
 
     /// Vérifie s'il y a une session de vol à récupérer après un crash
     private func checkForRecoverableSession() {
+        // Nettoyer un éventuel état "en vol" périmé côté widget (ex: crash pendant un vol)
+        if !isFlying {
+            WidgetFlightState.clearFlying()
+            WidgetCenter.shared.reloadAllTimelines()
+        }
+
         guard sessionManager.hasRecoverableSession,
               let duration = sessionManager.recoveredFlightDuration else {
             return
@@ -145,8 +152,13 @@ struct ContentView: View {
         WatchImageCache.shared.preloadImageSync(for: wing)
 
         // Définir la date AVANT d'afficher le fullScreenCover
-        flightStartDate = Date()
+        let startDate = Date()
+        flightStartDate = startDate
         isFlying = true
+
+        // Signaler le vol en cours au widget (complication cadran)
+        WidgetFlightState.setFlying(startDate: startDate, wingName: wing.name)
+        WidgetCenter.shared.reloadAllTimelines()
 
         // Démarrer la session de persistance pour sauvegarder automatiquement
         sessionManager.startSession(wing: wing, spotName: locationService.currentSpotName)
@@ -229,6 +241,10 @@ struct ContentView: View {
             await workoutManager.stopWorkoutSession()
         }
 
+        // Signaler la fin du vol au widget
+        WidgetFlightState.clearFlying()
+        WidgetCenter.shared.reloadAllTimelines()
+
         // Reset - mettre activeFlightWing à nil ferme le fullScreenCover
         isFlying = false
         flightStartDate = nil
@@ -251,6 +267,10 @@ struct ContentView: View {
         Task {
             await workoutManager.stopWorkoutSession()
         }
+
+        // Signaler la fin du vol au widget
+        WidgetFlightState.clearFlying()
+        WidgetCenter.shared.reloadAllTimelines()
 
         // Reset - mettre activeFlightWing à nil ferme le fullScreenCover
         isFlying = false
@@ -312,6 +332,7 @@ struct WingSelectionView: View {
                                     }
                                 }
                             )
+                            .equatable()
                         }
                     }
                     .padding(.horizontal, 4)
@@ -322,10 +343,19 @@ struct WingSelectionView: View {
 }
 
 /// Bouton de sélection de voile optimisé et moderne
-struct WingButton: View {
+/// Equatable : évite les re-renders quand ni la voile ni la sélection ne changent
+struct WingButton: View, Equatable {
     let wing: WingDTO
     let isSelected: Bool
     let onTap: () -> Void
+
+    static func == (lhs: WingButton, rhs: WingButton) -> Bool {
+        lhs.wing.id == rhs.wing.id &&
+        lhs.wing.name == rhs.wing.name &&
+        lhs.wing.size == rhs.wing.size &&
+        lhs.wing.photoData == rhs.wing.photoData &&
+        lhs.isSelected == rhs.isSelected
+    }
 
     var body: some View {
         Button(action: onTap) {

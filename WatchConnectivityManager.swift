@@ -103,36 +103,59 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     // MARK: - Send Spot Zones to Watch
 
-    /// Envoie les zones de spots approuvées vers la Watch
+    /// Rayon approximatif d'un spot local (en mètres) pour le matching côté Watch
+    private static let localSpotRadiusMeters: Double = 500
+
+    /// Envoie les spots locaux (dérivés des vols enregistrés) vers la Watch
     /// Ces zones permettent à la Watch de déterminer le nom du spot sans reverse geocoding
-    func sendSpotZonesToWatch(near coordinate: CLLocationCoordinate2D?) async {
+    /// - Parameter coordinate: si fournie, limite l'envoi aux spots dans un rayon de 100 km
+    func sendSpotZonesToWatch(near coordinate: CLLocationCoordinate2D?) {
         guard WCSession.default.activationState == .activated else {
             logWarning("WCSession not activated, cannot send spot zones", category: .watchSync)
             return
         }
 
-        // Récupérer les zones approuvées près de la position
-        let zones: [SpotZone]
-        if let coord = coordinate {
-            zones = await SpotZoneService.shared.findNearbyZones(coordinate: coord, radiusKm: 100)
-        } else {
-            zones = []
+        guard let dataController = dataController else {
+            logWarning("DataController not available for spot zones sync", category: .watchSync)
+            return
         }
 
-        // Convertir en format léger pour la Watch
-        let zonesData: [[String: Any]] = zones.prefix(50).map { zone in
-            let bb = zone.boundingBox
+        // Extraire les spots uniques (nom + coordonnées) depuis les vols enregistrés
+        // Même logique de regroupement que SpotsManagementView
+        var spotCenters: [String: CLLocationCoordinate2D] = [:]
+        for flight in dataController.fetchFlights() {
+            guard let name = flight.spotName, !name.isEmpty,
+                  spotCenters[name] == nil,
+                  let lat = flight.latitude, let lon = flight.longitude else { continue }
+            spotCenters[name] = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        }
+
+        // Limiter aux spots proches de la position si elle est fournie
+        var spots = spotCenters.map { (name: $0.key, center: $0.value) }
+        if let coord = coordinate {
+            let reference = CLLocation(latitude: coord.latitude, longitude: coord.longitude)
+            spots = spots.filter { spot in
+                let location = CLLocation(latitude: spot.center.latitude, longitude: spot.center.longitude)
+                return location.distance(from: reference) <= 100_000
+            }
+        }
+
+        // Convertir en format léger pour la Watch (zone circulaire + bounding box)
+        let radius = Self.localSpotRadiusMeters
+        let zonesData: [[String: Any]] = spots.prefix(50).map { spot in
+            let deltaLat = radius / 111_000
+            let deltaLon = radius / (111_000 * max(cos(spot.center.latitude * .pi / 180), 0.01))
             return [
-                "id": zone.id,
-                "name": zone.name,
-                "centerLat": zone.coordinate.latitude,
-                "centerLon": zone.coordinate.longitude,
-                "radiusMeters": sqrt(zone.areaKm2) * 1000,  // Approximation du rayon
+                "id": spot.name,
+                "name": spot.name,
+                "centerLat": spot.center.latitude,
+                "centerLon": spot.center.longitude,
+                "radiusMeters": radius,
                 "boundingBox": [
-                    "minLat": bb.minLat,
-                    "maxLat": bb.maxLat,
-                    "minLon": bb.minLon,
-                    "maxLon": bb.maxLon
+                    "minLat": spot.center.latitude - deltaLat,
+                    "maxLat": spot.center.latitude + deltaLat,
+                    "minLon": spot.center.longitude - deltaLon,
+                    "maxLon": spot.center.longitude + deltaLon
                 ]
             ]
         }
@@ -142,7 +165,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
         do {
             try WCSession.default.updateApplicationContext(context)
-            logInfo("Sent \(zonesData.count) spot zones to Watch", category: .watchSync)
+            logInfo("Sent \(zonesData.count) local spot zones to Watch", category: .watchSync)
         } catch {
             logError("Failed to send spot zones: \(error.localizedDescription)", category: .watchSync)
         }
@@ -375,6 +398,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         if activationState == .activated {
             sendWingsToWatch()
 
+            // Envoyer les spots locaux pour le cache de zones côté Watch
+            sendSpotZonesToWatch(near: nil)
+
             // Envoyer la langue courante
             let languageCode = LocalizationManager.shared.currentLanguage?.rawValue
             sendLanguageToWatch(languageCode)
@@ -470,23 +496,27 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             return
         }
 
-        // Vérifier si c'est un démarrage de vol en direct
+        // Vols en direct : le suivi cloud n'existe plus.
+        // On accuse simplement réception pour rester compatible avec la Watch (qui attend une réponse).
         if let action = message["action"] as? String, action == "startLiveFlight" {
-            logInfo("Watch started live flight", category: .watchSync)
-            handleLiveFlightStart(message: message, replyHandler: replyHandler)
+            logInfo("Watch started live flight (suivi cloud supprimé, accusé de réception local)", category: .watchSync)
+            // Répondre avec le nom du spot (géocodage local) pour l'affichage côté Watch
+            if let latitude = message["latitude"] as? Double,
+               let longitude = message["longitude"] as? Double,
+               let locationService = locationService {
+                let location = CLLocation(latitude: latitude, longitude: longitude)
+                locationService.reverseGeocode(location: location) { spotName in
+                    replyHandler(["status": "success", "spotName": spotName ?? ""])
+                }
+            } else {
+                replyHandler(["status": "success"])
+            }
             return
         }
 
-        // Vérifier si c'est une fin de vol en direct
         if let action = message["action"] as? String, action == "endLiveFlight" {
-            logInfo("Watch ended live flight", category: .watchSync)
-            handleLiveFlightEnd(replyHandler: replyHandler)
-            return
-        }
-
-        // Vérifier si c'est une mise à jour de position live
-        if let action = message["action"] as? String, action == "updateLiveLocation" {
-            handleLiveLocationUpdate(message: message, replyHandler: replyHandler)
+            logInfo("Watch ended live flight (suivi cloud supprimé, accusé de réception local)", category: .watchSync)
+            replyHandler(["status": "success"])
             return
         }
 
@@ -516,85 +546,6 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                     self?.dataController?.addFlight(from: flightDTO, location: nil, spotName: nil)
                     replyHandler(["status": "success", "spotName": "Unknown"])
                 }
-            }
-        }
-    }
-
-    // MARK: - Live Flight Handling
-
-    /// Gère le démarrage d'un vol en direct depuis la Watch
-    private func handleLiveFlightStart(message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-        let wingName = message["wingName"] as? String
-        let latitude = message["latitude"] as? Double
-        let longitude = message["longitude"] as? Double
-        let altitude = message["altitude"] as? Double
-
-        Task {
-            do {
-                // Obtenir le nom du spot via reverse geocoding si on a une position
-                var spotName: String?
-                if let lat = latitude, let lon = longitude {
-                    let location = CLLocation(latitude: lat, longitude: lon)
-                    spotName = await withCheckedContinuation { continuation in
-                        locationService?.reverseGeocode(location: location) { name in
-                            continuation.resume(returning: name)
-                        }
-                    }
-                }
-
-                // Démarrer le vol en direct
-                let coordinate = (latitude != nil && longitude != nil)
-                    ? CLLocationCoordinate2D(latitude: latitude!, longitude: longitude!)
-                    : nil
-
-                try await LiveFlightService.shared.startLiveFlight(
-                    location: coordinate,
-                    altitude: altitude,
-                    spotName: spotName,
-                    wingName: wingName
-                )
-
-                logInfo("Live flight started from Watch", category: .sync)
-                replyHandler(["status": "success", "spotName": spotName ?? ""])
-
-            } catch {
-                logError("Failed to start live flight from Watch: \(error)", category: .sync)
-                replyHandler(["status": "error", "message": error.localizedDescription])
-            }
-        }
-    }
-
-    /// Gère la fin d'un vol en direct depuis la Watch
-    private func handleLiveFlightEnd(replyHandler: @escaping ([String: Any]) -> Void) {
-        Task {
-            do {
-                try await LiveFlightService.shared.endLiveFlight()
-                logInfo("Live flight ended from Watch", category: .sync)
-                replyHandler(["status": "success"])
-            } catch {
-                logError("Failed to end live flight from Watch: \(error)", category: .sync)
-                replyHandler(["status": "error", "message": error.localizedDescription])
-            }
-        }
-    }
-
-    /// Gère la mise à jour de position d'un vol en direct
-    private func handleLiveLocationUpdate(message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
-        guard let latitude = message["latitude"] as? Double,
-              let longitude = message["longitude"] as? Double else {
-            replyHandler(["status": "error", "message": "Missing coordinates"])
-            return
-        }
-
-        let altitude = message["altitude"] as? Double
-
-        Task {
-            do {
-                let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
-                try await LiveFlightService.shared.updateLocation(location: coordinate, altitude: altitude)
-                replyHandler(["status": "success"])
-            } catch {
-                replyHandler(["status": "error", "message": error.localizedDescription])
             }
         }
     }

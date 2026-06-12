@@ -3,9 +3,9 @@
 //  ParaFlightLog
 //
 //  Onglet Settings dédié avec 5 catégories organisées :
-//  1. Equipment & Flight
-//  2. Apple Watch
-//  3. Account & Sync
+//  1. Pilote (profil local)
+//  2. Equipment & Flight
+//  3. Apple Watch
 //  4. Data & Backup
 //  5. App Preferences
 //
@@ -14,27 +14,39 @@ import SwiftUI
 import SwiftData
 
 struct SettingsTabView: View {
-    @Environment(UserService.self) private var userService
-    @Environment(AuthService.self) private var authService
     @Environment(LocalizationManager.self) private var localizationManager
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(DataController.self) private var dataController
     @Environment(\.dismiss) private var dismiss
 
+    // Profil pilote local (remplace l'ancien profil cloud)
+    @AppStorage("pilotName") private var pilotName: String = ""
+
     // Pour les wings et flights (nécessaires pour BackupExportView)
     @Query private var wings: [Wing]
     @Query private var flights: [Flight]
 
-    // État pour l'opération de développeur en cours
-    @State private var isDevOperationRunning = false
-
-    // État pour la synchronisation cloud
-    @State private var syncStatus: SyncStatus = .idle
+    // État pour l'import de backup / Excel / CSV
+    @State private var showingDocumentPicker = false
+    @State private var isImporting = false
+    @State private var importMessage = ""
+    @State private var showingImportResult = false
 
     var body: some View {
         NavigationStack {
             List {
-                // 1. EQUIPMENT & FLIGHT
+                // 1. PILOTE (profil local, stocké en UserDefaults)
+                Section("Pilote".localized) {
+                    HStack {
+                        Image(systemName: "person.crop.circle")
+                            .foregroundStyle(.blue)
+                        TextField("Nom du pilote".localized, text: $pilotName)
+                            .textContentType(.name)
+                            .autocorrectionDisabled()
+                    }
+                }
+
+                // 2. EQUIPMENT & FLIGHT
                 Section("Equipment & Flight".localized) {
                     NavigationLink {
                         WingsView()
@@ -70,7 +82,7 @@ struct SettingsTabView: View {
                     }
                 }
 
-                // 2. APPLE WATCH
+                // 3. APPLE WATCH
                 Section("Apple Watch") {
                     NavigationLink {
                         WatchSettingsView()
@@ -79,132 +91,18 @@ struct SettingsTabView: View {
                     }
                 }
 
-                // 3. ACCOUNT & SYNC (si authentifié)
-                if authService.isAuthenticated {
-                    Section("Account & Sync".localized) {
-                        if let profile = userService.currentUserProfile {
-                            NavigationLink {
-                                EditProfileView(profile: profile) { updatedProfile in
-                                    Task {
-                                        try? await userService.updateProfile(
-                                            displayName: updatedProfile.displayName,
-                                            bio: updatedProfile.bio,
-                                            username: updatedProfile.username,
-                                            homeLocationLat: updatedProfile.homeLocationLat,
-                                            homeLocationLon: updatedProfile.homeLocationLon,
-                                            homeLocationName: updatedProfile.homeLocationName,
-                                            pilotWeight: updatedProfile.pilotWeight
-                                        )
-                                    }
-                                }
-                            } label: {
-                                Label("Modifier le profil".localized, systemImage: "person.crop.circle")
-                            }
-                        }
-
-                        NavigationLink {
-                            NotificationsView()
-                        } label: {
-                            HStack {
-                                Label("Notifications".localized, systemImage: "bell.fill")
-                                Spacer()
-                                if NotificationService.shared.unreadCount > 0 {
-                                    Text("\(NotificationService.shared.unreadCount)")
-                                        .font(.caption)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(.white)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 2)
-                                        .background(.red)
-                                        .clipShape(Capsule())
-                                }
-                            }
-                        }
-
-                        Button(role: .destructive) {
-                            Task {
-                                try? await authService.signOut()
-                            }
-                        } label: {
-                            Label("Se déconnecter".localized, systemImage: "rectangle.portrait.and.arrow.right")
-                        }
-                    }
-                } else if case .skipped = authService.authState {
-                    // Mode hors-ligne : proposer de se connecter
-                    Section("Account & Sync".localized) {
-                        VStack(spacing: 12) {
-                            Text("Mode hors-ligne".localized)
-                                .font(.headline)
-                            Text("Connectez-vous pour synchroniser vos vols et accéder aux fonctionnalités sociales.".localized)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 8)
-
-                        Button {
-                            Task {
-                                await authService.forceLogout()
-                            }
-                        } label: {
-                            Label("Se connecter".localized, systemImage: "person.crop.circle.badge.plus")
-                        }
-                    }
-                }
-
                 // 4. DATA & BACKUP
                 Section("Data & Backup".localized) {
-                    // Cloud synchronisation (si authentifié)
-                    if authService.isAuthenticated {
-                        SyncStatusView(status: syncStatus)
-
-                        Button {
-                            Task {
-                                await performSync()
-                            }
-                        } label: {
-                            HStack {
-                                Label("Synchroniser maintenant".localized, systemImage: "arrow.triangle.2.circlepath")
-                                Spacer()
-                                if case .syncing = syncStatus {
-                                    ProgressView()
-                                }
-                            }
-                        }
-                        .disabled(syncStatus.isSyncing)
-
-                        // Vols en attente
-                        let pendingCount = flights.filter { $0.needsSync }.count
-                        if pendingCount > 0 {
-                            HStack {
-                                Label("\(pendingCount) vol(s) en attente".localized, systemImage: "clock.arrow.circlepath")
-                                    .foregroundStyle(.orange)
-                                Spacer()
-                            }
-                        }
-
-                        if let date = FlightSyncService.shared.lastSyncDate {
-                            Text("Dernière sync: \(date.formatted(date: .abbreviated, time: .shortened))".localized)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
                     NavigationLink {
                         BackupExportView(wings: wings, flights: flights)
                     } label: {
                         Label("Exporter backup".localized, systemImage: "archivebox")
                     }
 
-                    NavigationLink {
-                        PendingActionsView()
+                    Button {
+                        showingDocumentPicker = true
                     } label: {
-                        HStack {
-                            Label("Synchronisation".localized, systemImage: "arrow.triangle.2.circlepath")
-                            Spacer()
-                            OfflineSyncStatusView()
-                        }
+                        Label("Importer backup ou Excel".localized, systemImage: "square.and.arrow.down")
                     }
                 }
 
@@ -240,51 +138,6 @@ struct SettingsTabView: View {
                         }
                     }
 
-                    // Mode démo (seulement si mode développeur actif)
-                    if UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled) {
-                        Toggle(isOn: Binding(
-                            get: { DemoDataService.shared.isDemoModeEnabled },
-                            set: { DemoDataService.shared.isDemoModeEnabled = $0 }
-                        )) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                HStack {
-                                    Text("Mode démo Live".localized)
-                                    Image(systemName: "airplane.circle.fill")
-                                        .foregroundStyle(.orange)
-                                }
-                                Text("Affiche des pilotes simulés sur la carte Live".localized)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        Button {
-                            reuploadAllFlights()
-                        } label: {
-                            HStack {
-                                Label("Réuploader tous les vols".localized, systemImage: "arrow.triangle.2.circlepath.icloud")
-                                Spacer()
-                                if isDevOperationRunning {
-                                    ProgressView()
-                                }
-                            }
-                        }
-                        .disabled(isDevOperationRunning)
-
-                        Button {
-                            recalculateAllBadges()
-                        } label: {
-                            HStack {
-                                Label("Recalculer tous les badges".localized, systemImage: "medal.fill")
-                                Spacer()
-                                if isDevOperationRunning {
-                                    ProgressView()
-                                }
-                            }
-                        }
-                        .disabled(isDevOperationRunning)
-                    }
-
                     // Section À propos
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
@@ -299,7 +152,7 @@ struct SettingsTabView: View {
                                 )
 
                             VStack(alignment: .leading, spacing: 2) {
-                                Text("ParaFlightLog")
+                                Text("SoarX")
                                     .font(.headline)
                                 if let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String,
                                    let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String {
@@ -325,81 +178,69 @@ struct SettingsTabView: View {
                     }
                 }
             }
-        }
-    }
-
-    // MARK: - Cloud Sync
-
-    private func performSync() async {
-        syncStatus = .syncing
-
-        do {
-            let modelContext = dataController.modelContext
-            let result = try await FlightSyncService.shared.performFullSync(modelContext: modelContext)
-            syncStatus = .success(result.uploaded, result.downloaded)
-
-            // Reset après 3 secondes
-            try? await Task.sleep(for: .seconds(3))
-            syncStatus = .idle
-        } catch {
-            syncStatus = .error(error.localizedDescription)
-        }
-    }
-
-    // MARK: - Developer Operations
-
-    private func reuploadAllFlights() {
-        isDevOperationRunning = true
-        Task {
-            defer {
-                Task { @MainActor in
-                    isDevOperationRunning = false
+            .sheet(isPresented: $showingDocumentPicker) {
+                DocumentPicker { url in
+                    importFile(from: url)
                 }
             }
-            do {
-                // Marquer tous les vols comme non synchronisés
-                for flight in flights {
-                    flight.needsSync = true
+            .alert(isImporting ? "Import en cours...".localized : "Résultat".localized, isPresented: Binding(
+                get: { showingImportResult || isImporting },
+                set: { if !$0 { showingImportResult = false; isImporting = false } }
+            )) {
+                if !isImporting {
+                    Button("OK") { }
                 }
-
-                // Utiliser le modelContext du DataController (fiable même si flights est vide)
-                let context = dataController.modelContext
-                try context.save()
-                _ = try await FlightSyncService.shared.performFullSync(modelContext: context)
-                logInfo("All flights re-uploaded successfully", category: .sync)
-            } catch {
-                logError("Failed to re-upload flights: \(error)", category: .sync)
+            } message: {
+                if isImporting {
+                    Text("Importation des données...".localized)
+                } else {
+                    Text(importMessage)
+                }
             }
         }
     }
 
-    private func recalculateAllBadges() {
-        isDevOperationRunning = true
-        Task {
-            defer {
-                Task { @MainActor in
-                    isDevOperationRunning = false
+    // MARK: - Import backup / Excel / CSV
+
+    /// Importe un fichier backup (.paraflightlog) ou Excel/CSV
+    private func importFile(from url: URL) {
+        let fileExtension = url.pathExtension.lowercased()
+        let isBackupFile = fileExtension == "paraflightlog"
+
+        isImporting = true
+
+        if isBackupFile {
+            // Import fichier backup .paraflightlog (completion appelée sur le main thread)
+            ZipBackup.importFromZip(zipURL: url, dataController: dataController, mergeMode: true) { result in
+                self.isImporting = false
+
+                switch result {
+                case .success(let summary):
+                    self.importMessage = summary
+                    self.showingImportResult = true
+                    // Synchroniser les voiles vers la Watch après import
+                    self.watchManager.sendWingsToWatch()
+                case .failure(let error):
+                    self.importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
+                    self.showingImportResult = true
                 }
             }
+        } else {
+            // Import Excel/CSV
+            Task {
+                do {
+                    let data = try ExcelImporter.parseExcelFile(at: url)
+                    logInfo("Parsed \(data.flights.count) flights from file", category: .dataController)
 
-            guard var profile = userService.currentUserProfile else {
-                logError("❌ User must be authenticated to recalculate badges", category: .general)
-                return
-            }
-
-            // Calculer les stats à partir de tous les vols locaux
-            let totalFlightsLocal = flights.count
-            let totalSecondsLocal = flights.reduce(0) { $0 + $1.durationSeconds }
-
-            profile.totalFlights = totalFlightsLocal
-            profile.totalFlightSeconds = totalSecondsLocal
-
-            // Recalculer les badges
-            do {
-                let badges = try await BadgeService.shared.checkAndAwardBadges(profile: profile)
-                logInfo("✅ All badges recalculated: \(badges.count) badges", category: .general)
-            } catch {
-                logError("❌ Failed to recalculate badges: \(error)", category: .general)
+                    let result = try ExcelImporter.importToDatabase(data: data, dataController: dataController)
+                    isImporting = false
+                    importMessage = result.summary
+                    showingImportResult = true
+                } catch {
+                    isImporting = false
+                    importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
+                    showingImportResult = true
+                }
             }
         }
     }
@@ -408,8 +249,6 @@ struct SettingsTabView: View {
 #Preview {
     let dataController = DataController()
     return SettingsTabView()
-        .environment(UserService.shared)
-        .environment(AuthService.shared)
         .environment(LocalizationManager.shared)
         .environment(WatchConnectivityManager.shared)
         .environment(dataController)

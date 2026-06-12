@@ -2,15 +2,14 @@
 //  EmergencyService.swift
 //  ParaFlightLog
 //
-//  Service de gestion des urgences et contacts d'urgence
-//  - Gestion des contacts d'urgence
-//  - Déclenchement d'alertes SOS
-//  - Envoi de SMS/notifications aux contacts
+//  Service de gestion des urgences et contacts d'urgence (100 % local)
+//  - Gestion des contacts d'urgence (persistance UserDefaults en JSON)
+//  - Déclenchement d'alertes SOS locales
+//  - Génération de SMS/appels vers les contacts (sms: / tel:)
 //  Target: iOS only
 //
 
 import Foundation
-import Appwrite
 import CoreLocation
 import MessageUI
 
@@ -19,7 +18,6 @@ import MessageUI
 /// Contact d'urgence
 struct EmergencyContact: Identifiable, Codable, Equatable {
     let id: String
-    let userId: String
     var name: String
     var phoneNumber: String
     var email: String?
@@ -27,32 +25,9 @@ struct EmergencyContact: Identifiable, Codable, Equatable {
     var isPrimary: Bool
     let createdAt: Date
 
-    /// Initialisation depuis Appwrite
-    init(from data: [String: Any]) throws {
-        guard let id = data["$id"] as? String else {
-            throw EmergencyError.invalidData("Missing $id")
-        }
-
-        self.id = id
-        self.userId = data["userId"] as? String ?? ""
-        self.name = data["name"] as? String ?? ""
-        self.phoneNumber = data["phoneNumber"] as? String ?? ""
-        self.email = data["email"] as? String
-        self.relationship = data["relationship"] as? String
-        self.isPrimary = data["isPrimary"] as? Bool ?? false
-
-        if let createdAtStr = data["createdAt"] as? String,
-           let date = ISO8601DateFormatter().date(from: createdAtStr) {
-            self.createdAt = date
-        } else {
-            self.createdAt = Date()
-        }
-    }
-
     /// Initialisation directe
     init(
         id: String = UUID().uuidString,
-        userId: String,
         name: String,
         phoneNumber: String,
         email: String? = nil,
@@ -61,7 +36,6 @@ struct EmergencyContact: Identifiable, Codable, Equatable {
         createdAt: Date = Date()
     ) {
         self.id = id
-        self.userId = userId
         self.name = name
         self.phoneNumber = phoneNumber
         self.email = email
@@ -74,7 +48,6 @@ struct EmergencyContact: Identifiable, Codable, Equatable {
 /// Alerte SOS
 struct SOSAlert: Identifiable, Codable {
     let id: String
-    let userId: String
     let latitude: Double
     let longitude: Double
     let altitude: Double?
@@ -83,32 +56,25 @@ struct SOSAlert: Identifiable, Codable {
     let triggeredAt: Date
     let resolvedAt: Date?
 
-    /// Initialisation depuis Appwrite
-    init(from data: [String: Any]) throws {
-        guard let id = data["$id"] as? String else {
-            throw EmergencyError.invalidData("Missing $id")
-        }
-
+    /// Initialisation directe
+    init(
+        id: String = UUID().uuidString,
+        latitude: Double,
+        longitude: Double,
+        altitude: Double? = nil,
+        message: String? = nil,
+        isActive: Bool = true,
+        triggeredAt: Date = Date(),
+        resolvedAt: Date? = nil
+    ) {
         self.id = id
-        self.userId = data["userId"] as? String ?? ""
-        self.latitude = data["latitude"] as? Double ?? 0
-        self.longitude = data["longitude"] as? Double ?? 0
-        self.altitude = data["altitude"] as? Double
-        self.message = data["message"] as? String
-        self.isActive = data["isActive"] as? Bool ?? true
-
-        if let triggeredAtStr = data["triggeredAt"] as? String,
-           let date = ISO8601DateFormatter().date(from: triggeredAtStr) {
-            self.triggeredAt = date
-        } else {
-            self.triggeredAt = Date()
-        }
-
-        if let resolvedAtStr = data["resolvedAt"] as? String {
-            self.resolvedAt = ISO8601DateFormatter().date(from: resolvedAtStr)
-        } else {
-            self.resolvedAt = nil
-        }
+        self.latitude = latitude
+        self.longitude = longitude
+        self.altitude = altitude
+        self.message = message
+        self.isActive = isActive
+        self.triggeredAt = triggeredAt
+        self.resolvedAt = resolvedAt
     }
 
     /// Coordonnées CLLocation
@@ -130,24 +96,21 @@ struct SOSAlert: Identifiable, Codable {
 // MARK: - Emergency Errors
 
 enum EmergencyError: LocalizedError {
-    case notAuthenticated
     case invalidData(String)
     case noContacts
     case messagingNotAvailable
-    case networkError(String)
+    case persistenceError(String)
 
     var errorDescription: String? {
         switch self {
-        case .notAuthenticated:
-            return "Vous devez être connecté".localized
         case .invalidData(let msg):
             return "Données invalides: \(msg)"
         case .noContacts:
             return "Aucun contact d'urgence configuré".localized
         case .messagingNotAvailable:
             return "L'envoi de SMS n'est pas disponible sur cet appareil".localized
-        case .networkError(let msg):
-            return "Erreur réseau: \(msg)"
+        case .persistenceError(let msg):
+            return "Erreur d'enregistrement: \(msg)"
         }
     }
 }
@@ -155,13 +118,15 @@ enum EmergencyError: LocalizedError {
 // MARK: - EmergencyService
 
 @Observable
+@MainActor
 final class EmergencyService {
     static let shared = EmergencyService()
 
     // MARK: - Properties
 
-    private let databases: Databases
-    private let tablesDB: TablesDB
+    /// Clés de persistance locale (UserDefaults)
+    private static let contactsKey = "emergency_contacts"
+    private static let activeAlertKey = "emergency_active_sos_alert"
 
     /// Contacts d'urgence de l'utilisateur
     private(set) var contacts: [EmergencyContact] = []
@@ -178,50 +143,80 @@ final class EmergencyService {
     // MARK: - Init
 
     private init() {
-        self.databases = AppwriteService.shared.databases
-        self.tablesDB = AppwriteService.shared.tablesDB
+        // Restaure immédiatement les données locales
+        contacts = Self.loadContactsFromDisk()
+        activeAlert = Self.loadActiveAlertFromDisk()
+    }
+
+    // MARK: - Local Persistence
+
+    /// Charge les contacts depuis UserDefaults
+    private static func loadContactsFromDisk() -> [EmergencyContact] {
+        guard let data = UserDefaults.standard.data(forKey: contactsKey) else { return [] }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            return try decoder.decode([EmergencyContact].self, from: data)
+        } catch {
+            return []
+        }
+    }
+
+    /// Charge l'alerte SOS active depuis UserDefaults
+    private static func loadActiveAlertFromDisk() -> SOSAlert? {
+        guard let data = UserDefaults.standard.data(forKey: activeAlertKey) else { return nil }
+
+        do {
+            let decoder = JSONDecoder()
+            decoder.dateDecodingStrategy = .iso8601
+            let alert = try decoder.decode(SOSAlert.self, from: data)
+            return alert.isActive ? alert : nil
+        } catch {
+            return nil
+        }
+    }
+
+    /// Sauvegarde les contacts dans UserDefaults
+    private func saveContacts() throws {
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(contacts)
+            UserDefaults.standard.set(data, forKey: Self.contactsKey)
+        } catch {
+            throw EmergencyError.persistenceError(error.localizedDescription)
+        }
+    }
+
+    /// Sauvegarde (ou efface) l'alerte SOS active dans UserDefaults
+    private func saveActiveAlert() throws {
+        guard let alert = activeAlert else {
+            UserDefaults.standard.removeObject(forKey: Self.activeAlertKey)
+            return
+        }
+
+        do {
+            let encoder = JSONEncoder()
+            encoder.dateEncodingStrategy = .iso8601
+            let data = try encoder.encode(alert)
+            UserDefaults.standard.set(data, forKey: Self.activeAlertKey)
+        } catch {
+            throw EmergencyError.persistenceError(error.localizedDescription)
+        }
     }
 
     // MARK: - Contacts Management
 
-    /// Charge les contacts d'urgence de l'utilisateur
+    /// Charge les contacts d'urgence depuis la persistance locale
     func loadContacts() async {
-        guard let userId = AuthService.shared.currentUserId else { return }
-
         isLoading = true
         defer { isLoading = false }
 
-        do {
-            let documents = try await tablesDB.listRows(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.emergencyContactsCollectionId,
-                queries: [
-                    Query.equal("userId", value: userId),
-                    Query.orderDesc("isPrimary"),
-                    Query.limit(10)
-                ]
-            )
+        contacts = Self.loadContactsFromDisk()
+        contacts.sort { $0.isPrimary && !$1.isPrimary }
 
-            var loadedContacts: [EmergencyContact] = []
-            for doc in documents.rows {
-                var nativeData: [String: Any] = [:]
-                for (key, value) in doc.data {
-                    nativeData[key] = value.value
-                }
-
-                if let contact = try? EmergencyContact(from: nativeData) {
-                    loadedContacts.append(contact)
-                }
-            }
-
-            await MainActor.run {
-                self.contacts = loadedContacts
-            }
-
-            logInfo("Loaded \(loadedContacts.count) emergency contacts", category: .general)
-        } catch {
-            logError("Failed to load emergency contacts: \(error.localizedDescription)", category: .general)
-        }
+        logInfo("Loaded \(contacts.count) emergency contacts", category: .general)
     }
 
     /// Ajoute un contact d'urgence
@@ -232,220 +227,105 @@ final class EmergencyService {
         relationship: String? = nil,
         isPrimary: Bool = false
     ) async throws -> EmergencyContact {
-        guard let userId = AuthService.shared.currentUserId else {
-            throw EmergencyError.notAuthenticated
-        }
-
         // Si c'est le premier contact, le rendre principal
         let shouldBePrimary = isPrimary || contacts.isEmpty
 
-        do {
-            let document = try await tablesDB.createRow(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.emergencyContactsCollectionId,
-                rowId: ID.unique(),
-                data: [
-                    "userId": userId,
-                    "name": name,
-                    "phoneNumber": phoneNumber,
-                    "email": email as Any,
-                    "relationship": relationship as Any,
-                    "isPrimary": shouldBePrimary,
-                    "createdAt": Date().ISO8601Format()
-                ]
-            )
+        let contact = EmergencyContact(
+            name: name,
+            phoneNumber: phoneNumber,
+            email: email,
+            relationship: relationship,
+            isPrimary: shouldBePrimary
+        )
 
-            var nativeData: [String: Any] = [:]
-            for (key, value) in document.data {
-                nativeData[key] = value.value
+        // Si le nouveau contact est principal, retirer ce statut des autres
+        if shouldBePrimary {
+            for index in contacts.indices {
+                contacts[index].isPrimary = false
             }
-
-            let contact = try EmergencyContact(from: nativeData)
-
-            await MainActor.run {
-                self.contacts.append(contact)
-                self.contacts.sort { $0.isPrimary && !$1.isPrimary }
-            }
-
-            logInfo("Added emergency contact: \(name)", category: .general)
-            return contact
-        } catch let error as AppwriteError {
-            throw EmergencyError.networkError(error.message)
         }
+
+        contacts.append(contact)
+        contacts.sort { $0.isPrimary && !$1.isPrimary }
+        try saveContacts()
+
+        logInfo("Added emergency contact: \(name)", category: .general)
+        return contact
     }
 
     /// Met à jour un contact d'urgence
     func updateContact(_ contact: EmergencyContact) async throws {
-        do {
-            _ = try await tablesDB.updateRow(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.emergencyContactsCollectionId,
-                rowId: contact.id,
-                data: [
-                    "name": contact.name,
-                    "phoneNumber": contact.phoneNumber,
-                    "email": contact.email as Any,
-                    "relationship": contact.relationship as Any,
-                    "isPrimary": contact.isPrimary
-                ]
-            )
-
-            await MainActor.run {
-                if let index = self.contacts.firstIndex(where: { $0.id == contact.id }) {
-                    self.contacts[index] = contact
-                }
-                self.contacts.sort { $0.isPrimary && !$1.isPrimary }
-            }
-
-            logInfo("Updated emergency contact: \(contact.name)", category: .general)
-        } catch let error as AppwriteError {
-            throw EmergencyError.networkError(error.message)
+        if let index = contacts.firstIndex(where: { $0.id == contact.id }) {
+            contacts[index] = contact
         }
+        contacts.sort { $0.isPrimary && !$1.isPrimary }
+        try saveContacts()
+
+        logInfo("Updated emergency contact: \(contact.name)", category: .general)
     }
 
     /// Supprime un contact d'urgence
     func deleteContact(_ contact: EmergencyContact) async throws {
-        do {
-            _ = try await tablesDB.deleteRow(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.emergencyContactsCollectionId,
-                rowId: contact.id
-            )
+        contacts.removeAll { $0.id == contact.id }
+        try saveContacts()
 
-            await MainActor.run {
-                self.contacts.removeAll { $0.id == contact.id }
-            }
-
-            logInfo("Deleted emergency contact: \(contact.name)", category: .general)
-        } catch let error as AppwriteError {
-            throw EmergencyError.networkError(error.message)
-        }
+        logInfo("Deleted emergency contact: \(contact.name)", category: .general)
     }
 
     /// Définit un contact comme principal
     func setPrimaryContact(_ contact: EmergencyContact) async throws {
-        // D'abord, retirer le statut principal des autres contacts
-        for existingContact in contacts where existingContact.isPrimary && existingContact.id != contact.id {
-            var updated = existingContact
-            updated.isPrimary = false
-            try await updateContact(updated)
+        for index in contacts.indices {
+            contacts[index].isPrimary = (contacts[index].id == contact.id)
         }
+        contacts.sort { $0.isPrimary && !$1.isPrimary }
+        try saveContacts()
 
-        // Ensuite, définir ce contact comme principal
-        var updatedContact = contact
-        updatedContact.isPrimary = true
-        try await updateContact(updatedContact)
+        logInfo("Set primary emergency contact: \(contact.name)", category: .general)
     }
 
     // MARK: - SOS Alerts
 
-    /// Déclenche une alerte SOS
+    /// Déclenche une alerte SOS locale
     func triggerSOS(
         location: CLLocationCoordinate2D,
         altitude: Double? = nil,
         customMessage: String? = nil
     ) async throws -> SOSAlert {
-        guard let userId = AuthService.shared.currentUserId else {
-            throw EmergencyError.notAuthenticated
-        }
-
         guard !contacts.isEmpty else {
             throw EmergencyError.noContacts
         }
 
-        do {
-            let document = try await tablesDB.createRow(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.sosAlertsCollectionId,
-                rowId: ID.unique(),
-                data: [
-                    "userId": userId,
-                    "latitude": location.latitude,
-                    "longitude": location.longitude,
-                    "altitude": altitude as Any,
-                    "message": customMessage ?? defaultSOSMessage,
-                    "isActive": true,
-                    "triggeredAt": Date().ISO8601Format()
-                ]
-            )
+        let alert = SOSAlert(
+            latitude: location.latitude,
+            longitude: location.longitude,
+            altitude: altitude,
+            message: customMessage ?? defaultSOSMessage
+        )
 
-            var nativeData: [String: Any] = [:]
-            for (key, value) in document.data {
-                nativeData[key] = value.value
-            }
+        activeAlert = alert
+        try saveActiveAlert()
 
-            let alert = try SOSAlert(from: nativeData)
+        logInfo("SOS Alert triggered at \(location.latitude), \(location.longitude)", category: .general)
 
-            await MainActor.run {
-                self.activeAlert = alert
-            }
-
-            logInfo("SOS Alert triggered at \(location.latitude), \(location.longitude)", category: .general)
-
-            return alert
-        } catch let error as AppwriteError {
-            throw EmergencyError.networkError(error.message)
-        }
+        return alert
     }
 
     /// Annule une alerte SOS
     func cancelSOS() async throws {
-        guard let alert = activeAlert else { return }
+        guard activeAlert != nil else { return }
 
-        do {
-            _ = try await tablesDB.updateRow(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.sosAlertsCollectionId,
-                rowId: alert.id,
-                data: [
-                    "isActive": false,
-                    "resolvedAt": Date().ISO8601Format()
-                ]
-            )
+        activeAlert = nil
+        try saveActiveAlert()
 
-            await MainActor.run {
-                self.activeAlert = nil
-            }
-
-            logInfo("SOS Alert cancelled", category: .general)
-        } catch let error as AppwriteError {
-            throw EmergencyError.networkError(error.message)
-        }
+        logInfo("SOS Alert cancelled", category: .general)
     }
 
-    /// Vérifie s'il y a une alerte SOS active
+    /// Vérifie s'il y a une alerte SOS active (restaurée depuis la persistance locale)
     func checkActiveAlert() async {
-        guard let userId = AuthService.shared.currentUserId else { return }
-
-        do {
-            let documents = try await tablesDB.listRows(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.sosAlertsCollectionId,
-                queries: [
-                    Query.equal("userId", value: userId),
-                    Query.equal("isActive", value: true),
-                    Query.limit(1)
-                ]
-            )
-
-            if let doc = documents.rows.first {
-                var nativeData: [String: Any] = [:]
-                for (key, value) in doc.data {
-                    nativeData[key] = value.value
-                }
-
-                if let alert = try? SOSAlert(from: nativeData) {
-                    await MainActor.run {
-                        self.activeAlert = alert
-                    }
-                }
-            }
-        } catch {
-            logError("Failed to check active SOS alert: \(error.localizedDescription)", category: .general)
-        }
+        activeAlert = Self.loadActiveAlertFromDisk()
     }
 
-    // MARK: - SMS Generation
+    // MARK: - SMS / Call Generation
 
     /// Génère le message SMS pour l'alerte SOS
     func generateSOSMessage(for alert: SOSAlert, pilotName: String) -> String {
@@ -484,11 +364,19 @@ final class EmergencyService {
         return URL(string: "sms:\(phoneNumbers)&body=\(encodedMessage)")
     }
 
+    /// Génère l'URL pour appeler un contact (tel:)
+    func generateCallURL(for contact: EmergencyContact) -> URL? {
+        let sanitized = contact.phoneNumber.filter { !$0.isWhitespace }
+        return URL(string: "tel:\(sanitized)")
+    }
+
     // MARK: - Cleanup
 
     /// Nettoie les données locales
     func clearLocalData() {
         contacts = []
         activeAlert = nil
+        UserDefaults.standard.removeObject(forKey: Self.contactsKey)
+        UserDefaults.standard.removeObject(forKey: Self.activeAlertKey)
     }
 }

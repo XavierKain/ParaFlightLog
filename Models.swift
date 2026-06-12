@@ -32,16 +32,17 @@ private enum DateFormattersCache {
 /// Modèle SwiftData représentant une voile de parapente
 @Model
 final class Wing {
-    var id: UUID
-    var name: String         // Nom du modèle (ex: "Moustache M1")
+    // CloudKit : toutes les propriétés ont une valeur par défaut (exigence de la sync iCloud)
+    var id: UUID = UUID()
+    var name: String = ""    // Nom du modèle (ex: "Moustache M1")
     var brand: String?       // Marque/fabricant (ex: "Flare")
     var size: String?
     var type: String?        // ex: "Soaring", "Cross", "Acro"
     var color: String?       // texte libre ou hex
     var photoData: Data?     // Photo de la voile stockée en Data
-    var isArchived: Bool     // Voile archivée (masquée par défaut)
-    var createdAt: Date
-    var displayOrder: Int    // Ordre d'affichage personnalisé (0 = premier)
+    var isArchived: Bool = false  // Voile archivée (masquée par défaut)
+    var createdAt: Date = Date()
+    var displayOrder: Int = 0     // Ordre d'affichage personnalisé (0 = premier)
 
     // Relation inverse : tous les vols effectués avec cette voile
     @Relationship(deleteRule: .cascade, inverse: \Flight.wing)
@@ -110,16 +111,17 @@ final class Wing {
 /// Modèle SwiftData représentant un vol de parapente
 @Model
 final class Flight {
-    var id: UUID
-    var startDate: Date
-    var endDate: Date
-    var durationSeconds: Int
+    // CloudKit : toutes les propriétés ont une valeur par défaut (exigence de la sync iCloud)
+    var id: UUID = UUID()
+    var startDate: Date = Date()
+    var endDate: Date = Date()
+    var durationSeconds: Int = 0
     var spotName: String?    // ex: "Cumbuco", "Saint-Gervais-les-Bains"
     var latitude: Double?
     var longitude: Double?
     var flightType: String?  // ex: "Soaring", "Thermique", "Gonflage"
     var notes: String?
-    var createdAt: Date
+    var createdAt: Date = Date()
 
     // Données de tracking (depuis Watch)
     var startAltitude: Double?      // Altitude de départ (m)
@@ -131,26 +133,6 @@ final class Flight {
 
     // Trace GPS du vol (stockée en JSON)
     var gpsTrackData: Data?
-
-    // MARK: - Cloud Sync
-    /// ID du document Appwrite dans la collection flights
-    var cloudId: String?
-    /// Date de dernière synchronisation avec le cloud
-    var cloudSyncedAt: Date?
-    /// Vol privé (visible uniquement par le propriétaire) - fonctionnalité premium
-    var isPrivate: Bool = false
-    /// Indique si le vol doit être synchronisé (créé/modifié localement)
-    var needsSync: Bool = true
-    /// Dernière erreur de synchronisation (pour affichage/debug)
-    var syncError: String?
-
-    // MARK: - Social (cache cloud)
-    /// Nombre de likes sur ce vol (cache local du cloud)
-    var likeCount: Int = 0
-    /// Nombre de commentaires sur ce vol (cache local du cloud)
-    var commentCount: Int = 0
-    /// Indique si la trace GPS est uploadée dans le cloud
-    var hasGpsTrackInCloud: Bool = false
 
     // Relation : la voile utilisée pour ce vol
     var wing: Wing?
@@ -172,15 +154,7 @@ final class Flight {
          totalDistance: Double? = nil,
          maxSpeed: Double? = nil,
          maxGForce: Double? = nil,
-         gpsTrackData: Data? = nil,
-         cloudId: String? = nil,
-         cloudSyncedAt: Date? = nil,
-         isPrivate: Bool = false,
-         needsSync: Bool = true,
-         syncError: String? = nil,
-         likeCount: Int = 0,
-         commentCount: Int = 0,
-         hasGpsTrackInCloud: Bool = false) {
+         gpsTrackData: Data? = nil) {
         self.id = id
         self.wing = wing
         self.startDate = startDate
@@ -199,14 +173,6 @@ final class Flight {
         self.maxSpeed = maxSpeed
         self.maxGForce = maxGForce
         self.gpsTrackData = gpsTrackData
-        self.cloudId = cloudId
-        self.cloudSyncedAt = cloudSyncedAt
-        self.isPrivate = isPrivate
-        self.needsSync = needsSync
-        self.syncError = syncError
-        self.likeCount = likeCount
-        self.commentCount = commentCount
-        self.hasGpsTrackInCloud = hasGpsTrackInCloud
     }
 
     /// Décoder la trace GPS

@@ -1,18 +1,14 @@
 //
 //  IOSViews.swift
-//  ParaFlightLog
+//  SoarX
 //
-//  ContentView principal avec TabView
+//  ContentView principal avec TabView (4 onglets)
 //  Les autres vues sont dans des fichiers séparés:
+//  - TimerViews.swift: TimerView, WingPickerSheet, FlightSummaryView, etc.
 //  - FlightsViews.swift: FlightsView, FlightDetailView, FlightRow, EditFlightView, etc.
 //  - WingsViews.swift: WingsView, WingDetailView, AddWingView, EditWingView, etc.
 //  - StatsViews.swift: StatsView, TotalStatsCard, StatsByWingSection, etc.
-//  - TimerViews.swift: TimerView, WingPickerSheet, FlightSummaryView, etc.
-//  - SettingsViews.swift: SettingsView, SpotsManagementView, BackupExportView, etc.
-//  - ProfileViews.swift: ProfileView, EditProfileView, WatchSettingsView, etc.
-//  - DiscoverViews.swift: DiscoverView, GlobalFeedView, MapDiscoveryView, etc.
-//  - SpotViews.swift: SpotDetailView, SpotLeaderboardSection, etc.
-//  - SearchViews.swift: SearchView, SearchFlightsView, SearchPilotsView, etc.
+//  - SettingsViews.swift: SpotsManagementView, BackupExportView, etc.
 //
 //  Target: iOS only
 //
@@ -26,56 +22,42 @@ struct ContentView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(LocalizationManager.self) private var localizationManager
-    @Environment(AuthService.self) private var authService
 
     // Conserver l'onglet sélectionné lors du changement de langue
     @State private var selectedTab: Int = 0
 
     // Labels des onglets calculés dynamiquement
-    private var discoverLabel: String { "Découvrir".localized }
+    private var flightLabel: String { "Vol".localized }
     private var logbookLabel: String { "Logbook".localized }
     private var mapLabel: String { "Carte".localized }
-    private var profileLabel: String { "Profil".localized }
     private var settingsLabel: String { "Réglages".localized }
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            DiscoverView()
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
+            TimerView()
                 .tabItem {
-                    Label(discoverLabel, systemImage: "globe")
+                    Label(flightLabel, systemImage: "stopwatch")
                 }
                 .tag(0)
 
             LogbookView()
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 .tabItem {
                     Label(logbookLabel, systemImage: "book.closed")
                 }
                 .tag(1)
 
             MapTabView()
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 .tabItem {
                     Label(mapLabel, systemImage: "map")
                 }
                 .tag(2)
 
-            ProfileView()
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
-                .tabItem {
-                    Label(profileLabel, systemImage: "person.circle")
-                }
-                .tag(3)
-
             SettingsTabView()
-                .transition(.opacity.combined(with: .scale(scale: 0.98)))
                 .tabItem {
                     Label(settingsLabel, systemImage: "gearshape")
                 }
-                .tag(4)
+                .tag(3)
         }
-        .animation(.easeInOut(duration: 0.2), value: selectedTab)
         .id(localizationManager.currentLanguage) // Force re-render de tout le TabView quand la langue change
     }
 }

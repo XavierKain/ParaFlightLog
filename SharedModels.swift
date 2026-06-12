@@ -112,3 +112,40 @@ struct FlightDTO: Codable, Identifiable {
         self.gpsTrack = gpsTrack
     }
 }
+
+// MARK: - Widget Shared State (App Group)
+
+/// État du vol en cours partagé entre l'app Watch et le widget via App Group
+/// Écrit par l'app Watch au démarrage/arrêt d'un vol, lu par le widget pour
+/// afficher le chrono en temps réel sur le cadran.
+enum WidgetFlightState {
+    static let appGroupId = "group.com.xavierkain.SoarX"
+    private static let isFlyingKey = "widget.isFlying"
+    private static let startDateKey = "widget.flightStartDate"
+    private static let wingNameKey = "widget.wingName"
+
+    /// Signale le début d'un vol au widget
+    static func setFlying(startDate: Date, wingName: String?) {
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return }
+        defaults.set(true, forKey: isFlyingKey)
+        defaults.set(startDate.timeIntervalSince1970, forKey: startDateKey)
+        defaults.set(wingName, forKey: wingNameKey)
+    }
+
+    /// Signale la fin (ou l'abandon) d'un vol au widget
+    static func clearFlying() {
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return }
+        defaults.set(false, forKey: isFlyingKey)
+        defaults.removeObject(forKey: startDateKey)
+        defaults.removeObject(forKey: wingNameKey)
+    }
+
+    /// Lit l'état courant (utilisé par le widget)
+    static func read() -> (isFlying: Bool, startDate: Date?, wingName: String?) {
+        guard let defaults = UserDefaults(suiteName: appGroupId) else { return (false, nil, nil) }
+        let isFlying = defaults.bool(forKey: isFlyingKey)
+        let interval = defaults.double(forKey: startDateKey)
+        let startDate = interval > 0 ? Date(timeIntervalSince1970: interval) : nil
+        return (isFlying, startDate, defaults.string(forKey: wingNameKey))
+    }
+}

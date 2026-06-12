@@ -1247,7 +1247,6 @@ struct EditFlightView: View {
                             for f in allFlights {
                                 if f.spotName == oldName {
                                     f.spotName = newName
-                                    f.needsSync = true
                                     renamedCount += 1
                                 }
                             }

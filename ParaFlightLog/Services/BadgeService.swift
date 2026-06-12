@@ -3,12 +3,12 @@
 //  ParaFlightLog
 //
 //  Service de gestion des badges et de la gamification
-//  Vérification et attribution des badges basés sur les statistiques utilisateur
+//  Vérification et attribution des badges basés sur les vols locaux (SwiftData)
+//  100 % local : définitions embarquées + persistance UserDefaults
 //  Target: iOS only
 //
 
 import Foundation
-import Appwrite
 
 // MARK: - Badge Models
 
@@ -87,7 +87,7 @@ enum BadgeRequirementType: String, Codable {
     case consecutiveDays = "consecutive_days"
 }
 
-/// Modèle d'un badge
+/// Modèle d'un badge (définition embarquée dans l'app)
 struct Badge: Identifiable, Codable, Equatable {
     let id: String
     let name: String
@@ -110,104 +110,14 @@ struct Badge: Identifiable, Codable, Equatable {
     var localizedDescription: String {
         Locale.current.language.languageCode?.identifier == "fr" ? description : descriptionEn
     }
-
-    /// Initialisation depuis un dictionnaire Appwrite
-    init(from data: [String: Any]) throws {
-        guard let id = data["$id"] as? String else {
-            throw BadgeError.invalidData("Missing $id")
-        }
-
-        self.id = id
-        self.name = data["name"] as? String ?? ""
-        self.nameEn = data["nameEn"] as? String ?? self.name
-        self.description = data["description"] as? String ?? ""
-        self.descriptionEn = data["descriptionEn"] as? String ?? self.description
-        self.icon = data["icon"] as? String ?? "star.fill"
-
-        if let categoryStr = data["category"] as? String,
-           let category = BadgeCategory(rawValue: categoryStr) {
-            self.category = category
-        } else {
-            self.category = .flights
-        }
-
-        if let tierStr = data["tier"] as? String,
-           let tier = BadgeTier(rawValue: tierStr) {
-            self.tier = tier
-        } else {
-            self.tier = .bronze
-        }
-
-        if let reqTypeStr = data["requirementType"] as? String,
-           let reqType = BadgeRequirementType(rawValue: reqTypeStr) {
-            self.requirementType = reqType
-        } else {
-            self.requirementType = .totalFlights
-        }
-
-        self.requirementValue = data["requirementValue"] as? Int ?? 1
-        self.xpReward = data["xpReward"] as? Int ?? 50
-    }
-
-    /// Initialisation directe
-    init(
-        id: String,
-        name: String,
-        nameEn: String,
-        description: String,
-        descriptionEn: String,
-        icon: String,
-        category: BadgeCategory,
-        tier: BadgeTier,
-        requirementType: BadgeRequirementType,
-        requirementValue: Int,
-        xpReward: Int
-    ) {
-        self.id = id
-        self.name = name
-        self.nameEn = nameEn
-        self.description = description
-        self.descriptionEn = descriptionEn
-        self.icon = icon
-        self.category = category
-        self.tier = tier
-        self.requirementType = requirementType
-        self.requirementValue = requirementValue
-        self.xpReward = xpReward
-    }
 }
 
-/// Badge obtenu par un utilisateur
+/// Badge débloqué par l'utilisateur (persisté localement dans UserDefaults)
 struct UserBadge: Identifiable, Codable, Equatable {
-    let id: String
-    let userId: String
     let badgeId: String
     let earnedAt: Date
 
-    /// Initialisation depuis un dictionnaire Appwrite
-    init(from data: [String: Any]) throws {
-        guard let id = data["$id"] as? String else {
-            throw BadgeError.invalidData("Missing $id")
-        }
-
-        self.id = id
-        self.userId = data["userId"] as? String ?? ""
-        self.badgeId = data["badgeId"] as? String ?? ""
-
-        if let earnedAtStr = data["earnedAt"] as? String,
-           let date = ISO8601DateFormatter().date(from: earnedAtStr) {
-            self.earnedAt = date
-        } else {
-            self.earnedAt = Date()
-        }
-    }
-
-    init(id: String, userId: String, badgeId: String, earnedAt: Date) {
-        self.id = id
-        self.userId = userId
-        self.badgeId = badgeId
-        self.earnedAt = earnedAt
-    }
+    var id: String { badgeId }
 }
 
 /// Badge obtenu avec ses détails complets
@@ -234,23 +144,25 @@ struct BadgeProgress {
     }
 }
 
-// MARK: - Badge Errors
+/// Statistiques calculées à partir des vols locaux (SwiftData)
+struct BadgeStats {
+    let totalFlights: Int
+    let totalHours: Int
+    let uniqueSpots: Int
+    let longestStreak: Int
+    let longestFlightHours: Int
+    let maxAltitude: Int
+    let maxDistanceKm: Int
 
-enum BadgeError: LocalizedError {
-    case notAuthenticated
-    case invalidData(String)
-    case networkError(String)
-
-    var errorDescription: String? {
-        switch self {
-        case .notAuthenticated:
-            return "Vous devez être connecté"
-        case .invalidData(let msg):
-            return "Données invalides: \(msg)"
-        case .networkError(let msg):
-            return "Erreur réseau: \(msg)"
-        }
-    }
+    static let empty = BadgeStats(
+        totalFlights: 0,
+        totalHours: 0,
+        uniqueSpots: 0,
+        longestStreak: 0,
+        longestFlightHours: 0,
+        maxAltitude: 0,
+        maxDistanceKm: 0
+    )
 }
 
 // MARK: - BadgeService
@@ -262,116 +174,36 @@ final class BadgeService {
 
     // MARK: - Properties
 
-    private let databases: Databases
-    private let tablesDB: TablesDB
+    /// Tous les badges disponibles (définitions embarquées, triées par tier)
+    let allBadges: [Badge]
 
-    /// Cache des badges disponibles
-    private(set) var allBadges: [Badge]
-
-    /// Badges obtenus par l'utilisateur courant
+    /// Badges débloqués par l'utilisateur (persistés dans UserDefaults)
     private(set) var userBadges: [UserBadge] = []
 
     /// IDs des badges obtenus (pour recherche rapide)
     private var earnedBadgeIds: Set<String> = []
 
-    private(set) var isLoading = false
-    private(set) var isInitialized = false
+    /// Clé de persistance UserDefaults
+    private static let unlockedBadgesKey = "badges.unlocked"
+
+    /// Seuils d'XP pour chaque niveau (niveau 1 = 0 XP)
+    static let levelThresholds: [Int] = [
+        0, 100, 200, 300, 400, 500,
+        600, 800, 1000, 1200, 1400,
+        1600, 1800, 2000, 2200, 2500,
+        2800, 3100, 3500, 3900, 4300,
+        4700, 5100, 5600, 6100, 6700,
+        7300, 8000, 8700, 9500, 10500
+    ]
 
     // MARK: - Init
 
     private init() {
-        self.databases = AppwriteService.shared.databases
-        self.tablesDB = AppwriteService.shared.tablesDB
-        self.allBadges = BadgeService.predefinedBadges // Initialize with predefined badges
-        // Ne PAS charger les badges ici pour éviter la condition de course
-    }
-
-    /// Initialise le service en chargeant les badges
-    /// À appeler explicitement au lancement de l'app
-    func initialize() async {
-        guard !isInitialized else { return }
-        await loadAllBadges()
-        isInitialized = true
+        self.allBadges = Self.predefinedBadges.sorted { $0.tier < $1.tier }
+        loadUnlockedBadges()
     }
 
     // MARK: - Public Methods
-
-    /// Charge tous les badges disponibles depuis Appwrite
-    func loadAllBadges() async {
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            let documents = try await tablesDB.listRows(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.badgesCollectionId,
-                queries: [Query.limit(100)]
-            )
-
-            var badges: [Badge] = []
-            for doc in documents.rows {
-                // Convertir AnyCodable en types natifs
-                var nativeData: [String: Any] = [:]
-                for (key, value) in doc.data {
-                    nativeData[key] = value.value
-                }
-
-                if let badge = try? Badge(from: nativeData) {
-                    badges.append(badge)
-                }
-            }
-
-            // Si aucun badge en base, utiliser les badges prédéfinis
-            if badges.isEmpty {
-                badges = Self.predefinedBadges
-                logInfo("Using predefined badges (no badges in database)", category: .general)
-            }
-
-            self.allBadges = badges.sorted { $0.tier < $1.tier }
-
-            logInfo("Loaded \(badges.count) badges", category: .general)
-        } catch {
-            logError("Failed to load badges: \(error.localizedDescription)", category: .general)
-            // Utiliser les badges prédéfinis en cas d'erreur
-            self.allBadges = Self.predefinedBadges
-        }
-    }
-
-    /// Charge les badges obtenus par l'utilisateur
-    func loadUserBadges(userId: String) async {
-        isLoading = true
-        defer { isLoading = false }
-
-        do {
-            let documents = try await tablesDB.listRows(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.userBadgesCollectionId,
-                queries: [
-                    Query.equal("userId", value: userId),
-                    Query.limit(100)
-                ]
-            )
-
-            var badges: [UserBadge] = []
-            for doc in documents.rows {
-                var nativeData: [String: Any] = [:]
-                for (key, value) in doc.data {
-                    nativeData[key] = value.value
-                }
-
-                if let badge = try? UserBadge(from: nativeData) {
-                    badges.append(badge)
-                }
-            }
-
-            self.userBadges = badges.sorted { $0.earnedAt > $1.earnedAt }
-            self.earnedBadgeIds = Set(badges.map { $0.badgeId })
-
-            logInfo("Loaded \(badges.count) user badges", category: .general)
-        } catch {
-            logError("Failed to load user badges: \(error.localizedDescription)", category: .general)
-        }
-    }
 
     /// Vérifie si un badge est obtenu
     func hasBadge(_ badgeId: String) -> Bool {
@@ -383,65 +215,76 @@ final class BadgeService {
         allBadges.first { $0.id == badgeId }
     }
 
-    /// Récupère les badges obtenus par un utilisateur avec les détails de chaque badge
-    /// Retourne une liste de EarnedBadge (badge + date d'obtention)
-    func getUserBadges(userId: String) async throws -> [EarnedBadge] {
-        // S'assurer que les badges sont chargés
-        if allBadges.isEmpty {
-            await loadAllBadges()
-        }
+    /// Date d'obtention d'un badge (nil si non obtenu)
+    func earnedDate(for badgeId: String) -> Date? {
+        userBadges.first { $0.badgeId == badgeId }?.earnedAt
+    }
 
-        do {
-            let documents = try await tablesDB.listRows(
-                databaseId: AppwriteConfig.databaseId,
-                tableId: AppwriteConfig.userBadgesCollectionId,
-                queries: [
-                    Query.equal("userId", value: userId),
-                    Query.orderDesc("earnedAt"),
-                    Query.limit(100)
-                ]
-            )
-
-            var earnedBadges: [EarnedBadge] = []
-            for doc in documents.rows {
-                var nativeData: [String: Any] = [:]
-                for (key, value) in doc.data {
-                    nativeData[key] = value.value
-                }
-
-                if let userBadge = try? UserBadge(from: nativeData),
-                   let badge = getBadge(userBadge.badgeId) {
-                    earnedBadges.append(EarnedBadge(
-                        id: userBadge.id,
-                        badge: badge,
-                        earnedAt: userBadge.earnedAt
-                    ))
-                }
-            }
-
-            return earnedBadges
-        } catch {
-            logError("Failed to get user badges: \(error.localizedDescription)", category: .general)
-            return []
+    /// Badges obtenus avec leurs détails complets, triés du plus récent au plus ancien
+    var earnedBadges: [EarnedBadge] {
+        userBadges.compactMap { userBadge in
+            guard let badge = getBadge(userBadge.badgeId) else { return nil }
+            return EarnedBadge(id: userBadge.badgeId, badge: badge, earnedAt: userBadge.earnedAt)
         }
     }
 
+    /// XP total cumulé via les badges débloqués
+    var totalXP: Int {
+        userBadges.reduce(0) { total, userBadge in
+            total + (getBadge(userBadge.badgeId)?.xpReward ?? 0)
+        }
+    }
+
+    /// Niveau actuel calculé à partir de l'XP total
+    var level: Int {
+        let xp = totalXP
+        var currentLevel = 1
+        for (index, threshold) in Self.levelThresholds.enumerated() where xp >= threshold {
+            currentLevel = index + 1
+        }
+        return currentLevel
+    }
+
+    /// Calcule les statistiques nécessaires aux badges à partir des vols locaux
+    func computeStats(flights: [Flight]) -> BadgeStats {
+        let totalFlights = flights.count
+        let totalSeconds = flights.reduce(0) { $0 + $1.durationSeconds }
+        let uniqueSpots = Set(flights.compactMap { $0.spotName?.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }).count
+        let longestFlightSeconds = flights.map { $0.durationSeconds }.max() ?? 0
+        let maxAltitude = flights.compactMap { $0.maxAltitude }.max() ?? 0
+        let maxDistance = flights.compactMap { $0.totalDistance }.max() ?? 0
+
+        return BadgeStats(
+            totalFlights: totalFlights,
+            totalHours: totalSeconds / 3600,
+            uniqueSpots: uniqueSpots,
+            longestStreak: Self.longestStreak(flights: flights),
+            longestFlightHours: longestFlightSeconds / 3600,
+            maxAltitude: Int(maxAltitude),
+            maxDistanceKm: Int(maxDistance / 1000) // Distance stockée en mètres
+        )
+    }
+
     /// Calcule la progression pour un badge donné
-    func getProgress(for badge: Badge, profile: CloudUserProfile, uniqueSpots: Int = 0) -> BadgeProgress {
+    func getProgress(for badge: Badge, stats: BadgeStats) -> BadgeProgress {
         let currentValue: Int
 
         switch badge.requirementType {
         case .totalFlights:
-            currentValue = profile.totalFlights
+            currentValue = stats.totalFlights
         case .totalHours:
-            currentValue = profile.totalFlightSeconds / 3600
+            currentValue = stats.totalHours
         case .uniqueSpots:
-            currentValue = uniqueSpots
+            currentValue = stats.uniqueSpots
         case .consecutiveDays:
-            currentValue = profile.longestStreak
-        case .singleFlightDuration, .singleFlightAltitude, .singleFlightDistance:
-            // Ces badges nécessitent une vérification par vol
-            currentValue = 0
+            currentValue = stats.longestStreak
+        case .singleFlightDuration:
+            currentValue = stats.longestFlightHours
+        case .singleFlightAltitude:
+            currentValue = stats.maxAltitude
+        case .singleFlightDistance:
+            currentValue = stats.maxDistanceKm
         }
 
         return BadgeProgress(
@@ -452,25 +295,17 @@ final class BadgeService {
         )
     }
 
-    /// Erreurs rencontrées lors de la dernière attribution (pour debug)
-    private(set) var lastAwardErrors: [String] = []
+    /// Calcule la progression pour un badge donné à partir des vols
+    func getProgress(for badge: Badge, flights: [Flight]) -> BadgeProgress {
+        getProgress(for: badge, stats: computeStats(flights: flights))
+    }
 
-    /// Vérifie et attribue les badges mérités
+    /// Vérifie et attribue les badges mérités à partir des vols locaux
     /// Retourne la liste des nouveaux badges obtenus
     @discardableResult
-    func checkAndAwardBadges(
-        profile: CloudUserProfile,
-        uniqueSpots: Int = 0,
-        maxAltitude: Double? = nil,
-        maxDistance: Double? = nil,
-        longestFlightSeconds: Int? = nil
-    ) async throws -> [Badge] {
-        guard let userId = UserService.shared.currentUserProfile?.id else {
-            throw BadgeError.notAuthenticated
-        }
-
+    func checkBadges(flights: [Flight], wings: [Wing] = []) -> [Badge] {
+        let stats = computeStats(flights: flights)
         var newBadges: [Badge] = []
-        var errors: [String] = []
 
         for badge in allBadges {
             // Ignorer si déjà obtenu
@@ -478,117 +313,89 @@ final class BadgeService {
                 continue
             }
 
-            let earned: Bool
+            let progress = getProgress(for: badge, stats: stats)
 
-            switch badge.requirementType {
-            case .totalFlights:
-                earned = profile.totalFlights >= badge.requirementValue
-
-            case .totalHours:
-                let totalHours = profile.totalFlightSeconds / 3600
-                earned = totalHours >= badge.requirementValue
-
-            case .uniqueSpots:
-                earned = uniqueSpots >= badge.requirementValue
-
-            case .consecutiveDays:
-                earned = profile.longestStreak >= badge.requirementValue
-
-            case .singleFlightDuration:
-                if let seconds = longestFlightSeconds {
-                    let hours = seconds / 3600
-                    earned = hours >= badge.requirementValue
-                } else {
-                    earned = false
-                }
-
-            case .singleFlightAltitude:
-                if let altitude = maxAltitude {
-                    earned = Int(altitude) >= badge.requirementValue
-                } else {
-                    earned = false
-                }
-
-            case .singleFlightDistance:
-                if let distance = maxDistance {
-                    // Distance en km
-                    earned = Int(distance / 1000) >= badge.requirementValue
-                } else {
-                    earned = false
-                }
-            }
-
-            if earned {
-                // Attribuer le badge
-                do {
-                    try await awardBadge(badge, toUserId: userId)
-                    newBadges.append(badge)
-                    logInfo("Badge earned: \(badge.name)", category: .general)
-                } catch {
-                    // Log détaillé de l'erreur pour debug
-                    var errorDetail = "\(badge.name): "
-                    if let appwriteError = error as? AppwriteError {
-                        errorDetail += "\(appwriteError.message) (code: \(appwriteError.code ?? 0))"
-                        logError("Appwrite error details - message: \(appwriteError.message), code: \(appwriteError.code ?? 0), type: \(appwriteError.type ?? "unknown")", category: .general)
-                    } else {
-                        errorDetail += error.localizedDescription
-                    }
-                    errors.append(errorDetail)
-                    logError("Failed to award badge \(badge.name): \(error)", category: .general)
-                }
+            if progress.currentValue >= badge.requirementValue {
+                awardBadge(badge)
+                newBadges.append(badge)
+                logInfo("Badge earned: \(badge.name)", category: .general)
             }
         }
 
-        // Sauvegarder les erreurs pour debug
-        self.lastAwardErrors = errors
-
-        // Ajouter l'XP pour les nouveaux badges
         if !newBadges.isEmpty {
-            let totalXP = newBadges.reduce(0) { $0 + $1.xpReward }
-            try? await UserService.shared.updateStats(addXP: totalXP)
+            saveUnlockedBadges()
         }
 
         return newBadges
     }
 
-    /// Nettoie les données locales (déconnexion)
+    /// Réinitialise les badges débloqués (suppression des données locales)
     func clearLocalData() {
         userBadges = []
         earnedBadgeIds = []
+        UserDefaults.standard.removeObject(forKey: Self.unlockedBadgesKey)
     }
 
     // MARK: - Private Methods
 
-    /// Attribue un badge à un utilisateur
-    private func awardBadge(_ badge: Badge, toUserId userId: String) async throws {
-        let data: [String: Any] = [
-            "userId": userId,
-            "badgeId": badge.id,
-            "earnedAt": Date().ISO8601Format()
-        ]
+    /// Attribue un badge localement (cache + persistance différée)
+    private func awardBadge(_ badge: Badge) {
+        let userBadge = UserBadge(badgeId: badge.id, earnedAt: Date())
+        userBadges.insert(userBadge, at: 0)
+        earnedBadgeIds.insert(badge.id)
+    }
 
-        let document = try await tablesDB.createRow(
-            databaseId: AppwriteConfig.databaseId,
-            tableId: AppwriteConfig.userBadgesCollectionId,
-            rowId: ID.unique(),
-            data: data
-        )
-
-        // Mettre à jour le cache local
-        var nativeData: [String: Any] = [:]
-        for (key, value) in document.data {
-            nativeData[key] = value.value
+    /// Charge les badges débloqués depuis UserDefaults
+    private func loadUnlockedBadges() {
+        guard let data = UserDefaults.standard.data(forKey: Self.unlockedBadgesKey) else {
+            return
         }
 
-        if let userBadge = try? UserBadge(from: nativeData) {
-            self.userBadges.insert(userBadge, at: 0)
-            self.earnedBadgeIds.insert(badge.id)
+        do {
+            let badges = try JSONDecoder().decode([UserBadge].self, from: data)
+            self.userBadges = badges.sorted { $0.earnedAt > $1.earnedAt }
+            self.earnedBadgeIds = Set(badges.map { $0.badgeId })
+        } catch {
+            logError("Failed to load unlocked badges: \(error.localizedDescription)", category: .general)
         }
+    }
+
+    /// Sauvegarde les badges débloqués dans UserDefaults
+    private func saveUnlockedBadges() {
+        do {
+            let data = try JSONEncoder().encode(userBadges)
+            UserDefaults.standard.set(data, forKey: Self.unlockedBadgesKey)
+        } catch {
+            logError("Failed to save unlocked badges: \(error.localizedDescription)", category: .general)
+        }
+    }
+
+    /// Calcule la plus longue série de jours consécutifs avec au moins un vol
+    private static func longestStreak(flights: [Flight]) -> Int {
+        let calendar = Calendar.current
+        let flightDays = Set(flights.map { calendar.startOfDay(for: $0.startDate) })
+        guard !flightDays.isEmpty else { return 0 }
+
+        let sortedDays = flightDays.sorted()
+        var longest = 1
+        var current = 1
+
+        for index in 1..<sortedDays.count {
+            let daysBetween = calendar.dateComponents([.day], from: sortedDays[index - 1], to: sortedDays[index]).day ?? 0
+            if daysBetween == 1 {
+                current += 1
+                longest = max(longest, current)
+            } else {
+                current = 1
+            }
+        }
+
+        return longest
     }
 
     // MARK: - Predefined Badges
 
-    /// Badges prédéfinis (utilisés si la collection est vide)
+    /// Badges prédéfinis (définitions embarquées dans l'app)
     static let predefinedBadges: [Badge] = [
         // Catégorie Vols
         Badge(id: "first_flight", name: "Premier Vol", nameEn: "First Flight",

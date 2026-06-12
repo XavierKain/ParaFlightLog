@@ -1,6 +1,6 @@
 //
 //  ParaFlightLogApp.swift
-//  ParaFlightLog
+//  SoarX
 //
 //  App principale iOS avec setup SwiftData + injection des services
 //  Target: iOS only
@@ -8,11 +8,10 @@
 
 import SwiftUI
 import SwiftData
-import Appwrite
 
 @main
-struct ParaFlightLogApp: App {
-    // AppDelegate pour gérer les push notifications
+struct SoarXApp: App {
+    // AppDelegate pour gérer les notifications locales
     @UIApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     // Services - DataController et LocationService sont des instances propres à l'app
@@ -20,11 +19,8 @@ struct ParaFlightLogApp: App {
     @State private var locationService = LocationService()
 
     // Singletons - on utilise directement les instances partagées sans les stocker en @State
-    // Cela évite la création de doubles instances et les memory leaks potentiels
     private var watchConnectivityManager: WatchConnectivityManager { WatchConnectivityManager.shared }
     private var localizationManager: LocalizationManager { LocalizationManager.shared }
-    private var authService: AuthService { AuthService.shared }
-    private var userService: UserService { UserService.shared }
 
     var body: some Scene {
         WindowGroup {
@@ -33,10 +29,7 @@ struct ParaFlightLogApp: App {
                 .environment(watchConnectivityManager)
                 .environment(locationService)
                 .environment(localizationManager)
-                .environment(authService)
-                .environment(userService)
                 .environment(\.locale, localizationManager.locale)
-                .registerOAuthHandler() // Gestionnaire pour les callbacks OAuth Appwrite
         }
         .modelContainer(dataController.modelContainer)
     }
@@ -48,12 +41,11 @@ private struct IOSRootView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(LocationService.self) private var locationService
     @Environment(LocalizationManager.self) private var localizationManager
-    @Environment(AuthService.self) private var authService
 
     @State private var hasInitialized = false
 
     var body: some View {
-        AuthContainerView()
+        ContentView()
             .environment(\.locale, localizationManager.locale)
             .onAppear {
                 // Configurer les bonnes références (une seule fois)
@@ -66,12 +58,6 @@ private struct IOSRootView: View {
                     watchManager.activateSession()
 
                     locationService.requestAuthorization()
-
-                    // Initialiser le BadgeService pour charger les badges
-                    Task {
-                        await BadgeService.shared.initialize()
-                        logInfo("BadgeService initialized", category: .general)
-                    }
 
                     // Forcer l'envoi des voiles à la Watch après activation
                     DispatchQueue.main.asyncAfter(deadline: .now() + WatchSyncConstants.initialSyncDelay) {
