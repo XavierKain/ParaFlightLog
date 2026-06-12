@@ -27,8 +27,17 @@ struct StatsView: View {
                     // Personal Records section
                     PersonalRecordsCard(flights: flights)
 
+                    // Expérience pilote (toutes voiles, possédées et empruntées)
+                    ExperienceSection(flights: flights)
+
+                    // Matériel possédé (compteurs et alertes de révision)
+                    GearSection(wings: wings)
+
                     // Tableau et graphique par voile
                     StatsByWingSection(flights: flights, wings: wings)
+
+                    // Heures et vols par type de vol
+                    FlightTypeStatsSection(flights: flights)
 
                     // Tableau et graphique par spot
                     StatsBySpotSection(flights: flights)
@@ -232,6 +241,256 @@ struct RecordItem: View {
         .padding()
         .background(color.opacity(0.1))
         .cornerRadius(12)
+    }
+}
+
+// MARK: - ExperienceSection (Mon expérience)
+
+/// Expérience pilote : heures et vols agrégés par type d'aile et par taille,
+/// toutes voiles confondues (possédées ET empruntées — c'est l'expérience qui compte)
+struct ExperienceSection: View {
+    @Environment(DataController.self) private var dataController
+    let flights: [Flight]
+
+    // Stats pré-calculées à l'init (pattern du fichier)
+    private let typeStats: [(label: String, sessions: Int, hours: Double)]
+    private let sizeStats: [(label: String, sessions: Int, hours: Double)]
+
+    init(flights: [Flight]) {
+        self.flights = flights
+
+        func aggregate(by key: (Flight) -> String) -> [(label: String, sessions: Int, hours: Double)] {
+            Dictionary(grouping: flights, by: key)
+                .map { label, group in
+                    let totalSeconds = group.reduce(0) { $0 + $1.durationSeconds }
+                    return (label: label, sessions: group.count, hours: Double(totalSeconds) / 3600.0)
+                }
+                .sorted { $0.hours > $1.hours }
+        }
+
+        self.typeStats = aggregate { $0.wing?.type ?? "Non défini" }
+        self.sizeStats = aggregate { flight in
+            if let size = flight.wing?.size {
+                return "\(size) m²"
+            }
+            return "Non définie"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Mon expérience")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.horizontal)
+
+            if flights.isEmpty {
+                Text("Aucune donnée")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+            } else {
+                VStack(alignment: .leading, spacing: 16) {
+                    // Par type d'aile
+                    ExperienceSubList(title: "Par type d'aile", icon: "wind", stats: typeStats)
+
+                    Divider()
+
+                    // Par taille
+                    ExperienceSubList(title: "Par taille", icon: "ruler", stats: sizeStats)
+                }
+                .padding()
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            }
+        }
+    }
+}
+
+/// Sous-liste compacte pour ExperienceSection (type d'aile ou taille)
+struct ExperienceSubList: View {
+    @Environment(DataController.self) private var dataController
+    let title: String
+    let icon: String
+    let stats: [(label: String, sessions: Int, hours: Double)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Label(title, systemImage: icon)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+                .foregroundStyle(.secondary)
+
+            ForEach(stats, id: \.label) { stat in
+                HStack {
+                    Text(stat.label)
+                        .font(.body)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    Text("\(stat.sessions) vol\(stat.sessions > 1 ? "s" : "")")
+                        .font(.caption)
+                        .foregroundStyle(.blue)
+                        .frame(width: 70, alignment: .trailing)
+
+                    Text(dataController.formatHours(stat.hours))
+                        .font(.body)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.green)
+                        .frame(width: 70, alignment: .trailing)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - GearSection (Mon matériel)
+
+/// Compteurs matériel : voiles possédées non vendues, avec alerte de révision
+struct GearSection: View {
+    @Environment(DataController.self) private var dataController
+    let wings: [Wing]
+
+    /// Voiles possédées et non vendues uniquement (le matériel actuel)
+    private var ownedWings: [Wing] {
+        wings.filter { $0.isOwned && $0.soldDate == nil }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Mon matériel")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.horizontal)
+
+            if ownedWings.isEmpty {
+                Text("Aucune voile possédée")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(ownedWings) { wing in
+                        HStack(spacing: 8) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(wing.name)
+                                    .font(.body)
+                                    .lineLimit(1)
+
+                                if wing.isMaintenanceDue {
+                                    Label("Révision à prévoir", systemImage: "wrench.and.screwdriver.fill")
+                                        .font(.caption2)
+                                        .fontWeight(.medium)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(Capsule().fill(Color.orange.opacity(0.15)))
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                            // Compteur total de la voile (heures à l'achat incluses)
+                            Text(dataController.formatHours(wing.totalAirframeHours))
+                                .font(.body)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.blue)
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 12)
+
+                        if wing.id != ownedWings.last?.id {
+                            Divider()
+                        }
+                    }
+                }
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            }
+        }
+    }
+}
+
+// MARK: - FlightTypeStatsSection (Par type de vol)
+
+/// Heures et nombre de vols par type de vol (Flight.flightType)
+struct FlightTypeStatsSection: View {
+    @Environment(DataController.self) private var dataController
+    let flights: [Flight]
+
+    // Stats pré-calculées à l'init (pattern du fichier)
+    private let typeStats: [(type: String?, label: String, sessions: Int, hours: Double)]
+
+    init(flights: [Flight]) {
+        self.flights = flights
+        self.typeStats = Dictionary(grouping: flights, by: { $0.flightType })
+            .map { type, group in
+                let totalSeconds = group.reduce(0) { $0 + $1.durationSeconds }
+                return (
+                    type: type,
+                    label: type ?? "Non défini",
+                    sessions: group.count,
+                    hours: Double(totalSeconds) / 3600.0
+                )
+            }
+            .sorted { $0.hours > $1.hours }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Par type de vol")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.horizontal)
+
+            if typeStats.isEmpty {
+                Text("Aucune donnée")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(typeStats, id: \.label) { stat in
+                        HStack(spacing: 8) {
+                            Image(systemName: FlightTypes.icon(for: stat.type))
+                                .font(.body)
+                                .foregroundStyle(.blue)
+                                .frame(width: 28)
+
+                            Text(stat.label)
+                                .font(.body)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Text("\(stat.sessions) vol\(stat.sessions > 1 ? "s" : "")")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                                .frame(width: 70, alignment: .trailing)
+
+                            Text(dataController.formatHours(stat.hours))
+                                .font(.body)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.green)
+                                .frame(width: 70, alignment: .trailing)
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 12)
+
+                        if stat.label != typeStats.last?.label {
+                            Divider()
+                        }
+                    }
+                }
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+                .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
+            }
+        }
     }
 }
 

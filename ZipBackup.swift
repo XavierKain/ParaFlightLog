@@ -94,7 +94,7 @@ struct ZipBackup {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
 
-                var wingsCSV = "ID,Nom,Taille,Type,Couleur,Archivé,Date de création,Ordre d'affichage,Photo\n"
+                var wingsCSV = "ID,Nom,Taille,Type,Couleur,Archivé,Date de création,Ordre d'affichage,Photo,Marque,Possédée,Heures initiales,Date achat,Date revente,Intervalle maintenance (h),Heures dern. maintenance,Date dern. maintenance\n"
                 var imagesCount = 0
 
                 for wing in wings.sorted(by: { $0.createdAt < $1.createdAt }) {
@@ -116,7 +116,16 @@ struct ZipBackup {
                         imagesCount += 1
                     }
 
-                    wingsCSV += "\(id),\(name),\(size),\(type),\(color),\(archived),\(created),\(displayOrder),\(photoFilename)\n"
+                    let brand = escapeCSV(wing.brand ?? "")
+                    let owned = wing.isOwned ? "Oui" : "Non"
+                    let initialHours = wing.initialHours > 0 ? String(wing.initialHours) : ""
+                    let purchase = wing.purchaseDate.map { dateFormatter.string(from: $0) } ?? ""
+                    let sold = wing.soldDate.map { dateFormatter.string(from: $0) } ?? ""
+                    let maintInterval = wing.maintenanceIntervalHours.map { String($0) } ?? ""
+                    let maintHours = wing.lastMaintenanceHours > 0 ? String(wing.lastMaintenanceHours) : ""
+                    let maintDate = wing.lastMaintenanceDate.map { dateFormatter.string(from: $0) } ?? ""
+
+                    wingsCSV += "\(id),\(name),\(size),\(type),\(color),\(archived),\(created),\(displayOrder),\(photoFilename),\(brand),\(owned),\(initialHours),\(purchase),\(sold),\(maintInterval),\(maintHours),\(maintDate)\n"
                 }
 
                 // 3. Exporter les vols en CSV (+ colonnes tracking, ignorées par les anciennes versions)
@@ -237,6 +246,9 @@ struct ZipBackup {
                 var importedWings: [UUID: Wing] = [:]
                 var wingsCount = 0
 
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
+
                 for row in wingsRows {
                     guard !row.isEmpty else { continue }
                     let cols = parseCSVRow(row)
@@ -256,8 +268,20 @@ struct ZipBackup {
                         wing.displayOrder = displayOrder
                     }
 
+                    // Colonnes propriété/maintenance (backups SoarX Phase A+, absentes des anciens)
+                    if cols.count >= 17 {
+                        wing.brand = cols[9].isEmpty ? nil : cols[9]
+                        wing.isOwned = cols[10] != "Non"
+                        wing.initialHours = Double(cols[11]) ?? 0
+                        wing.purchaseDate = dateFormatter.date(from: cols[12])
+                        wing.soldDate = dateFormatter.date(from: cols[13])
+                        wing.maintenanceIntervalHours = Double(cols[14])
+                        wing.lastMaintenanceHours = Double(cols[15]) ?? 0
+                        wing.lastMaintenanceDate = dateFormatter.date(from: cols[16])
+                    }
+
                     // Charger l'image si elle existe
-                    if !cols[8].isEmpty {
+                    if cols.count >= 9 && !cols[8].isEmpty {
                         let imagePath = extractedDir.appendingPathComponent("images").appendingPathComponent(cols[8])
                         if FileManager.default.fileExists(atPath: imagePath.path) {
                             wing.photoData = try? Data(contentsOf: imagePath)
@@ -276,9 +300,6 @@ struct ZipBackup {
 
                 let flightsCSV = try String(contentsOf: flightsURL, encoding: .utf8)
                 let flightsRows = flightsCSV.components(separatedBy: "\n").dropFirst() // Skip header
-
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
 
                 var flights: [Flight] = []
                 let gpsDir = extractedDir.appendingPathComponent("gps")

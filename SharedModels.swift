@@ -84,6 +84,9 @@ struct FlightDTO: Codable, Identifiable {
     // Trace GPS du vol
     let gpsTrack: [GPSTrackPoint]?
 
+    // Type de vol choisi au démarrage (optionnel — rétro-compatible avec les anciennes Watch)
+    var flightType: String?
+
     init(id: UUID = UUID(),
          wingId: UUID,
          startDate: Date,
@@ -96,7 +99,8 @@ struct FlightDTO: Codable, Identifiable {
          totalDistance: Double? = nil,
          maxSpeed: Double? = nil,
          maxGForce: Double? = nil,
-         gpsTrack: [GPSTrackPoint]? = nil) {
+         gpsTrack: [GPSTrackPoint]? = nil,
+         flightType: String? = nil) {
         self.id = id
         self.wingId = wingId
         self.startDate = startDate
@@ -110,6 +114,38 @@ struct FlightDTO: Codable, Identifiable {
         self.maxSpeed = maxSpeed
         self.maxGForce = maxGForce
         self.gpsTrack = gpsTrack
+        self.flightType = flightType
+    }
+}
+
+// MARK: - Types de vol
+
+/// Liste canonique des types de vol (partagée iPhone + Watch + Widget).
+/// Stockés en clair dans Flight.flightType — les valeurs libres restent acceptées.
+enum FlightTypes {
+    static let soaring = "Soaring"
+    static let thermal = "Thermique"
+    static let glide = "Planée"
+    static let airsurfing = "Airsurfing"
+    static let groundHandling = "Gonflage"
+    static let hikeAndFly = "Hike & Fly"
+    static let cross = "Cross"
+
+    /// Ordre d'affichage dans les sélecteurs
+    static let all: [String] = [soaring, thermal, glide, airsurfing, groundHandling, hikeAndFly, cross]
+
+    /// Icône SF Symbol associée à un type (fallback générique pour les valeurs libres)
+    static func icon(for type: String?) -> String {
+        switch type {
+        case soaring: return "wind"
+        case thermal: return "tornado"
+        case glide: return "arrow.down.forward"
+        case airsurfing: return "water.waves"
+        case groundHandling: return "figure.walk"
+        case hikeAndFly: return "figure.hiking"
+        case cross: return "point.topleft.down.curvedto.point.bottomright.up"
+        default: return "questionmark.circle"
+        }
     }
 }
 

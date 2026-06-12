@@ -44,6 +44,17 @@ final class Wing {
     var createdAt: Date = Date()
     var displayOrder: Int = 0     // Ordre d'affichage personnalisé (0 = premier)
 
+    // MARK: - Propriété & maintenance
+    // Distinction clé de SoarX : les heures MATÉRIEL (voile possédée → retrim,
+    // révision, revente) vs les heures d'EXPÉRIENCE pilote (toute voile volée).
+    var isOwned: Bool = true            // À moi (true) ou empruntée/testée (false)
+    var purchaseDate: Date?             // Date d'achat (voiles possédées)
+    var soldDate: Date?                 // Date de revente (la voile reste dans l'historique)
+    var initialHours: Double = 0        // Heures déjà au compteur à l'achat (occasion)
+    var maintenanceIntervalHours: Double?   // Intervalle conseillé entre révisions (h), nil = pas de suivi
+    var lastMaintenanceHours: Double = 0    // Compteur total (initialHours incluses) à la dernière révision
+    var lastMaintenanceDate: Date?      // Date de la dernière révision/retrim
+
     // Relation inverse : tous les vols effectués avec cette voile
     @Relationship(deleteRule: .cascade, inverse: \Flight.wing)
     var flights: [Flight]?
@@ -59,6 +70,30 @@ final class Wing {
         self.isArchived = isArchived
         self.createdAt = createdAt
         self.displayOrder = displayOrder
+    }
+
+    // MARK: - Compteurs matériel (voiles possédées)
+
+    /// Heures de vol enregistrées dans SoarX avec cette voile
+    var loggedHours: Double {
+        Double((flights ?? []).reduce(0) { $0 + $1.durationSeconds }) / 3600.0
+    }
+
+    /// Compteur TOTAL de la voile (heures à l'achat + heures enregistrées).
+    /// C'est la valeur qui compte pour la maintenance et la revente.
+    var totalAirframeHours: Double {
+        initialHours + loggedHours
+    }
+
+    /// Heures depuis la dernière révision/retrim
+    var hoursSinceMaintenance: Double {
+        max(0, totalAirframeHours - lastMaintenanceHours)
+    }
+
+    /// True si l'intervalle de maintenance est dépassé (voiles possédées avec suivi)
+    var isMaintenanceDue: Bool {
+        guard isOwned, soldDate == nil, let interval = maintenanceIntervalHours, interval > 0 else { return false }
+        return hoursSinceMaintenance >= interval
     }
 
     /// Convertit le modèle SwiftData en DTO pour l'envoi vers la Watch

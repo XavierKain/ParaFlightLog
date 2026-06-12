@@ -3,11 +3,22 @@
 //  ParaFlightLog
 //
 //  Vue MapKit pour afficher une trace GPS colorée par vitesse
+//  (horizontale ou verticale / vario)
 //  Target: iOS only
 //
 
 import SwiftUI
 import MapKit
+
+// MARK: - TraceColorMode
+
+/// Mode de coloration de la trace GPS
+enum TraceColorMode {
+    /// Coloration par vitesse horizontale (km/h)
+    case speed
+    /// Coloration par vitesse verticale / vario (m/s)
+    case verticalSpeed
+}
 
 // MARK: - ColoredPolyline
 
@@ -21,10 +32,12 @@ class ColoredPolyline: MKPolyline {
 struct ColoredGPSTraceMapView: UIViewRepresentable {
     let segments: [SpeedSegment]
     let showLegend: Bool
+    let colorMode: TraceColorMode
 
-    init(segments: [SpeedSegment], showLegend: Bool = true) {
+    init(segments: [SpeedSegment], showLegend: Bool = true, colorMode: TraceColorMode = .speed) {
         self.segments = segments
         self.showLegend = showLegend
+        self.colorMode = colorMode
     }
 
     func makeUIView(context: Context) -> MKMapView {
@@ -169,6 +182,67 @@ struct SpeedLegendView: View {
 
             // Texte "km/h" en dessous
             Text("km/h")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+        }
+        .frame(width: 200)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(
+            RoundedRectangle(cornerRadius: 8)
+                .fill(Color(.systemBackground).opacity(0.9))
+                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+        )
+    }
+}
+
+// MARK: - VarioLegendView
+
+/// Légende des couleurs du mode vario (vitesse verticale, -4…+4 m/s)
+/// Descente = bleu, neutre = gris/blanc, montée = jaune → rouge
+struct VarioLegendView: View {
+    /// Valeurs de Vz repères affichées sur la légende
+    private let markers: [Double] = [-4, -2, 0, 2, 4]
+
+    var body: some View {
+        VStack(spacing: 4) {
+            // Labels de Vz au-dessus du gradient
+            HStack {
+                ForEach(Array(markers.enumerated()), id: \.offset) { index, value in
+                    if index > 0 { Spacer() }
+                    Text(value > 0 ? "+\(Int(value))" : "\(Int(value))")
+                }
+            }
+            .font(.caption2)
+            .fontWeight(.medium)
+            .foregroundStyle(.secondary)
+
+            // Barre de gradient avec marqueurs
+            ZStack(alignment: .top) {
+                // Gradient principal (descente → montée)
+                LinearGradient(
+                    colors: GPSTraceColorMapper.getVarioGradientColors(),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(height: 10)
+                .clipShape(Capsule())
+
+                // Points de marquage
+                HStack {
+                    ForEach(Array(markers.enumerated()), id: \.offset) { index, value in
+                        if index > 0 { Spacer() }
+                        Circle()
+                            .fill(GPSTraceColorMapper.colorForVerticalSpeed(value))
+                            .frame(width: 8, height: 8)
+                    }
+                }
+                .padding(.horizontal, 1)
+                .offset(y: 1)
+            }
+
+            // Texte "m/s" en dessous
+            Text("m/s")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
         }

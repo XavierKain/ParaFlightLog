@@ -190,9 +190,26 @@ struct WingRow: View {
             }
 
             VStack(alignment: .leading, spacing: 4) {
-                // Titre : nom du modèle
-                Text(wing.name)
-                    .font(.headline)
+                // Titre : nom du modèle + pastille "Empruntée" + alerte révision
+                HStack(spacing: 6) {
+                    Text(wing.name)
+                        .font(.headline)
+
+                    if !wing.isOwned {
+                        Text("Empruntée")
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Color.gray.opacity(0.15)))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if wing.isMaintenanceDue {
+                        Image(systemName: "wrench.and.screwdriver.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
 
                 // Sous-titre : taille • marque • type
                 HStack(spacing: 6) {
@@ -259,6 +276,13 @@ struct AddWingView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
     @State private var showSaveError: Bool = false
+
+    // Propriété & maintenance
+    @State private var isOwned: Bool = true
+    @State private var hasPurchaseDate: Bool = false
+    @State private var purchaseDate: Date = Date()
+    @State private var initialHoursText: String = ""
+    @State private var maintenanceIntervalText: String = ""
 
     let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
     let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
@@ -327,6 +351,59 @@ struct AddWingView: View {
                         TextField("Couleur personnalisée", text: $customColor)
                     }
                 }
+
+                Section {
+                    Toggle("C'est ma voile", isOn: $isOwned)
+
+                    if isOwned {
+                        Toggle("Date d'achat connue", isOn: $hasPurchaseDate)
+                        if hasPurchaseDate {
+                            DatePicker("Date d'achat", selection: $purchaseDate, displayedComponents: .date)
+                        }
+
+                        HStack {
+                            Text("Heures à l'achat")
+                            Spacer()
+                            TextField("0", text: $initialHoursText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 80)
+                                .onChange(of: initialHoursText) { _, newValue in
+                                    let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
+                                    if filtered != newValue {
+                                        initialHoursText = filtered
+                                    }
+                                }
+                            Text("h")
+                                .foregroundStyle(.secondary)
+                        }
+
+                        HStack {
+                            Text("Intervalle de révision")
+                            Spacer()
+                            TextField("—", text: $maintenanceIntervalText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 80)
+                                .onChange(of: maintenanceIntervalText) { _, newValue in
+                                    let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
+                                    if filtered != newValue {
+                                        maintenanceIntervalText = filtered
+                                    }
+                                }
+                            Text("h")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                } header: {
+                    Text("Propriété")
+                } footer: {
+                    if isOwned {
+                        Text("Intervalle de révision suggéré : 100 h ou 1 an. Laissez vide pour désactiver le suivi.")
+                    } else {
+                        Text("Voile empruntée ou testée : les heures comptent pour votre expérience, pas de suivi matériel.")
+                    }
+                }
             }
             .navigationTitle(String(localized: "addWing.navTitle"))
             .navigationBarTitleDisplayMode(.inline)
@@ -378,6 +455,14 @@ struct AddWingView: View {
             displayOrder: maxDisplayOrder + 1
         )
 
+        // Propriété & maintenance
+        wing.isOwned = isOwned
+        if isOwned {
+            wing.purchaseDate = hasPurchaseDate ? purchaseDate : nil
+            wing.initialHours = Self.parseHours(initialHoursText) ?? 0
+            wing.maintenanceIntervalHours = Self.parseHours(maintenanceIntervalText)
+        }
+
         modelContext.insert(wing)
 
         Task { @MainActor in
@@ -390,6 +475,13 @@ struct AddWingView: View {
                 showSaveError = true
             }
         }
+    }
+
+    /// Convertit un texte saisi ("12,5" ou "12.5") en heures, nil si vide ou invalide
+    static func parseHours(_ text: String) -> Double? {
+        let normalized = text.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces)
+        guard !normalized.isEmpty, let value = Double(normalized), value >= 0 else { return nil }
+        return value
     }
 }
 
@@ -414,8 +506,23 @@ struct EditWingView: View {
     @State private var isLoadingPhoto: Bool = true
     @State private var showSaveError: Bool = false
 
+    // Propriété & maintenance
+    @State private var isOwned: Bool
+    @State private var hasPurchaseDate: Bool
+    @State private var purchaseDate: Date
+    @State private var initialHoursText: String
+    @State private var maintenanceIntervalText: String
+    @State private var isSold: Bool
+    @State private var soldDate: Date
+
     let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
     let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
+
+    /// Formatte des heures en texte de champ ("12" ou "12.5"), vide si nil ou 0
+    private static func hoursFieldText(_ value: Double?) -> String {
+        guard let value, value > 0 else { return "" }
+        return value.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(value)) : String(value)
+    }
 
     init(wing: Wing) {
         self.wing = wing
@@ -437,6 +544,15 @@ struct EditWingView: View {
         // Ne pas accéder à photoData dans l'init - sera chargé dans .task
         _photoData = State(initialValue: nil)
         _isLoadingPhoto = State(initialValue: true)
+
+        // Propriété & maintenance
+        _isOwned = State(initialValue: wing.isOwned)
+        _hasPurchaseDate = State(initialValue: wing.purchaseDate != nil)
+        _purchaseDate = State(initialValue: wing.purchaseDate ?? Date())
+        _initialHoursText = State(initialValue: Self.hoursFieldText(wing.initialHours))
+        _maintenanceIntervalText = State(initialValue: Self.hoursFieldText(wing.maintenanceIntervalHours))
+        _isSold = State(initialValue: wing.soldDate != nil)
+        _soldDate = State(initialValue: wing.soldDate ?? Date())
     }
 
     var body: some View {
@@ -519,6 +635,64 @@ struct EditWingView: View {
                         TextField("Couleur personnalisée", text: $customColor)
                     }
                 }
+
+                Section {
+                    Toggle("C'est ma voile", isOn: $isOwned)
+
+                    if isOwned {
+                        Toggle("Date d'achat connue", isOn: $hasPurchaseDate)
+                        if hasPurchaseDate {
+                            DatePicker("Date d'achat", selection: $purchaseDate, displayedComponents: .date)
+                        }
+
+                        HStack {
+                            Text("Heures à l'achat")
+                            Spacer()
+                            TextField("0", text: $initialHoursText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 80)
+                                .onChange(of: initialHoursText) { _, newValue in
+                                    let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
+                                    if filtered != newValue {
+                                        initialHoursText = filtered
+                                    }
+                                }
+                            Text("h")
+                                .foregroundStyle(.secondary)
+                        }
+
+                        HStack {
+                            Text("Intervalle de révision")
+                            Spacer()
+                            TextField("—", text: $maintenanceIntervalText)
+                                .keyboardType(.decimalPad)
+                                .multilineTextAlignment(.trailing)
+                                .frame(width: 80)
+                                .onChange(of: maintenanceIntervalText) { _, newValue in
+                                    let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
+                                    if filtered != newValue {
+                                        maintenanceIntervalText = filtered
+                                    }
+                                }
+                            Text("h")
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Toggle("Vendue", isOn: $isSold)
+                        if isSold {
+                            DatePicker("Date de revente", selection: $soldDate, displayedComponents: .date)
+                        }
+                    }
+                } header: {
+                    Text("Propriété")
+                } footer: {
+                    if isOwned {
+                        Text("Intervalle de révision suggéré : 100 h ou 1 an. Laissez vide pour désactiver le suivi.")
+                    } else {
+                        Text("Voile empruntée ou testée : les heures comptent pour votre expérience, pas de suivi matériel.")
+                    }
+                }
             }
             .navigationTitle("Modifier la voile")
             .navigationBarTitleDisplayMode(.inline)
@@ -571,6 +745,18 @@ struct EditWingView: View {
         wing.color = finalColor.isEmpty ? nil : finalColor
         wing.photoData = photoData
 
+        // Propriété & maintenance
+        wing.isOwned = isOwned
+        if isOwned {
+            wing.purchaseDate = hasPurchaseDate ? purchaseDate : nil
+            wing.initialHours = AddWingView.parseHours(initialHoursText) ?? 0
+            wing.maintenanceIntervalHours = AddWingView.parseHours(maintenanceIntervalText)
+            wing.soldDate = isSold ? soldDate : nil
+        }
+        // Si la voile n'est plus possédée, on conserve les données existantes
+        // (jamais de suppression silencieuse) — isMaintenanceDue est déjà
+        // neutralisé par le guard isOwned du modèle.
+
         // Invalider le cache d'image si la photo a changé
         ImageCacheManager.shared.invalidate(key: wing.id.uuidString)
 
@@ -592,12 +778,14 @@ struct EditWingView: View {
 struct WingDetailView: View {
     let wing: Wing
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @Environment(DataController.self) private var dataController
     @State private var showingEditWing = false
     @State private var selectedFlight: Flight?
     @State private var showingFullScreenPhoto = false
     @State private var photoImage: UIImage?
     @State private var isLoadingPhoto = true
+    @State private var showingMaintenanceConfirmation = false
 
     /// Utilise la relation inverse wing.flights au lieu de @Query pour éviter de charger tous les vols
     var flights: [Flight] {
@@ -671,6 +859,93 @@ struct WingDetailView: View {
                 .padding(.vertical, 16)
             }
 
+            // Bandeau voile vendue
+            if wing.isOwned, let soldDate = wing.soldDate {
+                Section {
+                    Label("Vendue le \(soldDate.formatted(date: .long, time: .omitted))", systemImage: "tag.slash")
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundStyle(.orange)
+                }
+            }
+
+            // Compteur matériel (voiles possédées uniquement)
+            if wing.isOwned {
+                Section("Compteur matériel") {
+                    HStack {
+                        Text("Heures totales")
+                        Spacer()
+                        Text(dataController.formatHours(wing.totalAirframeHours))
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.blue)
+                    }
+
+                    // Détail : heures à l'achat + heures enregistrées
+                    HStack {
+                        Text("Détail")
+                        Spacer()
+                        Text("\(dataController.formatHours(wing.initialHours)) à l'achat + \(dataController.formatHours(wing.loggedHours)) enregistrées")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Text("Depuis dernière révision")
+                        Spacer()
+                        Text(dataController.formatHours(wing.hoursSinceMaintenance))
+                            .foregroundStyle(wing.isMaintenanceDue ? .orange : .secondary)
+                    }
+
+                    if let lastDate = wing.lastMaintenanceDate {
+                        HStack {
+                            Text("Dernière révision")
+                            Spacer()
+                            Text(lastDate.formatted(date: .abbreviated, time: .omitted))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    // Progression vers l'intervalle de révision
+                    if let interval = wing.maintenanceIntervalHours, interval > 0 {
+                        VStack(alignment: .leading, spacing: 6) {
+                            ProgressView(value: min(wing.hoursSinceMaintenance, interval), total: interval)
+                                .tint(wing.isMaintenanceDue ? .orange : .blue)
+
+                            HStack {
+                                Text("\(dataController.formatHours(wing.hoursSinceMaintenance)) / \(dataController.formatHours(interval))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                Spacer()
+
+                                if wing.isMaintenanceDue {
+                                    Label("Révision à prévoir", systemImage: "exclamationmark.triangle.fill")
+                                        .font(.caption)
+                                        .fontWeight(.medium)
+                                        .foregroundStyle(.orange)
+                                }
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+
+                    if wing.soldDate == nil {
+                        Button {
+                            showingMaintenanceConfirmation = true
+                        } label: {
+                            Label("Révision effectuée", systemImage: "wrench.and.screwdriver")
+                        }
+                    }
+                }
+            } else {
+                // Voile empruntée : pas de suivi matériel
+                Section {
+                    Label("Voile empruntée — pas de suivi matériel, les heures comptent pour ton expérience", systemImage: "person.2")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Statistiques") {
                 let totalSeconds = flights.reduce(0) { $0 + $1.durationSeconds }
                 let totalHours = Double(totalSeconds) / 3600.0
@@ -715,6 +990,18 @@ struct WingDetailView: View {
         .sheet(isPresented: $showingEditWing) {
             EditWingView(wing: wing)
         }
+        .confirmationDialog(
+            "Marquer la révision comme effectuée ?",
+            isPresented: $showingMaintenanceConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Révision effectuée") {
+                markMaintenanceDone()
+            }
+            Button("Annuler", role: .cancel) { }
+        } message: {
+            Text("Le compteur de révision repartira de \(dataController.formatHours(wing.totalAirframeHours)) (compteur total actuel).")
+        }
         .sheet(item: $selectedFlight) { flight in
             EditFlightView(flight: flight)
                 .onAppear {
@@ -737,6 +1024,18 @@ struct WingDetailView: View {
             }.value
             photoImage = loadedImage
             isLoadingPhoto = false
+        }
+    }
+
+    /// Enregistre une révision : le compteur de maintenance repart du compteur total actuel
+    private func markMaintenanceDone() {
+        wing.lastMaintenanceHours = wing.totalAirframeHours
+        wing.lastMaintenanceDate = Date()
+        do {
+            try modelContext.save()
+            logInfo("Maintenance recorded for wing \(wing.name)", category: .dataController)
+        } catch {
+            logError("Failed to save maintenance: \(error.localizedDescription)", category: .dataController)
         }
     }
 }

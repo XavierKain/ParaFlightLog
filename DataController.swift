@@ -249,6 +249,7 @@ final class DataController {
             spotName: spotName,
             latitude: location?.coordinate.latitude,
             longitude: location?.coordinate.longitude,
+            flightType: dto.flightType,
             createdAt: dto.createdAt,
             startAltitude: dto.startAltitude,
             maxAltitude: dto.maxAltitude,

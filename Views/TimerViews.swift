@@ -31,6 +31,12 @@ struct TimerView: View {
     @State private var completedFlight: Flight?
     @State private var showSaveError = false
 
+    // Type de vol sélectionné (mémorisé entre les sessions)
+    @AppStorage("lastFlightType") private var lastFlightType: String = ""
+    @State private var selectedFlightType: String? = nil
+    @State private var didInitFlightType = false
+    @State private var userPickedFlightType = false
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -128,6 +134,48 @@ struct TimerView: View {
                                 }
                                 .padding(.horizontal)
                             }
+
+                            // Sélecteur de type de vol (compact)
+                            Menu {
+                                ForEach(FlightTypes.all, id: \.self) { type in
+                                    Button {
+                                        selectedFlightType = type
+                                        userPickedFlightType = true
+                                        lastFlightType = type
+                                    } label: {
+                                        Label(type, systemImage: FlightTypes.icon(for: type))
+                                    }
+                                }
+
+                                Divider()
+
+                                Button {
+                                    selectedFlightType = nil
+                                    userPickedFlightType = true
+                                    lastFlightType = ""
+                                } label: {
+                                    Label("Non défini", systemImage: "questionmark.circle")
+                                }
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Image(systemName: FlightTypes.icon(for: selectedFlightType))
+                                        .font(.subheadline)
+                                        .foregroundStyle(selectedFlightType != nil ? .blue : .secondary)
+
+                                    Text(selectedFlightType ?? "Type de vol")
+                                        .font(.subheadline)
+                                        .foregroundStyle(selectedFlightType != nil ? .primary : .secondary)
+
+                                    Image(systemName: "chevron.up.chevron.down")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 14)
+                                .padding(.vertical, 10)
+                                .background(Color(.systemBackground))
+                                .cornerRadius(10)
+                                .shadow(color: .black.opacity(0.08), radius: 3, x: 0, y: 1)
+                            }
                         }
                     } else {
                         // Afficher la voile sélectionnée pendant le vol
@@ -156,6 +204,17 @@ struct TimerView: View {
                                     Text("\(size) m²")
                                         .font(.subheadline)
                                         .foregroundStyle(.secondary)
+                                }
+
+                                // Type de vol en cours (si défini)
+                                if let type = selectedFlightType {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: FlightTypes.icon(for: type))
+                                            .font(.caption)
+                                        Text(type)
+                                            .font(.caption)
+                                    }
+                                    .foregroundStyle(.blue)
                                 }
                             }
                         }
@@ -243,6 +302,12 @@ struct TimerView: View {
                 }
             }
         }
+        .onChange(of: manualSpotOverride) { _, newSpot in
+            // Proposer le type habituel quand un spot manuel est défini
+            if let spot = newSpot {
+                suggestFlightType(forSpot: spot)
+            }
+        }
         .onChange(of: scenePhase) { oldPhase, newPhase in
             // Gérer le timer en arrière-plan
             if isFlying {
@@ -255,6 +320,11 @@ struct TimerView: View {
             }
         }
         .onAppear {
+            // Initialiser le type de vol avec la dernière valeur utilisée
+            if !didInitFlightType {
+                selectedFlightType = lastFlightType.isEmpty ? nil : lastFlightType
+                didInitFlightType = true
+            }
             if !isFlying && manualSpotOverride == nil {
                 updateCurrentSpot()
             }
@@ -345,6 +415,10 @@ struct TimerView: View {
         // Sauvegarder le vol - utiliser la dernière position connue si la requête GPS échoue
         let lastKnownLocation = locationService.lastKnownLocation
 
+        // Capturer le type de vol avant le reset + mémoriser (dernier type + type par spot)
+        let finalFlightType = selectedFlightType
+        rememberFlightType(finalFlightType, forSpot: finalSpot)
+
         let saveFlight: (CLLocation?) -> Void = { location in
             let flight = Flight(
                 wing: wing,
@@ -354,6 +428,7 @@ struct TimerView: View {
                 spotName: finalSpot,
                 latitude: location?.coordinate.latitude ?? lastKnownLocation?.coordinate.latitude,
                 longitude: location?.coordinate.longitude ?? lastKnownLocation?.coordinate.longitude,
+                flightType: finalFlightType,
                 startAltitude: flightData.startAlt,
                 maxAltitude: flightData.maxAlt,
                 endAltitude: endAltitude,
@@ -388,6 +463,8 @@ struct TimerView: View {
         selectedWing = nil
         currentSpot = "Recherche...".localized
         manualSpotOverride = nil
+        // Le type reste mémorisé, mais la suggestion par spot redevient possible
+        userPickedFlightType = false
     }
 
     private func updateCurrentSpot() {
@@ -402,8 +479,42 @@ struct TimerView: View {
             locationService.reverseGeocode(location: location) { spot in
                 DispatchQueue.main.async {
                     currentSpot = spot ?? "Spot inconnu"
+                    // Proposer le type de vol habituel pour ce spot
+                    if let spot = spot {
+                        suggestFlightType(forSpot: spot)
+                    }
                 }
             }
+        }
+    }
+
+    // MARK: - Mémorisation du type de vol par spot
+
+    /// Lit le dictionnaire [spotName: flightType] depuis UserDefaults (JSON)
+    private func flightTypeBySpotDictionary() -> [String: String] {
+        guard let data = UserDefaults.standard.data(forKey: "flightTypeBySpot"),
+              let dict = try? JSONDecoder().decode([String: String].self, from: data) else {
+            return [:]
+        }
+        return dict
+    }
+
+    /// Propose le type déjà utilisé sur ce spot (sauf si l'utilisateur a choisi manuellement)
+    private func suggestFlightType(forSpot spot: String) {
+        guard !isFlying, !userPickedFlightType else { return }
+        if let suggested = flightTypeBySpotDictionary()[spot] {
+            selectedFlightType = suggested
+        }
+    }
+
+    /// Mémorise le type utilisé : dernière valeur globale + association au spot
+    private func rememberFlightType(_ type: String?, forSpot spot: String?) {
+        lastFlightType = type ?? ""
+        guard let type = type, let spot = spot, !spot.isEmpty else { return }
+        var dict = flightTypeBySpotDictionary()
+        dict[spot] = type
+        if let data = try? JSONEncoder().encode(dict) {
+            UserDefaults.standard.set(data, forKey: "flightTypeBySpot")
         }
     }
 
@@ -605,6 +716,28 @@ struct FlightSummaryView: View {
                             Spacer()
 
                             Text(wingName)
+                                .font(.body)
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    }
+
+                    // Type de vol
+                    if let type = flight.flightType {
+                        HStack {
+                            Image(systemName: FlightTypes.icon(for: type))
+                                .font(.title3)
+                                .foregroundStyle(.teal)
+                                .frame(width: 30)
+
+                            Text("Type de vol")
+                                .font(.headline)
+
+                            Spacer()
+
+                            Text(type)
                                 .font(.body)
                                 .foregroundStyle(.secondary)
                         }

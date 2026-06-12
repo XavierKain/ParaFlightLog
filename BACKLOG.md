@@ -7,12 +7,12 @@
 
 Intégrer l'app SoarX Voice (projet séparé : `/Users/xavier/VSCode3/SoarXVoice`) dans SoarX.
 
-## 2. Type de vol au démarrage
+## 2. Type de vol au démarrage — ✅ livré (Phase A, 2026-06-12)
 
 Pouvoir définir le type de vol qu'on va faire avant/au début du vol : **soaring, thermique, planée (glide), airsurfing**, etc.
 - Le champ `Flight.flightType` existe déjà en base ; il faut l'exposer dans le flux de démarrage (onglet Vol sur iPhone + écran Start sur la Watch) et dans les stats/filtres.
 
-## 3. Voiles : possédées vs utilisées (cœur historique de l'app)
+## 3. Voiles : possédées vs utilisées (cœur historique de l'app) — ✅ livré (Phase A, 2026-06-12)
 
 La raison d'être de l'app : traquer le temps de vol **par aile** pour deux usages distincts :
 - **Mes voiles (possédées)** : heures totales de la voile → maintenance (retrim, révision), valeur à la revente.
@@ -24,7 +24,7 @@ La raison d'être de l'app : traquer le temps de vol **par aile** pour deux usag
 
 Pour les vols thermiques : un vario activable/désactivable sur iPhone **et** Apple Watch (bips/haptique selon taux de montée/descente).
 
-## 5. Analyse verticale des traces GPS
+## 5. Analyse verticale des traces GPS — ✅ livré post-vol (Phase A, 2026-06-12) ; Vz baro temps réel viendra avec le vario (Phase B)
 
 Voir sur nos traces : vitesse horizontale **et verticale** (ascension en thermique, à la corde/treuil, en soaring), hauteurs atteintes et vitesse de montée. Coloration de trace par Vz, graphe altitude/temps, stats de montée.
 

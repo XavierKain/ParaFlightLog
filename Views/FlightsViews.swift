@@ -9,6 +9,19 @@
 import SwiftUI
 import SwiftData
 import MapKit
+import Charts
+
+// MARK: - FlightTypeFilter (Filtre par type de vol)
+
+/// Filtre de la liste des vols par type de vol
+enum FlightTypeFilter: Hashable {
+    /// Tous les vols
+    case all
+    /// Vols d'un type précis (valeur de FlightTypes ou valeur libre)
+    case type(String)
+    /// Vols sans type défini
+    case undefined
+}
 
 // MARK: - FlightsView (Liste des vols avec dernier vol en vedette)
 
@@ -21,29 +34,44 @@ struct FlightsView: View {
     @State private var flightToDelete: Flight?
     @State private var showingDeleteConfirmation = false
 
+    // Filtre par type de vol
+    @State private var typeFilter: FlightTypeFilter = .all
+
     // Pagination: nombre de vols affichés
     @State private var displayedFlightsCount: Int = 20
     private let pageSize: Int = 15
 
+    // Vols filtrés par type de vol
+    private var filteredFlights: [Flight] {
+        switch typeFilter {
+        case .all:
+            return flights
+        case .type(let type):
+            return flights.filter { $0.flightType == type }
+        case .undefined:
+            return flights.filter { ($0.flightType ?? "").isEmpty }
+        }
+    }
+
     // Dernier vol (le plus récent)
     private var latestFlight: Flight? {
-        flights.first
+        filteredFlights.first
     }
 
     // Autres vols paginés (tous sauf le dernier, limités au nombre affiché)
     private var olderFlights: [Flight] {
-        let allOlder = Array(flights.dropFirst())
+        let allOlder = Array(filteredFlights.dropFirst())
         return Array(allOlder.prefix(displayedFlightsCount - 1))
     }
 
     // Vérifie s'il reste des vols à charger
     private var hasMoreFlights: Bool {
-        flights.count > displayedFlightsCount
+        filteredFlights.count > displayedFlightsCount
     }
 
     // Nombre de vols restants à charger
     private var remainingFlightsCount: Int {
-        max(0, flights.count - displayedFlightsCount)
+        max(0, filteredFlights.count - displayedFlightsCount)
     }
 
     var body: some View {
@@ -54,6 +82,14 @@ struct FlightsView: View {
                         String(localized: "Aucun vol"),
                         systemImage: "airplane.circle",
                         description: Text(String(localized: "Commencez un vol depuis la Watch ou l'onglet Chrono"))
+                    )
+                    .padding(.top, 100)
+                } else if filteredFlights.isEmpty {
+                    // Aucun vol ne correspond au filtre par type
+                    ContentUnavailableView(
+                        String(localized: "Aucun vol de ce type"),
+                        systemImage: "line.3.horizontal.decrease.circle",
+                        description: Text(String(localized: "Modifiez le filtre pour voir d'autres vols"))
                     )
                     .padding(.top, 100)
                 } else {
@@ -121,6 +157,31 @@ struct FlightsView: View {
                 }
             }
             .navigationTitle(String(localized: "Mes vols"))
+            .toolbar {
+                // Filtre par type de vol
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker(String(localized: "Type de vol"), selection: $typeFilter) {
+                            Label(String(localized: "Tous"), systemImage: "circle.grid.2x2")
+                                .tag(FlightTypeFilter.all)
+                            ForEach(FlightTypes.all, id: \.self) { type in
+                                Label(type, systemImage: FlightTypes.icon(for: type))
+                                    .tag(FlightTypeFilter.type(type))
+                            }
+                            Label(String(localized: "Non défini"), systemImage: "questionmark.circle")
+                                .tag(FlightTypeFilter.undefined)
+                        }
+                    } label: {
+                        Image(systemName: typeFilter == .all
+                              ? "line.3.horizontal.decrease.circle"
+                              : "line.3.horizontal.decrease.circle.fill")
+                    }
+                }
+            }
+            .onChange(of: typeFilter) { _, _ in
+                // Réinitialiser la pagination quand le filtre change
+                displayedFlightsCount = 20
+            }
         }
         .id(localizationManager.currentLanguage) // Force re-render quand la langue change
         .sheet(item: $showingFlightDetail) { flight in
@@ -361,6 +422,37 @@ struct StatCard: View {
     }
 }
 
+// MARK: - TraceDisplayMode (Mode d'affichage de la trace dans le détail)
+
+/// Mode d'affichage de la trace GPS dans la vue détail d'un vol
+private enum TraceDisplayMode: String, CaseIterable, Identifiable {
+    case standard       // Trace bleue classique
+    case speed          // Trace colorée par vitesse horizontale
+    case verticalSpeed  // Trace colorée par vitesse verticale (vario)
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .standard: return String(localized: "Standard")
+        case .speed: return String(localized: "Vitesse")
+        case .verticalSpeed: return String(localized: "Montée")
+        }
+    }
+}
+
+// MARK: - FlightProfilePoint (Point du profil de vol pour Swift Charts)
+
+/// Point échantillonné de la trace pour les graphes altitude/Vz
+private struct FlightProfilePoint: Identifiable {
+    let index: Int
+    let minutes: Double   // Minutes depuis le décollage
+    let altitude: Double? // Altitude (m)
+    let vz: Double?       // Vitesse verticale lissée (m/s)
+
+    var id: Int { index }
+}
+
 // MARK: - FlightDetailView (Vue détaillée d'un vol)
 
 struct FlightDetailView: View {
@@ -370,14 +462,43 @@ struct FlightDetailView: View {
     @State private var showingEditSheet = false
     @State private var showingFullScreenMap = false
     @State private var showingShareSheet = false
-    @State private var showColoredTrace = true  // Toggle pour afficher la trace colorée
+    @State private var traceMode: TraceDisplayMode = .speed  // Mode de coloration de la trace
     @State private var showingRenameSpotSheet = false
     @State private var renameSpotNewName = ""
 
-    // Calculer les segments colorés si trace GPS disponible
+    // Stats verticales et profil calculés une seule fois à l'apparition
+    @State private var verticalStats: VerticalStats?
+    @State private var profileData: [FlightProfilePoint] = []
+
+    // Calculer les segments colorés par vitesse si trace GPS disponible
     private var coloredSegments: [SpeedSegment] {
         guard let track = flight.gpsTrack, track.count >= 2 else { return [] }
         return GPSTraceColorMapper.generateColoredSegments(points: track)
+    }
+
+    // Segments colorés par vitesse verticale (mode vario)
+    private var varioSegments: [SpeedSegment] {
+        guard let track = flight.gpsTrack, track.count >= 2 else { return [] }
+        return GPSTraceColorMapper.generateVerticalSpeedSegments(points: track)
+    }
+
+    // Segments à afficher selon le mode sélectionné
+    private var displayedSegments: [SpeedSegment] {
+        switch traceMode {
+        case .standard: return []
+        case .speed: return coloredSegments
+        case .verticalSpeed: return varioSegments
+        }
+    }
+
+    // Le profil contient-il des altitudes exploitables ?
+    private var hasAltitudeProfile: Bool {
+        profileData.contains { $0.altitude != nil }
+    }
+
+    // Le profil contient-il des Vz exploitables ?
+    private var hasVzProfile: Bool {
+        profileData.contains { $0.vz != nil }
     }
 
     // Calcul de la région pour afficher toute la trace GPS
@@ -417,12 +538,27 @@ struct FlightDetailView: View {
                 VStack(spacing: 20) {
                     // Map avec trace GPS ou simple marker (cliquable pour plein écran)
                     if flight.gpsTrack != nil || (flight.latitude != nil && flight.longitude != nil) {
+                        // Sélecteur de mode de trace : Standard | Vitesse | Montée
+                        if !coloredSegments.isEmpty {
+                            Picker(String(localized: "Mode de trace"), selection: $traceMode) {
+                                ForEach(TraceDisplayMode.allCases) { mode in
+                                    Text(mode.label).tag(mode)
+                                }
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.horizontal)
+                        }
+
                         ZStack(alignment: .topTrailing) {
                             // Afficher trace GPS colorée ou carte standard
-                            if showColoredTrace && !coloredSegments.isEmpty {
-                                ColoredGPSTraceMapView(segments: coloredSegments, showLegend: false)
-                                    .frame(height: 220)
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                            if !displayedSegments.isEmpty {
+                                ColoredGPSTraceMapView(
+                                    segments: displayedSegments,
+                                    showLegend: false,
+                                    colorMode: traceMode == .verticalSpeed ? .verticalSpeed : .speed
+                                )
+                                .frame(height: 220)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
                             } else {
                                 Map(initialPosition: .region(mapRegion)) {
                                     // Afficher la trace GPS si disponible
@@ -456,21 +592,6 @@ struct FlightDetailView: View {
 
                             // Overlay controls
                             VStack(spacing: 8) {
-                                // Toggle colored trace (only if GPS data available)
-                                if !coloredSegments.isEmpty {
-                                    Button {
-                                        withAnimation(.spring(response: 0.3)) {
-                                            showColoredTrace.toggle()
-                                        }
-                                    } label: {
-                                        Image(systemName: showColoredTrace ? "paintpalette.fill" : "paintpalette")
-                                            .font(.caption)
-                                            .padding(6)
-                                            .background(.ultraThinMaterial)
-                                            .clipShape(Circle())
-                                    }
-                                }
-
                                 // Full screen icon
                                 Image(systemName: "arrow.up.left.and.arrow.down.right")
                                     .font(.caption)
@@ -485,9 +606,12 @@ struct FlightDetailView: View {
                         }
                         .padding(.horizontal)
 
-                        // Legend when colored trace is active
-                        if showColoredTrace && !coloredSegments.isEmpty {
+                        // Légende adaptée au mode de coloration actif
+                        if traceMode == .speed && !coloredSegments.isEmpty {
                             SpeedLegendView()
+                                .padding(.horizontal)
+                        } else if traceMode == .verticalSpeed && !varioSegments.isEmpty {
+                            VarioLegendView()
                                 .padding(.horizontal)
                         }
 
@@ -526,7 +650,8 @@ struct FlightDetailView: View {
 
                         // Statistiques de vol (juste après la durée)
                         if flight.startAltitude != nil || flight.maxAltitude != nil || flight.endAltitude != nil ||
-                           flight.totalDistance != nil || flight.maxSpeed != nil || flight.maxGForce != nil {
+                           flight.totalDistance != nil || flight.maxSpeed != nil || flight.maxGForce != nil ||
+                           verticalStats != nil {
                             VStack(alignment: .leading, spacing: 12) {
                                 Text(String(localized: "Statistiques de vol"))
                                     .font(.headline)
@@ -574,6 +699,24 @@ struct FlightDetailView: View {
                                             )
                                         }
                                     }
+
+                                    // Stats verticales calculées depuis la trace GPS
+                                    if let vStats = verticalStats {
+                                        HStack(spacing: 8) {
+                                            DetailStatCard(
+                                                title: String(localized: "Gain cumulé"),
+                                                value: "\(Int(vStats.totalGain)) m",
+                                                color: .mint,
+                                                icon: "arrow.up.right"
+                                            )
+                                            DetailStatCard(
+                                                title: String(localized: "Meilleure ascendance"),
+                                                value: String(format: "+%.1f m/s", vStats.maxClimbRate),
+                                                color: .orange,
+                                                icon: "arrow.up.to.line"
+                                            )
+                                        }
+                                    }
                                 }
                             }
                             .padding()
@@ -608,6 +751,91 @@ struct FlightDetailView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .padding(.horizontal)
+
+                    // Profil du vol (graphes altitude et Vz si trace avec altitudes)
+                    if hasAltitudeProfile {
+                        VStack(alignment: .leading, spacing: 16) {
+                            Text(String(localized: "Profil du vol"))
+                                .font(.headline)
+
+                            // Graphe altitude / temps
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(String(localized: "Altitude (m)"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+
+                                Chart(profileData.filter { $0.altitude != nil }) { point in
+                                    AreaMark(
+                                        x: .value("Temps (min)", point.minutes),
+                                        y: .value("Altitude", point.altitude ?? 0)
+                                    )
+                                    .interpolationMethod(.monotone)
+                                    .foregroundStyle(
+                                        LinearGradient(
+                                            colors: [.blue.opacity(0.45), .blue.opacity(0.05)],
+                                            startPoint: .top,
+                                            endPoint: .bottom
+                                        )
+                                    )
+
+                                    LineMark(
+                                        x: .value("Temps (min)", point.minutes),
+                                        y: .value("Altitude", point.altitude ?? 0)
+                                    )
+                                    .interpolationMethod(.monotone)
+                                    .foregroundStyle(.blue)
+                                    .lineStyle(StrokeStyle(lineWidth: 2))
+                                }
+                                .chartYScale(domain: .automatic(includesZero: false))
+                                .chartXAxisLabel(String(localized: "min"), alignment: .trailing)
+                                .frame(height: 150)
+                            }
+
+                            // Graphe vitesse verticale / temps
+                            if hasVzProfile {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(String(localized: "Vitesse verticale (m/s)"))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+
+                                    Chart {
+                                        // Ligne zéro
+                                        RuleMark(y: .value("Zéro", 0))
+                                            .foregroundStyle(.gray.opacity(0.6))
+                                            .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
+
+                                        // Montées en orange (Vz clampée à ≥ 0)
+                                        ForEach(profileData.filter { $0.vz != nil }) { point in
+                                            LineMark(
+                                                x: .value("Temps (min)", point.minutes),
+                                                y: .value("Vz", max(0, point.vz ?? 0)),
+                                                series: .value("Phase", "Montée")
+                                            )
+                                            .foregroundStyle(.orange)
+                                            .lineStyle(StrokeStyle(lineWidth: 1.5))
+                                        }
+
+                                        // Descentes en bleu (Vz clampée à ≤ 0)
+                                        ForEach(profileData.filter { $0.vz != nil }) { point in
+                                            LineMark(
+                                                x: .value("Temps (min)", point.minutes),
+                                                y: .value("Vz", min(0, point.vz ?? 0)),
+                                                series: .value("Phase", "Descente")
+                                            )
+                                            .foregroundStyle(.blue)
+                                            .lineStyle(StrokeStyle(lineWidth: 1.5))
+                                        }
+                                    }
+                                    .chartXAxisLabel(String(localized: "min"), alignment: .trailing)
+                                    .frame(height: 130)
+                                }
+                            }
+                        }
+                        .padding()
+                        .background(Color(.secondarySystemBackground))
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .padding(.horizontal)
+                    }
 
                     // Voile et spot
                     VStack(spacing: 12) {
@@ -719,6 +947,9 @@ struct FlightDetailView: View {
                     }
                 }
             }
+            .onAppear {
+                computeVerticalAnalysis()
+            }
             .sheet(isPresented: $showingEditSheet) {
                 EditFlightView(flight: flight)
             }
@@ -753,6 +984,36 @@ struct FlightDetailView: View {
         } else {
             return "\(Int(distance)) m"
         }
+    }
+
+    /// Calcule les stats verticales et le profil de vol (une seule fois à l'apparition)
+    private func computeVerticalAnalysis() {
+        guard let track = flight.gpsTrack, track.count >= 2 else {
+            verticalStats = nil
+            profileData = []
+            return
+        }
+
+        verticalStats = GPSTraceColorMapper.verticalStats(points: track)
+
+        // Échantillonner la trace pour les graphes (max ~240 points)
+        let verticalSpeeds = GPSTraceColorMapper.smoothedVerticalSpeeds(points: track)
+        guard let start = track.first?.timestamp else { return }
+
+        let maxPoints = 240
+        let step = max(1, track.count / maxPoints)
+        var data: [FlightProfilePoint] = []
+
+        for i in stride(from: 0, to: track.count, by: step) {
+            data.append(FlightProfilePoint(
+                index: i,
+                minutes: track[i].timestamp.timeIntervalSince(start) / 60,
+                altitude: track[i].altitude,
+                vz: verticalSpeeds[i]
+            ))
+        }
+
+        profileData = data
     }
 }
 
@@ -825,6 +1086,17 @@ struct FlightRow: View {
                     Text(flight.dateFormatted)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+
+                    // Icône du type de vol si défini
+                    if let type = flight.flightType, !type.isEmpty {
+                        Image(systemName: FlightTypes.icon(for: type))
+                            .font(.caption2)
+                            .foregroundStyle(.blue)
+                            .padding(4)
+                            .background(Color.blue.opacity(0.12))
+                            .clipShape(Circle())
+                            .accessibilityLabel(type)
+                    }
 
                     Spacer()
 
@@ -905,6 +1177,15 @@ struct EditFlightView: View {
     @State private var endDate: Date
     @State private var spotName: String
     @State private var notes: String
+
+    // Type de vol : tag sélectionné dans le Picker + texte libre pour « Autre… »
+    @State private var flightTypeSelection: String
+    @State private var customFlightType: String
+
+    /// Tag du Picker pour « Aucun » type de vol
+    private static let noneTypeTag = "__none__"
+    /// Tag du Picker pour « Autre… » (valeur libre)
+    private static let otherTypeTag = "__other__"
     @State private var isGeocodingSpot = false
     @State private var geocodingMessage: String?
     @State private var showingMapPicker = false
@@ -936,6 +1217,20 @@ struct EditFlightView: View {
         _notes = State(initialValue: flight.notes ?? "")
         if let lat = flight.latitude, let lon = flight.longitude {
             _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+        }
+
+        // Initialiser le type de vol en préservant les valeurs libres existantes
+        let currentType = flight.flightType ?? ""
+        if currentType.isEmpty {
+            _flightTypeSelection = State(initialValue: Self.noneTypeTag)
+            _customFlightType = State(initialValue: "")
+        } else if FlightTypes.all.contains(currentType) {
+            _flightTypeSelection = State(initialValue: currentType)
+            _customFlightType = State(initialValue: "")
+        } else {
+            // Valeur libre existante → « Autre… » avec le texte préservé
+            _flightTypeSelection = State(initialValue: Self.otherTypeTag)
+            _customFlightType = State(initialValue: currentType)
         }
 
         // Initialiser les statistiques (avec if let pour éviter les force unwraps)
@@ -1014,6 +1309,22 @@ struct EditFlightView: View {
                         ForEach(wings) { wing in
                             Text(wing.name).tag(wing as Wing?)
                         }
+                    }
+                }
+
+                Section(String(localized: "Type de vol")) {
+                    Picker(String(localized: "Type"), selection: $flightTypeSelection) {
+                        Text(String(localized: "Aucun")).tag(Self.noneTypeTag)
+                        ForEach(FlightTypes.all, id: \.self) { type in
+                            Label(type, systemImage: FlightTypes.icon(for: type)).tag(type)
+                        }
+                        Text(String(localized: "Autre…")).tag(Self.otherTypeTag)
+                    }
+
+                    // Champ libre révélé quand « Autre… » est sélectionné
+                    if flightTypeSelection == Self.otherTypeTag {
+                        TextField(String(localized: "Type personnalisé"), text: $customFlightType)
+                            .autocorrectionDisabled()
                     }
                 }
 
@@ -1315,6 +1626,17 @@ struct EditFlightView: View {
         flight.notes = notes.isEmpty ? nil : notes
         flight.latitude = selectedCoordinate?.latitude
         flight.longitude = selectedCoordinate?.longitude
+
+        // Type de vol : valeur du Picker ou texte libre (« Autre… »)
+        switch flightTypeSelection {
+        case Self.noneTypeTag:
+            flight.flightType = nil
+        case Self.otherTypeTag:
+            let trimmed = customFlightType.trimmingCharacters(in: .whitespacesAndNewlines)
+            flight.flightType = trimmed.isEmpty ? nil : trimmed
+        default:
+            flight.flightType = flightTypeSelection
+        }
 
         // Les statistiques ne sont plus modifiables, elles sont préservées
 

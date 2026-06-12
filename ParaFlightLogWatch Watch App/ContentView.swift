@@ -19,6 +19,8 @@ struct ContentView: View {
     @State private var isFlying: Bool = false
     // Timer data stockée au niveau ContentView
     @State private var flightStartDate: Date?
+    // Type de vol choisi (mémorisé : dernière valeur utilisée)
+    @State private var selectedFlightType: String? = UserDefaults.standard.string(forKey: "lastFlightType")
 
     // Alerte de récupération de session
     @State private var showingRecoveryAlert: Bool = false
@@ -43,6 +45,7 @@ struct ContentView: View {
             // Page 2 (droite) : Récap voile + bouton Start
             FlightStartView(
                 selectedWing: $selectedWing,
+                selectedFlightType: $selectedFlightType,
                 onStartFlight: {
                     startFlight()
                 }
@@ -56,6 +59,7 @@ struct ContentView: View {
             // Écran 3 : Timer actif (plein écran, impossible de quitter)
             ActiveFlightView(
                 wing: wing,
+                flightType: selectedFlightType,
                 flightStartDate: $flightStartDate,
                 onStopFlight: { duration in
                     stopFlight(duration: duration)
@@ -220,7 +224,8 @@ struct ContentView: View {
             totalDistance: flightData.distance,
             maxSpeed: flightData.speed,
             maxGForce: flightData.maxGForce > 1.0 ? flightData.maxGForce : nil,
-            gpsTrack: gpsTrack.isEmpty ? nil : gpsTrack
+            gpsTrack: gpsTrack.isEmpty ? nil : gpsTrack,
+            flightType: selectedFlightType
         )
 
         // Envoyer vers l'iPhone
@@ -416,7 +421,25 @@ struct FlightStartView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(WatchLocationService.self) private var locationService
     @Binding var selectedWing: WingDTO?
+    @Binding var selectedFlightType: String?
     let onStartFlight: () -> Void
+
+    /// Options du sélecteur : "non défini" (nil) + tous les types
+    private var flightTypeOptions: [String?] {
+        [nil] + FlightTypes.all.map { Optional($0) }
+    }
+
+    /// Passe au type suivant (cycle) et mémorise le choix
+    private func cycleFlightType() {
+        let currentIndex = flightTypeOptions.firstIndex(of: selectedFlightType) ?? 0
+        let next = flightTypeOptions[(currentIndex + 1) % flightTypeOptions.count]
+        selectedFlightType = next
+        if let next = next {
+            UserDefaults.standard.set(next, forKey: "lastFlightType")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "lastFlightType")
+        }
+    }
 
     var body: some View {
         VStack(spacing: 10) {
@@ -449,9 +472,29 @@ struct FlightStartView: View {
                         .lineLimit(1)
                 }
                 .padding(.vertical, 2)
-                
+
+                // Type de vol (tap pour faire défiler les types)
+                Button {
+                    cycleFlightType()
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: FlightTypes.icon(for: selectedFlightType))
+                            .font(.caption2)
+                            .foregroundStyle(selectedFlightType != nil ? .green : .secondary)
+                        Text(selectedFlightType ?? "—")
+                            .font(.caption)
+                            .foregroundStyle(selectedFlightType != nil ? .primary : .secondary)
+                            .lineLimit(1)
+                    }
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(Color.gray.opacity(0.15))
+                    .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
                 Spacer()
-                
+
                 // Bouton Start
                 Button {
                     onStartFlight()
@@ -492,6 +535,7 @@ struct ActiveFlightView: View {
     @Environment(WatchLocationService.self) private var locationService
 
     let wing: WingDTO  // Non-optional car fullScreenCover(item:) garantit une valeur
+    let flightType: String?  // Type de vol choisi au démarrage (optionnel)
     @Binding var flightStartDate: Date?
     let onStopFlight: (Int) -> Void
     let onDiscardFlight: () -> Void
@@ -526,6 +570,12 @@ struct ActiveFlightView: View {
                     Text("• \(size)m²")
                         .font(.system(size: 12))
                         .foregroundStyle(.blue)
+                }
+                // Type de vol (discret, si défini)
+                if let flightType = flightType {
+                    Image(systemName: FlightTypes.icon(for: flightType))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.green)
                 }
             }
 
