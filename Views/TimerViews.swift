@@ -37,6 +37,9 @@ struct TimerView: View {
     @State private var didInitFlightType = false
     @State private var userPickedFlightType = false
 
+    /// Service vario (singleton observable — bips audio temps réel)
+    private var vario: VarioService { .shared }
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -257,6 +260,18 @@ struct TimerView: View {
                             .font(.system(size: 64, weight: .bold, design: .rounded))
                             .monospacedDigit()
                             .foregroundStyle(isFlying ? .green : .primary)
+
+                        // Vz courante (vario actif + baromètre dispo)
+                        if isFlying && vario.isRunning && vario.isBarometerAvailable {
+                            HStack(spacing: 6) {
+                                Image(systemName: vario.currentVz >= 0 ? "arrow.up.circle.fill" : "arrow.down.circle.fill")
+                                Text(String(format: "%+.1f m/s", vario.currentVz))
+                                    .monospacedDigit()
+                            }
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(vzColor(vario.currentVz))
+                        }
                     }
 
                     Spacer()
@@ -290,6 +305,18 @@ struct TimerView: View {
                 }
             }
             .navigationTitle("Chrono")
+            .toolbar {
+                // Toggle vario : bips audio pendant le vol
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        toggleVario()
+                    } label: {
+                        Image(systemName: vario.isEnabled ? "speaker.wave.2.fill" : "speaker.slash")
+                            .foregroundStyle(vario.isEnabled ? Color.green : Color.secondary)
+                    }
+                    .accessibilityLabel("Vario")
+                }
+            }
             .sheet(isPresented: $showingManualSpot) {
                 ManualSpotEditView(manualSpot: $manualSpotOverride)
             }
@@ -364,6 +391,9 @@ struct TimerView: View {
         isFlying = true
         startBackgroundTimer()
 
+        // Démarrer le vario (ne bipe que si l'utilisateur l'a activé)
+        vario.start()
+
         // Démarrer la localisation et le tracking GPS en arrière-plan
         Task {
             locationService.startUpdatingLocation()
@@ -384,6 +414,9 @@ struct TimerView: View {
 
         backgroundTask?.invalidate()
         backgroundTask = nil
+
+        // Couper le vario (audio + baromètre)
+        vario.stop()
 
         // Arrêter le tracking et récupérer les données de vol
         let endAltitude = locationService.stopFlightTracking()
@@ -486,6 +519,27 @@ struct TimerView: View {
                 }
             }
         }
+    }
+
+    // MARK: - Vario
+
+    /// Active/désactive le vario ; applique immédiatement si un vol est en cours
+    private func toggleVario() {
+        vario.isEnabled.toggle()
+        if isFlying {
+            if vario.isEnabled {
+                vario.start()
+            } else {
+                vario.stop()
+            }
+        }
+    }
+
+    /// Couleur de la Vz : vert (bonne montée), orange (faible montée), bleu (descente)
+    private func vzColor(_ vz: Double) -> Color {
+        if vz >= 1.0 { return .green }
+        if vz >= 0 { return .orange }
+        return .blue
     }
 
     // MARK: - Mémorisation du type de vol par spot

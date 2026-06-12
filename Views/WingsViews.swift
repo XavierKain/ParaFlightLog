@@ -57,7 +57,7 @@ struct WingsView: View {
             }
         }
         .sheet(isPresented: $showingAddWing) {
-            AddWingView()
+            AddWingChoiceView()
         }
         .alert(
                 wingToDelete.map { "Supprimer \"\($0.name)\" ?" } ?? "Supprimer ?",
@@ -259,13 +259,180 @@ struct WingRow: View {
     }
 }
 
+// MARK: - AddWingChoiceView (Choix du mode d'ajout)
+
+/// Données pré-remplies depuis la bibliothèque pour le formulaire manuel
+/// (la photo est le PNG détouré téléchargé depuis GitHub)
+struct LibraryWingPrefill: Identifiable {
+    let id = UUID()
+    let name: String
+    let brand: String?
+    let size: String?
+    let type: String?
+    let photoData: Data?
+}
+
+/// Vue principale d'ajout de voile : « Depuis la bibliothèque » vs « Saisie manuelle »
+/// La sélection bibliothèque pré-remplit le formulaire manuel (infos + photo détourée)
+/// pour que l'utilisateur puisse régler propriété/maintenance avant de sauver.
+struct AddWingChoiceView: View {
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var showingLibrary = false
+    @State private var showingManualForm = false
+    @State private var libraryPrefill: LibraryWingPrefill?
+    @State private var isPreparingLibraryWing = false
+
+    var body: some View {
+        NavigationStack {
+            VStack(spacing: 32) {
+                Spacer()
+
+                // Icône principale
+                Image(systemName: "wind")
+                    .font(.system(size: 60))
+                    .foregroundStyle(.blue)
+
+                Text(String(localized: "addWing.title"))
+                    .font(.title2)
+                    .fontWeight(.semibold)
+
+                Text(String(localized: "addWing.subtitle"))
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                Spacer()
+
+                // Deux gros boutons
+                VStack(spacing: 16) {
+                    // Bouton Bibliothèque
+                    Button {
+                        showingLibrary = true
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image(systemName: "book.closed.fill")
+                                .font(.title2)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(String(localized: "addWing.fromLibrary"))
+                                    .font(.headline)
+                                Text(String(localized: "addWing.fromLibraryDesc"))
+                                    .font(.caption)
+                                    .foregroundStyle(.white.opacity(0.8))
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.blue)
+                        .foregroundStyle(.white)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(isPreparingLibraryWing)
+                    // Sheet attaché au bouton (plusieurs sheets sur la même vue = conflit)
+                    .sheet(isPresented: $showingLibrary) {
+                        WingLibraryView { libraryWing, selectedSize in
+                            prepareLibraryWing(libraryWing, size: selectedSize)
+                        }
+                    }
+
+                    // Bouton Saisie manuelle
+                    Button {
+                        showingManualForm = true
+                    } label: {
+                        HStack(spacing: 16) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.title2)
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(String(localized: "addWing.custom"))
+                                    .font(.headline)
+                                Text(String(localized: "addWing.customDesc"))
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(.secondary)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color(.systemGray6))
+                        .foregroundStyle(.primary)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+                    .disabled(isPreparingLibraryWing)
+                    .sheet(isPresented: $showingManualForm) {
+                        AddWingView(onSaved: { dismiss() })
+                    }
+                }
+                .padding(.horizontal, 24)
+
+                if isPreparingLibraryWing {
+                    ProgressView()
+                        .padding()
+                }
+
+                Spacer()
+            }
+            .navigationTitle(String(localized: "addWing.navTitle"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button(String(localized: "common.cancel")) {
+                        dismiss()
+                    }
+                    .disabled(isPreparingLibraryWing)
+                }
+            }
+            // Formulaire pré-rempli depuis la bibliothèque
+            .sheet(item: $libraryPrefill) { prefill in
+                AddWingView(prefill: prefill, onSaved: { dismiss() })
+            }
+        }
+    }
+
+    /// Télécharge la photo détourée puis ouvre le formulaire manuel pré-rempli
+    /// (l'utilisateur peut ajuster propriété/maintenance avant de sauver)
+    private func prepareLibraryWing(_ libraryWing: LibraryWing, size: String) {
+        isPreparingLibraryWing = true
+
+        Task {
+            // Télécharger l'image PNG détourée (cache mémoire/disque sinon GitHub)
+            let imageData = await WingLibraryService.shared.image(for: libraryWing)
+
+            // Nom du fabricant depuis le catalogue
+            let manufacturerName = WingLibraryService.shared.manufacturerName(for: libraryWing)
+
+            // Laisser la sheet bibliothèque finir de se fermer avant d'en présenter une autre
+            try? await Task.sleep(nanoseconds: 350_000_000)
+
+            await MainActor.run {
+                // name = modèle seul (ex: "Moustache M1"), brand = marque (ex: "Flare")
+                libraryPrefill = LibraryWingPrefill(
+                    name: libraryWing.model,
+                    brand: manufacturerName,
+                    size: size,
+                    type: libraryWing.type,
+                    photoData: imageData
+                )
+                isPreparingLibraryWing = false
+            }
+        }
+    }
+}
+
 // MARK: - AddWingView (Formulaire manuel)
 
-/// Formulaire d'ajout manuel d'une voile
+/// Formulaire d'ajout manuel d'une voile (éventuellement pré-rempli depuis la bibliothèque)
 struct AddWingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(WatchConnectivityManager.self) private var watchManager
+
+    /// Callback appelé après une sauvegarde réussie (permet de fermer la vue parente)
+    private let onSaved: (() -> Void)?
 
     @State private var name: String = ""
     @State private var brand: String = ""
@@ -286,6 +453,25 @@ struct AddWingView: View {
 
     let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
     let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
+
+    /// - Parameters:
+    ///   - prefill: infos + photo détourée venant de la bibliothèque (nil = saisie vierge)
+    ///   - onSaved: appelé après une sauvegarde réussie (ferme la vue de choix parente)
+    init(prefill: LibraryWingPrefill? = nil, onSaved: (() -> Void)? = nil) {
+        self.onSaved = onSaved
+
+        if let prefill {
+            _name = State(initialValue: prefill.name)
+            _brand = State(initialValue: prefill.brand ?? "")
+            _size = State(initialValue: prefill.size ?? "")
+            if let prefillType = prefill.type, types.contains(prefillType) {
+                _type = State(initialValue: prefillType)
+            }
+            _photoData = State(initialValue: prefill.photoData)
+            // Couleur inconnue depuis la bibliothèque : champ libre vide → nil si non renseigné
+            _color = State(initialValue: "Autre...")
+        }
+    }
 
     var body: some View {
         NavigationStack {
@@ -470,6 +656,8 @@ struct AddWingView: View {
                 try modelContext.save()
                 watchManager.sendWingsToWatch()
                 dismiss()
+                // Ferme aussi la vue de choix parente (bibliothèque vs manuel)
+                onSaved?()
             } catch {
                 logError("Failed to save wing: \(error.localizedDescription)", category: .dataController)
                 showSaveError = true

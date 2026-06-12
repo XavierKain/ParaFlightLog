@@ -465,6 +465,9 @@ struct FlightDetailView: View {
     @State private var traceMode: TraceDisplayMode = .speed  // Mode de coloration de la trace
     @State private var showingRenameSpotSheet = false
     @State private var renameSpotNewName = ""
+    @State private var showingReplay = false           // Replay 2D/3D du vol
+    @State private var showingIGCShareSheet = false    // Partage du fichier IGC exporté
+    @State private var igcFileURL: URL?                // URL temporaire du fichier .igc
 
     // Stats verticales et profil calculés une seule fois à l'apparition
     @State private var verticalStats: VerticalStats?
@@ -605,6 +608,20 @@ struct FlightDetailView: View {
                             showingFullScreenMap = true
                         }
                         .padding(.horizontal)
+
+                        // Bouton Replay 2D/3D du vol (si trace GPS exploitable)
+                        if let track = flight.gpsTrack, track.count >= 2 {
+                            Button {
+                                showingReplay = true
+                            } label: {
+                                Label(String(localized: "Replay"), systemImage: "play.circle")
+                                    .font(.headline)
+                                    .frame(maxWidth: .infinity)
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .tint(.orange)
+                            .padding(.horizontal)
+                        }
 
                         // Légende adaptée au mode de coloration actif
                         if traceMode == .speed && !coloredSegments.isEmpty {
@@ -934,8 +951,21 @@ struct FlightDetailView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .primaryAction) {
-                    Button {
-                        showingShareSheet = true
+                    // Menu de partage : partage classique + export IGC si trace disponible
+                    Menu {
+                        Button {
+                            showingShareSheet = true
+                        } label: {
+                            Label(String(localized: "Partager le vol"), systemImage: "square.and.arrow.up")
+                        }
+
+                        if (flight.gpsTrack?.count ?? 0) >= 2 {
+                            Button {
+                                exportIGC()
+                            } label: {
+                                Label(String(localized: "Exporter IGC"), systemImage: "doc.badge.arrow.up")
+                            }
+                        }
                     } label: {
                         Label("Partager", systemImage: "square.and.arrow.up")
                     }
@@ -958,6 +988,16 @@ struct FlightDetailView: View {
             }
             .fullScreenCover(isPresented: $showingFullScreenMap) {
                 FullScreenMapView(flight: flight, initialRegion: mapRegion)
+            }
+            .fullScreenCover(isPresented: $showingReplay) {
+                FlightReplayView(flight: flight)
+            }
+            .sheet(isPresented: $showingIGCShareSheet) {
+                if let url = igcFileURL {
+                    ShareSheet(items: [url]) { _ in
+                        showingIGCShareSheet = false
+                    }
+                }
             }
             .sheet(isPresented: $showingRenameSpotSheet) {
                 SpotRenameSheet(
@@ -984,6 +1024,15 @@ struct FlightDetailView: View {
         } else {
             return "\(Int(distance)) m"
         }
+    }
+
+    /// Génère le fichier IGC du vol et présente la feuille de partage
+    private func exportIGC() {
+        // Nom du pilote depuis le profil (@AppStorage "pilotName")
+        let pilotName = UserDefaults.standard.string(forKey: "pilotName")
+        guard let url = IGCExporter.exportIGC(flight: flight, pilotName: pilotName) else { return }
+        igcFileURL = url
+        showingIGCShareSheet = true
     }
 
     /// Calcule les stats verticales et le profil de vol (une seule fois à l'apparition)

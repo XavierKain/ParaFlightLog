@@ -20,7 +20,7 @@ La raison d'être de l'app : traquer le temps de vol **par aile** pour deux usag
 
 À faire : flag « possédée » sur Wing + éventuellement heures initiales à l'achat (occasion), date d'achat/revente, seuils d'alerte maintenance ; stats d'expérience agrégées par type d'aile et par taille.
 
-## 4. Vario intégré (téléphone + Watch)
+## 4. Vario intégré (téléphone + Watch) — ✅ livré (Phase B, 2026-06-12) — à valider en vol réel (cadence baro Watch instrumentée dans les logs)
 
 Pour les vols thermiques : un vario activable/désactivable sur iPhone **et** Apple Watch (bips/haptique selon taux de montée/descente).
 
@@ -28,7 +28,7 @@ Pour les vols thermiques : un vario activable/désactivable sur iPhone **et** Ap
 
 Voir sur nos traces : vitesse horizontale **et verticale** (ascension en thermique, à la corde/treuil, en soaring), hauteurs atteintes et vitesse de montée. Coloration de trace par Vz, graphe altitude/temps, stats de montée.
 
-## 6. S'inspirer de Wingman (wingmanfly.app)
+## 6. S'inspirer de Wingman (wingmanfly.app) — ✅ trio thermique livré (vario, thermal viewer, détection auto) + IGC + replay 2D/3D
 
 App iOS de référence pour le thermique : vario très réactif iPhone/Watch, « thermal viewer » (trace colorée par montée), détection auto décollage/atterrissage, instruments en vol. Analyser et reprendre le meilleur.
 

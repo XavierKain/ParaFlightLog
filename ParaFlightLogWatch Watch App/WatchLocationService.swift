@@ -43,6 +43,9 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     }
 
     var lastKnownLocation: CLLocation?
+    /// Vitesse sol courante (m/s) issue du GPS — nil si invalide.
+    /// Utilisée par la détection auto décollage/atterrissage et le diagnostic vario.
+    var currentSpeed: Double?
     var currentSpotName: String = String(localized: "Searching...")
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
@@ -518,6 +521,8 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         lastKnownLocation = location
+        // Vitesse sol courante (CLLocation.speed < 0 = invalide)
+        currentSpeed = location.speed >= 0 ? location.speed : nil
 
         // Mise à jour des données de tracking si un vol est en cours
         if isTracking {

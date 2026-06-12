@@ -9,6 +9,7 @@
 import SwiftUI
 import CoreLocation
 import WidgetKit
+import WatchKit
 
 struct ContentView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
@@ -30,6 +31,11 @@ struct ContentView: View {
     private let workoutManager = WorkoutManager.shared
     // Référence au FlightSessionManager pour la persistance
     private let sessionManager = FlightSessionManager.shared
+
+    // Détection automatique décollage/atterrissage (opt-in, UserDefaults "autoDetect.enabled")
+    @State private var autoDetector = FlightAutoDetector()
+    // Timer 1 Hz qui alimente le détecteur pendant la surveillance du décollage
+    @State private var takeoffMonitorTimer: Timer?
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -66,7 +72,8 @@ struct ContentView: View {
                 },
                 onDiscardFlight: {
                     discardFlight()
-                }
+                },
+                autoDetector: autoDetector
             )
             .environment(watchManager)
             .environment(locationService)
@@ -75,6 +82,16 @@ struct ContentView: View {
         .onAppear {
             // Vérifier s'il y a une session à récupérer après un crash
             checkForRecoverableSession()
+            // Armer la détection auto de décollage si le contexte le permet
+            updateTakeoffMonitoring()
+        }
+        .onChange(of: selectedTab) { _, _ in
+            // FlightStartView visible/quittée : (dés)armer la détection de décollage
+            updateTakeoffMonitoring()
+        }
+        .onChange(of: selectedWing?.id) { _, _ in
+            // Voile (dé)sélectionnée : (dés)armer la détection de décollage
+            updateTakeoffMonitoring()
         }
         .alert("Vol en cours récupéré", isPresented: $showingRecoveryAlert) {
             Button("Sauvegarder") {
@@ -152,6 +169,15 @@ struct ContentView: View {
     private func startFlight() {
         guard let wing = selectedWing else { return }
 
+        // Détection auto : arrêter la surveillance du décollage et passer
+        // en surveillance d'atterrissage (uniquement si la détection est activée)
+        stopTakeoffMonitoring()
+        if UserDefaults.standard.bool(forKey: "autoDetect.enabled") {
+            autoDetector.flightStarted()
+        } else {
+            autoDetector.disarm()
+        }
+
         // PRÉCHARGER L'IMAGE DE FAÇON SYNCHRONE avant d'afficher le vol
         WatchImageCache.shared.preloadImageSync(for: wing)
 
@@ -184,6 +210,15 @@ struct ContentView: View {
             locationService.startUpdatingLocation()
             locationService.startFlightTracking()
 
+            // Démarrer le vario haptique si activé par l'utilisateur.
+            // Démarré APRÈS la session workout : le baromètre et l'haptique
+            // en background en dépendent.
+            if WatchVarioService.isEnabled {
+                WatchVarioService.shared.start(speedProvider: { [weak locationService] in
+                    locationService?.currentSpeed
+                })
+            }
+
             // Notifier l'iPhone pour démarrer le live flight (si connecté)
             watchManager.notifyLiveFlightStart(
                 wingName: wingName,
@@ -201,6 +236,10 @@ struct ContentView: View {
     private func stopFlight(duration: Int) {
         // Utiliser activeFlightWing qui a été capturé au démarrage
         guard let wing = activeFlightWing, let start = flightStartDate else { return }
+
+        // Arrêter le vario haptique et la détection auto
+        WatchVarioService.shared.stop()
+        autoDetector.flightStopped()
 
         let end = Date()
 
@@ -259,6 +298,10 @@ struct ContentView: View {
     }
 
     private func discardFlight() {
+        // Arrêter le vario haptique et la détection auto
+        WatchVarioService.shared.stop()
+        autoDetector.flightStopped()
+
         // Annuler le vol sans sauvegarder (résultat ignoré intentionnellement)
         _ = locationService.stopFlightTracking()
 
@@ -283,6 +326,53 @@ struct ContentView: View {
         activeFlightWing = nil  // Ferme le fullScreenCover
         selectedWing = nil
         selectedTab = 1  // Revenir à la sélection de voile (page du milieu)
+    }
+
+    // MARK: - Détection automatique du décollage
+
+    /// (Dés)arme la surveillance du décollage selon le contexte courant :
+    /// FlightStartView visible + voile sélectionnée + autoDetect activé + pas en vol.
+    /// La détection n'interfère JAMAIS quand autoDetect est désactivé (défaut).
+    private func updateTakeoffMonitoring() {
+        let autoDetectEnabled = UserDefaults.standard.bool(forKey: "autoDetect.enabled")
+        let shouldMonitor = autoDetectEnabled && !isFlying && selectedTab == 2 && selectedWing != nil
+
+        guard shouldMonitor else {
+            stopTakeoffMonitoring()
+            return
+        }
+        guard takeoffMonitorTimer == nil else { return }   // Déjà en surveillance
+
+        autoDetector.onTakeoffDetected = { [self] in
+            handleAutoTakeoff()
+        }
+        autoDetector.arm()
+
+        // Alimenter le détecteur à 1 Hz avec la vitesse sol GPS
+        takeoffMonitorTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [self] _ in
+            autoDetector.update(
+                speed: locationService.currentSpeed,
+                timestamp: Date().timeIntervalSince1970
+            )
+        }
+        watchLogInfo("Auto-detect: takeoff monitoring armed", category: .flight)
+    }
+
+    /// Arrête la surveillance du décollage (timer + désarmement)
+    private func stopTakeoffMonitoring() {
+        takeoffMonitorTimer?.invalidate()
+        takeoffMonitorTimer = nil
+        if autoDetector.state == .armed {
+            autoDetector.disarm()
+        }
+    }
+
+    /// Décollage confirmé par le détecteur → démarrage automatique du vol
+    private func handleAutoTakeoff() {
+        guard !isFlying, selectedWing != nil else { return }
+        watchLogInfo("Auto-detect: takeoff detected, starting flight automatically", category: .flight)
+        WKInterfaceDevice.current().play(.start)
+        startFlight()
     }
 }
 
@@ -539,12 +629,24 @@ struct ActiveFlightView: View {
     @Binding var flightStartDate: Date?
     let onStopFlight: (Int) -> Void
     let onDiscardFlight: () -> Void
+    // Détecteur d'atterrissage automatique (machine à états, possédé par ContentView)
+    let autoDetector: FlightAutoDetector
 
     @State private var elapsedSeconds: Int = 0
     @State private var timer: Timer?
     @State private var showingStopSheet: Bool = false
     @State private var finalDuration: Int = 0
     @State private var timerUpdateCounter: Int = 0
+    // Compte à rebours avant arrêt auto après détection d'atterrissage (nil = pas d'alerte)
+    @State private var landingCountdown: Int?
+
+    /// Service vario (singleton @Observable : son accès dans body suffit au tracking)
+    private var vario: WatchVarioService { WatchVarioService.shared }
+
+    /// Détection auto activée par l'utilisateur ?
+    private var isAutoDetectEnabled: Bool {
+        UserDefaults.standard.bool(forKey: "autoDetect.enabled")
+    }
 
     var body: some View {
         VStack(spacing: 2) {
@@ -634,6 +736,28 @@ struct ActiveFlightView: View {
             }
             .padding(.vertical, 2)
 
+            // Vario : Vz courante si actif et fiable, sinon petit indicateur baro
+            if vario.isRunning {
+                if vario.isBarometerAvailable && vario.isBarometerReliable {
+                    HStack(spacing: 3) {
+                        Image(systemName: vario.currentVz >= 0 ? "arrow.up.right" : "arrow.down.right")
+                            .font(.system(size: 10, weight: .bold))
+                        Text(String(format: "%+.1f m/s", vario.currentVz))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                    }
+                    .foregroundStyle(varioColor)
+                } else {
+                    HStack(spacing: 3) {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 9))
+                        Text("Baro indisponible")
+                            .font(.system(size: 11))
+                    }
+                    .foregroundStyle(.yellow)
+                }
+            }
+
             Spacer()
                 .frame(maxHeight: 2)
 
@@ -661,6 +785,12 @@ struct ActiveFlightView: View {
         .background(Color.black) // Fond noir opaque
         .navigationBarBackButtonHidden(true) // Cacher le bouton retour
         .toolbar(.hidden, for: .navigationBar) // Cacher la barre de navigation
+        // Alerte d'atterrissage détecté (compte à rebours avant arrêt auto)
+        .overlay {
+            if let countdown = landingCountdown {
+                landingPromptOverlay(countdown: countdown)
+            }
+        }
         .sheet(isPresented: $showingStopSheet) {
             // Utiliser une vue conteneur qui gère la transition interne sans flash
             StopFlightContainerView(
@@ -694,12 +824,131 @@ struct ActiveFlightView: View {
         .onAppear {
             // Démarrer le timer immédiatement sans délai
             startTimerImmediately()
+            // Câbler la détection automatique d'atterrissage (si activée)
+            setupAutoDetection()
         }
         .onDisappear {
             stopTimer()
         }
     }
-    
+
+    // MARK: - Vario (affichage Vz)
+
+    /// Couleur de la Vz : vert en montée, rouge en forte descente, gris sinon
+    private var varioColor: Color {
+        if vario.currentVz >= 0.2 { return .green }
+        if vario.currentVz <= -2.5 { return .red }
+        return .gray
+    }
+
+    // MARK: - Détection automatique d'atterrissage
+
+    /// Câble les callbacks du détecteur — uniquement si autoDetect est activé
+    private func setupAutoDetection() {
+        guard isAutoDetectEnabled else { return }
+
+        // S'assurer que le détecteur est bien en mode vol (démarrage manuel inclus)
+        if autoDetector.state == .idle || autoDetector.state == .armed {
+            autoDetector.flightStarted()
+        }
+
+        autoDetector.onLandingDetected = { [self] in
+            watchLogInfo("Auto-detect: landing detected, starting 20 s countdown", category: .flight)
+            WKInterfaceDevice.current().play(.notification)
+            landingCountdown = 20
+        }
+    }
+
+    /// Appelé chaque seconde par le timer du vol : alimente le détecteur
+    /// et fait avancer le compte à rebours d'atterrissage.
+    private func updateAutoDetection() {
+        guard isAutoDetectEnabled else { return }
+        // Ne pas interférer si l'utilisateur est déjà dans la feuille d'arrêt
+        guard !showingStopSheet else { return }
+
+        // Compte à rebours en cours : décrémenter, puis arrêt auto à zéro
+        if let countdown = landingCountdown {
+            if countdown <= 1 {
+                confirmAutoLanding()
+            } else {
+                landingCountdown = countdown - 1
+            }
+            return
+        }
+
+        // Vz vario seulement si le baro est fiable, sinon secours altitude GPS
+        let varioService = WatchVarioService.shared
+        let vz: Double? = (varioService.isRunning && varioService.isBarometerAvailable && varioService.isBarometerReliable)
+            ? varioService.currentVz : nil
+        autoDetector.update(
+            speed: locationService.currentSpeed,
+            vz: vz,
+            gpsAltitude: locationService.currentAltitude,
+            timestamp: Date().timeIntervalSince1970
+        )
+    }
+
+    /// Arrêt automatique (fin du compte à rebours ou « Arrêter maintenant »)
+    private func confirmAutoLanding() {
+        guard landingCountdown != nil else { return }
+        landingCountdown = nil
+        watchLogInfo("Auto-detect: landing confirmed, stopping flight automatically", category: .flight)
+        WKInterfaceDevice.current().play(.stop)
+
+        // Même chemin que la sauvegarde manuelle : arrêter timer + GPS puis sauvegarder
+        let duration = elapsedSeconds
+        stopTimer()
+        locationService.stopUpdatingLocation()
+        showingStopSheet = false
+        onStopFlight(duration)
+    }
+
+    /// Overlay « Atterrissage détecté » avec compte à rebours et choix utilisateur
+    private func landingPromptOverlay(countdown: Int) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: "arrow.down.to.line.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.orange)
+
+            Text("Atterrissage détecté")
+                .font(.headline)
+                .multilineTextAlignment(.center)
+
+            Text("Le vol va s'arrêter dans \(countdown) s")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .monospacedDigit()
+
+            Button {
+                // L'utilisateur continue : on réarme la détection d'atterrissage
+                landingCountdown = nil
+                autoDetector.landingDismissed()
+                watchLogInfo("Auto-detect: landing dismissed by user, flight continues", category: .flight)
+            } label: {
+                Text("Continuer le vol")
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
+
+            Button {
+                confirmAutoLanding()
+            } label: {
+                Text("Arrêter maintenant")
+                    .font(.caption)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.red)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color.black.opacity(0.96))
+    }
+
     private func startTimerImmediately() {
         // Calculer immédiatement le temps écoulé
         if let start = flightStartDate {
@@ -722,6 +971,9 @@ struct ActiveFlightView: View {
                 timerUpdateCounter = 0
                 updateSessionData()
             }
+
+            // Détection automatique d'atterrissage (no-op si autoDetect désactivé)
+            updateAutoDetection()
         }
     }
 
@@ -1053,6 +1305,9 @@ struct WatchSettingsView: View {
     // États locaux synchronisés avec WatchSettings
     @State private var autoWaterLock: Bool = WatchSettings.shared.autoWaterLockEnabled
     @State private var allowDismiss: Bool = WatchSettings.shared.allowSessionDismiss
+    // Réglages locaux à la Watch (UserDefaults simples)
+    @State private var varioEnabled: Bool = UserDefaults.standard.bool(forKey: "vario.enabled")
+    @State private var autoDetectEnabled: Bool = UserDefaults.standard.bool(forKey: "autoDetect.enabled")
 
     var body: some View {
         ScrollView {
@@ -1115,6 +1370,54 @@ struct WatchSettingsView: View {
                 .background(Color.gray.opacity(0.15))
                 .clipShape(RoundedRectangle(cornerRadius: 10))
 
+                // Vario haptique Toggle
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(isOn: $varioEnabled) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "waveform.path.ecg")
+                                .foregroundStyle(.green)
+                            Text("Vario haptique")
+                                .font(.subheadline)
+                        }
+                    }
+                    .tint(.green)
+                    .onChange(of: varioEnabled) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: "vario.enabled")
+                    }
+
+                    Text("Taps de montée pendant le vol")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 10)
+                .background(Color.gray.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
+                // Détection auto décollage/atterrissage Toggle
+                VStack(alignment: .leading, spacing: 4) {
+                    Toggle(isOn: $autoDetectEnabled) {
+                        HStack(spacing: 8) {
+                            Image(systemName: "airplane.departure")
+                                .foregroundStyle(.blue)
+                            Text("Détection auto")
+                                .font(.subheadline)
+                        }
+                    }
+                    .tint(.blue)
+                    .onChange(of: autoDetectEnabled) { _, newValue in
+                        UserDefaults.standard.set(newValue, forKey: "autoDetect.enabled")
+                    }
+
+                    Text("Décollage et atterrissage automatiques")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.horizontal, 8)
+                .padding(.vertical, 10)
+                .background(Color.gray.opacity(0.15))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+
                 Spacer()
 
                 // Indication swipe
@@ -1133,6 +1436,8 @@ struct WatchSettingsView: View {
             // Recharger les valeurs depuis WatchSettings au cas où elles auraient changé
             autoWaterLock = WatchSettings.shared.autoWaterLockEnabled
             allowDismiss = WatchSettings.shared.allowSessionDismiss
+            varioEnabled = UserDefaults.standard.bool(forKey: "vario.enabled")
+            autoDetectEnabled = UserDefaults.standard.bool(forKey: "autoDetect.enabled")
         }
         .onReceive(NotificationCenter.default.publisher(for: .watchSettingsUpdatedFromPhone)) { _ in
             // Rafraîchir les états locaux quand l'iPhone envoie des changements

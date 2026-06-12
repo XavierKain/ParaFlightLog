@@ -96,6 +96,78 @@ final class ScreenshotTests: XCTestCase {
     }
 
     @MainActor
+    func testPhaseBScreens() throws {
+        let app = XCUIApplication()
+        app.launch()
+
+        let tabBar = app.tabBars.firstMatch
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 10))
+
+        // 1. Onglet Vol : toggle vario visible
+        tabBar.buttons.element(boundBy: 0).tap()
+        sleep(1)
+        attach(app, name: "vol_tab_vario")
+
+        // 2. Replay : Logbook > premier vol > bouton Replay
+        tabBar.buttons.element(boundBy: 1).tap()
+        sleep(1)
+        // Cibler le vol de test qui possède une trace GPS
+        let gpsFlightCell = app.cells.containing(.staticText, identifier: "Tarifa Test").firstMatch
+        let firstCell = gpsFlightCell.exists ? gpsFlightCell : app.cells.element(boundBy: 0)
+        if firstCell.waitForExistence(timeout: 5) {
+            firstCell.tap()
+            sleep(2)
+            attach(app, name: "diag_after_cell_tap")
+            let replayButton = app.buttons["Replay"]
+            XCTAssertTrue(replayButton.waitForExistence(timeout: 5), "Le bouton Replay doit exister sur un vol avec trace")
+            if replayButton.exists {
+                replayButton.tap()
+                sleep(2)
+                attach(app, name: "replay_2d")
+                XCTAssertTrue(app.state == .runningForeground, "Le replay ne doit pas crasher")
+                // Basculer en 3D si le contrôle existe
+                let threeD = app.buttons["3D"]
+                if threeD.exists {
+                    threeD.tap()
+                    sleep(3)
+                    attach(app, name: "replay_3d")
+                }
+            }
+        }
+
+        // Relancer l'app pour repartir d'un état propre (fermer replay/détail de façon fiable)
+        app.terminate()
+        app.launch()
+        XCTAssertTrue(tabBar.waitForExistence(timeout: 10))
+
+        // 3. Librairie de voiles : Réglages > Mes voiles > +
+        tabBar.buttons.element(boundBy: 3).tap()
+        sleep(1)
+        let wingsRow = app.staticTexts["Mes voiles"]
+        if wingsRow.waitForExistence(timeout: 5) {
+            wingsRow.tap()
+            sleep(1)
+            // Bouton + (ajout)
+            let addButton = app.navigationBars.buttons.matching(NSPredicate(format: "label CONTAINS 'plus' OR label CONTAINS 'Ajouter' OR label == 'Add'")).firstMatch
+            if addButton.exists {
+                addButton.tap()
+                sleep(1)
+                attach(app, name: "add_wing_chooser")
+                // Depuis la bibliothèque
+                let libraryButton = app.buttons.matching(NSPredicate(format: "label CONTAINS 'bibliothèque' OR label CONTAINS 'Bibliothèque' OR label CONTAINS 'library'")).firstMatch
+                if libraryButton.waitForExistence(timeout: 2) {
+                    libraryButton.tap()
+                    sleep(4) // téléchargement du catalogue GitHub
+                    attach(app, name: "wing_library")
+                    XCTAssertTrue(app.state == .runningForeground, "La bibliothèque ne doit pas crasher")
+                }
+            }
+        }
+
+        XCTAssertTrue(app.state == .runningForeground)
+    }
+
+    @MainActor
     private func attach(_ app: XCUIApplication, name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name

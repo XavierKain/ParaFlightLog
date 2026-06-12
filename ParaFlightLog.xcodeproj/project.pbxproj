@@ -20,6 +20,8 @@
 		2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */; };
 		257C68F32ECB7651005F3773 /* ParaFlightLogWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		25C979902EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
+		VA0000012EEBB00000000001 /* VarioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = VA0000002EEBB00000000000 /* VarioEngine.swift */; };
+		VA0000022EEBB00000000002 /* VarioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = VA0000002EEBB00000000000 /* VarioEngine.swift */; };
 		25C979922EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		25C979932EDBB5DA009233B8 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798E2EDBB5DA009233B8 /* Models.swift */; };
 		3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
@@ -102,6 +104,7 @@
 		257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ParaFlightLogWatch Watch App.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		25C9798E2EDBB5DA009233B8 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
 		25C9798F2EDBB5DA009233B8 /* SharedModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedModels.swift; sourceTree = "<group>"; };
+		VA0000002EEBB00000000000 /* VarioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VarioEngine.swift; sourceTree = "<group>"; };
 		362EAB42550846EE9491A703 /* ZipBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipBackup.swift; sourceTree = "<group>"; };
 		38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		3D6E3BD81946B048929752FA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
@@ -238,6 +241,7 @@
 				2564C6552EDBB92000C716D0 /* Views */,
 				2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */,
 				25C9798F2EDBB5DA009233B8 /* SharedModels.swift */,
+				VA0000002EEBB00000000000 /* VarioEngine.swift */,
 				362EAB42550846EE9491A703 /* ZipBackup.swift */,
 				257C68D72ECB7559005F3773 /* ParaFlightLog */,
 				257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */,
@@ -452,6 +456,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				25C979922EDBB5DA009233B8 /* SharedModels.swift in Sources */,
+				VA0000012EEBB00000000001 /* VarioEngine.swift in Sources */,
 				25C979932EDBB5DA009233B8 /* Models.swift in Sources */,
 				2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */,
 				2564C6582EDBB92000C716D0 /* DataController.swift in Sources */,
@@ -478,6 +483,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				25C979902EDBB5DA009233B8 /* SharedModels.swift in Sources */,
+				VA0000022EEBB00000000002 /* VarioEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -720,6 +726,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "SoarX utilise le baromètre pour le variomètre (taux de montée) pendant vos vols.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -757,6 +764,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "SoarX utilise le baromètre pour le variomètre (taux de montée) pendant vos vols.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
