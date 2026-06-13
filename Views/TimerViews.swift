@@ -246,6 +246,25 @@ struct TimerView: View {
                     .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                     .padding(.horizontal)
 
+                    // Radio vocale SoarX Voice (sur le canal du spot courant).
+                    // Visible hors vol ET pendant le vol.
+                    Button {
+                        VoiceLinkService.openRadio(forSpot: manualSpotOverride ?? currentSpot)
+                    } label: {
+                        HStack(spacing: 8) {
+                            Image(systemName: "antenna.radiowaves.left.and.right")
+                                .font(.subheadline)
+                            Text("Radio")
+                                .font(.subheadline)
+                        }
+                        .foregroundStyle(.blue)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 10)
+                        .background(Color(.systemBackground))
+                        .cornerRadius(10)
+                        .shadow(color: .black.opacity(0.08), radius: 3, x: 0, y: 1)
+                    }
+
                     Spacer()
 
                     // Chrono
