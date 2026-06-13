@@ -17,11 +17,19 @@ Refonte profonde livrée sur la branche `V10` (design : `docs/superpowers/specs/
 - **Phase A** : voiles possédées vs empruntées (compteur matériel, alertes révision), type de vol au démarrage (iPhone + Watch, mémorisé par spot), analyse verticale (thermal viewer, graphes altitude/Vz, gain cumulé).
 - **Phase B** : vario iPhone (bips audio en arrière-plan) + Watch (haptique) sur baromètre/Kalman — *à valider en vol réel* ; détection auto décollage/atterrissage (opt-in, Watch) ; **export IGC** ; **replay 2D/3D** du vol ; **librairie de voiles restaurée** (catalogue GitHub paraflightlog-wings, photos détourées, zéro serveur).
 
+## Après-midi 2026-06-13 ✅
+
+- Lien vers SoarX Voice (radio par spot via URL scheme).
+- Backend communautaire **conçu + scaffoldé** (Supabase + Sign in with Apple), couche client désactivée par défaut — voir `backend/README.md` pour la mise en ligne.
+- **Tests unitaires** (cible ParaFlightLogTests) : vario/Kalman, IGC, détection auto/pause soaring.
+- **Live Activities** : vol en cours sur l'écran verrouillé + Dynamic Island.
+- Traductions anglaises des nouveaux écrans.
+- Icône SoarX : déjà en place (light/dark/tinted).
+
 ## V10.1 — Candidats restants
 
 1. **Live Activities iOS** — vol en cours sur l'écran verrouillé / Dynamic Island.
-2. **Icône SoarX dédiée** (l'icône actuelle est conservée de ParaFlightLog).
-3. **Tests unitaires** ZipBackup / ExcelImporter / BadgeService / IGCExporter / FlightAutoDetector.
+3. **Tests unitaires** restants : ZipBackup / ExcelImporter / BadgeService (vario/IGC/auto-détection déjà couverts).
 4. **Migration des contacts d'urgence** depuis l'ancienne app (re-saisie manuelle pour l'instant).
 5. **Signature IGC validée XContest** (G-record cryptographique).
 
