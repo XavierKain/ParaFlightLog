@@ -240,9 +240,12 @@ struct ContentView: View {
         }
     }
 
-    private func stopFlight(duration: Int) {
+    private func stopFlight(duration rawDuration: Int) {
         // Utiliser activeFlightWing qui a été capturé au démarrage
         guard let wing = activeFlightWing, let start = flightStartDate else { return }
+
+        // Au moins 1 s : évite un vol de durée nulle (pauses == temps écoulé)
+        let duration = max(1, rawDuration)
 
         // Arrêter le vario haptique et la détection auto
         WatchVarioService.shared.stop()

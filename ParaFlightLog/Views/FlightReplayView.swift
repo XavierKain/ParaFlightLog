@@ -120,7 +120,8 @@ struct ReplayEngine {
             let mid = (lo + hi) / 2
             if offsets[mid] <= t { lo = mid } else { hi = mid }
         }
-        let i = lo
+        // Garde-fou : garantit i et i+1 dans les bornes même pour 2 points
+        let i = min(lo, points.count - 2)
         let p0 = points[i]
         let p1 = points[i + 1]
         let dt = offsets[i + 1] - offsets[i]

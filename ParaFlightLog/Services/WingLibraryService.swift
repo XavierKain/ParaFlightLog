@@ -251,9 +251,11 @@ final class WingLibraryService {
     }
 
     private init() {
-        // Créer le dossier de cache si nécessaire
-        let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
-            .appendingPathComponent("WingLibrary", isDirectory: true)
+        // Créer le dossier de cache si nécessaire (fallback sur le dossier temporaire
+        // si le dossier Caches est indisponible — évite tout crash au démarrage)
+        let baseCacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        let cacheDir = baseCacheDir.appendingPathComponent("WingLibrary", isDirectory: true)
         try? FileManager.default.createDirectory(at: cacheDir, withIntermediateDirectories: true)
         cacheDirectory = cacheDir
 

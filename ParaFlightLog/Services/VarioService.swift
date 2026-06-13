@@ -278,7 +278,9 @@ final class VarioService {
             try session.setCategory(.playback, options: [.mixWithOthers])
             try session.setActive(true)
         } catch {
-            logError("Vario: échec d'activation de la session audio: \(error.localizedDescription)", category: .general)
+            // Session audio indisponible : on n'installe pas de moteur muet trompeur.
+            logError("Vario: échec d'activation de la session audio, vario audio désactivé: \(error.localizedDescription)", category: .general)
+            return
         }
 
         let engine = AVAudioEngine()
