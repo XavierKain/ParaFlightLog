@@ -44,6 +44,17 @@
             parallelizable = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
+               BlueprintIdentifier = "EA3428368D3423E0A2725FBB"
+               BuildableName = "ParaFlightLogTests.xctest"
+               BlueprintName = "ParaFlightLogTests"
+               ReferencedContainer = "container:ParaFlightLog.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "YES">
+            <BuildableReference
+               BuildableIdentifier = "primary"
                BlueprintIdentifier = "BEA3FF2E84D0AF3385FA7786"
                BuildableName = "ParaFlightLogUITests.xctest"
                BlueprintName = "ParaFlightLogUITests"
