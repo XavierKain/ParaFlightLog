@@ -397,6 +397,15 @@ struct TimerView: View {
         backgroundTask = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
             if let start = startDate {
                 elapsedSeconds = Int(Date().timeIntervalSince(start))
+                // Rafraîchir la Live Activity toutes les 5 s (budget ActivityKit)
+                if elapsedSeconds % 5 == 0 {
+                    LiveActivityController.shared.update(
+                        startDate: start,
+                        altitude: locationService.currentAltitude,
+                        verticalSpeed: vario.isRunning && vario.isBarometerAvailable ? vario.currentVz : nil,
+                        spotName: manualSpotOverride ?? (currentSpot == "Recherche...".localized ? nil : currentSpot)
+                    )
+                }
             }
         }
     }
@@ -412,6 +421,14 @@ struct TimerView: View {
 
         // Démarrer le vario (ne bipe que si l'utilisateur l'a activé)
         vario.start()
+
+        // Live Activity « vol en cours » (écran verrouillé + Dynamic Island)
+        LiveActivityController.shared.start(
+            wingName: selectedWing?.name ?? "SoarX",
+            flightType: selectedFlightType,
+            startDate: startDate ?? Date(),
+            spotName: manualSpotOverride ?? (currentSpot == "Recherche...".localized ? nil : currentSpot)
+        )
 
         // Démarrer la localisation et le tracking GPS en arrière-plan
         Task {
@@ -436,6 +453,9 @@ struct TimerView: View {
 
         // Couper le vario (audio + baromètre)
         vario.stop()
+
+        // Terminer la Live Activity
+        LiveActivityController.shared.end()
 
         // Arrêter le tracking et récupérer les données de vol
         let endAltitude = locationService.stopFlightTracking()

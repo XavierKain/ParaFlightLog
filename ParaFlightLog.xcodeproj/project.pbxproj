@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		040C493D9CBDDCD5138AAF9A /* SoarXLiveActivityBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75820C513D4CDFBC7E48C746 /* SoarXLiveActivityBundle.swift */; };
 		19ACDAC342956718EB1A28C8 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4AFF1A10FB982DE2DDD31AF /* ScreenshotTests.swift */; };
 		250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250A317D2EDDFB18004F63C8 /* StatsCache.swift */; };
 		25145BD62EDE096C0095D7A9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
@@ -25,7 +26,9 @@
 		33AF333D939350A11A64DFF8 /* FlightAutoDetectorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63CD68A57ABDC171A32B0C6A /* FlightAutoDetectorTests.swift */; };
 		3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
 		5168252E33BA8ABB76A7D33A /* VarioEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21464456E8865E0A82BF5E42 /* VarioEngineTests.swift */; };
+		5E51CFD4EB5F125C9E3336DB /* SoarXLiveActivity.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 087571418A2F84E1846A5100 /* SoarXLiveActivity.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		90E46D5742877EA77E270BC1 /* IGCExporterTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 566D059602D79E1F38DEE17B /* IGCExporterTests.swift */; };
+		925BC9F64D1E024BC296E473 /* FlightActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A97FCA40F7BB830C39FB45AC /* FlightActivityAttributes.swift */; };
 		AA0000012EEBB00000000001 /* FlightsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000002EEBB00000000001 /* FlightsViews.swift */; };
 		AA0000032EEBB00000000002 /* WingsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000022EEBB00000000002 /* WingsViews.swift */; };
 		AA0000052EEBB00000000003 /* StatsViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000042EEBB00000000003 /* StatsViews.swift */; };
@@ -36,9 +39,12 @@
 		AA00001B2EEBB0000000000E /* EmergencyViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA00001A2EEBB0000000000E /* EmergencyViews.swift */; };
 		AA0000212EEBB00000000011 /* ShareViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000202EEBB00000000011 /* ShareViews.swift */; };
 		AA0000282EEBB00000000015 /* ColoredGPSTraceMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0000272EEBB00000000015 /* ColoredGPSTraceMapView.swift */; };
+		BAD5D9CB79FB03E35A167645 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D6E3BD81946B048929752FA /* Foundation.framework */; };
 		C841AFFD7BE2509F251B21C5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D6E3BD81946B048929752FA /* Foundation.framework */; };
 		D3ED5ECA2C6D30403CAF922D /* FlightAutoDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3525165A281EBB21043C65E /* FlightAutoDetector.swift */; };
 		D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 362EAB42550846EE9491A703 /* ZipBackup.swift */; };
+		D5F5C48915E603A713D2A62A /* FlightActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A97FCA40F7BB830C39FB45AC /* FlightActivityAttributes.swift */; };
+		D81A46A97361E86F7974145E /* FlightLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A6E9181CA1EE4E3E1FA3871 /* FlightLiveActivity.swift */; };
 		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
 		EF44E57F5A6709F03ADF8C2D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D6E3BD81946B048929752FA /* Foundation.framework */; };
 		F14343D9399ADC201677F237 /* SnapshotHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 536A65B8BA7237382742B91A /* SnapshotHelper.swift */; };
@@ -61,6 +67,13 @@
 			remoteGlobalIDString = 257C68E82ECB7650005F3773;
 			remoteInfo = "ParaFlightLogWatch Watch App";
 		};
+		9583B56852085D488F05ED12 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 257C68CD2ECB7559005F3773 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 6A1A75134C667D2B821B4C1D;
+			remoteInfo = SoarXLiveActivity;
+		};
 		E755DE8AD25D61921709826C /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 257C68CD2ECB7559005F3773 /* Project object */;
@@ -78,6 +91,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		11CF4C41972562F9F4F4C394 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				5E51CFD4EB5F125C9E3336DB /* SoarXLiveActivity.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		25145C402EDE61D90095D7A9 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -103,6 +127,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		087571418A2F84E1846A5100 /* SoarXLiveActivity.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SoarXLiveActivity.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		0E921B100E3A40230D211CD4 /* ParaFlightLogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParaFlightLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		21464456E8865E0A82BF5E42 /* VarioEngineTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VarioEngineTests.swift; sourceTree = "<group>"; };
 		250A317D2EDDFB18004F63C8 /* StatsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCache.swift; sourceTree = "<group>"; };
@@ -121,10 +146,13 @@
 		362EAB42550846EE9491A703 /* ZipBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipBackup.swift; sourceTree = "<group>"; };
 		38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		3D6E3BD81946B048929752FA /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		4A6E9181CA1EE4E3E1FA3871 /* FlightLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlightLiveActivity.swift; sourceTree = "<group>"; };
 		536A65B8BA7237382742B91A /* SnapshotHelper.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnapshotHelper.swift; sourceTree = "<group>"; };
 		566D059602D79E1F38DEE17B /* IGCExporterTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = IGCExporterTests.swift; sourceTree = "<group>"; };
 		63CD68A57ABDC171A32B0C6A /* FlightAutoDetectorTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlightAutoDetectorTests.swift; sourceTree = "<group>"; };
+		75820C513D4CDFBC7E48C746 /* SoarXLiveActivityBundle.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SoarXLiveActivityBundle.swift; sourceTree = "<group>"; };
 		857CA46F2ABC9BF56D8FDA8A /* ParaFlightLogUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParaFlightLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A97FCA40F7BB830C39FB45AC /* FlightActivityAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FlightActivityAttributes.swift; sourceTree = "<group>"; };
 		AA0000002EEBB00000000001 /* FlightsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlightsViews.swift; sourceTree = "<group>"; };
 		AA0000022EEBB00000000002 /* WingsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WingsViews.swift; sourceTree = "<group>"; };
 		AA0000042EEBB00000000003 /* StatsViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsViews.swift; sourceTree = "<group>"; };
@@ -208,6 +236,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		375FFEDC64A8E32C1503651B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BAD5D9CB79FB03E35A167645 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		6729A5CE5D54DBC2C6B8EA3C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -277,6 +313,8 @@
 				257C68D62ECB7559005F3773 /* Products */,
 				670F2E7C0D53CBDB6867E50A /* ParaFlightLogUITests */,
 				FF7AFCD772647B227C10FD29 /* ParaFlightLogTests */,
+				E6E875CFAC0A4D7DABDCDB21 /* SoarXLiveActivity */,
+				A97FCA40F7BB830C39FB45AC /* FlightActivityAttributes.swift */,
 			);
 			sourceTree = "<group>";
 		};
@@ -288,6 +326,7 @@
 				25145C292EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex */,
 				857CA46F2ABC9BF56D8FDA8A /* ParaFlightLogUITests.xctest */,
 				0E921B100E3A40230D211CD4 /* ParaFlightLogTests.xctest */,
+				087571418A2F84E1846A5100 /* SoarXLiveActivity.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -307,6 +346,16 @@
 				536A65B8BA7237382742B91A /* SnapshotHelper.swift */,
 			);
 			path = ParaFlightLogUITests;
+			sourceTree = "<group>";
+		};
+		E6E875CFAC0A4D7DABDCDB21 /* SoarXLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				75820C513D4CDFBC7E48C746 /* SoarXLiveActivityBundle.swift */,
+				4A6E9181CA1EE4E3E1FA3871 /* FlightLiveActivity.swift */,
+			);
+			name = SoarXLiveActivity;
+			path = SoarXLiveActivity;
 			sourceTree = "<group>";
 		};
 		FF7AFCD772647B227C10FD29 /* ParaFlightLogTests */ = {
@@ -352,11 +401,13 @@
 				257C68D22ECB7559005F3773 /* Frameworks */,
 				257C68D32ECB7559005F3773 /* Resources */,
 				257C68F72ECB7651005F3773 /* Embed Watch Content */,
+				11CF4C41972562F9F4F4C394 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 				257C68F22ECB7651005F3773 /* PBXTargetDependency */,
+				E502AD038BE1989CD0FD1D5D /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				257C68D72ECB7559005F3773 /* ParaFlightLog */,
@@ -387,6 +438,23 @@
 			productName = "ParaFlightLogWatch Watch App";
 			productReference = 257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */;
 			productType = "com.apple.product-type.application";
+		};
+		6A1A75134C667D2B821B4C1D /* SoarXLiveActivity */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B23A6463EF00048A41B96B50 /* Build configuration list for PBXNativeTarget "SoarXLiveActivity" */;
+			buildPhases = (
+				D4EF7B57AC30939035E27A46 /* Sources */,
+				375FFEDC64A8E32C1503651B /* Frameworks */,
+				450D5423899CA347C3D8C08E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = SoarXLiveActivity;
+			productName = SoarXLiveActivity;
+			productReference = 087571418A2F84E1846A5100 /* SoarXLiveActivity.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		BEA3FF2E84D0AF3385FA7786 /* ParaFlightLogUITests */ = {
 			isa = PBXNativeTarget;
@@ -465,6 +533,7 @@
 				25145C282EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension */,
 				BEA3FF2E84D0AF3385FA7786 /* ParaFlightLogUITests */,
 				EA3428368D3423E0A2725FBB /* ParaFlightLogTests */,
+				6A1A75134C667D2B821B4C1D /* SoarXLiveActivity */,
 			);
 		};
 /* End PBXProject section */
@@ -490,6 +559,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				3F0BACBCCB664DE2AE6D5792 /* Localizable.xcstrings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		450D5423899CA347C3D8C08E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -542,6 +618,7 @@
 				AA00001B2EEBB0000000000E /* EmergencyViews.swift in Sources */,
 				AA0000212EEBB00000000011 /* ShareViews.swift in Sources */,
 				AA0000282EEBB00000000015 /* ColoredGPSTraceMapView.swift in Sources */,
+				925BC9F64D1E024BC296E473 /* FlightActivityAttributes.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -574,6 +651,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D4EF7B57AC30939035E27A46 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				040C493D9CBDDCD5138AAF9A /* SoarXLiveActivityBundle.swift in Sources */,
+				D81A46A97361E86F7974145E /* FlightLiveActivity.swift in Sources */,
+				D5F5C48915E603A713D2A62A /* FlightActivityAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -598,6 +685,12 @@
 			name = ParaFlightLog;
 			target = 257C68D42ECB7559005F3773 /* ParaFlightLog */;
 			targetProxy = E755DE8AD25D61921709826C /* PBXContainerItemProxy */;
+		};
+		E502AD038BE1989CD0FD1D5D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = SoarXLiveActivity;
+			target = 6A1A75134C667D2B821B4C1D /* SoarXLiveActivity */;
+			targetProxy = 9583B56852085D488F05ED12 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1005,6 +1098,47 @@
 			};
 			name = Release;
 		};
+		BD99F6AC3016C9EC8E295507 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = S96H22CQ8W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SoarXLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		CF683A1B74FFCBE12F05C5D9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = S96H22CQ8W;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = SoarXLiveActivity/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.LiveActivity;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		FB5FF756612F26A5B528F598 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1071,6 +1205,15 @@
 			buildConfigurations = (
 				9F6A609A3B98072264434F09 /* Release */,
 				3D8D8781DE49DBE605C956CA /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		B23A6463EF00048A41B96B50 /* Build configuration list for PBXNativeTarget "SoarXLiveActivity" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BD99F6AC3016C9EC8E295507 /* Release */,
+				CF683A1B74FFCBE12F05C5D9 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
