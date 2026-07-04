@@ -2,21 +2,60 @@
 //  SharedModels.swift
 //  ParaFlightLog
 //
-//  DTO (Data Transfer Objects) partagés entre iOS et Watch
+//  DTOs (Data Transfer Objects) shared between iOS and Watch
 //  Target: iOS + Watch
 //
 
 import Foundation
 
+// MARK: - FlightType
+/// Category of a flight session. Shared between iOS and Watch.
+enum FlightType: String, Codable, CaseIterable, Identifiable {
+    case soaring = "Soaring"
+    case thermal = "Thermal"
+    case airSurfing = "Air Surfing"
+    case groundHandling = "Ground Handling"
+    case other = "Other"
+
+    var id: String { rawValue }
+
+    /// SF Symbol used to represent this flight type.
+    var symbolName: String {
+        switch self {
+        case .soaring: return "wind"
+        case .thermal: return "sun.max"
+        case .airSurfing: return "figure.surfing"
+        case .groundHandling: return "figure.walk"
+        case .other: return "questionmark.circle"
+        }
+    }
+}
+
+// MARK: - WatchSyncKeys
+/// Keys and message types used by the Watch <-> iPhone WatchConnectivity protocol.
+/// Kept in one place so both sides always agree.
+enum WatchSyncKeys {
+    /// Message/userInfo payload key holding an encoded FlightDTO.
+    static let flightData = "flightData"
+    /// applicationContext key holding encoded [WingDTO].
+    static let wingsData = "wingsData"
+    /// applicationContext key holding watch settings.
+    static let settingsData = "settingsData"
+    /// Reply key: Bool, true when the iPhone persisted the flight.
+    static let flightSaved = "flightSaved"
+    /// Payload key: unique flight id (UUID string) used for deduplication and acks.
+    static let flightId = "flightId"
+}
+
 // MARK: - GPSTrackPoint
-/// Point GPS pour la trace du vol
+/// GPS point of a flight track
 struct GPSTrackPoint: Codable, Identifiable {
     let id: UUID
     let timestamp: Date
     let latitude: Double
     let longitude: Double
     let altitude: Double?
-    let speed: Double?       // Vitesse en m/s
+    let speed: Double?       // Ground speed in m/s
 
     init(id: UUID = UUID(), timestamp: Date = Date(), latitude: Double, longitude: Double, altitude: Double? = nil, speed: Double? = nil) {
         self.id = id
@@ -29,7 +68,7 @@ struct GPSTrackPoint: Codable, Identifiable {
 }
 
 // MARK: - WingDTO
-/// DTO pour transférer les voiles de l'iPhone vers la Watch
+/// DTO used to transfer wings from the iPhone to the Watch
 struct WingDTO: Codable, Identifiable, Hashable {
     let id: UUID
     let name: String
@@ -49,11 +88,9 @@ struct WingDTO: Codable, Identifiable, Hashable {
         self.displayOrder = displayOrder
     }
 
-    /// Nom raccourci pour l'affichage sur Apple Watch
-    /// Exemple: "Moustache M1 2025 18m" → "M1 2025 18m"
-    /// Pour les autres voiles, garde le nom complet
+    /// Short display name for the Apple Watch.
+    /// Strips a leading brand word when the name is long, e.g. "Moustache M1 2025 18m" -> "M1 2025 18m".
     var shortName: String {
-        // Seulement enlever "Moustache" au début
         if name.hasPrefix("Moustache ") {
             return String(name.dropFirst("Moustache ".count))
         }
@@ -62,7 +99,7 @@ struct WingDTO: Codable, Identifiable, Hashable {
 }
 
 // MARK: - FlightDTO
-/// DTO pour transférer les vols de la Watch vers l'iPhone
+/// DTO used to transfer flights from the Watch to the iPhone
 struct FlightDTO: Codable, Identifiable {
     let id: UUID
     let wingId: UUID
@@ -71,15 +108,18 @@ struct FlightDTO: Codable, Identifiable {
     let durationSeconds: Int
     let createdAt: Date
 
-    // Nouvelles données de tracking
-    let startAltitude: Double?      // Altitude de départ (m)
-    let maxAltitude: Double?         // Altitude maximale (m)
-    let endAltitude: Double?         // Altitude d'atterrissage (m)
-    let totalDistance: Double?       // Distance totale parcourue (m)
-    let maxSpeed: Double?            // Vitesse maximale au sol (m/s)
-    let maxGForce: Double?           // G-force maximale (G)
+    /// Flight category chosen by the pilot (raw value of FlightType)
+    let flightType: String?
 
-    // Trace GPS du vol
+    // Tracking data
+    let startAltitude: Double?      // Takeoff altitude (m)
+    let maxAltitude: Double?        // Maximum altitude (m)
+    let endAltitude: Double?        // Landing altitude (m)
+    let totalDistance: Double?      // Total distance flown (m)
+    let maxSpeed: Double?           // Maximum ground speed (m/s)
+    let maxGForce: Double?          // Maximum G-force (G)
+
+    // GPS track of the flight
     let gpsTrack: [GPSTrackPoint]?
 
     init(id: UUID = UUID(),
@@ -88,6 +128,7 @@ struct FlightDTO: Codable, Identifiable {
          endDate: Date,
          durationSeconds: Int,
          createdAt: Date = Date(),
+         flightType: String? = nil,
          startAltitude: Double? = nil,
          maxAltitude: Double? = nil,
          endAltitude: Double? = nil,
@@ -101,6 +142,7 @@ struct FlightDTO: Codable, Identifiable {
         self.endDate = endDate
         self.durationSeconds = durationSeconds
         self.createdAt = createdAt
+        self.flightType = flightType
         self.startAltitude = startAltitude
         self.maxAltitude = maxAltitude
         self.endAltitude = endAltitude
