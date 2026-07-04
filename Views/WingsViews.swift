@@ -2,7 +2,7 @@
 //  WingsViews.swift
 //  ParaFlightLog
 //
-//  Vues liées aux voiles : liste, détail, ajout, édition
+//  Wing-related views: list, detail, add, edit
 //  Target: iOS only
 //
 
@@ -10,41 +10,46 @@ import SwiftUI
 import SwiftData
 import PhotosUI
 
-// MARK: - WingsView (Liste + ajout de voiles)
+// MARK: - WingsView (Wing list + add)
 
 struct WingsView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
-    @Environment(LocalizationManager.self) private var localizationManager
     @Environment(\.modelContext) private var modelContext
     @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
     @State private var showingAddWing = false
 
-    // État pour la suppression - géré au niveau parent pour éviter le crash
+    // Deletion state - handled at parent level to avoid a crash
     @State private var wingToDelete: Wing?
     @State private var showingDeleteConfirmation = false
 
     var body: some View {
+        // Single aggregate pass shared by every row (instead of per-row queries)
+        let stats = dataController.computeStats()
+
         NavigationStack {
             List {
                 if wings.isEmpty {
                     ContentUnavailableView(
-                        "Aucune voile",
+                        "No Wings",
                         systemImage: "wind",
-                        description: Text("Ajoutez votre première voile")
+                        description: Text("Add your first wing")
                     )
                 } else {
                     ForEach(wings) { wing in
-                        WingListRow(wing: wing, onDeleteTapped: {
-                            wingToDelete = wing
-                            showingDeleteConfirmation = true
-                        })
+                        WingListRow(
+                            wing: wing,
+                            hoursFlown: stats.hoursByWing[wing.id],
+                            onDeleteTapped: {
+                                wingToDelete = wing
+                                showingDeleteConfirmation = true
+                            }
+                        )
                     }
                     .onMove(perform: moveWing)
                 }
             }
-            .navigationTitle(String(localized: "Mes voiles"))
-            .id(localizationManager.currentLanguage)
+            .navigationTitle("My Wings")
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     EditButton()
@@ -53,7 +58,7 @@ struct WingsView: View {
                     Button {
                         showingAddWing = true
                     } label: {
-                        Label("Ajouter", systemImage: "plus")
+                        Label("Add", systemImage: "plus")
                     }
                 }
             }
@@ -61,10 +66,10 @@ struct WingsView: View {
                 AddWingView()
             }
             .alert(
-                wingToDelete.map { "Supprimer \"\($0.name)\" ?" } ?? "Supprimer ?",
+                wingToDelete.map { "Delete \"\($0.name)\"?" } ?? "Delete?",
                 isPresented: $showingDeleteConfirmation
             ) {
-                Button("Archiver") {
+                Button("Archive") {
                     if let wing = wingToDelete {
                         withAnimation {
                             dataController.archiveWing(wing)
@@ -72,27 +77,26 @@ struct WingsView: View {
                     }
                     wingToDelete = nil
                 }
-                Button("Supprimer définitivement", role: .destructive) {
+                Button("Delete Permanently", role: .destructive) {
                     if let wing = wingToDelete {
                         withAnimation {
                             modelContext.delete(wing)
                             try? modelContext.save()
-                            dataController.statsCache.invalidate()
                             watchManager.sendWingsToWatch()
                         }
                     }
                     wingToDelete = nil
                 }
-                Button("Annuler", role: .cancel) {
+                Button("Cancel", role: .cancel) {
                     wingToDelete = nil
                 }
             } message: {
                 if let wing = wingToDelete {
                     let flightCount = wing.flights?.count ?? 0
                     if flightCount > 0 {
-                        Text("Cette voile a \(flightCount) vol\(flightCount > 1 ? "s" : "") enregistré\(flightCount > 1 ? "s" : ""). L'archivage conservera les données, la suppression les effacera.")
+                        Text("This wing has \(flightCount) recorded flight\(flightCount > 1 ? "s" : ""). Archiving keeps the data, deleting erases it.")
                     } else {
-                        Text("Cette voile n'a aucun vol enregistré.")
+                        Text("This wing has no recorded flights.")
                     }
                 }
             }
@@ -103,17 +107,17 @@ struct WingsView: View {
         var updatedWings = wings.map { $0 }
         updatedWings.move(fromOffsets: source, toOffset: destination)
 
-        // Mettre à jour displayOrder pour toutes les voiles affectées
+        // Update displayOrder for every affected wing
         for (index, wing) in updatedWings.enumerated() {
             wing.displayOrder = index
         }
 
-        // Sauvegarder le contexte
+        // Save the context
         do {
             try modelContext.save()
             logInfo("Wings reordered successfully", category: .dataController)
 
-            // Synchroniser avec Apple Watch
+            // Sync with the Apple Watch
             watchManager.syncWingsToWatch(wings: Array(updatedWings))
         } catch {
             logError("Error saving wing order: \(error)", category: .dataController)
@@ -121,24 +125,25 @@ struct WingsView: View {
     }
 }
 
-// MARK: - WingListRow (Row avec navigation)
+// MARK: - WingListRow (Row with navigation)
 
-/// Row de la liste - la suppression est gérée par le parent WingsView
+/// List row - deletion is handled by the parent WingsView
 struct WingListRow: View {
     let wing: Wing
+    let hoursFlown: Double?
     let onDeleteTapped: () -> Void
 
     var body: some View {
         NavigationLink {
             WingDetailView(wing: wing)
         } label: {
-            WingRow(wing: wing)
+            WingRow(wing: wing, hoursFlown: hoursFlown)
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
                 onDeleteTapped()
             } label: {
-                Label("Supprimer", systemImage: "trash")
+                Label("Delete", systemImage: "trash")
             }
         }
     }
@@ -148,34 +153,36 @@ struct WingListRow: View {
 
 struct WingRow: View {
     let wing: Wing
+    /// Total flight hours for this wing, precomputed by the parent (nil = no flights)
+    let hoursFlown: Double?
     @Environment(DataController.self) private var dataController
 
     private let thumbnailSize = CGSize(width: 60, height: 60)
 
     var body: some View {
         HStack(spacing: 12) {
-            // Photo de la voile avec cache ou icône par défaut
+            // Wing photo with cache, or default icon
             CachedImage(
                 data: wing.photoData,
                 key: wing.id.uuidString,
                 size: thumbnailSize
             ) {
                 RoundedRectangle(cornerRadius: 8)
-                    .fill((wing.color ?? "Gris").toColor().opacity(0.3))
+                    .fill((wing.color ?? "Gray").toColor().opacity(0.3))
                     .overlay {
                         Image(systemName: "wind")
                             .font(.title2)
-                            .foregroundStyle((wing.color ?? "Gris").toColor())
+                            .foregroundStyle((wing.color ?? "Gray").toColor())
                     }
             }
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 4) {
-                // Titre : nom du modèle
+                // Title: model name
                 Text(wing.name)
                     .font(.headline)
 
-                // Sous-titre : taille • marque • type
+                // Subtitle: size • brand • type
                 HStack(spacing: 6) {
                     if let size = wing.size {
                         Text("\(size) m²")
@@ -202,10 +209,9 @@ struct WingRow: View {
                     }
                 }
 
-                // Stats de cette voile
-                let stats = dataController.totalHoursByWing()
-                if let hours = stats[wing.id] {
-                    Text("\(dataController.formatHours(hours)) de vol")
+                // Stats for this wing
+                if let hours = hoursFlown {
+                    Text("\(dataController.formatHours(hours)) flown")
                         .font(.caption)
                         .foregroundStyle(.blue)
                 }
@@ -215,9 +221,9 @@ struct WingRow: View {
     }
 }
 
-// MARK: - AddWingView (Choix du mode d'ajout)
+// MARK: - AddWingView (Add mode selection)
 
-/// Vue principale d'ajout de voile avec choix Library vs Custom
+/// Main add-wing view offering the Library vs Custom choice
 struct AddWingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -232,16 +238,16 @@ struct AddWingView: View {
             VStack(spacing: 32) {
                 Spacer()
 
-                // Icône principale
+                // Main icon
                 Image(systemName: "wind")
                     .font(.system(size: 60))
                     .foregroundStyle(.blue)
 
-                Text(String(localized: "addWing.title"))
+                Text("Add a Wing")
                     .font(.title2)
                     .fontWeight(.semibold)
 
-                Text(String(localized: "addWing.subtitle"))
+                Text("Pick a wing from the library or enter its details yourself.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
@@ -249,9 +255,9 @@ struct AddWingView: View {
 
                 Spacer()
 
-                // Deux gros boutons
+                // Two big buttons
                 VStack(spacing: 16) {
-                    // Bouton Bibliothèque
+                    // Library button
                     Button {
                         showingLibrary = true
                     } label: {
@@ -259,9 +265,9 @@ struct AddWingView: View {
                             Image(systemName: "book.closed.fill")
                                 .font(.title2)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(String(localized: "addWing.fromLibrary"))
+                                Text("From the Library")
                                     .font(.headline)
-                                Text(String(localized: "addWing.fromLibraryDesc"))
+                                Text("Choose a known model with photo and specs")
                                     .font(.caption)
                                     .foregroundStyle(.white.opacity(0.8))
                             }
@@ -276,7 +282,7 @@ struct AddWingView: View {
                     }
                     .disabled(isAddingFromLibrary)
 
-                    // Bouton Custom
+                    // Custom button
                     Button {
                         showingCustomForm = true
                     } label: {
@@ -284,9 +290,9 @@ struct AddWingView: View {
                             Image(systemName: "plus.circle.fill")
                                 .font(.title2)
                             VStack(alignment: .leading, spacing: 4) {
-                                Text(String(localized: "addWing.custom"))
+                                Text("Custom Wing")
                                     .font(.headline)
-                                Text(String(localized: "addWing.customDesc"))
+                                Text("Enter the details manually")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -311,11 +317,11 @@ struct AddWingView: View {
 
                 Spacer()
             }
-            .navigationTitle(String(localized: "addWing.navTitle"))
+            .navigationTitle("New Wing")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "common.cancel")) {
+                    Button("Cancel") {
                         dismiss()
                     }
                     .disabled(isAddingFromLibrary)
@@ -336,22 +342,22 @@ struct AddWingView: View {
         isAddingFromLibrary = true
 
         Task {
-            // Télécharger l'image
+            // Download the image
             let imageData = try? await WingLibraryService.shared.fetchImage(for: libraryWing)
 
-            // Récupérer le nom du fabricant depuis le catalogue
+            // Look up the manufacturer name in the catalog
             let manufacturerName = WingLibraryService.shared.catalog?.manufacturers
                 .first { $0.id == libraryWing.manufacturer }?.name
 
             await MainActor.run {
-                // Récupérer le displayOrder max actuel
+                // Get the current max displayOrder
                 let descriptor = FetchDescriptor<Wing>(
                     predicate: #Predicate { !$0.isArchived },
                     sortBy: [SortDescriptor(\Wing.displayOrder, order: .reverse)]
                 )
                 let maxDisplayOrder = (try? modelContext.fetch(descriptor).first?.displayOrder) ?? -1
 
-                // name = modèle seul (ex: "Moustache M1"), brand = marque (ex: "Flare")
+                // name = model only (e.g. "Moustache M1"), brand = manufacturer (e.g. "Flare")
                 let wing = Wing(
                     name: libraryWing.model,
                     brand: manufacturerName,
@@ -378,9 +384,133 @@ struct AddWingView: View {
     }
 }
 
-// MARK: - CustomAddWingView (Formulaire manuel)
+// MARK: - WingFormView (Shared add/edit form sections)
 
-/// Formulaire d'ajout manuel d'une voile
+/// Form sections shared by CustomAddWingView and EditWingView:
+/// photo picker, model/brand/size fields, type and color pickers.
+struct WingFormView: View {
+    @Binding var name: String
+    @Binding var brand: String
+    @Binding var size: String
+    @Binding var type: String
+    @Binding var color: String
+    @Binding var customColor: String
+    @Binding var selectedPhoto: PhotosPickerItem?
+    @Binding var photoData: Data?
+
+    /// Show a "Remove Photo" button when a photo is set (used by the edit form)
+    var allowsPhotoRemoval: Bool = false
+
+    static let customColorOption = "Other..."
+    static let types = ["Soaring", "Cross", "Thermal", "Speedflying", "Acro"]
+    static let colors = ["Blue", "Red", "Green", "Yellow", "Orange", "Purple", "Black", "Teal", customColorOption]
+
+    /// Maps legacy stored values (from the previous French UI) to the English options
+    static func normalizedColor(_ raw: String) -> String {
+        let legacy = [
+            "Bleu": "Blue", "Rouge": "Red", "Vert": "Green", "Jaune": "Yellow",
+            "Violet": "Purple", "Noir": "Black", "Pétrole": "Teal", "Gris": "Gray"
+        ]
+        return legacy[raw] ?? raw
+    }
+
+    /// Maps legacy stored type values to the English options
+    static func normalizedType(_ raw: String) -> String {
+        raw == "Thermique" ? "Thermal" : raw
+    }
+
+    /// Options for the type picker; includes the current value when it is not
+    /// in the standard list (e.g. a type coming from the wing library)
+    private var typeOptions: [String] {
+        Self.types.contains(type) ? Self.types : Self.types + [type]
+    }
+
+    var body: some View {
+        Group {
+            Section("Photo") {
+                HStack {
+                    Spacer()
+                    if let photoData = photoData, let uiImage = UIImage(data: photoData) {
+                        Image(uiImage: uiImage)
+                            .resizable()
+                            .scaledToFill()
+                            .frame(width: 120, height: 120)
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                    } else {
+                        RoundedRectangle(cornerRadius: 12)
+                            .fill(Color.gray.opacity(0.2))
+                            .frame(width: 120, height: 120)
+                            .overlay {
+                                Image(systemName: "photo")
+                                    .font(.largeTitle)
+                                    .foregroundStyle(.gray)
+                            }
+                    }
+                    Spacer()
+                }
+
+                PhotosPicker(selection: $selectedPhoto, matching: .images) {
+                    Label(photoData == nil ? "Choose a Photo" : "Change Photo", systemImage: "photo.on.rectangle.angled")
+                }
+                .onChange(of: selectedPhoto) { _, newValue in
+                    Task {
+                        if let data = try? await newValue?.loadTransferable(type: Data.self) {
+                            photoData = data
+                        }
+                    }
+                }
+
+                if allowsPhotoRemoval && photoData != nil {
+                    Button(role: .destructive) {
+                        photoData = nil
+                    } label: {
+                        Label("Remove Photo", systemImage: "trash")
+                    }
+                }
+            }
+
+            Section("Details") {
+                TextField("Model", text: $name)
+                TextField("Brand", text: $brand)
+                HStack {
+                    TextField("Size", text: $size)
+                        .keyboardType(.decimalPad)
+                        .onChange(of: size) { _, newValue in
+                            // Keep only digits and the decimal separator
+                            let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
+                            if filtered != newValue {
+                                size = filtered
+                            }
+                        }
+                    Text("m²")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section("Attributes") {
+                Picker("Type", selection: $type) {
+                    ForEach(typeOptions, id: \.self) { type in
+                        Text(type).tag(type)
+                    }
+                }
+
+                Picker("Color", selection: $color) {
+                    ForEach(Self.colors, id: \.self) { color in
+                        Text(color).tag(color)
+                    }
+                }
+
+                if color == Self.customColorOption {
+                    TextField("Custom color", text: $customColor)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - CustomAddWingView (Manual form)
+
+/// Manual wing creation form
 struct CustomAddWingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -390,107 +520,46 @@ struct CustomAddWingView: View {
     @State private var brand: String = ""
     @State private var size: String = ""
     @State private var type: String = "Soaring"
-    @State private var color: String = "Bleu"
+    @State private var color: String = "Blue"
     @State private var customColor: String = ""
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
     @State private var showSaveError: Bool = false
 
-    let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
-    let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
-
     var body: some View {
         NavigationStack {
             Form {
-                Section("Photo") {
-                    HStack {
-                        Spacer()
-                        if let photoData = photoData, let uiImage = UIImage(data: photoData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 120, height: 120)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        } else {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(width: 120, height: 120)
-                                .overlay {
-                                    Image(systemName: "photo")
-                                        .font(.largeTitle)
-                                        .foregroundStyle(.gray)
-                                }
-                        }
-                        Spacer()
-                    }
-
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        Label("Choisir une photo", systemImage: "photo.on.rectangle.angled")
-                    }
-                }
-
-                Section("Informations") {
-                    TextField("Modèle", text: $name)
-                    TextField("Marque", text: $brand)
-                    HStack {
-                        TextField("Taille", text: $size)
-                            .keyboardType(.decimalPad)
-                            .onChange(of: size) { _, newValue in
-                                let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
-                                if filtered != newValue {
-                                    size = filtered
-                                }
-                            }
-                        Text("m²")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section("Caractéristiques") {
-                    Picker("Type", selection: $type) {
-                        ForEach(types, id: \.self) { type in
-                            Text(type).tag(type)
-                        }
-                    }
-
-                    Picker("Couleur", selection: $color) {
-                        ForEach(colors, id: \.self) { color in
-                            Text(color).tag(color)
-                        }
-                    }
-
-                    if color == "Autre..." {
-                        TextField("Couleur personnalisée", text: $customColor)
-                    }
-                }
+                WingFormView(
+                    name: $name,
+                    brand: $brand,
+                    size: $size,
+                    type: $type,
+                    color: $color,
+                    customColor: $customColor,
+                    selectedPhoto: $selectedPhoto,
+                    photoData: $photoData
+                )
             }
-            .navigationTitle(String(localized: "addWing.customTitle"))
+            .navigationTitle("Custom Wing")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button(String(localized: "common.cancel")) {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(String(localized: "common.add")) {
+                    Button("Add") {
                         addWing()
                     }
                     .disabled(name.isEmpty)
                 }
             }
-            .onChange(of: selectedPhoto) { _, newValue in
-                Task {
-                    if let data = try? await newValue?.loadTransferable(type: Data.self) {
-                        photoData = data
-                    }
-                }
-            }
-            .alert("Erreur de sauvegarde", isPresented: $showSaveError) {
+            .alert("Save Error", isPresented: $showSaveError) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("Impossible de sauvegarder la voile. Veuillez réessayer.")
+                Text("Could not save the wing. Please try again.")
             }
         }
     }
@@ -502,7 +571,7 @@ struct CustomAddWingView: View {
         )
         let maxDisplayOrder = (try? modelContext.fetch(descriptor).first?.displayOrder) ?? -1
 
-        let finalColor = color == "Autre..." ? customColor : color
+        let finalColor = color == WingFormView.customColorOption ? customColor : color
 
         let wing = Wing(
             name: name,
@@ -529,7 +598,7 @@ struct CustomAddWingView: View {
     }
 }
 
-// MARK: - EditWingView (Modifier une voile)
+// MARK: - EditWingView (Edit a wing)
 
 struct EditWingView: View {
     @Environment(\.dismiss) private var dismiss
@@ -548,23 +617,19 @@ struct EditWingView: View {
     @State private var photoData: Data?
     @State private var showSaveError: Bool = false
 
-    let types = ["Soaring", "Cross", "Thermique", "Speedflying", "Acro"]
-    let colors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole", "Autre..."]
-
     init(wing: Wing) {
         self.wing = wing
         _name = State(initialValue: wing.name)
         _brand = State(initialValue: wing.brand ?? "")
         _size = State(initialValue: wing.size ?? "")
-        _type = State(initialValue: wing.type ?? "Soaring")
-        // Si la couleur actuelle n'est pas dans la liste, utiliser "Autre..."
-        let existingColor = wing.color ?? "Bleu"
-        let standardColors = ["Bleu", "Rouge", "Vert", "Jaune", "Orange", "Violet", "Noir", "Pétrole"]
-        if standardColors.contains(existingColor) {
+        _type = State(initialValue: WingFormView.normalizedType(wing.type ?? "Soaring"))
+        // If the current color is not in the list, use "Other..."
+        let existingColor = WingFormView.normalizedColor(wing.color ?? "Blue")
+        if WingFormView.colors.contains(existingColor) && existingColor != WingFormView.customColorOption {
             _color = State(initialValue: existingColor)
             _customColor = State(initialValue: "")
         } else {
-            _color = State(initialValue: "Autre...")
+            _color = State(initialValue: WingFormView.customColorOption)
             _customColor = State(initialValue: existingColor)
         }
         _photoData = State(initialValue: wing.photoData)
@@ -573,111 +638,45 @@ struct EditWingView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Photo") {
-                    HStack {
-                        Spacer()
-                        if let photoData = photoData, let uiImage = UIImage(data: photoData) {
-                            Image(uiImage: uiImage)
-                                .resizable()
-                                .scaledToFill()
-                                .frame(width: 120, height: 120)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
-                        } else {
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.gray.opacity(0.2))
-                                .frame(width: 120, height: 120)
-                                .overlay {
-                                    Image(systemName: "photo")
-                                        .font(.largeTitle)
-                                        .foregroundStyle(.gray)
-                                }
-                        }
-                        Spacer()
-                    }
-
-                    PhotosPicker(selection: $selectedPhoto, matching: .images) {
-                        Label("Changer la photo", systemImage: "photo.on.rectangle.angled")
-                    }
-
-                    if photoData != nil {
-                        Button(role: .destructive) {
-                            photoData = nil
-                        } label: {
-                            Label("Supprimer la photo", systemImage: "trash")
-                        }
-                    }
-                }
-
-                Section("Informations") {
-                    TextField("Modèle", text: $name)
-                    TextField("Marque", text: $brand)
-                    HStack {
-                        TextField("Taille", text: $size)
-                            .keyboardType(.decimalPad)
-                            .onChange(of: size) { _, newValue in
-                                // Filtrer pour ne garder que les chiffres et le point/virgule
-                                let filtered = newValue.filter { $0.isNumber || $0 == "." || $0 == "," }
-                                if filtered != newValue {
-                                    size = filtered
-                                }
-                            }
-                        Text("m²")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section("Caractéristiques") {
-                    Picker("Type", selection: $type) {
-                        ForEach(types, id: \.self) { type in
-                            Text(type).tag(type)
-                        }
-                    }
-
-                    Picker("Couleur", selection: $color) {
-                        ForEach(colors, id: \.self) { color in
-                            Text(color).tag(color)
-                        }
-                    }
-
-                    if color == "Autre..." {
-                        TextField("Couleur personnalisée", text: $customColor)
-                    }
-                }
+                WingFormView(
+                    name: $name,
+                    brand: $brand,
+                    size: $size,
+                    type: $type,
+                    color: $color,
+                    customColor: $customColor,
+                    selectedPhoto: $selectedPhoto,
+                    photoData: $photoData,
+                    allowsPhotoRemoval: true
+                )
             }
-            .navigationTitle("Modifier la voile")
+            .navigationTitle("Edit Wing")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Enregistrer") {
+                    Button("Save") {
                         saveWing()
                     }
                     .disabled(name.isEmpty)
                 }
             }
-            .onChange(of: selectedPhoto) { _, newValue in
-                Task {
-                    if let data = try? await newValue?.loadTransferable(type: Data.self) {
-                        photoData = data
-                    }
-                }
-            }
-            .alert("Erreur de sauvegarde", isPresented: $showSaveError) {
+            .alert("Save Error", isPresented: $showSaveError) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("Impossible de sauvegarder les modifications. Veuillez réessayer.")
+                Text("Could not save the changes. Please try again.")
             }
         }
     }
 
     private func saveWing() {
-        // Utiliser la couleur personnalisée si "Autre..." est sélectionné
-        let finalColor = color == "Autre..." ? customColor : color
+        // Use the custom color when "Other..." is selected
+        let finalColor = color == WingFormView.customColorOption ? customColor : color
 
         wing.name = name
         wing.brand = brand.isEmpty ? nil : brand
@@ -686,7 +685,7 @@ struct EditWingView: View {
         wing.color = finalColor.isEmpty ? nil : finalColor
         wing.photoData = photoData
 
-        // Invalider le cache d'image si la photo a changé
+        // Invalidate the image cache in case the photo changed
         ImageCacheManager.shared.invalidate(key: wing.id.uuidString)
 
         Task { @MainActor in
@@ -702,7 +701,7 @@ struct EditWingView: View {
     }
 }
 
-// MARK: - WingDetailView (Détail d'une voile)
+// MARK: - WingDetailView (Wing detail)
 
 struct WingDetailView: View {
     let wing: Wing
@@ -721,7 +720,7 @@ struct WingDetailView: View {
         List {
             Section {
                 VStack(spacing: 16) {
-                    // Photo de la voile (tappable pour afficher en plein écran)
+                    // Wing photo (tappable for full screen)
                     if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
                         Image(uiImage: uiImage)
                             .resizable()
@@ -732,7 +731,7 @@ struct WingDetailView: View {
                                 showingFullScreenPhoto = true
                             }
                     } else {
-                        // Placeholder quand pas de photo
+                        // Placeholder when there is no photo
                         RoundedRectangle(cornerRadius: 12)
                             .fill(Color.gray.opacity(0.2))
                             .frame(height: 150)
@@ -777,18 +776,18 @@ struct WingDetailView: View {
                 .padding(.vertical, 16)
             }
 
-            Section("Statistiques") {
+            Section("Statistics") {
                 let totalSeconds = flights.reduce(0) { $0 + $1.durationSeconds }
                 let totalHours = Double(totalSeconds) / 3600.0
                 HStack {
-                    Text("Heures de vol")
+                    Text("Flight hours")
                     Spacer()
                     Text(dataController.formatHours(totalHours))
                         .foregroundStyle(.blue)
                 }
 
                 HStack {
-                    Text("Nombre de vols")
+                    Text("Number of flights")
                     Spacer()
                     Text("\(flights.count)")
                         .foregroundStyle(.blue)
@@ -796,7 +795,7 @@ struct WingDetailView: View {
             }
 
             if !flights.isEmpty {
-                Section("Historique des vols") {
+                Section("Flight History") {
                     ForEach(flights.sorted { $0.startDate > $1.startDate }) { flight in
                         FlightRow(flight: flight)
                             .contentShape(Rectangle())
@@ -807,14 +806,14 @@ struct WingDetailView: View {
                 }
             }
         }
-        .navigationTitle("Détails")
+        .navigationTitle("Details")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button {
                     showingEditWing = true
                 } label: {
-                    Label("Modifier", systemImage: "pencil")
+                    Label("Edit", systemImage: "pencil")
                 }
             }
         }
@@ -824,14 +823,14 @@ struct WingDetailView: View {
         .sheet(item: $selectedFlight) { flight in
             EditFlightView(flight: flight)
                 .onAppear {
-                    // Vérifier immédiatement si le vol a été supprimé
+                    // Immediately check whether the flight was deleted
                     if flight.isDeleted {
                         selectedFlight = nil
                     }
                 }
         }
         .onChange(of: allFlights.count) { oldValue, newValue in
-            // Si un vol est supprimé, fermer immédiatement la sheet
+            // If a flight gets deleted, close the sheet immediately
             if let selected = selectedFlight {
                 if selected.isDeleted || !allFlights.contains(where: { $0.id == selected.id }) {
                     selectedFlight = nil
@@ -870,7 +869,7 @@ struct FullScreenPhotoView: View {
                         }
                         .onEnded { _ in
                             lastScale = scale
-                            // Limiter le zoom entre 1x et 4x
+                            // Clamp the zoom between 1x and 4x
                             if scale < 1.0 {
                                 withAnimation {
                                     scale = 1.0
@@ -885,7 +884,7 @@ struct FullScreenPhotoView: View {
                         }
                 )
                 .onTapGesture(count: 2) {
-                    // Double-tap pour réinitialiser le zoom
+                    // Double-tap to reset the zoom
                     withAnimation {
                         scale = 1.0
                         lastScale = 1.0
@@ -911,7 +910,7 @@ struct FullScreenPhotoView: View {
     }
 }
 
-// MARK: - ArchivedWingsView (Liste des voiles archivées)
+// MARK: - ArchivedWingsView (Archived wings list)
 
 struct ArchivedWingsView: View {
     @Environment(DataController.self) private var dataController
@@ -926,15 +925,15 @@ struct ArchivedWingsView: View {
         List {
             if archivedWings.isEmpty {
                 ContentUnavailableView(
-                    "Aucune voile archivée",
+                    "No Archived Wings",
                     systemImage: "archivebox",
-                    description: Text("Les voiles archivées apparaîtront ici")
+                    description: Text("Archived wings will appear here")
                 )
             } else {
                 ForEach(archivedWings) { wing in
                     VStack(alignment: .leading, spacing: 8) {
                         HStack(spacing: 12) {
-                            // Photo de la voile ou icône par défaut
+                            // Wing photo or default icon
                             if let photoData = wing.photoData, let uiImage = UIImage(data: photoData) {
                                 Image(uiImage: uiImage)
                                     .resizable()
@@ -943,11 +942,11 @@ struct ArchivedWingsView: View {
                                     .clipShape(RoundedRectangle(cornerRadius: 8))
                             } else {
                                 RoundedRectangle(cornerRadius: 8)
-                                    .fill((wing.color ?? "Gris").toColor().opacity(0.3))
+                                    .fill((wing.color ?? "Gray").toColor().opacity(0.3))
                                     .frame(width: 50, height: 50)
                                     .overlay {
                                         Image(systemName: "wind")
-                                            .foregroundStyle((wing.color ?? "Gris").toColor())
+                                            .foregroundStyle((wing.color ?? "Gray").toColor())
                                     }
                             }
 
@@ -969,22 +968,22 @@ struct ArchivedWingsView: View {
                                     }
                                 }
 
-                                // Nombre de vols
+                                // Flight count
                                 let flightCount = wing.flights?.count ?? 0
                                 if flightCount > 0 {
-                                    Text("\(flightCount) vol\(flightCount > 1 ? "s" : "")")
+                                    Text("\(flightCount) flight\(flightCount > 1 ? "s" : "")")
                                         .font(.caption)
                                         .foregroundStyle(.blue)
                                 }
                             }
                         }
 
-                        // Boutons d'action
+                        // Action buttons
                         HStack(spacing: 12) {
                             Button {
                                 dataController.unarchiveWing(wing)
                             } label: {
-                                Label("Restaurer", systemImage: "arrow.uturn.backward")
+                                Label("Restore", systemImage: "arrow.uturn.backward")
                                     .font(.caption)
                             }
                             .buttonStyle(.bordered)
@@ -993,7 +992,7 @@ struct ArchivedWingsView: View {
                                 wingToDelete = wing
                                 showingDeleteAlert = true
                             } label: {
-                                Label("Supprimer", systemImage: "trash")
+                                Label("Delete", systemImage: "trash")
                                     .font(.caption)
                             }
                             .buttonStyle(.bordered)
@@ -1004,23 +1003,21 @@ struct ArchivedWingsView: View {
                 }
             }
         }
-        .navigationTitle("Voiles archivées")
+        .navigationTitle("Archived Wings")
         .navigationBarTitleDisplayMode(.inline)
-        .alert("Supprimer définitivement ?", isPresented: $showingDeleteAlert) {
-            Button("Annuler", role: .cancel) { }
-            Button("Supprimer", role: .destructive) {
+        .alert("Delete permanently?", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
                 if let wing = wingToDelete {
-                    // Utiliser le modelContext de la vue pour que @Query soit mis à jour
+                    // Use the view's modelContext so @Query picks up the change
                     modelContext.delete(wing)
                     try? modelContext.save()
-                    // Invalider le cache de stats
-                    dataController.statsCache.invalidate()
                 }
             }
         } message: {
             if let wing = wingToDelete {
                 let flightCount = wing.flights?.count ?? 0
-                Text("⚠️ Cette action est irréversible ! La voile \"\(wing.name)\" et ses \(flightCount) vol\(flightCount > 1 ? "s" : "") seront définitivement supprimés.")
+                Text("⚠️ This action is irreversible! The wing \"\(wing.name)\" and its \(flightCount) flight\(flightCount > 1 ? "s" : "") will be permanently deleted.")
             }
         }
     }

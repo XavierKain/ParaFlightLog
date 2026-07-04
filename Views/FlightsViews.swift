@@ -2,48 +2,81 @@
 //  FlightsViews.swift
 //  ParaFlightLog
 //
-//  Vues liées aux vols : liste, détail, édition
+//  Flight-related views: list, detail, edit, map coordinate picker.
 //  Target: iOS only
 //
 
 import SwiftUI
 import SwiftData
 import MapKit
+import UIKit
 
-// MARK: - FlightsView (Liste des vols avec dernier vol en vedette)
+// MARK: - Shared Helpers
+
+/// Formats a distance in meters, e.g. "850 m" or "12.3 km".
+func formatDistanceText(_ distance: Double) -> String {
+    if distance >= 1000 {
+        return String(format: "%.1f km", distance / 1000)
+    }
+    return "\(Int(distance)) m"
+}
+
+// MARK: - FlightTypeBadge (small symbol + name capsule)
+
+struct FlightTypeBadge: View {
+    let type: FlightType
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: type.symbolName)
+            Text(type.rawValue)
+        }
+        .font(.caption2)
+        .fontWeight(.semibold)
+        .foregroundStyle(.indigo)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(Color.indigo.opacity(0.12))
+        .clipShape(Capsule())
+    }
+}
+
+// MARK: - FlightsView (flights list with featured latest flight)
 
 struct FlightsView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(LocalizationManager.self) private var localizationManager
+    @Environment(DataController.self) private var dataController
     @Query(sort: \Flight.startDate, order: .reverse) private var flights: [Flight]
-    @State private var selectedFlight: Flight?
-    @State private var showingFlightDetail: Flight?
-    @State private var flightToDelete: Flight?
-    @State private var showingDeleteConfirmation = false
 
-    // Pagination: nombre de vols affichés
+    @State private var showingFlightDetail: Flight?
+    @State private var showingAddFlight = false
+
+    // Optional flight-type filter (nil = all)
+    @State private var selectedTypeFilter: FlightType?
+
+    // Pagination: number of flights displayed
     @State private var displayedFlightsCount: Int = 20
     private let pageSize: Int = 15
 
-    // Dernier vol (le plus récent)
-    private var latestFlight: Flight? {
-        flights.first
+    // Flights matching the current type filter
+    private var filteredFlights: [Flight] {
+        guard let filter = selectedTypeFilter else { return flights }
+        return flights.filter { $0.flightTypeEnum == filter }
     }
 
-    // Autres vols paginés (tous sauf le dernier, limités au nombre affiché)
+    // Latest flight (most recent, within the current filter)
+    private var latestFlight: Flight? {
+        filteredFlights.first
+    }
+
+    // Older flights, paginated (everything except the latest)
     private var olderFlights: [Flight] {
-        let allOlder = Array(flights.dropFirst())
+        let allOlder = Array(filteredFlights.dropFirst())
         return Array(allOlder.prefix(displayedFlightsCount - 1))
     }
 
-    // Vérifie s'il reste des vols à charger
+    // True when there are more flights to load
     private var hasMoreFlights: Bool {
-        flights.count > displayedFlightsCount
-    }
-
-    // Nombre de vols restants à charger
-    private var remainingFlightsCount: Int {
-        max(0, flights.count - displayedFlightsCount)
+        filteredFlights.count > displayedFlightsCount
     }
 
     var body: some View {
@@ -51,92 +84,149 @@ struct FlightsView: View {
             Group {
                 if flights.isEmpty {
                     ContentUnavailableView(
-                        String(localized: "Aucun vol"),
+                        "No Flights",
                         systemImage: "airplane.circle",
-                        description: Text(String(localized: "Commencez un vol depuis la Watch ou l'onglet Chrono"))
+                        description: Text("Record flights with your Apple Watch or tap + to add one manually.")
                     )
                     .padding(.top, 100)
                 } else {
-                List {
-                    // Dernier vol en grand (featured)
-                    if let latest = latestFlight {
-                        LatestFlightCard(flight: latest)
-                            .onTapGesture {
-                                showingFlightDetail = latest
-                            }
-                            .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                    List {
+                        // Flight-type filter (top of the list)
+                        filterRow
+
+                        if filteredFlights.isEmpty {
+                            ContentUnavailableView(
+                                "No \(selectedTypeFilter?.rawValue ?? "") Flights",
+                                systemImage: selectedTypeFilter?.symbolName ?? "airplane.circle"
+                            )
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                Button(role: .destructive) {
-                                    deleteFlight(latest)
-                                } label: {
-                                    Label("Supprimer", systemImage: "trash")
+                        }
+
+                        // Latest flight, featured
+                        if let latest = latestFlight {
+                            LatestFlightCard(flight: latest)
+                                .onTapGesture {
+                                    showingFlightDetail = latest
                                 }
-                            }
-                    }
-
-                    // Section vols précédents
-                    if !olderFlights.isEmpty {
-                        Section {
-                            ForEach(olderFlights) { flight in
-                                FlightRow(flight: flight)
-                                    .contentShape(Rectangle())
-                                    .onTapGesture {
-                                        showingFlightDetail = flight
+                                .listRowInsets(EdgeInsets(top: 8, leading: 8, bottom: 8, trailing: 8))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                    Button(role: .destructive) {
+                                        deleteFlight(latest)
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
                                     }
-                                    .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                                        Button(role: .destructive) {
-                                            deleteFlight(flight)
-                                        } label: {
-                                            Label("Supprimer", systemImage: "trash")
+                                }
+                        }
+
+                        // Previous flights section
+                        if !olderFlights.isEmpty {
+                            Section {
+                                ForEach(olderFlights) { flight in
+                                    FlightRow(flight: flight)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture {
+                                            showingFlightDetail = flight
                                         }
-                                    }
-                            }
-                            .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                            .listRowBackground(Color.clear)
-                            .listRowSeparator(.hidden)
+                                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                            Button(role: .destructive) {
+                                                deleteFlight(flight)
+                                            } label: {
+                                                Label("Delete", systemImage: "trash")
+                                            }
+                                        }
+                                }
+                                .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+                                .listRowBackground(Color.clear)
+                                .listRowSeparator(.hidden)
 
-                            // Infinite scroll : charger plus automatiquement
-                            if hasMoreFlights {
-                                ProgressView()
-                                    .frame(maxWidth: .infinity)
-                                    .padding()
-                                    .onAppear {
-                                        loadMoreFlights()
-                                    }
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
+                                // Infinite scroll: load more automatically
+                                if hasMoreFlights {
+                                    ProgressView()
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .onAppear {
+                                            loadMoreFlights()
+                                        }
+                                        .listRowBackground(Color.clear)
+                                        .listRowSeparator(.hidden)
+                                }
+                            } header: {
+                                Text("Previous flights")
+                                    .font(.headline)
+                                    .foregroundStyle(.secondary)
+                                    .textCase(nil)
                             }
-                        } header: {
-                            Text(String(localized: "Vols précédents"))
-                                .font(.headline)
-                                .foregroundStyle(.secondary)
-                                .textCase(nil)
                         }
                     }
-                }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
-            .navigationTitle(String(localized: "Mes vols"))
+            .navigationTitle("My Flights")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingAddFlight = true
+                    } label: {
+                        Label("Add Flight", systemImage: "plus")
+                    }
+                }
+            }
         }
-        .id(localizationManager.currentLanguage) // Force re-render quand la langue change
         .sheet(item: $showingFlightDetail) { flight in
             FlightDetailView(flight: flight)
         }
-        .confirmationDialog(String(localized: "Supprimer ce vol ?"), isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
-            Button(String(localized: "Supprimer"), role: .destructive) {
-                if let flight = flightToDelete {
-                    deleteFlight(flight)
-                }
-            }
-            Button(String(localized: "Annuler"), role: .cancel) {}
+        .sheet(isPresented: $showingAddFlight) {
+            AddFlightView()
+        }
+        .onChange(of: selectedTypeFilter) {
+            displayedFlightsCount = 20
         }
     }
 
-    /// Charge plus de vols (pagination)
+    // Lightweight flight-type filter menu
+    private var filterRow: some View {
+        HStack {
+            Menu {
+                Button {
+                    selectedTypeFilter = nil
+                } label: {
+                    Label("All Types", systemImage: "line.3.horizontal.decrease.circle")
+                }
+                Divider()
+                ForEach(FlightType.allCases) { type in
+                    Button {
+                        selectedTypeFilter = type
+                    } label: {
+                        Label(type.rawValue, systemImage: type.symbolName)
+                    }
+                }
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: selectedTypeFilter?.symbolName ?? "line.3.horizontal.decrease.circle")
+                    Text(selectedTypeFilter?.rawValue ?? "All Types")
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.caption2)
+                }
+                .font(.subheadline)
+                .fontWeight(.medium)
+            }
+
+            Spacer()
+
+            Text("^[\(filteredFlights.count) flight](inflect: true)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
+        .listRowBackground(Color.clear)
+        .listRowSeparator(.hidden)
+    }
+
+    /// Loads more flights (pagination)
     private func loadMoreFlights() {
         withAnimation(.easeInOut(duration: 0.3)) {
             displayedFlightsCount += pageSize
@@ -144,39 +234,33 @@ struct FlightsView: View {
     }
 
     private func deleteFlight(_ flight: Flight) {
-        modelContext.delete(flight)
-        do {
-            try modelContext.save()
-            logInfo("Flight deleted and saved to database", category: .flight)
-        } catch {
-            logError("Error saving deletion: \(error)", category: .flight)
-        }
+        dataController.deleteFlight(flight)
+        logInfo("Flight deleted and saved to database", category: .flight)
     }
 }
 
-// MARK: - LatestFlightCard (Carte du dernier vol en grand)
+// MARK: - LatestFlightCard (featured latest flight)
 
 struct LatestFlightCard: View {
     let flight: Flight
 
     var body: some View {
         VStack(spacing: 0) {
-            // Carte avec le spot sur la map
+            // Map with the spot, or placeholder
             ZStack(alignment: .bottomLeading) {
-                // Map ou placeholder
                 if let lat = flight.latitude, let lon = flight.longitude {
                     Map(initialPosition: .region(MKCoordinateRegion(
                         center: CLLocationCoordinate2D(latitude: lat, longitude: lon),
                         span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                     ))) {
-                        Marker(flight.spotName ?? "Vol", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+                        Marker(flight.spotName ?? "Flight", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
                             .tint(.blue)
                     }
                     .frame(height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .allowsHitTesting(false)
                 } else {
-                    // Placeholder sans coordonnées
+                    // Placeholder when there are no coordinates
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
                         .fill(LinearGradient(
                             colors: [.blue.opacity(0.3), .cyan.opacity(0.2)],
@@ -189,31 +273,47 @@ struct LatestFlightCard: View {
                                 Image(systemName: "map")
                                     .font(.largeTitle)
                                     .foregroundStyle(.blue.opacity(0.5))
-                                Text("Pas de coordonnées")
+                                Text("No coordinates")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                         }
                 }
 
-                // Badge "Dernier vol"
-                HStack {
-                    Image(systemName: "clock.fill")
-                    Text("Dernier vol")
+                // "Latest flight" badge + flight type
+                HStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "clock.fill")
+                        Text("Latest flight")
+                    }
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(.blue)
+                    .clipShape(Capsule())
+
+                    if let type = flight.flightTypeEnum {
+                        HStack(spacing: 4) {
+                            Image(systemName: type.symbolName)
+                            Text(type.rawValue)
+                        }
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 6)
+                        .background(.black.opacity(0.5))
+                        .clipShape(Capsule())
+                    }
                 }
-                .font(.caption)
-                .fontWeight(.semibold)
-                .foregroundStyle(.white)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(.blue)
-                .clipShape(Capsule())
                 .padding(12)
             }
 
-            // Infos du vol
+            // Flight info
             VStack(spacing: 12) {
-                // Date et durée
+                // Date and duration
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(flight.startDate, format: .dateTime.weekday(.wide).day().month(.wide))
@@ -228,7 +328,7 @@ struct LatestFlightCard: View {
                         .foregroundStyle(.blue)
                 }
 
-                // Voile et spot
+                // Wing and spot
                 HStack {
                     if let wing = flight.wing {
                         HStack(spacing: 8) {
@@ -262,7 +362,7 @@ struct LatestFlightCard: View {
                     }
                 }
 
-                // Statistiques en grand
+                // Highlight statistics
                 if flight.maxAltitude != nil || flight.totalDistance != nil || flight.maxSpeed != nil || flight.maxGForce != nil {
                     Divider()
 
@@ -276,7 +376,7 @@ struct LatestFlightCard: View {
                             StatCard(
                                 value: "\(Int(maxAlt))",
                                 unit: "m",
-                                label: String(localized: "Alt. max"),
+                                label: "Max alt.",
                                 icon: "arrow.up",
                                 color: .orange
                             )
@@ -285,7 +385,7 @@ struct LatestFlightCard: View {
                             StatCard(
                                 value: formatDistanceValue(distance),
                                 unit: formatDistanceUnit(distance),
-                                label: String(localized: "Distance"),
+                                label: "Distance",
                                 icon: "point.topleft.down.to.point.bottomright.curvepath",
                                 color: .cyan
                             )
@@ -294,7 +394,7 @@ struct LatestFlightCard: View {
                             StatCard(
                                 value: "\(Int(speed * 3.6))",
                                 unit: "km/h",
-                                label: String(localized: "Vitesse"),
+                                label: "Speed",
                                 icon: "speedometer",
                                 color: .purple
                             )
@@ -303,7 +403,7 @@ struct LatestFlightCard: View {
                             StatCard(
                                 value: String(format: "%.1f", gForce),
                                 unit: "G",
-                                label: String(localized: "G-Force"),
+                                label: "G-Force",
                                 icon: "waveform.path.ecg",
                                 color: .green
                             )
@@ -332,7 +432,7 @@ struct LatestFlightCard: View {
     }
 }
 
-// MARK: - StatCard (Petite carte de statistique)
+// MARK: - StatCard (small statistic card)
 
 struct StatCard: View {
     let value: String
@@ -361,15 +461,22 @@ struct StatCard: View {
     }
 }
 
-// MARK: - FlightDetailView (Vue détaillée d'un vol)
+// MARK: - FlightDetailView (flight detail)
 
 struct FlightDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
     let flight: Flight
-    @State private var showingEditSheet = false
 
-    // Calcul de la région pour afficher toute la trace GPS
+    @State private var showingEditSheet = false
+    @State private var showingReplay = false
+    @State private var exportedFile: ExportedTrackFile?
+    @State private var exportErrorMessage: String?
+
+    private enum TrackExportFormat {
+        case gpx, igc
+    }
+
+    // Region showing the whole GPS track
     private var mapRegion: MKCoordinateRegion {
         if let track = flight.gpsTrack, !track.isEmpty {
             let lats = track.map { $0.latitude }
@@ -404,31 +511,31 @@ struct FlightDetailView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
-                    // Map avec trace GPS ou simple marker
+                    // Map with the GPS track, or a simple marker
                     if flight.gpsTrack != nil || (flight.latitude != nil && flight.longitude != nil) {
                         Map(initialPosition: .region(mapRegion)) {
-                            // Afficher la trace GPS si disponible
+                            // Show the GPS track when available
                             if let track = flight.gpsTrack, track.count >= 2 {
                                 MapPolyline(coordinates: track.map {
                                     CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
                                 })
                                 .stroke(.blue, lineWidth: 3)
 
-                                // Marker de départ (vert)
+                                // Takeoff marker (green)
                                 if let first = track.first {
-                                    Marker("Départ", systemImage: "flag.fill", coordinate:
+                                    Marker("Takeoff", systemImage: "flag.fill", coordinate:
                                         CLLocationCoordinate2D(latitude: first.latitude, longitude: first.longitude))
                                         .tint(.green)
                                 }
 
-                                // Marker d'arrivée (rouge)
+                                // Landing marker (red)
                                 if let last = track.last {
-                                    Marker("Arrivée", systemImage: "flag.checkered", coordinate:
+                                    Marker("Landing", systemImage: "flag.checkered", coordinate:
                                         CLLocationCoordinate2D(latitude: last.latitude, longitude: last.longitude))
                                         .tint(.red)
                                 }
                             } else if let lat = flight.latitude, let lon = flight.longitude {
-                                Marker(flight.spotName ?? "Vol", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
+                                Marker(flight.spotName ?? "Flight", coordinate: CLLocationCoordinate2D(latitude: lat, longitude: lon))
                                     .tint(.blue)
                             }
                         }
@@ -436,24 +543,37 @@ struct FlightDetailView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16))
                         .padding(.horizontal)
 
-                        // Info sur la trace GPS
+                        // GPS track info + replay
                         if let track = flight.gpsTrack, !track.isEmpty {
                             HStack {
                                 Image(systemName: "point.topleft.down.to.point.bottomright.curvepath.fill")
                                     .foregroundStyle(.blue)
-                                Text("\(track.count) points GPS enregistrés")
+                                Text("\(track.count) GPS points recorded")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
                             .padding(.horizontal)
+
+                            if track.count >= 2 {
+                                Button {
+                                    showingReplay = true
+                                } label: {
+                                    Label("Replay Flight", systemImage: "play.circle.fill")
+                                        .font(.headline)
+                                        .frame(maxWidth: .infinity)
+                                        .padding(.vertical, 6)
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .padding(.horizontal)
+                            }
                         }
                     }
 
-                    // Infos principales
+                    // Main info
                     VStack(spacing: 16) {
-                        // Durée en grand
+                        // Duration, large
                         VStack(spacing: 4) {
-                            Text(String(localized: "Durée du vol"))
+                            Text("Flight duration")
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Text(flight.durationFormatted)
@@ -465,11 +585,11 @@ struct FlightDetailView: View {
                         .background(Color.blue.opacity(0.1))
                         .clipShape(RoundedRectangle(cornerRadius: 16))
 
-                        // Statistiques de vol (juste après la durée)
+                        // Flight statistics (right below the duration)
                         if flight.startAltitude != nil || flight.maxAltitude != nil || flight.endAltitude != nil ||
                            flight.totalDistance != nil || flight.maxSpeed != nil || flight.maxGForce != nil {
                             VStack(alignment: .leading, spacing: 12) {
-                                Text(String(localized: "Statistiques de vol"))
+                                Text("Flight statistics")
                                     .font(.headline)
 
                                 VStack(spacing: 8) {
@@ -477,30 +597,30 @@ struct FlightDetailView: View {
                                     if flight.startAltitude != nil || flight.maxAltitude != nil || flight.endAltitude != nil {
                                         HStack(spacing: 8) {
                                             if let alt = flight.startAltitude {
-                                                DetailStatCard(title: String(localized: "Alt. départ"), value: "\(Int(alt)) m", color: .orange, icon: "arrow.up.circle")
+                                                DetailStatCard(title: "Takeoff alt.", value: "\(Int(alt)) m", color: .orange, icon: "arrow.up.circle")
                                             }
                                             if let alt = flight.maxAltitude {
-                                                DetailStatCard(title: String(localized: "Alt. max"), value: "\(Int(alt)) m", color: .red, icon: "arrow.up")
+                                                DetailStatCard(title: "Max alt.", value: "\(Int(alt)) m", color: .red, icon: "arrow.up")
                                             }
                                             if let alt = flight.endAltitude {
-                                                DetailStatCard(title: String(localized: "Alt. arrivée"), value: "\(Int(alt)) m", color: .orange, icon: "arrow.down.circle")
+                                                DetailStatCard(title: "Landing alt.", value: "\(Int(alt)) m", color: .orange, icon: "arrow.down.circle")
                                             }
                                         }
                                     }
 
-                                    // Distance et vitesse
+                                    // Distance and speed
                                     HStack(spacing: 8) {
                                         if let distance = flight.totalDistance {
                                             DetailStatCard(
-                                                title: String(localized: "Distance"),
-                                                value: formatDistance(distance),
+                                                title: "Distance",
+                                                value: formatDistanceText(distance),
                                                 color: .cyan,
                                                 icon: "point.topleft.down.to.point.bottomright.curvepath"
                                             )
                                         }
                                         if let speed = flight.maxSpeed {
                                             DetailStatCard(
-                                                title: String(localized: "Vitesse max"),
+                                                title: "Max speed",
                                                 value: "\(Int(speed * 3.6)) km/h",
                                                 color: .purple,
                                                 icon: "speedometer"
@@ -508,7 +628,7 @@ struct FlightDetailView: View {
                                         }
                                         if let gForce = flight.maxGForce {
                                             DetailStatCard(
-                                                title: String(localized: "G-Force max"),
+                                                title: "Max G-Force",
                                                 value: String(format: "%.1f G", gForce),
                                                 color: .green,
                                                 icon: "waveform.path.ecg"
@@ -522,10 +642,10 @@ struct FlightDetailView: View {
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
 
-                        // Date et heure
+                        // Date and time
                         HStack {
                             VStack(alignment: .leading, spacing: 4) {
-                                Label(String(localized: "Début"), systemImage: "play.circle.fill")
+                                Label("Start", systemImage: "play.circle.fill")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 Text(flight.startDate, format: .dateTime.weekday(.abbreviated).day().month().year())
@@ -535,7 +655,7 @@ struct FlightDetailView: View {
                             }
                             Spacer()
                             VStack(alignment: .trailing, spacing: 4) {
-                                Label(String(localized: "Fin"), systemImage: "stop.circle.fill")
+                                Label("End", systemImage: "stop.circle.fill")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                                 Text(flight.endDate, format: .dateTime.weekday(.abbreviated).day().month().year())
@@ -550,7 +670,7 @@ struct FlightDetailView: View {
                     }
                     .padding(.horizontal)
 
-                    // Voile et spot
+                    // Wing, flight type and spot
                     VStack(spacing: 12) {
                         if let wing = flight.wing {
                             HStack(spacing: 12) {
@@ -569,7 +689,7 @@ struct FlightDetailView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 10))
 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("Voile")
+                                    Text("Wing")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                     Text(wing.name)
@@ -579,6 +699,25 @@ struct FlightDetailView: View {
                                             .font(.subheadline)
                                             .foregroundStyle(.secondary)
                                     }
+                                }
+                                Spacer()
+                            }
+                            .padding()
+                            .background(Color(.secondarySystemBackground))
+                            .clipShape(RoundedRectangle(cornerRadius: 12))
+                        }
+
+                        if let type = flight.flightTypeEnum {
+                            HStack {
+                                Image(systemName: type.symbolName)
+                                    .foregroundStyle(.indigo)
+                                    .font(.title2)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Flight type")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                    Text(type.rawValue)
+                                        .font(.headline)
                                 }
                                 Spacer()
                             }
@@ -627,38 +766,98 @@ struct FlightDetailView: View {
                     Spacer(minLength: 40)
                 }
             }
-            .navigationTitle("Détail du vol")
+            .navigationTitle("Flight Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fermer") {
+                    Button("Close") {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    if flight.gpsTrack?.isEmpty == false {
+                        Menu {
+                            Button {
+                                export(.gpx)
+                            } label: {
+                                Label("GPX", systemImage: "map")
+                            }
+                            Button {
+                                export(.igc)
+                            } label: {
+                                Label("IGC", systemImage: "doc.text")
+                            }
+                        } label: {
+                            Label("Export", systemImage: "square.and.arrow.up")
+                        }
+                    }
+
                     Button {
                         showingEditSheet = true
                     } label: {
-                        Label("Modifier", systemImage: "pencil")
+                        Label("Edit", systemImage: "pencil")
                     }
                 }
             }
             .sheet(isPresented: $showingEditSheet) {
                 EditFlightView(flight: flight)
             }
+            .fullScreenCover(isPresented: $showingReplay) {
+                FlightReplayView(flight: flight)
+            }
+            .sheet(item: $exportedFile) { file in
+                TrackShareSheet(url: file.url)
+                    .presentationDetents([.medium, .large])
+            }
+            .alert("Export Failed", isPresented: Binding(
+                get: { exportErrorMessage != nil },
+                set: { if !$0 { exportErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(exportErrorMessage ?? "Unknown error.")
+            }
         }
     }
 
-    private func formatDistance(_ distance: Double) -> String {
-        if distance >= 1000 {
-            return String(format: "%.1f km", distance / 1000)
-        } else {
-            return "\(Int(distance)) m"
+    private func export(_ format: TrackExportFormat) {
+        do {
+            let url: URL
+            switch format {
+            case .gpx:
+                url = try TrackExporter.gpxFile(for: flight)
+            case .igc:
+                url = try TrackExporter.igcFile(for: flight)
+            }
+            exportedFile = ExportedTrackFile(url: url)
+        } catch {
+            logError("Track export failed: \(error.localizedDescription)", category: .flight)
+            exportErrorMessage = error.localizedDescription
         }
     }
 }
 
-// MARK: - DetailStatCard (Carte de stat pour la vue détail)
+// MARK: - ExportedTrackFile + TrackShareSheet
+
+/// Identifiable wrapper so the share sheet can be driven by .sheet(item:)
+struct ExportedTrackFile: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+/// UIActivityViewController wrapper for sharing an exported track file
+/// (named to avoid clashing with the backup ShareSheet in SettingsViews)
+struct TrackShareSheet: UIViewControllerRepresentable {
+    let url: URL
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: [url], applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
+}
+
+// MARK: - DetailStatCard (stat card for the detail view)
 
 struct DetailStatCard: View {
     let title: String
@@ -694,7 +893,7 @@ struct FlightRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            // Photo de la voile avec cache (40x40)
+            // Wing photo with cache (40x40)
             if let wing = flight.wing {
                 CachedImage(
                     data: wing.photoData,
@@ -711,7 +910,7 @@ struct FlightRow: View {
                 }
                 .clipShape(RoundedRectangle(cornerRadius: 6))
             } else {
-                // Pas de voile associée
+                // No wing assigned
                 RoundedRectangle(cornerRadius: 6)
                     .fill(Color.gray.opacity(0.2))
                     .frame(width: 40, height: 40)
@@ -748,13 +947,18 @@ struct FlightRow: View {
                     }
                 }
 
-                if let spotName = flight.spotName {
-                    Label(spotName, systemImage: "location.fill")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    if let spotName = flight.spotName {
+                        Label(spotName, systemImage: "location.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let type = flight.flightTypeEnum {
+                        FlightTypeBadge(type: type)
+                    }
                 }
 
-                // Statistiques de vol (altitude, distance, vitesse, G-force)
+                // Flight statistics (altitude, distance, speed, G-force)
                 if flight.maxAltitude != nil || flight.totalDistance != nil || flight.maxSpeed != nil || flight.maxGForce != nil {
                     HStack(spacing: 8) {
                         if let maxAlt = flight.maxAltitude {
@@ -763,7 +967,7 @@ struct FlightRow: View {
                                 .foregroundStyle(.orange)
                         }
                         if let distance = flight.totalDistance {
-                            Label(formatDistance(distance), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
+                            Label(formatDistanceText(distance), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
                                 .font(.caption2)
                                 .foregroundStyle(.cyan)
                         }
@@ -783,26 +987,20 @@ struct FlightRow: View {
         }
         .padding(.vertical, 4)
     }
-
-    private func formatDistance(_ distance: Double) -> String {
-        if distance >= 1000 {
-            return String(format: "%.1fkm", distance / 1000)
-        } else {
-            return "\(Int(distance))m"
-        }
-    }
 }
 
-// MARK: - EditFlightView (Éditer un vol)
+// MARK: - EditFlightView (edit a flight)
 
 struct EditFlightView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(DataController.self) private var dataController
     @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
 
     let flight: Flight
 
     @State private var selectedWing: Wing?
+    @State private var selectedType: FlightType?
     @State private var startDate: Date
     @State private var endDate: Date
     @State private var spotName: String
@@ -812,15 +1010,6 @@ struct EditFlightView: View {
     @State private var showingMapPicker = false
     @State private var selectedCoordinate: CLLocationCoordinate2D?
 
-    // Statistiques de vol (lecture seule)
-    @State private var startAltitude: String
-    @State private var maxAltitude: String
-    @State private var endAltitude: String
-    @State private var totalDistance: String
-    @State private var maxSpeed: String
-    @State private var maxGForce: String
-
-    // Suppression
     @State private var showingDeleteConfirmation = false
     @State private var showSaveError = false
 
@@ -830,40 +1019,9 @@ struct EditFlightView: View {
         _endDate = State(initialValue: flight.endDate)
         _spotName = State(initialValue: flight.spotName ?? "")
         _notes = State(initialValue: flight.notes ?? "")
+        _selectedType = State(initialValue: flight.flightTypeEnum)
         if let lat = flight.latitude, let lon = flight.longitude {
             _selectedCoordinate = State(initialValue: CLLocationCoordinate2D(latitude: lat, longitude: lon))
-        }
-
-        // Initialiser les statistiques (avec if let pour éviter les force unwraps)
-        if let alt = flight.startAltitude {
-            _startAltitude = State(initialValue: String(format: "%.0f", alt))
-        } else {
-            _startAltitude = State(initialValue: "")
-        }
-        if let alt = flight.maxAltitude {
-            _maxAltitude = State(initialValue: String(format: "%.0f", alt))
-        } else {
-            _maxAltitude = State(initialValue: "")
-        }
-        if let alt = flight.endAltitude {
-            _endAltitude = State(initialValue: String(format: "%.0f", alt))
-        } else {
-            _endAltitude = State(initialValue: "")
-        }
-        if let dist = flight.totalDistance {
-            _totalDistance = State(initialValue: String(format: "%.0f", dist))
-        } else {
-            _totalDistance = State(initialValue: "")
-        }
-        if let speed = flight.maxSpeed {
-            _maxSpeed = State(initialValue: String(format: "%.1f", speed * 3.6))
-        } else {
-            _maxSpeed = State(initialValue: "")
-        }
-        if let gforce = flight.maxGForce {
-            _maxGForce = State(initialValue: String(format: "%.1f", gforce))
-        } else {
-            _maxGForce = State(initialValue: "")
         }
     }
 
@@ -886,57 +1044,67 @@ struct EditFlightView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Date et heure") {
-                    DatePicker("Début du vol", selection: $startDate)
-                    DatePicker("Fin du vol", selection: $endDate)
+                Section("Date & Time") {
+                    DatePicker("Flight start", selection: $startDate)
+                    DatePicker("Flight end", selection: $endDate)
 
                     HStack {
-                        Text("Durée calculée")
+                        Text("Calculated duration")
                         Spacer()
                         Text(durationFormatted)
                             .foregroundStyle(calculatedDuration < 0 ? .red : .secondary)
                     }
 
                     if calculatedDuration < 0 {
-                        Text("⚠️ La fin doit être après le début")
+                        Text("⚠️ The end must be after the start")
                             .font(.caption)
                             .foregroundStyle(.red)
                     }
                 }
 
-                Section("Voile utilisée") {
-                    Picker("Voile", selection: $selectedWing) {
-                        Text("Aucune").tag(nil as Wing?)
+                Section("Wing") {
+                    Picker("Wing", selection: $selectedWing) {
+                        Text("None").tag(nil as Wing?)
                         ForEach(wings) { wing in
                             Text(wing.name).tag(wing as Wing?)
                         }
                     }
                 }
 
-                Section("Spot") {
-                    TextField("Nom du spot", text: $spotName)
+                Section("Flight Type") {
+                    Picker("Type", selection: $selectedType) {
+                        Text("None").tag(nil as FlightType?)
+                        ForEach(FlightType.allCases) { type in
+                            Label(type.rawValue, systemImage: type.symbolName)
+                                .tag(type as FlightType?)
+                        }
+                    }
+                }
 
-                    // Afficher les coordonnées si elles existent
+                Section("Spot") {
+                    TextField("Spot name", text: $spotName)
+
+                    // Show the coordinates when they exist
                     if let coord = selectedCoordinate {
                         HStack {
-                            Text("Coordonnées")
+                            Text("Coordinates")
                             Spacer()
                             Text("\(coord.latitude, specifier: "%.4f"), \(coord.longitude, specifier: "%.4f")")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
 
-                        // Bouton pour modifier les coordonnées sur la carte
+                        // Adjust the coordinates on the map
                         Button {
                             showingMapPicker = true
                         } label: {
                             HStack {
                                 Image(systemName: "map")
-                                Text("Modifier sur la carte")
+                                Text("Adjust on the map")
                             }
                         }
 
-                        // Bouton pour supprimer les coordonnées
+                        // Remove the coordinates
                         Button(role: .destructive) {
                             selectedCoordinate = nil
                             flight.latitude = nil
@@ -944,11 +1112,11 @@ struct EditFlightView: View {
                         } label: {
                             HStack {
                                 Image(systemName: "trash")
-                                Text("Supprimer les coordonnées")
+                                Text("Remove coordinates")
                             }
                         }
                     } else {
-                        // Bouton pour ajouter des coordonnées via geocoding
+                        // Look up coordinates by geocoding the spot name
                         if !spotName.isEmpty {
                             Button {
                                 geocodeSpot()
@@ -960,19 +1128,19 @@ struct EditFlightView: View {
                                     } else {
                                         Image(systemName: "location.fill")
                                     }
-                                    Text("Rechercher le lieu")
+                                    Text("Search location")
                                 }
                             }
                             .disabled(isGeocodingSpot)
                         }
 
-                        // Bouton pour choisir sur la carte
+                        // Pick on the map
                         Button {
                             showingMapPicker = true
                         } label: {
                             HStack {
                                 Image(systemName: "map")
-                                Text("Choisir sur la carte")
+                                Text("Pick on the map")
                             }
                         }
 
@@ -984,94 +1152,35 @@ struct EditFlightView: View {
                     }
                 }
 
-                // Section statistiques en lecture seule
-                if hasAnyStats {
-                    Section(String(localized: "Statistiques de vol")) {
-                        if !startAltitude.isEmpty {
-                            HStack {
-                                Label(String(localized: "Altitude départ"), systemImage: "arrow.up.circle")
-                                Spacer()
-                                Text("\(startAltitude) m")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if !maxAltitude.isEmpty {
-                            HStack {
-                                Label(String(localized: "Altitude max"), systemImage: "arrow.up")
-                                Spacer()
-                                Text("\(maxAltitude) m")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if !endAltitude.isEmpty {
-                            HStack {
-                                Label(String(localized: "Altitude atterrissage"), systemImage: "arrow.down.circle")
-                                Spacer()
-                                Text("\(endAltitude) m")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if !totalDistance.isEmpty {
-                            HStack {
-                                Label(String(localized: "Distance"), systemImage: "point.topleft.down.to.point.bottomright.curvepath")
-                                Spacer()
-                                Text(formatDisplayDistance(totalDistance))
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if !maxSpeed.isEmpty {
-                            HStack {
-                                Label(String(localized: "Vitesse max"), systemImage: "speedometer")
-                                Spacer()
-                                Text("\(maxSpeed) km/h")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-
-                        if !maxGForce.isEmpty {
-                            HStack {
-                                Label(String(localized: "G-Force max"), systemImage: "waveform.path.ecg")
-                                Spacer()
-                                Text("\(maxGForce) G")
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-
                 Section("Notes") {
                     TextEditor(text: $notes)
                         .frame(minHeight: 100)
                 }
 
-                // Section suppression
+                // Delete section
                 Section {
                     Button(role: .destructive) {
                         showingDeleteConfirmation = true
                     } label: {
                         HStack {
                             Spacer()
-                            Text("Supprimer ce vol")
+                            Text("Delete this flight")
                             Spacer()
                         }
                     }
                 }
             }
-            .navigationTitle(String(localized: "Modifier le vol"))
+            .navigationTitle("Edit Flight")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Enregistrer") {
+                    Button("Save") {
                         saveFlight()
                     }
                     .disabled(calculatedDuration < 0)
@@ -1086,46 +1195,28 @@ struct EditFlightView: View {
                     spotName: spotName
                 )
             }
-            .confirmationDialog("Supprimer ce vol ?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
-                Button("Supprimer", role: .destructive) {
+            .confirmationDialog("Delete this flight?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
+                Button("Delete", role: .destructive) {
                     deleteFlight()
                 }
-                Button("Annuler", role: .cancel) {}
+                Button("Cancel", role: .cancel) {}
             }
-            .alert("Erreur de sauvegarde", isPresented: $showSaveError) {
+            .alert("Save Failed", isPresented: $showSaveError) {
                 Button("OK", role: .cancel) { }
             } message: {
-                Text("Impossible de sauvegarder les modifications. Veuillez réessayer.")
+                Text("Could not save the changes. Please try again.")
             }
         }
     }
 
     private func deleteFlight() {
-        modelContext.delete(flight)
-        do {
-            try modelContext.save()
-        } catch {
-            logError("Error deleting flight: \(error)", category: .flight)
-        }
+        dataController.deleteFlight(flight)
         dismiss()
-    }
-
-    private var hasAnyStats: Bool {
-        !startAltitude.isEmpty || !maxAltitude.isEmpty || !endAltitude.isEmpty ||
-        !totalDistance.isEmpty || !maxSpeed.isEmpty || !maxGForce.isEmpty
-    }
-
-    private func formatDisplayDistance(_ distance: String) -> String {
-        guard let d = Double(distance) else { return "\(distance) m" }
-        if d >= 1000 {
-            return String(format: "%.1f km", d / 1000)
-        } else {
-            return "\(Int(d)) m"
-        }
     }
 
     private func saveFlight() {
         flight.wing = selectedWing
+        flight.flightTypeEnum = selectedType
         flight.startDate = startDate
         flight.endDate = endDate
         flight.durationSeconds = calculatedDuration
@@ -1134,7 +1225,7 @@ struct EditFlightView: View {
         flight.latitude = selectedCoordinate?.latitude
         flight.longitude = selectedCoordinate?.longitude
 
-        // Les statistiques ne sont plus modifiables, elles sont préservées
+        // Tracking statistics are read-only and preserved as-is
 
         Task { @MainActor in
             do {
@@ -1162,13 +1253,13 @@ struct EditFlightView: View {
                 isGeocodingSpot = false
 
                 if let error = error {
-                    geocodingMessage = "❌ Impossible de trouver ce lieu"
+                    geocodingMessage = "❌ Could not find this place"
                     logError("Geocoding error: \(error.localizedDescription)", category: .location)
                     return
                 }
 
                 guard let mapItem = response?.mapItems.first else {
-                    geocodingMessage = "❌ Aucun résultat trouvé"
+                    geocodingMessage = "❌ No results found"
                     return
                 }
                 let location = mapItem.location
@@ -1176,15 +1267,15 @@ struct EditFlightView: View {
                 selectedCoordinate = location.coordinate
                 flight.latitude = location.coordinate.latitude
                 flight.longitude = location.coordinate.longitude
-                geocodingMessage = "✅ Coordonnées ajoutées"
+                geocodingMessage = "✅ Coordinates added"
 
                 Task { @MainActor in
                     do {
                         try modelContext.save()
                     } catch {
                         logError("Failed to save geocoded coordinates: \(error.localizedDescription)", category: .dataController)
-                        // Note: On ne montre pas d'alerte ici car les coordonnées sont déjà visuellement affichées
-                        // et seront sauvegardées au prochain enregistrement du vol
+                        // No alert here: the coordinates are already shown on screen
+                        // and will be persisted the next time the flight is saved
                     }
                 }
             }
@@ -1192,7 +1283,7 @@ struct EditFlightView: View {
     }
 }
 
-// MARK: - MapCoordinatePicker (Sélecteur de coordonnées sur carte)
+// MARK: - MapCoordinatePicker (pick coordinates on a map)
 
 struct MapCoordinatePicker: View {
     @Environment(\.dismiss) private var dismiss
@@ -1208,7 +1299,7 @@ struct MapCoordinatePicker: View {
         self._selectedCoordinate = selectedCoordinate
         self.spotName = spotName
 
-        // Position initiale : coordonnées existantes ou France par défaut
+        // Initial position: existing coordinates, or France by default
         if let coord = selectedCoordinate.wrappedValue {
             _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
                 center: coord,
@@ -1216,7 +1307,7 @@ struct MapCoordinatePicker: View {
             )))
             _markerCoordinate = State(initialValue: coord)
         } else {
-            // France par défaut
+            // France by default
             _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: 45.9, longitude: 6.1),
                 span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)
@@ -1228,11 +1319,11 @@ struct MapCoordinatePicker: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                // Carte
+                // Map
                 MapReader { proxy in
                     Map(position: $cameraPosition) {
                         if let coord = markerCoordinate {
-                            Marker(spotName.isEmpty ? "Position" : spotName, coordinate: coord)
+                            Marker(spotName.isEmpty ? "Location" : spotName, coordinate: coord)
                                 .tint(.red)
                         }
                     }
@@ -1246,16 +1337,16 @@ struct MapCoordinatePicker: View {
                     }
                 }
 
-                // Instructions en bas
+                // Search bar + instructions at the bottom
                 VStack {
                     Spacer()
 
                     VStack(spacing: 8) {
-                        // Barre de recherche
+                        // Search bar
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundStyle(.secondary)
-                            TextField("Rechercher un lieu...", text: $searchText)
+                            TextField("Search for a place...", text: $searchText)
                                 .textFieldStyle(.plain)
                                 .onSubmit {
                                     searchLocation()
@@ -1276,7 +1367,7 @@ struct MapCoordinatePicker: View {
                         .background(.ultraThinMaterial)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
 
-                        Text("Tapez sur la carte pour placer le marqueur")
+                        Text("Tap the map to place the marker")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 12)
@@ -1297,17 +1388,17 @@ struct MapCoordinatePicker: View {
                     .padding()
                 }
             }
-            .navigationTitle("Choisir la position")
+            .navigationTitle("Pick Location")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Valider") {
+                    Button("Done") {
                         selectedCoordinate = markerCoordinate
                         dismiss()
                     }
@@ -1315,7 +1406,7 @@ struct MapCoordinatePicker: View {
                 }
             }
             .onAppear {
-                // Si on a un nom de spot mais pas de coordonnées, rechercher automatiquement
+                // If there is a spot name but no coordinates, search automatically
                 if !spotName.isEmpty && markerCoordinate == nil {
                     searchLocation()
                 }
@@ -1351,4 +1442,3 @@ struct MapCoordinatePicker: View {
         }
     }
 }
-

@@ -500,7 +500,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.watchkitapp.ParaFlightLogWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog2.watchkitapp.ParaFlightLogWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -533,7 +533,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.watchkitapp.ParaFlightLogWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog2.watchkitapp.ParaFlightLogWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -679,9 +679,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
+				CODE_SIGN_ENTITLEMENTS = ParaFlightLog/ParaFlightLog.entitlements;
+				INFOPLIST_KEY_CFBundleDisplayName = "ParaFlightLog 2";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog uses your location to automatically record your paragliding flights, including in the background.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog uses your location to record the takeoff spot of your flights.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "ParaFlightLog uses the barometer to measure your climb rate for the vario.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIBackgroundModes = "location remote-notification";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -691,7 +695,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -714,9 +718,13 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
+				CODE_SIGN_ENTITLEMENTS = ParaFlightLog/ParaFlightLog.entitlements;
+				INFOPLIST_KEY_CFBundleDisplayName = "ParaFlightLog 2";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog uses your location to automatically record your paragliding flights, including in the background.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog uses your location to record the takeoff spot of your flights.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "ParaFlightLog uses the barometer to measure your climb rate for the vario.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIBackgroundModes = "location remote-notification";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
@@ -726,7 +734,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog2;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -750,18 +758,18 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWatch;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accède à vos données de santé pour enregistrer vos sessions de vol.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de vos vols.";
-				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accesses your health data to record your flight sessions.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog starts a workout session during flights to enable Water Lock.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog uses your location to record where you fly.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Used to measure G-force and climb rate during your flight.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog2.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -788,18 +796,18 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = ParaFlightLogWatch;
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accède à vos données de santé pour enregistrer vos sessions de vol.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog enregistre vos vols comme activités sportives pour activer le mode Water Lock.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog utilise votre position pour enregistrer le lieu de vos vols.";
-				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accesses your health data to record your flight sessions.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog starts a workout session during flights to enable Water Lock.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog uses your location to record where you fly.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "Used to measure G-force and climb rate during your flight.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog2;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog2.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -827,7 +835,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLogUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog2UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -848,7 +856,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLogUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.ParaFlightLog2UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;

@@ -2,7 +2,7 @@
 //  SettingsViews.swift
 //  ParaFlightLog
 //
-//  Vues liées aux réglages : settings, gestion spots, export/import
+//  Settings-related views: settings, spot management, backup export/import
 //  Target: iOS only
 //
 
@@ -11,9 +11,9 @@ import SwiftData
 import MapKit
 import UniformTypeIdentifiers
 
-// MARK: - SpotsManagementView (Gestion des spots)
+// MARK: - SpotsManagementView
 
-/// Vue pour gérer les spots détectés dans les vols
+/// View to manage the spots detected in flights
 struct SpotsManagementView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Flight.startDate, order: .reverse) private var flights: [Flight]
@@ -21,7 +21,7 @@ struct SpotsManagementView: View {
     @State private var selectedSpot: SpotInfo?
     @State private var showingMapPicker = false
 
-    /// Structure pour regrouper les infos d'un spot
+    /// Groups the info of a single spot
     struct SpotInfo: Identifiable, Hashable {
         let id = UUID()
         let name: String
@@ -42,7 +42,7 @@ struct SpotsManagementView: View {
         }
     }
 
-    /// Extraire tous les spots uniques des vols
+    /// Extracts all unique spots from the flights
     var spots: [SpotInfo] {
         var spotDict: [String: SpotInfo] = [:]
 
@@ -51,7 +51,7 @@ struct SpotsManagementView: View {
 
             if var existing = spotDict[spotName] {
                 existing.flightCount += 1
-                // Mettre à jour les coordonnées si ce vol en a
+                // Update the coordinates if this flight has some
                 if existing.latitude == nil, let lat = flight.latitude, let lon = flight.longitude {
                     existing.latitude = lat
                     existing.longitude = lon
@@ -74,9 +74,9 @@ struct SpotsManagementView: View {
         List {
             if spots.isEmpty {
                 ContentUnavailableView(
-                    "Aucun spot",
+                    "No Spots",
                     systemImage: "mappin.slash",
-                    description: Text("Les spots apparaîtront ici une fois que vous aurez enregistré des vols")
+                    description: Text("Spots will appear here once you have recorded flights")
                 )
             } else {
                 Section {
@@ -89,7 +89,7 @@ struct SpotsManagementView: View {
                 } header: {
                     Text(spotsCountText(spots.count))
                 } footer: {
-                    Text(String(localized: "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés"))
+                    Text("Add GPS coordinates to a spot to apply them automatically to all associated flights")
                 }
             }
         }
@@ -103,7 +103,7 @@ struct SpotsManagementView: View {
         }
     }
 
-    /// Met à jour les coordonnées de tous les vols avec ce nom de spot
+    /// Updates the coordinates of all flights with this spot name
     private func updateSpotCoordinates(spotName: String, coordinate: CLLocationCoordinate2D) {
         var updatedCount = 0
 
@@ -125,24 +125,20 @@ struct SpotsManagementView: View {
         }
     }
 
-    /// Retourne le texte avec pluralisation correcte pour le nombre de spots
+    /// Correctly pluralized spot count text
     private func spotsCountText(_ count: Int) -> String {
-        if count <= 1 {
-            return String(localized: "\(count) spot détecté")
-        } else {
-            return String(localized: "\(count) spots détectés")
-        }
+        count == 1 ? "1 spot detected" : "\(count) spots detected"
     }
 }
 
-/// Row pour afficher un spot
+/// Row displaying a spot
 struct SpotRowView: View {
     let spot: SpotsManagementView.SpotInfo
     let onMapTap: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
-            // Icône
+            // Icon
             ZStack {
                 Circle()
                     .fill(spot.hasCoordinates ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
@@ -174,7 +170,7 @@ struct SpotRowView: View {
 
             Spacer()
 
-            // Bouton pour ajouter/modifier les coordonnées
+            // Add/edit coordinates button
             Button {
                 onMapTap()
             } label: {
@@ -187,26 +183,18 @@ struct SpotRowView: View {
         .padding(.vertical, 4)
     }
 
-    /// Retourne le texte avec pluralisation correcte pour le nombre de vols
+    /// Correctly pluralized flight count text
     private func flightsCountText(_ count: Int) -> String {
-        if count <= 1 {
-            return String(localized: "\(count) vol")
-        } else {
-            return String(localized: "\(count) vols")
-        }
+        count == 1 ? "1 flight" : "\(count) flights"
     }
 }
 
-/// Retourne le texte avec pluralisation correcte pour le message de mise à jour des vols
+/// Correctly pluralized "flights will be updated" text
 private func flightsWillBeUpdatedText(_ count: Int) -> String {
-    if count <= 1 {
-        return String(localized: "📍 \(count) vol sera mis à jour")
-    } else {
-        return String(localized: "📍 \(count) vols seront mis à jour")
-    }
+    count == 1 ? "📍 1 flight will be updated" : "📍 \(count) flights will be updated"
 }
 
-/// Picker de carte pour un spot
+/// Map picker for a spot
 struct SpotMapPicker: View {
     @Environment(\.dismiss) private var dismiss
     let spot: SpotsManagementView.SpotInfo
@@ -221,7 +209,7 @@ struct SpotMapPicker: View {
         self.spot = spot
         self.onSave = onSave
 
-        // Position initiale
+        // Initial position
         if let lat = spot.latitude, let lon = spot.longitude {
             let coord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
             _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
@@ -230,7 +218,7 @@ struct SpotMapPicker: View {
             )))
             _markerCoordinate = State(initialValue: coord)
         } else {
-            // France par défaut
+            // France by default
             _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: 45.9, longitude: 6.1),
                 span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)
@@ -263,11 +251,11 @@ struct SpotMapPicker: View {
                     Spacer()
 
                     VStack(spacing: 8) {
-                        // Barre de recherche
+                        // Search bar
                         HStack {
                             Image(systemName: "magnifyingglass")
                                 .foregroundStyle(.secondary)
-                            TextField("Rechercher un lieu...", text: $searchText)
+                            TextField("Search for a place...", text: $searchText)
                                 .textFieldStyle(.plain)
                                 .onSubmit {
                                     searchLocation()
@@ -288,7 +276,7 @@ struct SpotMapPicker: View {
                         .background(.ultraThinMaterial)
                         .clipShape(RoundedRectangle(cornerRadius: 10))
 
-                        Text("Tapez sur la carte pour placer le marqueur")
+                        Text("Tap the map to place the marker")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .padding(.horizontal, 12)
@@ -306,7 +294,7 @@ struct SpotMapPicker: View {
                                 .clipShape(Capsule())
                         }
 
-                        // Info sur le nombre de vols qui seront mis à jour
+                        // How many flights will be updated
                         Text(flightsWillBeUpdatedText(spot.flightCount))
                             .font(.caption)
                             .foregroundStyle(.orange)
@@ -322,13 +310,13 @@ struct SpotMapPicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Enregistrer") {
+                    Button("Save") {
                         if let coord = markerCoordinate {
                             onSave(coord)
                         }
@@ -338,7 +326,7 @@ struct SpotMapPicker: View {
                 }
             }
             .onAppear {
-                // Si pas de coordonnées, rechercher automatiquement
+                // Search automatically when there are no coordinates yet
                 if markerCoordinate == nil {
                     searchLocation()
                 }
@@ -374,233 +362,52 @@ struct SpotMapPicker: View {
     }
 }
 
-// MARK: - SettingsView (Paramètres et import de données)
+// MARK: - SettingsView
 
 struct SettingsView: View {
     @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
-    @Environment(LocalizationManager.self) private var localizationManager
     @Environment(\.modelContext) private var modelContext
     @Query private var wings: [Wing]
     @Query private var flights: [Flight]
-    @State private var showingImportSuccess = false
+
+    @AppStorage(UserDefaultsKeys.phoneOnlyMode) private var phoneOnlyMode = false
+    @AppStorage(UserDefaultsKeys.varioEnabled) private var varioEnabled = false
+    @AppStorage(UserDefaultsKeys.developerModeEnabled) private var developerModeEnabled = false
+
+    @State private var showingImportResult = false
     @State private var importMessage = ""
     @State private var showingDocumentPicker = false
     @State private var isImporting = false
-    @State private var showingExportView = false
 
     var body: some View {
         NavigationStack {
             List {
-                Section("Chronomètre") {
-                    NavigationLink {
-                        TimerView()
-                    } label: {
-                        Label("Lancer un vol", systemImage: "timer")
-                    }
-                }
-
-                Section("Voiles") {
-                    NavigationLink {
-                        ArchivedWingsView()
-                    } label: {
-                        Label("Voiles archivées", systemImage: "archivebox")
-                    }
-                }
-
-                Section("Spots") {
-                    NavigationLink {
-                        SpotsManagementView()
-                    } label: {
-                        Label("Gérer les spots", systemImage: "mappin.and.ellipse")
-                    }
-                }
-
-                Section("Langue") {
-                    Picker("Langue de l'application", selection: Binding(
-                        get: { localizationManager.currentLanguage },
-                        set: { localizationManager.currentLanguage = $0 }
-                    )) {
-                        Text("Système").tag(nil as LocalizationManager.Language?)
-                        ForEach(LocalizationManager.Language.allCases, id: \.self) { language in
-                            Text("\(language.flag) \(language.displayName)")
-                                .tag(language as LocalizationManager.Language?)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                }
-
-                Section("Apple Watch") {
-                    HStack {
-                        Text("App Watch")
-                        Spacer()
-                        if watchManager.isWatchAppInstalled {
-                            Label("Installée", systemImage: "checkmark.circle.fill")
-                                .foregroundStyle(.green)
-                                .font(.caption)
-                        } else {
-                            Label("Non installée", systemImage: "xmark.circle.fill")
-                                .foregroundStyle(.red)
-                                .font(.caption)
-                        }
-                    }
-
-                    HStack {
-                        Text("Joignable")
-                        Spacer()
-                        if watchManager.isWatchReachable {
-                            Label("Oui", systemImage: "antenna.radiowaves.left.and.right")
-                                .foregroundStyle(.green)
-                                .font(.caption)
-                        } else {
-                            Label("Non", systemImage: "antenna.radiowaves.left.and.right.slash")
-                                .foregroundStyle(.orange)
-                                .font(.caption)
-                        }
-                    }
-
-                    HStack {
-                        Text("Nombre de voiles")
-                        Spacer()
-                        Text("\(wings.count)")
-                            .foregroundStyle(.secondary)
-                    }
-
-                    Button {
-                        logInfo("Manual sync button pressed - \(wings.count) wings available", category: .watchSync)
-                        watchManager.sendWingsToWatch()
-                        watchManager.sendWingsViaTransfer() // Essayer aussi transferUserInfo
-                        importMessage = "\(wings.count) voile(s) envoyée(s) à la Watch"
-                        showingImportSuccess = true
-                    } label: {
-                        Label("Synchroniser les voiles", systemImage: "arrow.triangle.2.circlepath")
-                    }
-                }
-
-                Section {
-                    Toggle(isOn: Binding(
-                        get: { UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock) },
-                        set: { newValue in
-                            UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.watchAutoWaterLock)
-                            let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
-                            watchManager.sendWatchSettings(autoWaterLock: newValue, allowSessionDismiss: allowDismiss)
-                        }
-                    )) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Verrouillage automatique")
-                            Text("Active le Water Lock au début d'un vol pour éviter les touches accidentelles")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Toggle(isOn: Binding(
-                        get: { UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true },
-                        set: { newValue in
-                            UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.watchAllowSessionDismiss)
-                            let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
-                            watchManager.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: newValue)
-                        }
-                    )) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Autoriser l'annulation de vol")
-                            Text("Permet d'annuler un vol en cours sans le sauvegarder")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-                } header: {
-                    Text("Options Apple Watch")
-                } footer: {
-                    Text("Ces paramètres sont synchronisés automatiquement avec votre Apple Watch.")
-                }
-
-                Section("Données") {
-                    NavigationLink {
-                        BackupExportView(wings: wings, flights: flights)
-                    } label: {
-                        Label("Exporter backup complet", systemImage: "archivebox")
-                    }
-
-                    Button {
-                        showingDocumentPicker = true
-                    } label: {
-                        Label("Importer backup ou Excel", systemImage: "square.and.arrow.down")
-                    }
-
-                    Button {
-                        exportToCSV()
-                    } label: {
-                        Label("Exporter en CSV (ancien format)", systemImage: "square.and.arrow.up")
-                    }
-                }
-
-                Section {
-                    Toggle(isOn: Binding(
-                        get: { UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled) },
-                        set: { newValue in
-                            UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.developerModeEnabled)
-                            // Synchroniser avec la Watch
-                            let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
-                            let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
-                            watchManager.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: allowDismiss, developerMode: newValue)
-                        }
-                    )) {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(String(localized: "Mode développeur"))
-                            Text(String(localized: "Active les logs détaillés (peut ralentir l'app)"))
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                    }
-
-                    Button {
-                        generateTestData()
-                    } label: {
-                        Label(String(localized: "Générer des données de test"), systemImage: "wand.and.stars")
-                    }
-
-                    Button(role: .destructive) {
-                        deleteAllData()
-                    } label: {
-                        Label(String(localized: "Supprimer toutes les données"), systemImage: "trash")
-                    }
-                } header: {
-                    Text(String(localized: "Développeur"))
-                }
-
-                Section("À propos") {
-                    HStack {
-                        Text("Version")
-                        Spacer()
-                        Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
-                            .foregroundStyle(.secondary)
-                    }
-
-                    HStack {
-                        Text("Build")
-                        Spacer()
-                        Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                trackingSection
+                appleWatchSection
+                wingsSection
+                dataSection
+                accountSection
+                comingSoonSection
+                developerSection
+                aboutSection
             }
-            .navigationTitle("Réglages")
+            .navigationTitle("Settings")
             .sheet(isPresented: $showingDocumentPicker) {
                 DocumentPicker { url in
-                    importExcelFile(from: url)
+                    importBackupFile(from: url)
                 }
             }
-            .alert(isImporting ? "Import en cours..." : "Résultat", isPresented: Binding(
-                get: { showingImportSuccess || isImporting },
-                set: { if !$0 { showingImportSuccess = false; isImporting = false } }
+            .alert(isImporting ? "Importing..." : "Result", isPresented: Binding(
+                get: { showingImportResult || isImporting },
+                set: { if !$0 { showingImportResult = false; isImporting = false } }
             )) {
                 if !isImporting {
                     Button("OK") { }
                 }
             } message: {
                 if isImporting {
-                    Text("Importation des données...")
+                    Text("Importing data...")
                 } else {
                     Text(importMessage)
                 }
@@ -608,8 +415,284 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - Sections
+
+    private var trackingSection: some View {
+        Section {
+            Toggle(isOn: $phoneOnlyMode) {
+                Text("Use iPhone as tracker")
+            }
+
+            NavigationLink {
+                TimerView()
+            } label: {
+                Label("Flight Timer", systemImage: "timer")
+            }
+
+            Toggle(isOn: $varioEnabled) {
+                Text("Vario sound & haptics")
+            }
+        } header: {
+            Text("Tracking")
+        } footer: {
+            Text("Use iPhone as tracker adds a Timer tab so you can track flights without an Apple Watch. The vario plays climb beeps and sink alerts while a flight is running.")
+        }
+    }
+
+    private var appleWatchSection: some View {
+        Section {
+            HStack {
+                Text("Watch App")
+                Spacer()
+                if watchManager.isWatchAppInstalled {
+                    Label("Installed", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                } else {
+                    Label("Not installed", systemImage: "xmark.circle.fill")
+                        .foregroundStyle(.red)
+                        .font(.caption)
+                }
+            }
+
+            HStack {
+                Text("Reachable")
+                Spacer()
+                if watchManager.isWatchReachable {
+                    Label("Yes", systemImage: "antenna.radiowaves.left.and.right")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                } else {
+                    Label("No", systemImage: "antenna.radiowaves.left.and.right.slash")
+                        .foregroundStyle(.orange)
+                        .font(.caption)
+                }
+            }
+
+            HStack {
+                Text("Wings")
+                Spacer()
+                Text("\(wings.count)")
+                    .foregroundStyle(.secondary)
+            }
+
+            Button {
+                logInfo("Manual sync button pressed - \(wings.count) wings available", category: .watchSync)
+                watchManager.sendWingsToWatch()
+                importMessage = wings.count == 1 ? "1 wing sent to the Watch" : "\(wings.count) wings sent to the Watch"
+                showingImportResult = true
+            } label: {
+                Label("Sync Wings", systemImage: "arrow.triangle.2.circlepath")
+            }
+
+            Toggle(isOn: Binding(
+                get: { UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock) },
+                set: { newValue in
+                    UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.watchAutoWaterLock)
+                    let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
+                    watchManager.sendWatchSettings(autoWaterLock: newValue, allowSessionDismiss: allowDismiss)
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Automatic Water Lock")
+                    Text("Enables Water Lock at takeoff to prevent accidental taps")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Toggle(isOn: Binding(
+                get: { UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true },
+                set: { newValue in
+                    UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.watchAllowSessionDismiss)
+                    let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+                    watchManager.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: newValue)
+                }
+            )) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Allow flight cancellation")
+                    Text("Lets you cancel an ongoing flight without saving it")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } header: {
+            Text("Apple Watch")
+        } footer: {
+            Text("These settings are synced automatically with your Apple Watch.")
+        }
+    }
+
+    private var wingsSection: some View {
+        Section("Wings") {
+            NavigationLink {
+                ArchivedWingsView()
+            } label: {
+                Label("Archived Wings", systemImage: "archivebox")
+            }
+        }
+    }
+
+    private var dataSection: some View {
+        Section {
+            HStack {
+                Text("iCloud Sync")
+                Spacer()
+                if dataController.isCloudSyncActive {
+                    Label("Active", systemImage: "checkmark.icloud.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                } else {
+                    Label("Off", systemImage: "icloud.slash")
+                        .foregroundStyle(.secondary)
+                        .font(.caption)
+                }
+            }
+
+            NavigationLink {
+                BackupExportView(wings: wings, flights: flights)
+            } label: {
+                Label("Export Backup", systemImage: "archivebox")
+            }
+
+            Button {
+                showingDocumentPicker = true
+            } label: {
+                Label("Import Backup", systemImage: "square.and.arrow.down")
+            }
+
+            NavigationLink {
+                SpotsManagementView()
+            } label: {
+                Label("Manage Spots", systemImage: "mappin.and.ellipse")
+            }
+        } header: {
+            Text("Data")
+        } footer: {
+            if dataController.isCloudSyncActive {
+                Text("Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks.")
+            } else {
+                Text("Enable iCloud in Settings to sync across devices. Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks.")
+            }
+        }
+    }
+
+    private var accountSection: some View {
+        Section("Account") {
+            NavigationLink {
+                AccountView(
+                    onBackup: {
+                        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
+                            Task { @MainActor in
+                                // Snapshot models on the main actor (SwiftData requirement)
+                                let allWings = dataController.fetchWings(includeArchived: true)
+                                let allFlights = dataController.fetchFlights()
+                                BackupManager.exportBackup(wings: allWings, flights: allFlights) { result in
+                                    continuation.resume(with: result)
+                                }
+                            }
+                        }
+                    },
+                    onRestore: { url in
+                        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                            Task { @MainActor in
+                                BackupManager.importBackup(from: url, dataController: dataController, mode: .merge) { result in
+                                    switch result {
+                                    case .success(let summary):
+                                        logInfo("Cloud restore: \(summary.message)", category: .dataImport)
+                                        watchManager.sendWingsToWatch()
+                                        continuation.resume()
+                                    case .failure(let error):
+                                        continuation.resume(throwing: error)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                )
+            } label: {
+                Label("Account & Cloud Backup", systemImage: "person.icloud")
+            }
+        }
+    }
+
+    private var comingSoonSection: some View {
+        Section {
+            HStack {
+                Label("SoarX Voice — in-flight voice assistant", systemImage: "waveform.circle")
+                Spacer()
+            }
+            .foregroundStyle(.secondary)
+        } header: {
+            Text("Coming Soon")
+        } footer: {
+            Text("Talk to your logbook while flying. Coming in a future version.")
+        }
+    }
+
+    private var developerSection: some View {
+        Section {
+            Toggle(isOn: $developerModeEnabled) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Developer mode")
+                    Text("Enables detailed logging (may slow down the app)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .onChange(of: developerModeEnabled) { _, newValue in
+                // Sync developer mode with the Watch
+                let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+                let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
+                watchManager.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: allowDismiss, developerMode: newValue)
+            }
+
+            if developerModeEnabled {
+                NavigationLink {
+                    TimerView(simulated: true)
+                } label: {
+                    Label("Simulate a Flight (Live)", systemImage: "play.circle")
+                }
+
+                Button {
+                    generateTestData()
+                } label: {
+                    Label("Generate Test Flights", systemImage: "wand.and.stars")
+                }
+
+                Button(role: .destructive) {
+                    deleteAllData()
+                } label: {
+                    Label("Delete All Data", systemImage: "trash")
+                }
+            }
+        } header: {
+            Text("Developer")
+        }
+    }
+
+    private var aboutSection: some View {
+        Section("About") {
+            HStack {
+                Text("Version")
+                Spacer()
+                Text(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
+                    .foregroundStyle(.secondary)
+            }
+
+            HStack {
+                Text("Build")
+                Spacer()
+                Text(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    // MARK: - Actions
+
     private func generateTestData() {
-        // Créer des voiles de test si aucune n'existe
+        // Create test wings if none exist
         if wings.isEmpty {
             let testWings = [
                 Wing(name: "Flare Props", size: "24", type: "Soaring", color: "Orange"),
@@ -622,7 +705,7 @@ struct SettingsView: View {
             }
         }
 
-        // Créer des vols de test
+        // Create test flights
         let testSpots = ["Chamonix", "Annecy", "Saint-Hilaire", "Passy", "Talloires"]
         let calendar = Calendar.current
 
@@ -631,13 +714,13 @@ struct SettingsView: View {
             let date = calendar.date(byAdding: .day, value: -daysAgo, to: Date()) ?? Date()
 
             let startDate = date
-            let duration = Int.random(in: 900...7200) // 15min à 2h
+            let duration = Int.random(in: 900...7200) // 15 min to 2 h
             let endDate = startDate.addingTimeInterval(TimeInterval(duration))
 
             let randomWing = wings.randomElement()
             let randomSpot = testSpots.randomElement()
 
-            // Créer des coordonnées fictives (région d'Annecy/Chamonix)
+            // Fake coordinates (Annecy/Chamonix area)
             let lat = 45.9 + Double.random(in: -0.2...0.2)
             let lon = 6.1 + Double.random(in: -0.2...0.2)
 
@@ -648,7 +731,8 @@ struct SettingsView: View {
                 durationSeconds: duration,
                 spotName: randomSpot,
                 latitude: lat,
-                longitude: lon
+                longitude: lon,
+                flightType: FlightType.allCases.randomElement()?.rawValue
             )
 
             modelContext.insert(flight)
@@ -657,197 +741,53 @@ struct SettingsView: View {
         Task { @MainActor in
             do {
                 try modelContext.save()
-                importMessage = "✅ \(wings.count) voiles et 20 vols créés"
-                showingImportSuccess = true
+                importMessage = "✅ \(wings.count) wings and 20 flights created"
+                showingImportResult = true
             } catch {
                 logError("Failed to save demo data: \(error.localizedDescription)", category: .dataController)
-                importMessage = "❌ Erreur lors de la création des données démo"
-                showingImportSuccess = true
+                importMessage = "❌ Error while creating demo data"
+                showingImportResult = true
             }
         }
     }
 
-    private func importExcelFile(from url: URL) {
-        // Détecter le type de fichier (.paraflightlog backup ou Excel/CSV)
-        let fileExtension = url.pathExtension.lowercased()
-        let isBackupFile = fileExtension == "paraflightlog"
+    /// Imports a `.paraflightlog` backup bundle (v2 JSON or legacy v1 CSV,
+    /// auto-detected by BackupManager).
+    private func importBackupFile(from url: URL) {
+        isImporting = true
 
-        if isBackupFile {
-            // Import fichier backup .paraflightlog
-            isImporting = true
-            importMessage = "Extraction du backup..."
+        BackupManager.importBackup(from: url, dataController: dataController, mode: .merge) { result in
+            self.isImporting = false
 
-            ZipBackup.importFromZip(zipURL: url, dataController: dataController, mergeMode: true) { result in
-                self.isImporting = false
-
-                switch result {
-                case .success(let summary):
-                    self.importMessage = summary
-                    self.showingImportSuccess = true
-                    // Synchroniser les voiles vers la Watch après import
-                    self.watchManager.sendWingsToWatch()
-                case .failure(let error):
-                    self.importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
-                    self.showingImportSuccess = true
-                }
+            switch result {
+            case .success(let summary):
+                self.importMessage = summary.message
+                self.showingImportResult = true
+                // Sync wings to the Watch after import
+                self.watchManager.sendWingsToWatch()
+            case .failure(let error):
+                self.importMessage = "❌ Import failed:\n\(error.localizedDescription)"
+                self.showingImportResult = true
             }
-        } else {
-            // Import Excel/CSV (existant)
-            isImporting = true
-
-            DispatchQueue.global(qos: .userInitiated).async {
-                do {
-                    // Parse le fichier en arrière-plan
-                    let data = try ExcelImporter.parseExcelFile(at: url)
-
-                    logInfo("Parsed \(data.flights.count) flights from file", category: .dataController)
-
-                    // Import dans la base DOIT être sur le main thread (SwiftData requirement)
-                    DispatchQueue.main.async {
-                        do {
-                            let result = try ExcelImporter.importToDatabase(data: data, dataController: self.dataController)
-
-                            self.isImporting = false
-                            self.importMessage = result.summary
-                            self.showingImportSuccess = true
-                        } catch {
-                            self.isImporting = false
-                            self.importMessage = "❌ Erreur d'import:\n\(error.localizedDescription)"
-                            self.showingImportSuccess = true
-                        }
-                    }
-                } catch {
-                    DispatchQueue.main.async {
-                        self.isImporting = false
-                        self.importMessage = "❌ Erreur de lecture:\n\(error.localizedDescription)"
-                        self.showingImportSuccess = true
-                    }
-                }
-            }
-        }
-    }
-
-    private func exportToCSV() {
-        let dateFormatter = DateFormatter()
-        dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
-        let timestamp = dateFormatter.string(from: Date()).replacingOccurrences(of: "/", with: "-").replacingOccurrences(of: ":", with: "h")
-
-        guard let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
-            importMessage = "❌ Erreur: impossible d'accéder aux documents"
-            showingImportSuccess = true
-            return
-        }
-
-        // Créer un dossier pour les images
-        let imagesFolder = documentsPath.appendingPathComponent("ParaFlightLog_Images_\(timestamp)")
-        try? FileManager.default.createDirectory(at: imagesFolder, withIntermediateDirectories: true)
-
-        // Générer CSV des voiles avec référence aux images
-        var wingsCSV = "ID,Nom,Taille,Type,Couleur,Archivé,Date de création,Photo\n"
-        var exportedFiles: [URL] = []
-
-        for wing in wings.sorted(by: { $0.createdAt < $1.createdAt }) {
-            let id = wing.id.uuidString
-            let name = wing.name.replacingOccurrences(of: ",", with: ";")
-            let size = wing.size?.replacingOccurrences(of: ",", with: ";") ?? ""
-            let type = wing.type?.replacingOccurrences(of: ",", with: ";") ?? ""
-            let color = wing.color?.replacingOccurrences(of: ",", with: ";") ?? ""
-            let archived = wing.isArchived ? "Oui" : "Non"
-            let created = dateFormatter.string(from: wing.createdAt)
-
-            // Sauvegarder l'image si elle existe
-            var photoFilename = ""
-            if let photoData = wing.photoData {
-                photoFilename = "\(id).jpg"
-                let photoURL = imagesFolder.appendingPathComponent(photoFilename)
-                try? photoData.write(to: photoURL)
-            }
-
-            wingsCSV += "\(id),\(name),\(size),\(type),\(color),\(archived),\(created),\(photoFilename)\n"
-        }
-
-        // Générer CSV des vols
-        var flightsCSV = "ID,Date début,Date fin,Durée (min),Voile,Spot,Latitude,Longitude,Type,Notes\n"
-        for flight in flights.sorted(by: { $0.startDate < $1.startDate }) {
-            let id = flight.id.uuidString
-            let startDate = dateFormatter.string(from: flight.startDate)
-            let endDate = dateFormatter.string(from: flight.endDate)
-            let duration = "\(flight.durationSeconds / 60)"
-            let wingName = flight.wing?.name.replacingOccurrences(of: ",", with: ";") ?? "Inconnu"
-            let spotName = flight.spotName?.replacingOccurrences(of: ",", with: ";") ?? ""
-            let lat = flight.latitude.map { String($0) } ?? ""
-            let lon = flight.longitude.map { String($0) } ?? ""
-            let flightType = flight.flightType?.replacingOccurrences(of: ",", with: ";") ?? ""
-            let notes = flight.notes?.replacingOccurrences(of: ",", with: ";").replacingOccurrences(of: "\n", with: " ") ?? ""
-
-            flightsCSV += "\(id),\(startDate),\(endDate),\(duration),\(wingName),\(spotName),\(lat),\(lon),\(flightType),\"\(notes)\"\n"
-        }
-
-        // Sauvegarder les fichiers
-        let wingsFileName = "ParaFlightLog_Wings_\(timestamp).csv"
-        let flightsFileName = "ParaFlightLog_Flights_\(timestamp).csv"
-        let wingsURL = documentsPath.appendingPathComponent(wingsFileName)
-        let flightsURL = documentsPath.appendingPathComponent(flightsFileName)
-
-        do {
-            try wingsCSV.write(to: wingsURL, atomically: true, encoding: .utf8)
-            try flightsCSV.write(to: flightsURL, atomically: true, encoding: .utf8)
-
-            // Préparer les fichiers à partager
-            exportedFiles = [wingsURL, flightsURL]
-
-            // Ajouter le dossier d'images s'il contient des fichiers
-            if let imageFiles = try? FileManager.default.contentsOfDirectory(at: imagesFolder, includingPropertiesForKeys: nil),
-               !imageFiles.isEmpty {
-                exportedFiles.append(imagesFolder)
-            }
-
-            // Partager tous les fichiers
-            let activityVC = UIActivityViewController(activityItems: exportedFiles, applicationActivities: nil)
-
-            // Support iPad: définir le popover
-            if let popover = activityVC.popoverPresentationController {
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let window = windowScene.windows.first {
-                    popover.sourceView = window
-                    popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
-                    popover.permittedArrowDirections = []
-                }
-            }
-
-            // Présenter le share sheet
-            DispatchQueue.main.async {
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let rootVC = windowScene.windows.first?.rootViewController {
-                    var topVC = rootVC
-                    while let presented = topVC.presentedViewController {
-                        topVC = presented
-                    }
-                    topVC.present(activityVC, animated: true)
-                }
-            }
-        } catch {
-            importMessage = "❌ Erreur d'export: \(error.localizedDescription)"
-            showingImportSuccess = true
         }
     }
 
     private func deleteAllData() {
-        // Supprimer tous les vols
+        // Delete all flights and wings
         do {
             try modelContext.delete(model: Flight.self)
             try modelContext.delete(model: Wing.self)
             try modelContext.save()
-            importMessage = "✅ Toutes les données ont été supprimées"
-            showingImportSuccess = true
+            importMessage = "✅ All data has been deleted"
+            showingImportResult = true
         } catch {
-            importMessage = "❌ Erreur: \(error.localizedDescription)"
-            showingImportSuccess = true
+            importMessage = "❌ Error: \(error.localizedDescription)"
+            showingImportResult = true
         }
     }
 }
 
-// MARK: - BackupExportView (Vue dédiée pour l'export)
+// MARK: - BackupExportView (dedicated export screen)
 
 struct BackupExportView: View {
     let wings: [Wing]
@@ -869,7 +809,7 @@ struct BackupExportView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            // Icône et statut
+            // Icon and status
             Group {
                 switch exportStatus {
                 case .idle:
@@ -895,35 +835,35 @@ struct BackupExportView: View {
             }
             .frame(height: 100)
 
-            // Texte de statut
+            // Status text
             Group {
                 switch exportStatus {
                 case .idle:
-                    Text("Prêt à exporter")
+                    Text("Ready to export")
                         .font(.title2)
                         .fontWeight(.semibold)
-                    Text("\(wings.count) voiles • \(flights.count) vols")
+                    Text("\(wings.count) wings • \(flights.count) flights")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
                 case .exporting:
-                    Text("Création du backup...")
+                    Text("Creating backup...")
                         .font(.title2)
                         .fontWeight(.semibold)
-                    Text("Veuillez patienter")
+                    Text("Please wait")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
                 case .completed:
-                    Text("Backup créé !")
+                    Text("Backup created!")
                         .font(.title2)
                         .fontWeight(.semibold)
-                    Text("Prêt à partager")
+                    Text("Ready to share")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
 
                 case .failed:
-                    Text("Erreur")
+                    Text("Error")
                         .font(.title2)
                         .fontWeight(.semibold)
                     if let error = errorMessage {
@@ -938,13 +878,13 @@ struct BackupExportView: View {
 
             Spacer()
 
-            // Boutons d'action
+            // Action buttons
             VStack(spacing: 16) {
                 if exportStatus == .idle {
                     Button {
                         startExport()
                     } label: {
-                        Label("Créer le backup", systemImage: "arrow.down.doc")
+                        Label("Create Backup", systemImage: "arrow.down.doc")
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.blue)
@@ -955,7 +895,7 @@ struct BackupExportView: View {
                     Button {
                         shareBackup(url: url)
                     } label: {
-                        Label("Partager / Enregistrer", systemImage: "square.and.arrow.up")
+                        Label("Share / Save", systemImage: "square.and.arrow.up")
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.green)
@@ -966,7 +906,7 @@ struct BackupExportView: View {
                     Button {
                         dismiss()
                     } label: {
-                        Text("Retour")
+                        Text("Back")
                             .frame(maxWidth: .infinity)
                             .padding()
                             .background(Color.gray.opacity(0.2))
@@ -985,7 +925,7 @@ struct BackupExportView: View {
     private func startExport() {
         exportStatus = .exporting
 
-        ZipBackup.exportToZip(wings: Array(wings), flights: Array(flights)) { result in
+        BackupManager.exportBackup(wings: Array(wings), flights: Array(flights)) { result in
             switch result {
             case .success(let url):
                 self.backupURL = url
@@ -1010,7 +950,7 @@ struct BackupExportView: View {
             applicationActivities: nil
         )
 
-        // Pour iPad
+        // iPad support
         if let popover = activityVC.popoverPresentationController {
             popover.sourceView = window
             popover.sourceRect = CGRect(x: window.bounds.midX, y: window.bounds.midY, width: 0, height: 0)
@@ -1021,28 +961,17 @@ struct BackupExportView: View {
     }
 }
 
-// MARK: - DocumentPicker (Import Excel/CSV)
+// MARK: - DocumentPicker (backup import)
 
 struct DocumentPicker: UIViewControllerRepresentable {
     let onDocumentPicked: (URL) -> Void
 
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        // Support CSV, Excel files, and .paraflightlog backup folders
-        // Construire la liste des types supportés (éviter les force unwraps)
+        // .paraflightlog backups are folder bundles (v2 JSON or legacy v1 CSV)
         var contentTypes: [UTType] = [
-            .commaSeparatedText,
-            .plainText,
-            .data,
             .folder,
             .package
         ]
-        // Ajouter les types personnalisés s'ils existent
-        if let xlsxType = UTType(filenameExtension: "xlsx") {
-            contentTypes.append(xlsxType)
-        }
-        if let xlsType = UTType(filenameExtension: "xls") {
-            contentTypes.append(xlsType)
-        }
         if let backupType = UTType(filenameExtension: "paraflightlog") {
             contentTypes.append(backupType)
         }
@@ -1072,7 +1001,7 @@ struct DocumentPicker: UIViewControllerRepresentable {
     }
 }
 
-// MARK: - ShareSheet (Pour partager des fichiers/dossiers)
+// MARK: - ShareSheet (share files/folders)
 
 struct ShareSheet: UIViewControllerRepresentable {
     let items: [Any]

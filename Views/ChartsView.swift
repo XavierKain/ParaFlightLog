@@ -2,7 +2,8 @@
 //  ChartsView.swift
 //  ParaFlightLog
 //
-//  Graphiques avancés : Timeline et Heatmap des vols
+//  Charts content embedded in the Stats tab: timeline, flight types,
+//  spots heatmap and spots map, with period + wing filters.
 //  Target: iOS only
 //
 
@@ -11,100 +12,63 @@ import SwiftData
 import Charts
 import MapKit
 
-// MARK: - ChartsView (Vue principale des graphiques)
+// MARK: - StatsTimePeriod (Filter period)
 
-struct ChartsView: View {
-    @Environment(DataController.self) private var dataController
-    @Query private var flights: [Flight]
-    @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
+enum StatsTimePeriod: String, CaseIterable {
+    case all
+    case week
+    case month
+    case threeMonths
+    case sixMonths
+    case year
+    case custom
 
-    @State private var selectedPeriod: TimePeriod = .all
-    @State private var selectedChartType: ChartType = .map
+    var displayName: String {
+        switch self {
+        case .week: return "7d"
+        case .month: return "30d"
+        case .threeMonths: return "3m"
+        case .sixMonths: return "6m"
+        case .year: return "1y"
+        case .custom: return "Custom"
+        case .all: return "All"
+        }
+    }
+
+    var days: Int? {
+        switch self {
+        case .week: return 7
+        case .month: return 30
+        case .threeMonths: return 90
+        case .sixMonths: return 180
+        case .year: return 365
+        case .custom, .all: return nil
+        }
+    }
+}
+
+// MARK: - ChartsContentView (Embedded in StatsView)
+
+/// Filtered charts content rendered inside the Stats tab.
+/// `showMap == false` shows the timeline + flight types + spots heatmap;
+/// `showMap == true` shows the spots bubble map. Both share the same filters.
+struct ChartsContentView: View {
+    let flights: [Flight]
+    let wings: [Wing]
+    let showMap: Bool
+
+    @Binding var selectedPeriod: StatsTimePeriod
+    @Binding var selectedWings: Set<UUID>
+    @Binding var customStartDate: Date
+    @Binding var customEndDate: Date
+
     @State private var showingCustomDatePicker = false
-    @State private var customStartDate: Date = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
-    @State private var customEndDate: Date = Date()
-    @State private var selectedWings: Set<UUID> = [] // Ensemble des IDs de voiles sélectionnées
 
-    // Mémorisation des vols filtrés pour éviter recalculs inutiles
-    @State private var cachedFilteredFlights: [Flight] = []
-    @State private var lastFilterHash: Int = 0
-
-    enum ChartType: String, CaseIterable {
-        case map
-        case heatmap
-        case timeline
-
-        var displayName: String {
-            switch self {
-            case .map: return String(localized: "Carte")
-            case .heatmap: return String(localized: "Spots")
-            case .timeline: return String(localized: "Timeline")
-            }
-        }
-    }
-
-    enum TimePeriod: String, CaseIterable {
-        case all
-        case week
-        case month
-        case threeMonths
-        case sixMonths
-        case year
-        case custom
-
-        var displayName: String {
-            switch self {
-            case .week: return "7j"
-            case .month: return "30j"
-            case .threeMonths: return "3mois"
-            case .sixMonths: return "6mois"
-            case .year: return "1an"
-            case .custom: return "Custom"
-            case .all: return "Tout"
-            }
-        }
-
-        var days: Int? {
-            switch self {
-            case .week: return 7
-            case .month: return 30
-            case .threeMonths: return 90
-            case .sixMonths: return 180
-            case .year: return 365
-            case .custom, .all: return nil
-            }
-        }
-    }
-
-    /// Hash des paramètres de filtrage pour détecter les changements
-    private var currentFilterHash: Int {
-        var hasher = Hasher()
-        hasher.combine(flights.count)
-        hasher.combine(flights.first?.id)
-        hasher.combine(flights.last?.id)
-        hasher.combine(selectedPeriod)
-        hasher.combine(selectedWings)
-        if selectedPeriod == .custom {
-            hasher.combine(customStartDate)
-            hasher.combine(customEndDate)
-        }
-        return hasher.finalize()
-    }
-
-    /// Vols filtrés avec mémorisation - utilise le cache si les paramètres n'ont pas changé
-    var filteredFlights: [Flight] {
-        let hash = currentFilterHash
-        if hash == lastFilterHash && !cachedFilteredFlights.isEmpty {
-            return cachedFilteredFlights
-        }
-        return computeFilteredFlights()
-    }
-
-    /// Calcule les vols filtrés (appelé uniquement quand nécessaire)
-    private func computeFilteredFlights() -> [Flight] {
+    /// Flights matching the current period + wing filters
+    private var filteredFlights: [Flight] {
         var result = flights
 
-        // Filtre par période
+        // Period filter
         if selectedPeriod == .custom {
             result = result.filter { $0.startDate >= customStartDate && $0.startDate <= customEndDate }
         } else if let days = selectedPeriod.days {
@@ -112,7 +76,7 @@ struct ChartsView: View {
             result = result.filter { $0.startDate >= cutoffDate }
         }
 
-        // Filtre par voile (si au moins une voile est sélectionnée)
+        // Wing filter (active when at least one wing is selected)
         if !selectedWings.isEmpty {
             result = result.filter { flight in
                 if let wingId = flight.wing?.id {
@@ -125,145 +89,99 @@ struct ChartsView: View {
         return result
     }
 
-    /// Met à jour le cache des vols filtrés
-    private func updateFilterCache() {
-        let hash = currentFilterHash
-        if hash != lastFilterHash {
-            cachedFilteredFlights = computeFilteredFlights()
-            lastFilterHash = hash
-        }
-    }
-
     var body: some View {
-        NavigationStack {
-            VStack(spacing: 0) {
-                // Sélecteur de type de graphique
-                Picker("Type", selection: $selectedChartType) {
-                    ForEach(ChartType.allCases, id: \.self) { type in
-                        Text(type.displayName).tag(type)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.top, 12)
-                .padding(.bottom, 8)
-
-                // Sélecteur de période (scrollable pour accommoder plus d'options)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(TimePeriod.allCases, id: \.self) { period in
-                            Button {
-                                selectedPeriod = period
-                                if period == .custom {
-                                    showingCustomDatePicker = true
-                                }
-                            } label: {
-                                Text(period.displayName)
-                                    .font(.caption)
-                                    .fontWeight(selectedPeriod == period ? .semibold : .regular)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(selectedPeriod == period ? Color.blue : Color(.systemGray6))
-                                    .foregroundStyle(selectedPeriod == period ? .white : .primary)
-                                    .cornerRadius(16)
-                            }
-                        }
-                    }
-                    .padding(.horizontal)
-                }
-                .padding(.bottom, 8)
-
-                // Sélecteur de voiles (multi-sélection)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        // Bouton "Toutes les voiles"
+        VStack(spacing: 0) {
+            // Period selector (scrollable to fit all options)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(StatsTimePeriod.allCases, id: \.self) { period in
                         Button {
-                            selectedWings.removeAll()
+                            selectedPeriod = period
+                            if period == .custom {
+                                showingCustomDatePicker = true
+                            }
                         } label: {
-                            Text("Toutes")
+                            Text(period.displayName)
                                 .font(.caption)
-                                .fontWeight(selectedWings.isEmpty ? .semibold : .regular)
+                                .fontWeight(selectedPeriod == period ? .semibold : .regular)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 6)
-                                .background(selectedWings.isEmpty ? Color.green : Color(.systemGray6))
-                                .foregroundStyle(selectedWings.isEmpty ? .white : .primary)
+                                .background(selectedPeriod == period ? Color.blue : Color(.systemGray6))
+                                .foregroundStyle(selectedPeriod == period ? .white : .primary)
                                 .cornerRadius(16)
                         }
+                    }
+                }
+                .padding(.horizontal)
+            }
+            .padding(.bottom, 8)
 
-                        // Boutons pour chaque voile
-                        ForEach(wings) { wing in
-                            Button {
-                                if selectedWings.contains(wing.id) {
-                                    selectedWings.remove(wing.id)
-                                } else {
-                                    selectedWings.insert(wing.id)
-                                }
-                            } label: {
-                                Text(wing.name)
-                                    .font(.caption)
-                                    .fontWeight(selectedWings.contains(wing.id) ? .semibold : .regular)
-                                    .padding(.horizontal, 12)
-                                    .padding(.vertical, 6)
-                                    .background(selectedWings.contains(wing.id) ? Color.blue : Color(.systemGray6))
-                                    .foregroundStyle(selectedWings.contains(wing.id) ? .white : .primary)
-                                    .cornerRadius(16)
+            // Wing selector (multi-selection)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    // "All wings" button
+                    Button {
+                        selectedWings.removeAll()
+                    } label: {
+                        Text("All")
+                            .font(.caption)
+                            .fontWeight(selectedWings.isEmpty ? .semibold : .regular)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(selectedWings.isEmpty ? Color.green : Color(.systemGray6))
+                            .foregroundStyle(selectedWings.isEmpty ? .white : .primary)
+                            .cornerRadius(16)
+                    }
+
+                    // One button per wing
+                    ForEach(wings) { wing in
+                        Button {
+                            if selectedWings.contains(wing.id) {
+                                selectedWings.remove(wing.id)
+                            } else {
+                                selectedWings.insert(wing.id)
                             }
+                        } label: {
+                            Text(wing.name)
+                                .font(.caption)
+                                .fontWeight(selectedWings.contains(wing.id) ? .semibold : .regular)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 6)
+                                .background(selectedWings.contains(wing.id) ? Color.blue : Color(.systemGray6))
+                                .foregroundStyle(selectedWings.contains(wing.id) ? .white : .primary)
+                                .cornerRadius(16)
                         }
                     }
-                    .padding(.horizontal)
                 }
-                .padding(.bottom, 12)
+                .padding(.horizontal)
+            }
+            .padding(.bottom, 12)
 
-                // Contenu du graphique
-                ScrollView {
-                    VStack(spacing: 20) {
-                        if selectedChartType == .timeline {
-                            TimelineChartCard(flights: filteredFlights, period: selectedPeriod)
-                        } else if selectedChartType == .heatmap {
-                            HeatmapChartCard(flights: filteredFlights)
-                        } else {
-                            FlightsSpotsMapView(flights: filteredFlights)
-                        }
+            // Chart content
+            ScrollView {
+                VStack(spacing: 20) {
+                    if showMap {
+                        FlightsSpotsMapView(flights: filteredFlights)
+                    } else {
+                        TimelineChartCard(flights: filteredFlights, period: selectedPeriod)
+                        FlightTypeBreakdownCard(flights: filteredFlights)
+                        HeatmapChartCard(flights: filteredFlights)
                     }
-                    .padding()
                 }
+                .padding()
             }
-            .navigationTitle("Graphiques")
-            .background(Color(.systemGroupedBackground))
-            .sheet(isPresented: $showingCustomDatePicker) {
-                CustomDateRangePicker(startDate: $customStartDate, endDate: $customEndDate)
-            }
-            .onAppear {
-                updateFilterCache()
-            }
-            .onChange(of: flights.count) { _, _ in
-                updateFilterCache()
-            }
-            .onChange(of: selectedPeriod) { _, _ in
-                updateFilterCache()
-            }
-            .onChange(of: selectedWings) { _, _ in
-                updateFilterCache()
-            }
-            .onChange(of: customStartDate) { _, _ in
-                if selectedPeriod == .custom {
-                    updateFilterCache()
-                }
-            }
-            .onChange(of: customEndDate) { _, _ in
-                if selectedPeriod == .custom {
-                    updateFilterCache()
-                }
-            }
+        }
+        .sheet(isPresented: $showingCustomDatePicker) {
+            CustomDateRangePicker(startDate: $customStartDate, endDate: $customEndDate)
         }
     }
 }
 
-// MARK: - TimelineChartCard (Graphique Timeline)
+// MARK: - TimelineChartCard (Activity timeline)
 
 struct TimelineChartCard: View {
     let flights: [Flight]
-    let period: ChartsView.TimePeriod
+    let period: StatsTimePeriod
 
     struct DayData: Identifiable {
         let id = UUID()
@@ -276,21 +194,21 @@ struct TimelineChartCard: View {
         let calendar = Calendar.current
         let grouped: [Date: [Flight]]
 
-        // Grouper par jour, semaine ou mois selon la période
+        // Group by day, week or month depending on the period
         switch period {
         case .week, .month:
-            // Grouper par jour
+            // Group by day
             grouped = Dictionary(grouping: flights) { flight in
                 calendar.startOfDay(for: flight.startDate)
             }
         case .threeMonths, .sixMonths, .year:
-            // Grouper par semaine
+            // Group by week
             grouped = Dictionary(grouping: flights) { flight in
                 let components = calendar.dateComponents([.yearForWeekOfYear, .weekOfYear], from: flight.startDate)
                 return calendar.date(from: components) ?? flight.startDate
             }
         case .custom, .all:
-            // Grouper par mois
+            // Group by month
             grouped = Dictionary(grouping: flights) { flight in
                 let components = calendar.dateComponents([.year, .month], from: flight.startDate)
                 return calendar.date(from: components) ?? flight.startDate
@@ -318,9 +236,9 @@ struct TimelineChartCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // En-tête
+            // Header
             VStack(alignment: .leading, spacing: 4) {
-                Text("Activité")
+                Text("Activity")
                     .font(.title2)
                     .fontWeight(.bold)
 
@@ -330,7 +248,7 @@ struct TimelineChartCard: View {
                             .font(.title)
                             .fontWeight(.bold)
                             .foregroundStyle(.blue)
-                        Text(totalFlights > 1 ? "vols" : "vol")
+                        Text(totalFlights == 1 ? "flight" : "flights")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -340,7 +258,7 @@ struct TimelineChartCard: View {
                             .font(.title)
                             .fontWeight(.bold)
                             .foregroundStyle(.green)
-                        Text("heures")
+                        Text("hours")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -351,19 +269,19 @@ struct TimelineChartCard: View {
 
             Divider()
 
-            // Graphique
+            // Chart
             if chartData.isEmpty {
                 ContentUnavailableView(
-                    "Aucun vol",
+                    "No Flights",
                     systemImage: "chart.bar",
-                    description: Text("Aucun vol durant cette période")
+                    description: Text("No flights during this period")
                 )
                 .frame(height: 200)
             } else {
                 Chart(chartData) { item in
                     BarMark(
                         x: .value("Date", item.date, unit: chartUnit),
-                        y: .value("Vols", item.count)
+                        y: .value("Flights", item.count)
                     )
                     .foregroundStyle(.blue.gradient)
                 }
@@ -392,7 +310,102 @@ struct TimelineChartCard: View {
     }
 }
 
-// MARK: - HeatmapChartCard (Graphique Heatmap des spots)
+// MARK: - FlightTypeBreakdownCard (Hours per flight type)
+
+struct FlightTypeBreakdownCard: View {
+    let flights: [Flight]
+
+    struct TypeData: Identifiable {
+        let type: FlightType
+        let count: Int
+        let hours: Double
+
+        var id: String { type.rawValue }
+    }
+
+    var typeData: [TypeData] {
+        // Flights without a type are counted under "Other"
+        let grouped = Dictionary(grouping: flights) { $0.flightTypeEnum ?? .other }
+
+        return grouped.map { type, flights in
+            let totalSeconds = flights.reduce(0) { $0 + $1.durationSeconds }
+            return TypeData(
+                type: type,
+                count: flights.count,
+                hours: Double(totalSeconds) / 3600.0
+            )
+        }
+        .sorted { $0.hours > $1.hours }
+    }
+
+    private func formatHours(_ hours: Double) -> String {
+        let (h, m) = splitHours(hours)
+        return h > 0 ? "\(h)h\(String(format: "%02d", m))" : "\(m)min"
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Header
+            Text("Flight Types")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.horizontal)
+
+            Divider()
+
+            if typeData.isEmpty {
+                ContentUnavailableView(
+                    "No Flights",
+                    systemImage: "chart.bar",
+                    description: Text("No flights during this period")
+                )
+                .frame(height: 150)
+            } else {
+                Chart {
+                    ForEach(typeData) { item in
+                        BarMark(
+                            x: .value("Hours", item.hours),
+                            y: .value("Type", item.type.rawValue)
+                        )
+                        .foregroundStyle(.blue.gradient)
+                        .annotation(position: .trailing, alignment: .leading) {
+                            Text(formatHours(item.hours))
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                        }
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks { value in
+                        AxisValueLabel {
+                            if let rawValue = value.as(String.self),
+                               let type = FlightType(rawValue: rawValue) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: type.symbolName)
+                                    Text(type.rawValue)
+                                }
+                            }
+                        }
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks(position: .bottom)
+                }
+                .frame(height: CGFloat(max(120, typeData.count * 44)))
+                .padding(.horizontal)
+            }
+        }
+        .padding(.vertical)
+        .background(Color(.systemBackground))
+        .cornerRadius(16)
+        .shadow(color: .black.opacity(0.05), radius: 8, x: 0, y: 2)
+    }
+}
+
+// MARK: - HeatmapChartCard (Spots heatmap)
 
 struct HeatmapChartCard: View {
     let flights: [Flight]
@@ -406,7 +419,7 @@ struct HeatmapChartCard: View {
     }
 
     var spotData: [SpotData] {
-        let grouped = Dictionary(grouping: flights) { $0.spotName ?? "Inconnu" }
+        let grouped = Dictionary(grouping: flights) { $0.spotName ?? "Unknown" }
         let total = flights.count
 
         return grouped.map { name, flights in
@@ -427,13 +440,13 @@ struct HeatmapChartCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            // En-tête
+            // Header
             VStack(alignment: .leading, spacing: 4) {
-                Text("Spots de vol")
+                Text("Flying Spots")
                     .font(.title2)
                     .fontWeight(.bold)
 
-                Text("\(spotData.count) \(spotData.count > 1 ? "spots" : "spot") \(spotData.count > 1 ? "différents" : "différent")")
+                Text("\(spotData.count) different \(spotData.count == 1 ? "spot" : "spots")")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -441,12 +454,12 @@ struct HeatmapChartCard: View {
 
             Divider()
 
-            // Liste des spots avec barres
+            // Spot list with bars
             if spotData.isEmpty {
                 ContentUnavailableView(
-                    "Aucun spot",
+                    "No Spots",
                     systemImage: "map",
-                    description: Text("Aucun vol durant cette période")
+                    description: Text("No flights during this period")
                 )
                 .frame(height: 200)
             } else {
@@ -465,7 +478,7 @@ struct HeatmapChartCard: View {
     }
 }
 
-// MARK: - SpotRow (Ligne d'un spot dans la heatmap)
+// MARK: - SpotRow (Row in the spots heatmap)
 
 struct SpotRow: View {
     let spot: HeatmapChartCard.SpotData
@@ -477,7 +490,7 @@ struct SpotRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            // Nom et stats
+            // Name and stats
             HStack {
                 Text(spot.name)
                     .font(.subheadline)
@@ -492,7 +505,7 @@ struct SpotRow: View {
                             .font(.subheadline)
                             .fontWeight(.semibold)
                             .foregroundStyle(.blue)
-                        Text(spot.count > 1 ? "vols" : "vol")
+                        Text(spot.count == 1 ? "flight" : "flights")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -509,14 +522,14 @@ struct SpotRow: View {
                 }
             }
 
-            // Barre de progression
+            // Progress bar
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    // Fond
+                    // Background
                     RoundedRectangle(cornerRadius: 4)
                         .fill(Color.gray.opacity(0.2))
 
-                    // Barre colorée
+                    // Colored bar
                     RoundedRectangle(cornerRadius: 4)
                         .fill(
                             LinearGradient(
@@ -527,7 +540,7 @@ struct SpotRow: View {
                         )
                         .frame(width: geometry.size.width * barWidth)
 
-                    // Pourcentage
+                    // Percentage
                     if spot.percentage >= 10 {
                         Text(String(format: "%.0f%%", spot.percentage))
                             .font(.caption2)
@@ -549,7 +562,7 @@ struct FlightsSpotsMapView: View {
 
     var spotData: [SpotMapData] {
         let grouped = Dictionary(grouping: flights.filter { $0.latitude != nil && $0.longitude != nil }) { flight in
-            flight.spotName ?? "Spot inconnu"
+            flight.spotName ?? "Unknown"
         }
 
         return grouped.compactMap { spotName, flights in
@@ -569,12 +582,12 @@ struct FlightsSpotsMapView: View {
                 flightCount: flights.count
             )
         }
-        .sorted { $0.hours < $1.hours } // Trier par heures croissantes pour que les gros spots soient dessinés en dernier (au-dessus)
+        .sorted { $0.hours < $1.hours } // Ascending so the biggest spots are drawn last (on top)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Carte des spots")
+            Text("Spot Map")
                 .font(.title2)
                 .fontWeight(.bold)
                 .padding(.horizontal)
@@ -584,7 +597,7 @@ struct FlightsSpotsMapView: View {
                     Image(systemName: "map")
                         .font(.largeTitle)
                         .foregroundStyle(.secondary)
-                    Text("Aucun spot avec coordonnées GPS")
+                    Text("No spots with GPS coordinates")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -606,7 +619,7 @@ struct FlightsSpotsMapView: View {
                                         .font(.caption2)
                                         .fontWeight(.bold)
                                         .foregroundStyle(.white)
-                                        .zIndex(1) // Texte toujours au-dessus
+                                        .zIndex(1) // Text always on top
                                 }
                                 Text(spot.name)
                                     .font(.caption2)
@@ -618,7 +631,7 @@ struct FlightsSpotsMapView: View {
                                     .shadow(color: .black.opacity(0.2), radius: 2)
                             }
                         }
-                        .annotationTitles(.hidden) // Cache les titres par défaut pour éviter les doublons
+                        .annotationTitles(.hidden) // Hide default titles to avoid duplicates
                     }
                 }
                 .mapStyle(.standard(elevation: .flat))
@@ -631,9 +644,9 @@ struct FlightsSpotsMapView: View {
         .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
     }
 
-    /// Formate le temps de vol pour l'affichage sur la carte
-    /// - Affiche les heures si >= 1h
-    /// - Affiche les minutes si < 1h (format court "m" pour rentrer dans les bulles)
+    /// Formats flight time for display on the map
+    /// - Shows hours when >= 1h
+    /// - Shows minutes when < 1h (short "m" format so it fits in the bubbles)
     private func formatSpotTime(_ hours: Double) -> String {
         if hours >= 1.0 {
             return "\(Int(hours))h"
@@ -643,16 +656,16 @@ struct FlightsSpotsMapView: View {
         }
     }
 
-    /// Calcule la taille de la bulle en fonction du temps de vol
-    /// - Pour < 1h : taille adaptée pour afficher les minutes (min 35px)
-    /// - Pour >= 1h : taille proportionnelle aux heures (max 60px)
+    /// Computes the bubble size from the flight time
+    /// - For < 1h: sized so the minutes fit (min 35px)
+    /// - For >= 1h: proportional to hours (max 60px)
     private func calculateBubbleSize(hours: Double) -> CGFloat {
         if hours < 1.0 {
-            // Pour les durées < 1h, on assure une taille minimum de 35px
-            // pour que "45m" rentre bien, et on augmente légèrement avec la durée
+            // For < 1h, guarantee a 35px minimum so "45m" fits,
+            // growing slightly with duration
             return max(35, 35 + CGFloat(hours) * 15)
         } else {
-            // Pour >= 1h, on utilise la formule classique
+            // For >= 1h, use the classic formula
             return max(40, min(60, CGFloat(hours) * 10))
         }
     }
@@ -676,30 +689,25 @@ struct CustomDateRangePicker: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Période personnalisée") {
-                    DatePicker("Date de début", selection: $startDate, displayedComponents: .date)
-                    DatePicker("Date de fin", selection: $endDate, displayedComponents: .date)
+                Section("Custom Period") {
+                    DatePicker("Start Date", selection: $startDate, displayedComponents: .date)
+                    DatePicker("End Date", selection: $endDate, displayedComponents: .date)
                 }
             }
-            .navigationTitle("Choisir la période")
+            .navigationTitle("Select Period")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Valider") {
+                    Button("Done") {
                         dismiss()
                     }
                 }
             }
         }
     }
-}
-
-#Preview {
-    ChartsView()
-        .environment(DataController())
 }

@@ -2,7 +2,8 @@
 //  StatsViews.swift
 //  ParaFlightLog
 //
-//  Vues liées aux statistiques : vue principale, graphiques par voile/spot
+//  Statistics tab: Overview (totals, by wing, by spot), Charts (timeline,
+//  flight types, spots heatmap) and Map (spots bubble map).
 //  Target: iOS only
 //
 
@@ -10,38 +11,113 @@ import SwiftUI
 import SwiftData
 import Charts
 
-// MARK: - StatsView (Statistiques améliorées)
+// MARK: - StatsView (Merged Stats + Charts tab)
 
 struct StatsView: View {
     @Environment(DataController.self) private var dataController
-    @Query private var flights: [Flight]
-    @Query(filter: #Predicate<Wing> { !$0.isArchived }) private var wings: [Wing]
+    @Query(sort: \Flight.startDate, order: .reverse) private var flights: [Flight]
+    @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
+
+    enum StatsSection: String, CaseIterable {
+        case overview
+        case charts
+        case map
+
+        var displayName: String {
+            switch self {
+            case .overview: return "Overview"
+            case .charts: return "Charts"
+            case .map: return "Map"
+            }
+        }
+    }
+
+    @State private var selectedSection: StatsSection = .overview
+
+    // Charts/Map filter state lives here so it survives switching sections
+    @State private var selectedPeriod: StatsTimePeriod = .all
+    @State private var selectedWings: Set<UUID> = []
+    @State private var customStartDate: Date = Calendar.current.date(byAdding: .month, value: -1, to: Date()) ?? Date()
+    @State private var customEndDate: Date = Date()
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    // Carte totale
-                    TotalStatsCard(flights: flights)
-
-                    // Tableau et graphique par voile
-                    StatsByWingSection(flights: flights, wings: wings)
-
-                    // Tableau et graphique par spot
-                    StatsBySpotSection(flights: flights)
+            VStack(spacing: 0) {
+                Picker("Section", selection: $selectedSection) {
+                    ForEach(StatsSection.allCases, id: \.self) { section in
+                        Text(section.displayName).tag(section)
+                    }
                 }
-                .padding()
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.top, 12)
+                .padding(.bottom, 8)
+
+                switch selectedSection {
+                case .overview:
+                    StatsOverviewContent(flights: flights, wings: wings)
+                case .charts:
+                    ChartsContentView(
+                        flights: flights,
+                        wings: wings,
+                        showMap: false,
+                        selectedPeriod: $selectedPeriod,
+                        selectedWings: $selectedWings,
+                        customStartDate: $customStartDate,
+                        customEndDate: $customEndDate
+                    )
+                case .map:
+                    ChartsContentView(
+                        flights: flights,
+                        wings: wings,
+                        showMap: true,
+                        selectedPeriod: $selectedPeriod,
+                        selectedWings: $selectedWings,
+                        customStartDate: $customStartDate,
+                        customEndDate: $customEndDate
+                    )
+                }
             }
-            .navigationTitle("Statistiques")
+            .navigationTitle("Stats")
             .background(Color(.systemGroupedBackground))
         }
     }
 }
 
+// MARK: - StatsOverviewContent (Total + by wing + by spot)
+
+struct StatsOverviewContent: View {
+    @Environment(DataController.self) private var dataController
+    let flights: [Flight]
+    let wings: [Wing]
+
+    var body: some View {
+        // Single-pass aggregate over all flights, shared by every section below
+        let stats = dataController.computeStats()
+
+        ScrollView {
+            VStack(spacing: 20) {
+                TotalStatsCard(stats: stats)
+                StatsByWingSection(stats: stats, flights: flights, wings: wings)
+                StatsBySpotSection(stats: stats, flights: flights)
+            }
+            .padding()
+        }
+    }
+}
+
+// MARK: - Hours formatting helper
+
+/// Splits a decimal hour count into whole hours and minutes (e.g. 1.5 -> (1, 30))
+func splitHours(_ hours: Double) -> (hours: Int, minutes: Int) {
+    let totalMinutes = Int((hours * 60).rounded())
+    return (totalMinutes / 60, totalMinutes % 60)
+}
+
 // MARK: - TotalStatsCard
 
 struct TotalStatsCard: View {
-    let flights: [Flight]
+    let stats: FlightStats
 
     var body: some View {
         VStack(spacing: 16) {
@@ -49,16 +125,14 @@ struct TotalStatsCard: View {
                 .font(.title2)
                 .fontWeight(.bold)
 
-            let totalSeconds = flights.reduce(0) { $0 + $1.durationSeconds }
-            let hours = totalSeconds / 3600
-            let minutes = (totalSeconds % 3600) / 60
+            let (hours, minutes) = splitHours(stats.totalHours)
 
             HStack(spacing: 40) {
                 VStack(spacing: 4) {
-                    Text("\(flights.count)")
+                    Text("\(stats.totalCount)")
                         .font(.system(size: 44, weight: .bold))
                         .foregroundStyle(.blue)
-                    Text("session\(flights.count > 1 ? "s" : "")")
+                    Text(stats.totalCount == 1 ? "session" : "sessions")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -78,7 +152,7 @@ struct TotalStatsCard: View {
                             .font(.title3)
                             .foregroundStyle(.secondary)
                     }
-                    Text("temps de vol")
+                    Text("flight time")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -95,36 +169,29 @@ struct TotalStatsCard: View {
 // MARK: - StatsByWingSection
 
 struct StatsByWingSection: View {
-    @Environment(DataController.self) private var dataController
     let flights: [Flight]
     let wings: [Wing]
     @State private var selectedWing: Wing?
 
-    // Cache des stats par voile - calculé une fois à l'init
-    private let wingStats: [(wing: Wing, sessions: Int, hours: Int, minutes: Int)]
+    // Per-wing stats derived once at init from the shared aggregate
+    private let wingStats: [(wing: Wing, sessions: Int, hours: Int, minutes: Int, totalHours: Double)]
 
-    init(flights: [Flight], wings: [Wing]) {
+    init(stats: FlightStats, flights: [Flight], wings: [Wing]) {
         self.flights = flights
         self.wings = wings
-        // Pré-calculer les stats dès l'init
         self.wingStats = wings.compactMap { wing in
-            let wingFlights = flights.filter { $0.wing?.id == wing.id }
-            guard !wingFlights.isEmpty else { return nil }
+            guard let hours = stats.hoursByWing[wing.id],
+                  let sessions = stats.countByWing[wing.id],
+                  sessions > 0 else { return nil }
 
-            let totalSeconds = wingFlights.reduce(0) { $0 + $1.durationSeconds }
-            return (
-                wing: wing,
-                sessions: wingFlights.count,
-                hours: totalSeconds / 3600,
-                minutes: (totalSeconds % 3600) / 60
-            )
+            let (h, m) = splitHours(hours)
+            return (wing: wing, sessions: sessions, hours: h, minutes: m, totalHours: hours)
         }
-        .sorted { $0.hours * 60 + $0.minutes > $1.hours * 60 + $1.minutes }
+        .sorted { $0.totalHours > $1.totalHours }
     }
 
-    /// Abrège un nom de voile en supprimant les mots de marques
+    /// Abbreviates a wing name by stripping well-known brand prefixes
     private func abbreviateWingName(_ name: String) -> String {
-        // Supprimer les marques connues (pas de remplacement, juste suppression)
         var abbreviated = name
         abbreviated = abbreviated.replacingOccurrences(of: "Moustache ", with: "", options: .caseInsensitive)
         abbreviated = abbreviated.replacingOccurrences(of: "Skyman ", with: "", options: .caseInsensitive)
@@ -135,7 +202,7 @@ struct StatsByWingSection: View {
         return abbreviated.trimmingCharacters(in: .whitespaces)
     }
 
-    /// Crée le label pour une voile dans le graphique
+    /// Chart label for a wing
     private func wingChartLabel(for wing: Wing) -> String {
         if let size = wing.size {
             return "\(abbreviateWingName(wing.name)) (\(size) m²)"
@@ -146,24 +213,24 @@ struct StatsByWingSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Par voile")
+            Text("By Wing")
                 .font(.title2)
                 .fontWeight(.bold)
                 .padding(.horizontal)
 
             if wingStats.isEmpty {
-                Text("Aucune donnée")
+                Text("No data")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color(.systemBackground))
                     .cornerRadius(12)
             } else {
-                // Tableau
+                // Table
                 VStack(spacing: 0) {
-                    // En-tête
+                    // Header
                     HStack {
-                        Text("Voile")
+                        Text("Wing")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundStyle(.secondary)
@@ -175,7 +242,7 @@ struct StatsByWingSection: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 70, alignment: .trailing)
 
-                        Text("Temps")
+                        Text("Time")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundStyle(.secondary)
@@ -185,24 +252,24 @@ struct StatsByWingSection: View {
                     .padding(.vertical, 8)
                     .background(Color(.systemGray6))
 
-                    // Lignes
+                    // Rows
                     ForEach(wingStats, id: \.wing.id) { stat in
                         Button {
                             selectedWing = stat.wing
                         } label: {
                             HStack(spacing: 8) {
-                                // Photo de la voile avec cache (24x24)
+                                // Wing photo with cache (24x24)
                                 CachedImage(
                                     data: stat.wing.photoData,
                                     key: stat.wing.id.uuidString,
                                     size: CGSize(width: 24, height: 24)
                                 ) {
                                     RoundedRectangle(cornerRadius: 4)
-                                        .fill((stat.wing.color ?? "Gris").toColor().opacity(0.3))
+                                        .fill((stat.wing.color ?? "Gray").toColor().opacity(0.3))
                                         .overlay {
                                             Image(systemName: "wind")
                                                 .font(.system(size: 10))
-                                                .foregroundStyle((stat.wing.color ?? "Gris").toColor())
+                                                .foregroundStyle((stat.wing.color ?? "Gray").toColor())
                                         }
                                 }
                                 .clipShape(RoundedRectangle(cornerRadius: 4))
@@ -247,46 +314,38 @@ struct StatsByWingSection: View {
                 .cornerRadius(12)
                 .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
 
-                // Graphique
-                if #available(iOS 16.0, *) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Répartition des heures")
-                            .font(.headline)
-                            .padding(.horizontal)
+                // Chart
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Hours Breakdown")
+                        .font(.headline)
+                        .padding(.horizontal)
 
-                        Chart {
-                            ForEach(wingStats, id: \.wing.id) { stat in
-                                let hours = Double(stat.hours * 60 + stat.minutes) / 60.0
-                                let maxMinutes = (wingStats.first?.hours ?? 1) * 60 + (wingStats.first?.minutes ?? 0)
-                                let maxHours = Double(maxMinutes) / 60.0
-                                let scaledHours = (hours / maxHours) * 0.85 * maxHours
-                                let wingLabel = wingChartLabel(for: stat.wing)
-
-                                BarMark(
-                                    x: .value("Heures", scaledHours),
-                                    y: .value("Voile", wingLabel)
-                                )
-                                .foregroundStyle(.blue.gradient)
-                                .annotation(position: .trailing, alignment: .leading) {
-                                    let timeText = stat.hours > 0 ? "\(stat.hours)h\(String(format: "%02d", stat.minutes))" : "\(stat.minutes)min"
-                                    Text(timeText)
-                                        .font(.caption)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(.primary)
-                                        .padding(.horizontal, 4)
-                                        .padding(.vertical, 2)
-                                }
+                    Chart {
+                        ForEach(wingStats, id: \.wing.id) { stat in
+                            BarMark(
+                                x: .value("Hours", stat.totalHours),
+                                y: .value("Wing", wingChartLabel(for: stat.wing))
+                            )
+                            .foregroundStyle(.blue.gradient)
+                            .annotation(position: .trailing, alignment: .leading) {
+                                let timeText = stat.hours > 0 ? "\(stat.hours)h\(String(format: "%02d", stat.minutes))" : "\(stat.minutes)min"
+                                Text(timeText)
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.primary)
+                                    .padding(.horizontal, 4)
+                                    .padding(.vertical, 2)
                             }
                         }
-                        .frame(height: CGFloat(max(150, wingStats.count * 40)))
-                        .chartXAxis {
-                            AxisMarks(position: .bottom)
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                     }
+                    .frame(height: CGFloat(max(150, wingStats.count * 40)))
+                    .chartXAxis {
+                        AxisMarks(position: .bottom)
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                 }
             }
         }
@@ -299,47 +358,45 @@ struct StatsByWingSection: View {
 // MARK: - StatsBySpotSection
 
 struct StatsBySpotSection: View {
-    @Environment(DataController.self) private var dataController
     let flights: [Flight]
     @State private var selectedSpot: String?
 
-    // Cache des stats par spot - calculé une fois à l'init
-    private let spotStats: [(spot: String, sessions: Int, hours: Int, minutes: Int)]
+    // Per-spot stats derived once at init from the shared aggregate
+    private let spotStats: [(spot: String, sessions: Int, hours: Int, minutes: Int, totalHours: Double)]
 
-    init(flights: [Flight]) {
+    init(stats: FlightStats, flights: [Flight]) {
         self.flights = flights
-        // Pré-calculer les stats dès l'init
-        let grouped = Dictionary(grouping: flights, by: { $0.spotName ?? "Spot inconnu" })
-        self.spotStats = grouped.map { spot, spotFlights in
-            let totalSeconds = spotFlights.reduce(0) { $0 + $1.durationSeconds }
+        self.spotStats = stats.hoursBySpot.map { spot, hours in
+            let (h, m) = splitHours(hours)
             return (
                 spot: spot,
-                sessions: spotFlights.count,
-                hours: totalSeconds / 3600,
-                minutes: (totalSeconds % 3600) / 60
+                sessions: stats.countBySpot[spot] ?? 0,
+                hours: h,
+                minutes: m,
+                totalHours: hours
             )
         }
-        .sorted { $0.hours * 60 + $0.minutes > $1.hours * 60 + $1.minutes }
+        .sorted { $0.totalHours > $1.totalHours }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("Par spot")
+            Text("By Spot")
                 .font(.title2)
                 .fontWeight(.bold)
                 .padding(.horizontal)
 
             if spotStats.isEmpty {
-                Text("Aucune donnée")
+                Text("No data")
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color(.systemBackground))
                     .cornerRadius(12)
             } else {
-                // Tableau
+                // Table
                 VStack(spacing: 0) {
-                    // En-tête
+                    // Header
                     HStack {
                         Text("Spot")
                             .font(.caption)
@@ -353,7 +410,7 @@ struct StatsBySpotSection: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 70, alignment: .trailing)
 
-                        Text("Temps")
+                        Text("Time")
                             .font(.caption)
                             .fontWeight(.semibold)
                             .foregroundStyle(.secondary)
@@ -363,7 +420,7 @@ struct StatsBySpotSection: View {
                     .padding(.vertical, 8)
                     .background(Color(.systemGray6))
 
-                    // Lignes
+                    // Rows
                     ForEach(spotStats, id: \.spot) { stat in
                         Button {
                             selectedSpot = stat.spot
@@ -401,39 +458,37 @@ struct StatsBySpotSection: View {
                 .cornerRadius(12)
                 .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
 
-                // Graphique
-                if #available(iOS 16.0, *) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Répartition des heures")
-                            .font(.headline)
-                            .padding(.horizontal)
+                // Chart
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Hours Breakdown")
+                        .font(.headline)
+                        .padding(.horizontal)
 
-                        Chart {
-                            ForEach(spotStats, id: \.spot) { stat in
-                                BarMark(
-                                    x: .value("Heures", Double(stat.hours * 60 + stat.minutes) / 60.0),
-                                    y: .value("Spot", stat.spot)
-                                )
-                                .foregroundStyle(.green.gradient)
-                                .annotation(position: .trailing, alignment: .leading) {
-                                    Text(stat.hours > 0 ? "\(stat.hours)h\(String(format: "%02d", stat.minutes))" : "\(stat.minutes)min")
-                                        .font(.caption)
-                                        .fontWeight(.semibold)
-                                        .foregroundStyle(.white)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 2)
-                                }
+                    Chart {
+                        ForEach(spotStats, id: \.spot) { stat in
+                            BarMark(
+                                x: .value("Hours", stat.totalHours),
+                                y: .value("Spot", stat.spot)
+                            )
+                            .foregroundStyle(.green.gradient)
+                            .annotation(position: .trailing, alignment: .leading) {
+                                Text(stat.hours > 0 ? "\(stat.hours)h\(String(format: "%02d", stat.minutes))" : "\(stat.minutes)min")
+                                    .font(.caption)
+                                    .fontWeight(.semibold)
+                                    .foregroundStyle(.white)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 2)
                             }
                         }
-                        .frame(height: CGFloat(max(200, spotStats.count * 50)))
-                        .chartXAxis {
-                            AxisMarks(position: .bottom)
-                        }
-                        .padding()
-                        .background(Color(.systemBackground))
-                        .cornerRadius(12)
-                        .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                     }
+                    .frame(height: CGFloat(max(200, spotStats.count * 50)))
+                    .chartXAxis {
+                        AxisMarks(position: .bottom)
+                    }
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+                    .shadow(color: .black.opacity(0.05), radius: 4, x: 0, y: 2)
                 }
             }
         }
@@ -448,20 +503,19 @@ struct StatsBySpotSection: View {
     }
 }
 
-// MARK: - WingFlightsDetailView (Détail des vols par voile)
+// MARK: - WingFlightsDetailView (Flights of a wing)
 
 struct WingFlightsDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let wing: Wing
     let flights: [Flight]
 
-    // Calculer les vols filtrés immédiatement lors de l'init
+    // Filtered flights computed once at init
     private let wingFlights: [Flight]
 
     init(wing: Wing, flights: [Flight]) {
         self.wing = wing
         self.flights = flights
-        // Pré-calculer les vols de cette voile
         self.wingFlights = flights
             .filter { $0.wing?.id == wing.id }
             .sorted { $0.startDate > $1.startDate }
@@ -480,7 +534,7 @@ struct WingFlightsDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fermer") {
+                    Button("Close") {
                         dismiss()
                     }
                 }
@@ -489,22 +543,22 @@ struct WingFlightsDetailView: View {
     }
 }
 
-// MARK: - SpotFlightsDetailView (Détail des vols par spot)
+// MARK: - SpotFlightsDetailView (Flights of a spot)
 
 struct SpotFlightsDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let spotName: String
     let flights: [Flight]
 
-    // Calculer les vols filtrés immédiatement lors de l'init
+    // Filtered flights computed once at init
     private let spotFlights: [Flight]
 
     init(spotName: String, flights: [Flight]) {
         self.spotName = spotName
         self.flights = flights
-        // Pré-calculer les vols de ce spot
+        // Flights without a spot are aggregated under "Unknown" in the stats
         self.spotFlights = flights
-            .filter { $0.spotName == spotName }
+            .filter { ($0.spotName ?? "Unknown") == spotName }
             .sorted { $0.startDate > $1.startDate }
     }
 
@@ -521,7 +575,7 @@ struct SpotFlightsDetailView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Fermer") {
+                    Button("Close") {
                         dismiss()
                     }
                 }

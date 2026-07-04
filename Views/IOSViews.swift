@@ -2,8 +2,8 @@
 //  IOSViews.swift
 //  ParaFlightLog
 //
-//  ContentView principal avec TabView
-//  Les autres vues sont dans des fichiers séparés:
+//  Main ContentView with the TabView.
+//  The other views live in separate files:
 //  - FlightsViews.swift: FlightsView, FlightDetailView, FlightRow, EditFlightView, etc.
 //  - WingsViews.swift: WingsView, WingDetailView, AddWingView, EditWingView, etc.
 //  - StatsViews.swift: StatsView, TotalStatsCard, StatsByWingSection, etc.
@@ -16,55 +16,63 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - ContentView (TabView principale)
+// MARK: - ContentView (main TabView)
 
 struct ContentView: View {
-    @Environment(DataController.self) private var dataController
-    @Environment(WatchConnectivityManager.self) private var watchManager
-    @Environment(LocalizationManager.self) private var localizationManager
+    /// Phone-only mode: the iPhone timer is the main flight tracker,
+    /// so an extra "Timer" tab is shown.
+    @AppStorage(UserDefaultsKeys.phoneOnlyMode) private var phoneOnlyMode = false
 
-    // Conserver l'onglet sélectionné lors du changement de langue
-    @State private var selectedTab: Int = 0
+    @State private var selectedTab: Int = Tab.flights
 
-    // Labels des onglets calculés dynamiquement
-    private var wingsLabel: String { "Voiles".localized }
-    private var flightsLabel: String { "Vols".localized }
-    private var statsLabel: String { "Stats".localized }
-    private var chartsLabel: String { "Graphiques".localized }
-    private var settingsLabel: String { "Réglages".localized }
+    /// Tab tags, kept in one place.
+    private enum Tab {
+        static let flights = 0
+        static let wings = 1
+        static let stats = 2
+        static let settings = 3
+        static let timer = 4
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            WingsView()
-                .tabItem {
-                    Label(wingsLabel, systemImage: "wind")
-                }
-                .tag(0)
-
             FlightsView()
                 .tabItem {
-                    Label(flightsLabel, systemImage: "airplane")
+                    Label("Flights", systemImage: "airplane")
                 }
-                .tag(1)
+                .tag(Tab.flights)
+
+            WingsView()
+                .tabItem {
+                    Label("Wings", systemImage: "wind")
+                }
+                .tag(Tab.wings)
 
             StatsView()
                 .tabItem {
-                    Label(statsLabel, systemImage: "chart.bar")
+                    Label("Stats", systemImage: "chart.bar")
                 }
-                .tag(2)
-
-            ChartsView()
-                .tabItem {
-                    Label(chartsLabel, systemImage: "chart.xyaxis.line")
-                }
-                .tag(3)
+                .tag(Tab.stats)
 
             SettingsView()
                 .tabItem {
-                    Label(settingsLabel, systemImage: "gearshape")
+                    Label("Settings", systemImage: "gearshape")
                 }
-                .tag(4)
+                .tag(Tab.settings)
+
+            if phoneOnlyMode {
+                TimerView()
+                    .tabItem {
+                        Label("Timer", systemImage: "stopwatch")
+                    }
+                    .tag(Tab.timer)
+            }
         }
-        .id(localizationManager.currentLanguage) // Force re-render de tout le TabView quand la langue change
+        .onChange(of: phoneOnlyMode) { _, isEnabled in
+            // If the Timer tab disappears while selected, fall back to Flights
+            if !isEnabled && selectedTab == Tab.timer {
+                selectedTab = Tab.flights
+            }
+        }
     }
 }
