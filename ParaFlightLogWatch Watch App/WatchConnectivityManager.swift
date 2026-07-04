@@ -2,9 +2,11 @@
 //  WatchConnectivityManager.swift
 //  ParaFlightLogWatch Watch App
 //
-//  Gestion de WatchConnectivity côté Apple Watch
-//  - Reçoit la liste des Wings depuis l'iPhone
-//  - Envoie les FlightDTO vers l'iPhone
+//  WatchConnectivity on the Apple Watch side
+//  - Receives the Wings list from the iPhone
+//  - Delivers FlightDTOs to the iPhone through a persistent outbox:
+//    a flight is written to FlightOutbox first and only removed once the
+//    iPhone acknowledged it, so flights are never lost.
 //  Target: Watch only
 //
 
@@ -15,23 +17,22 @@ import WatchConnectivity
 final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     static let shared = WatchConnectivityManager()
 
-    // Liste des voiles reçues de l'iPhone
+    // Wings received from the iPhone
     var wings: [WingDTO] = []
 
-    // État de la connexion
+    // Connection state
     var isPhoneReachable: Bool = false
     var sessionActivated: Bool = false
 
-    // État de chargement pour éviter les re-renders pendant le décodage
+    // Loading state to avoid re-renders while decoding
     var isLoading: Bool = true
 
     private override init() {
         super.init()
-        // Charger les voiles sauvegardées localement de manière synchrone
-        // pour un affichage immédiat au lancement
+        // Load locally saved wings synchronously for immediate display at launch
         loadWingsSync()
 
-        // Activer la session WatchConnectivity en arrière-plan
+        // Activate the WatchConnectivity session in the background
         Task { @MainActor [weak self] in
             self?.activateSession()
         }
@@ -40,7 +41,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     // MARK: - Local Persistence
 
     private func saveWingsLocally() {
-        // Sauvegarder en arrière-plan
+        // Save in the background
         let wingsToSave = wings
         Task.detached(priority: .background) {
             if let encoded = try? JSONEncoder().encode(wingsToSave) {
@@ -49,8 +50,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
-    /// Charge les voiles de façon synchrone au démarrage
-    /// Les données locales sont petites donc c'est rapide
+    /// Loads wings synchronously at launch (local data is small, so it's fast)
     private func loadWingsSync() {
         if let data = UserDefaults.standard.data(forKey: "savedWings"),
            let decoded = try? JSONDecoder().decode([WingDTO].self, from: data) {
@@ -61,7 +61,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     // MARK: - Session Activation
 
-    /// Active la session WatchConnectivity
+    /// Activates the WatchConnectivity session
     func activateSession() {
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
@@ -69,59 +69,86 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         session.activate()
     }
 
-    // MARK: - Send Flight to iPhone
+    // MARK: - Send Flight to iPhone (persistent outbox)
 
-    /// Envoie un vol terminé vers l'iPhone
+    /// Persists the flight to the outbox (synchronously, so it can never be
+    /// lost) and then attempts delivery of every pending flight.
+    /// The iPhone deduplicates by flight id, so redundant delivery is safe.
     func sendFlightToPhone(_ flight: FlightDTO) {
-        guard sessionActivated else { return }
-
-        // Encoder le FlightDTO en dictionnaire
-        guard let data = try? JSONEncoder().encode(flight),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            return
-        }
-
-        let userInfo = ["flight": json]
-        // Utiliser transferUserInfo pour envoyer en arrière-plan
-        WCSession.default.transferUserInfo(userInfo)
+        FlightOutbox.shared.add(flight)
+        retryPendingFlights()
     }
 
-    /// Envoie un vol avec réponse instantanée (nécessite que l'iPhone soit joignable)
-    func sendFlightWithReply(_ flight: FlightDTO, completion: @escaping (Bool, String?) -> Void) {
+    /// Attempts delivery of every flight still in the outbox.
+    /// Called on: new flight send, session activation, app becoming active,
+    /// and when the iPhone becomes reachable.
+    func retryPendingFlights() {
         guard sessionActivated else {
-            completion(false, nil)
+            watchLogInfo("Session not activated - flights stay in outbox for later delivery", category: .watchSync)
             return
         }
 
-        guard isPhoneReachable else {
-            sendFlightToPhone(flight)
-            completion(true, nil)
-            return
-        }
+        let pending = FlightOutbox.shared.pending()
+        guard !pending.isEmpty else { return }
 
-        // Encoder le FlightDTO
-        guard let data = try? JSONEncoder().encode(flight),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
-            completion(false, nil)
-            return
-        }
-
-        let message = ["flight": json]
-
-        // Envoyer avec réponse
-        WCSession.default.sendMessage(message, replyHandler: { reply in
-            let status = reply["status"] as? String
-            let spotName = reply["spotName"] as? String
-            completion(status == "success", spotName)
-        }, errorHandler: { [weak self] error in
-            // Fallback sur transferUserInfo
-            watchLogWarning("sendMessage failed, using transferUserInfo: \(error.localizedDescription)", category: .watchSync)
-            self?.sendFlightToPhone(flight)
-            completion(false, nil)
+        // Skip flights that already have a userInfo transfer queued
+        // (the system retries those on its own).
+        let queuedIds = Set(WCSession.default.outstandingUserInfoTransfers.compactMap {
+            $0.userInfo[WatchSyncKeys.flightId] as? String
         })
+
+        for flight in pending where !queuedIds.contains(flight.id.uuidString) {
+            deliver(flight)
+        }
     }
 
-    /// Demande à l'iPhone d'envoyer les Wings (utile si on n'a rien reçu au démarrage)
+    /// Delivers one flight: sendMessage with reply when the iPhone is
+    /// reachable, transferUserInfo otherwise (or on sendMessage failure).
+    private func deliver(_ flight: FlightDTO) {
+        guard let data = try? JSONEncoder().encode(flight) else {
+            watchLogError("Failed to encode flight \(flight.id.uuidString) for delivery", category: .watchSync)
+            return
+        }
+
+        let payload: [String: Any] = [
+            WatchSyncKeys.flightData: data,
+            WatchSyncKeys.flightId: flight.id.uuidString
+        ]
+
+        if isPhoneReachable {
+            WCSession.default.sendMessage(payload, replyHandler: { reply in
+                if reply[WatchSyncKeys.flightSaved] as? Bool == true {
+                    FlightOutbox.shared.remove(id: flight.id)
+                } else {
+                    watchLogWarning("iPhone reply did not confirm save for flight \(flight.id.uuidString) - kept in outbox", category: .watchSync)
+                }
+            }, errorHandler: { error in
+                watchLogWarning("sendMessage failed for flight \(flight.id.uuidString): \(error.localizedDescription) - falling back to transferUserInfo", category: .watchSync)
+                WCSession.default.transferUserInfo(payload)
+            })
+        } else {
+            // Not reachable: queue a background transfer, confirmed (and
+            // removed from the outbox) in didFinish userInfoTransfer.
+            WCSession.default.transferUserInfo(payload)
+        }
+    }
+
+    /// Called when a queued userInfo transfer completes (or fails).
+    func session(_ session: WCSession, didFinish userInfoTransfer: WCSessionUserInfoTransfer, error: Error?) {
+        guard let idString = userInfoTransfer.userInfo[WatchSyncKeys.flightId] as? String,
+              let id = UUID(uuidString: idString) else {
+            return
+        }
+
+        if let error = error {
+            // Keep the flight in the outbox; it will be retried later.
+            watchLogWarning("userInfo transfer failed for flight \(idString): \(error.localizedDescription) - kept in outbox", category: .watchSync)
+        } else {
+            FlightOutbox.shared.remove(id: id)
+        }
+    }
+
+    /// Asks the iPhone to send the Wings (useful if nothing was received at launch)
     func requestWingsFromPhone() {
         guard sessionActivated, isPhoneReachable else { return }
         let message = ["action": "requestWings"]
@@ -141,20 +168,22 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         sessionActivated = (activationState == .activated)
         isPhoneReachable = session.isReachable
 
-        // Essayer de récupérer le dernier contexte disponible
         if activationState == .activated {
+            // Try to process the last available context
             let context = session.applicationContext
             if !context.isEmpty {
                 watchLogInfo("Processing applicationContext on activation (\(context.keys.count) keys)", category: .watchSync)
                 processReceivedContext(context)
             }
 
-            // Toujours demander une mise à jour fraîche à l'iPhone
-            // pour s'assurer d'avoir les dernières données (voiles supprimées, etc.)
+            // Always ask the iPhone for a fresh update to catch deletions etc.
             if isPhoneReachable {
                 watchLogInfo("Requesting fresh wings from iPhone", category: .watchSync)
                 requestWingsFromPhone()
             }
+
+            // Deliver any flight left over from a previous run
+            retryPendingFlights()
         }
     }
 
@@ -162,42 +191,36 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let wasReachable = isPhoneReachable
         isPhoneReachable = session.isReachable
 
-        // Si l'iPhone devient joignable, demander une mise à jour des voiles
-        // pour s'assurer d'avoir les dernières données
+        // When the iPhone becomes reachable, refresh the wings and flush the outbox
         if !wasReachable && isPhoneReachable {
             watchLogInfo("iPhone became reachable, requesting wings sync", category: .watchSync)
             requestWingsFromPhone()
+            retryPendingFlights()
         }
     }
 
     // MARK: - Receive Wings from iPhone
 
-    /// Reçoit le contexte mis à jour depuis l'iPhone (liste des Wings)
+    /// Receives the updated context from the iPhone (Wings list)
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         processReceivedContext(applicationContext)
     }
 
-    /// Reçoit des données via transferUserInfo (alternative)
+    /// Receives data via transferUserInfo (alternative path)
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         processReceivedContext(userInfo)
     }
 
-    /// Traite le contexte reçu (extraction des Wings, langue et settings)
+    /// Processes a received context (Wings and settings extraction)
     private func processReceivedContext(_ context: [String: Any]) {
-        // Extraire la langue si présente
-        if context.keys.contains("language") {
-            let languageCode = context["language"] as? String
-            WatchLocalizationManager.shared.updateLanguage(from: languageCode)
-        }
-
-        // Extraire les paramètres Watch si présents
+        // Extract Watch settings if present
         WatchSettings.shared.updateFromContext(context)
 
-        // Nouveau format : wingsData en Base64 - Décoder en background
-        if let base64String = context["wingsData"] as? String,
+        // New format: wingsData as Base64 - decode in the background
+        if let base64String = context[WatchSyncKeys.wingsData] as? String,
            let jsonData = Data(base64Encoded: base64String) {
 
-            // Décoder en background pour ne pas bloquer l'UI
+            // Decode in the background to avoid blocking the UI
             Task.detached(priority: .userInitiated) {
                 guard let decodedWings = try? JSONDecoder().decode([WingDTO].self, from: jsonData) else {
                     return
@@ -206,10 +229,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
                 await MainActor.run { [weak self] in
                     guard let self = self else { return }
-                    // Ne mettre à jour que si les données ont changé
-                    // pour éviter les re-renders inutiles
+                    // Only update if the data actually changed, to avoid re-renders
                     guard self.wingsHaveChanged(sortedWings) else { return }
-                    // Vider le cache d'images car les données ont changé
+                    // Clear the image cache since the data changed
                     WatchImageCache.shared.clearCache()
                     self.wings = sortedWings
                     self.saveWingsLocally()
@@ -218,7 +240,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             return
         }
 
-        // Ancien format (compatibilité) : wings en [[String: Any]]
+        // Legacy format (compatibility): wings as [[String: Any]]
         if let wingsData = context["wings"] as? [[String: Any]] {
             Task.detached(priority: .userInitiated) {
                 guard let jsonData = try? JSONSerialization.data(withJSONObject: wingsData),
@@ -230,7 +252,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                 await MainActor.run { [weak self] in
                     guard let self = self else { return }
                     guard self.wingsHaveChanged(sortedWings) else { return }
-                    // Vider le cache d'images car les données ont changé
+                    // Clear the image cache since the data changed
                     WatchImageCache.shared.clearCache()
                     self.wings = sortedWings
                     self.saveWingsLocally()
@@ -239,7 +261,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
-    /// Compare les nouvelles wings avec les existantes pour éviter les re-renders inutiles
+    /// Compares new wings with the current ones to avoid useless re-renders
     private func wingsHaveChanged(_ newWings: [WingDTO]) -> Bool {
         guard wings.count == newWings.count else { return true }
         for (index, wing) in wings.enumerated() {
@@ -256,6 +278,6 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     }
 
     #if os(watchOS)
-    // Pas besoin d'implémenter sessionDidBecomeInactive/sessionDidDeactivate sur watchOS
+    // sessionDidBecomeInactive/sessionDidDeactivate are not needed on watchOS
     #endif
 }

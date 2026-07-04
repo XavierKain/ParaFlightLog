@@ -45,17 +45,18 @@ final class WatchLogger {
 
     private init() {}
 
-    /// Récupère ou crée un logger pour une catégorie donnée
+    /// Gets or creates a logger for a given category.
+    /// Both reads and writes go through the queue to avoid a data race
+    /// on the loggers dictionary.
     private func logger(for category: WatchLogCategory) -> Logger {
-        if let existing = loggers[category] {
-            return existing
-        }
-
-        let newLogger = Logger(subsystem: subsystem, category: category.rawValue)
-        queue.sync {
+        return queue.sync {
+            if let existing = loggers[category] {
+                return existing
+            }
+            let newLogger = Logger(subsystem: subsystem, category: category.rawValue)
             loggers[category] = newLogger
+            return newLogger
         }
-        return newLogger
     }
 
     // MARK: - Log Methods

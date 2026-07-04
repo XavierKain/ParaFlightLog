@@ -23,6 +23,11 @@ enum AppwriteConfig {
 
     // Storage
     static let wingImagesBucketId = "wing-images"
+
+    /// Bucket holding one backup archive per user (see CloudBackupService).
+    /// Console setup: create this bucket with file-level security ON and
+    /// Create/Read/Update/Delete permissions for role "users".
+    static let backupsBucketId = "user-backups"
 }
 
 // MARK: - Service
@@ -33,6 +38,7 @@ final class AppwriteService {
     let client: Client
     let databases: Databases
     let storage: Storage
+    let account: Account
 
     private init() {
         client = Client()
@@ -41,5 +47,6 @@ final class AppwriteService {
 
         databases = Databases(client)
         storage = Storage(client)
+        account = Account(client)
     }
 }

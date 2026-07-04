@@ -36,7 +36,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     }
 
     var lastKnownLocation: CLLocation?
-    var currentSpotName: String = String(localized: "Searching...")
+    var currentSpotName: String = "Searching..."
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
     // Données de tracking pour le vol en cours
@@ -59,12 +59,8 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private let trackPointInterval: TimeInterval = 5.0  // Un point toutes les 5 secondes
     private let gpsQueue = DispatchQueue(label: "com.paraflightlog.gpstrack", qos: .userInitiated)
 
-    // Limite de points GPS en mémoire pour éviter les crashes sur vols longs
-    // 500 points max * 5 secondes = ~42 minutes de vol détaillé
-    // La compaction démarre à 400 points pour garder de la marge
-    // Après compaction, on peut stocker ~2h de vol avec résolution dégradée progressive
-    private let maxGPSPointsInMemory = 500
-    private let compactionThreshold = 400  // Déclencher la compaction à 80% de la limite
+    // GPS point limit and compaction strategy are shared with
+    // FlightSessionManager - see GPSTrackCompaction
 
     override init() {
         super.init()
@@ -100,7 +96,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     func startUpdatingLocation() {
         authorizationStatus = locationManager.authorizationStatus
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
-            currentSpotName = String(localized: "Permission refusée")
+            currentSpotName = "Permission denied"
             return
         }
         locationManager.startUpdatingLocation()
@@ -125,11 +121,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         previousLocation = nil
         gForceBuffer = []
 
-        // Verrouiller le nom du spot actuel seulement s'il ne s'agit pas de "Searching..."
-        // Sinon, on attendra la première vraie localisation
-        let searchingText = String(localized: "Searching...")
-        let unknownSpot = String(localized: "Spot inconnu")
-        let unavailable = String(localized: "Position indisponible")
+        // Lock the current spot name only if it's a real spot name;
+        // otherwise wait for the first real location
+        let searchingText = "Searching..."
+        let unknownSpot = "Unknown spot"
+        let unavailable = "Location unavailable"
 
         if currentSpotName != searchingText &&
            currentSpotName != unknownSpot &&
@@ -168,33 +164,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         return gpsQueue.sync { gpsTrackPoints }
     }
 
-    /// Compacte la trace GPS pour économiser la mémoire (version interne - appelée depuis gpsQueue)
-    /// Stratégie : garder 1 point sur 2 dans la première moitié (anciens points)
-    /// et tous les points dans la deuxième moitié (points récents = plus de précision)
-    /// ATTENTION: Cette méthode doit être appelée depuis gpsQueue.sync {}
+    /// Compacts the GPS track to save memory (internal - called from gpsQueue)
+    /// Delegates to the shared GPSTrackCompaction implementation.
+    /// WARNING: must be called from within gpsQueue.sync {}
     private func compactGPSTrackInternal() {
-        let count = gpsTrackPoints.count
-
-        // Ne pas compacter si on est en dessous du seuil
-        guard count >= compactionThreshold else { return }
-
-        // Réserver la capacité pour éviter les réallocations
-        var compacted: [GPSTrackPoint] = []
-        compacted.reserveCapacity(count / 2 + count / 4)  // ~75% du tableau original
-
-        let halfCount = count / 2
-
-        // Première moitié : un point sur 2 (résolution réduite pour les anciens)
-        for i in stride(from: 0, to: halfCount, by: 2) {
-            compacted.append(gpsTrackPoints[i])
-        }
-
-        // Deuxième moitié : tous les points (pleine résolution pour les récents)
-        for i in halfCount..<count {
-            compacted.append(gpsTrackPoints[i])
-        }
-
-        gpsTrackPoints = compacted
+        gpsTrackPoints = GPSTrackCompaction.compact(gpsTrackPoints)
     }
 
     // MARK: - Motion Tracking (G-Force)
@@ -268,8 +242,8 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private var isGeocodingInProgress = false
     private var lastGeocodedSpot: String?
     private var lastGeocodingTime: Date?
-    // Rate limiting : 1 requête toutes les 5 secondes (12 req/min, bien sous la limite Apple de 50/min)
-    private let geocodingMinInterval: TimeInterval = 5.0
+    // Rate limiting: 1 request every 30 seconds (2 req/min, well under Apple's 50/min limit)
+    private let geocodingMinInterval: TimeInterval = 30.0
 
     private func reverseGeocode(location: CLLocation) {
         // Si un vol est en cours et qu'on a un spot verrouillé, ne pas changer le nom
@@ -281,8 +255,8 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             return
         }
 
-        // Rate limiting : éviter le throttling Apple (50 req/60s)
-        // On limite à 1 requête toutes les 30 secondes
+        // Rate limiting: avoid Apple throttling (50 req/60s)
+        // Minimum 30 seconds between geocoding requests
         if let lastTime = lastGeocodingTime {
             let elapsed = Date().timeIntervalSince(lastTime)
             if elapsed < geocodingMinInterval {
@@ -307,9 +281,9 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
                 let mapItems = try await request.mapItems
                 let mapItem = mapItems.first
 
-                // watchOS 26+ : utiliser addressRepresentations (nouvelle API)
-                // Stratégie : cityName > regionName > name
-                let unknownSpot = String(localized: "Spot inconnu")
+                // watchOS 26+: use addressRepresentations (new API)
+                // Strategy: cityName > regionName > name
+                let unknownSpot = "Unknown spot"
                 let spotName: String
                 if let addr = mapItem?.addressRepresentations {
                     spotName = addr.cityName ?? addr.regionName ?? mapItem?.name ?? unknownSpot
@@ -343,9 +317,9 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
                 await MainActor.run { [weak self] in
                     guard let strongSelf = self else { return }
                     strongSelf.isGeocodingInProgress = false
-                    // Ne pas modifier si un vol est en cours
+                    // Do not change the spot while a flight is in progress
                     guard !strongSelf.isTracking else { return }
-                    let unknownSpot = String(localized: "Spot inconnu")
+                    let unknownSpot = "Unknown spot"
                     if strongSelf.currentSpotName != unknownSpot {
                         strongSelf.currentSpotName = unknownSpot
                     }
@@ -431,9 +405,9 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
                     gpsTrackPoints.append(trackPoint)
                     lastTrackPointTime = now
 
-                    // Limiter le nombre de points en mémoire pour éviter les crashes
-                    // Compacter proactivement à 80% de la limite pour garder de la marge
-                    if gpsTrackPoints.count >= compactionThreshold {
+                    // Limit the number of points in memory to avoid crashes
+                    // Compact proactively at 80% of the limit to keep headroom
+                    if gpsTrackPoints.count >= GPSTrackCompaction.compactionThreshold {
                         compactGPSTrackInternal()
                     }
                 }
@@ -444,7 +418,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        let unavailable = String(localized: "Position indisponible")
+        let unavailable = "Location unavailable"
         if currentSpotName != unavailable {
             currentSpotName = unavailable
         }

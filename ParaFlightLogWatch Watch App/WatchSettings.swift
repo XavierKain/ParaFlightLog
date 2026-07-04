@@ -2,56 +2,78 @@
 //  WatchSettings.swift
 //  ParaFlightLogWatch Watch App
 //
-//  Gestion des paramètres de l'Apple Watch synchronisés depuis l'iPhone
+//  Apple Watch settings, partially synced from the iPhone
 //  Target: Watch only
 //
 
 import Foundation
-import WatchKit
 
-/// Singleton pour gérer les paramètres de la Watch
+/// Singleton managing the Watch settings
 @Observable
 final class WatchSettings {
     static let shared = WatchSettings()
 
     // MARK: - Settings Properties
 
-    /// Active le waterlock automatiquement pendant un vol
-    /// Empêche les touches accidentelles sur l'écran
+    /// Automatically enables Water Lock during a flight
+    /// (prevents accidental screen touches)
     var autoWaterLockEnabled: Bool {
         didSet {
             UserDefaults.standard.set(autoWaterLockEnabled, forKey: "autoWaterLockEnabled")
         }
     }
 
-    /// Permet d'annuler/dismiss une session de vol
-    /// Si false, l'utilisateur ne peut que sauvegarder le vol
+    /// Allows cancelling/dismissing a flight session
+    /// If false, the user can only save the flight
     var allowSessionDismiss: Bool {
         didSet {
             UserDefaults.standard.set(allowSessionDismiss, forKey: "allowSessionDismiss")
         }
     }
 
-    /// Mode développeur : active les logs détaillés
-    /// Désactivé par défaut pour de meilleures performances
+    /// Developer mode: enables detailed logging
+    /// Off by default for better performance
     var developerModeEnabled: Bool {
         didSet {
             UserDefaults.standard.set(developerModeEnabled, forKey: "developerModeEnabled")
         }
     }
 
+    /// Variometer (haptic climb/sink feedback) during a flight. Off by default.
+    /// Toggled directly on the Watch from the active flight screen.
+    var varioEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(varioEnabled, forKey: "varioEnabled")
+        }
+    }
+
+    /// Last flight type chosen by the pilot when saving a flight.
+    /// Used as the default selection for the next flight.
+    var lastFlightType: FlightType {
+        didSet {
+            UserDefaults.standard.set(lastFlightType.rawValue, forKey: "lastFlightType")
+        }
+    }
+
     // MARK: - Initialization
 
     private init() {
-        // Charger les valeurs sauvegardées ou utiliser les valeurs par défaut
+        // Load saved values or fall back to defaults
         self.autoWaterLockEnabled = UserDefaults.standard.object(forKey: "autoWaterLockEnabled") as? Bool ?? false
         self.allowSessionDismiss = UserDefaults.standard.object(forKey: "allowSessionDismiss") as? Bool ?? true
         self.developerModeEnabled = UserDefaults.standard.object(forKey: "developerModeEnabled") as? Bool ?? false
+        self.varioEnabled = UserDefaults.standard.object(forKey: "varioEnabled") as? Bool ?? false
+        if let rawType = UserDefaults.standard.string(forKey: "lastFlightType"),
+           let type = FlightType(rawValue: rawType) {
+            self.lastFlightType = type
+        } else {
+            self.lastFlightType = .soaring
+        }
     }
 
     // MARK: - Update from iPhone
 
-    /// Met à jour les paramètres depuis un contexte reçu de l'iPhone
+    /// Updates the settings from a context received from the iPhone
     func updateFromContext(_ context: [String: Any]) {
         if let autoWaterLock = context["watchAutoWaterLock"] as? Bool {
             autoWaterLockEnabled = autoWaterLock
@@ -65,18 +87,9 @@ final class WatchSettings {
             developerModeEnabled = devMode
         }
 
-        // Log uniquement si mode dev activé (évite le log au démarrage si désactivé)
+        // Log only when developer mode is on (avoids the startup log otherwise)
         if developerModeEnabled {
             watchLogDebug("Settings updated: autoWaterLock=\(autoWaterLockEnabled), allowDismiss=\(allowSessionDismiss), devMode=\(developerModeEnabled)", category: .settings)
         }
-    }
-
-    // MARK: - Water Lock Control
-
-    /// Active le water lock sur l'Apple Watch
-    func enableWaterLock() {
-        #if os(watchOS)
-        WKInterfaceDevice.current().enableWaterLock()
-        #endif
     }
 }

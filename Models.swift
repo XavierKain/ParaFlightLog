@@ -2,7 +2,9 @@
 //  Models.swift
 //  ParaFlightLog
 //
-//  SwiftData models pour la persistence côté iOS
+//  SwiftData models for iOS-side persistence.
+//  CloudKit-compatible: no unique constraints, optional relationships,
+//  and every stored attribute is optional or has an inline default value.
 //  Target: iOS only
 //
 
@@ -11,21 +13,22 @@ import SwiftData
 import UIKit
 
 // MARK: - Wing
-/// Modèle SwiftData représentant une voile de parapente
+/// SwiftData model representing a paraglider wing
 @Model
 final class Wing {
-    var id: UUID
-    var name: String         // Nom du modèle (ex: "Moustache M1")
-    var brand: String?       // Marque/fabricant (ex: "Flare")
+    var id: UUID = UUID()
+    var name: String = ""     // Model name (e.g. "Moustache M1")
+    var brand: String?        // Manufacturer (e.g. "Flare")
     var size: String?
-    var type: String?        // ex: "Soaring", "Cross", "Acro"
-    var color: String?       // texte libre ou hex
-    var photoData: Data?     // Photo de la voile stockée en Data
-    var isArchived: Bool     // Voile archivée (masquée par défaut)
-    var createdAt: Date
-    var displayOrder: Int    // Ordre d'affichage personnalisé (0 = premier)
+    var type: String?         // e.g. "Soaring", "Cross", "Acro"
+    var color: String?        // free text or hex
+    var photoData: Data?      // Wing photo stored as Data
+    var isArchived: Bool = false   // Archived wings are hidden by default
+    var createdAt: Date = Date()
+    var displayOrder: Int = 0      // Custom display order (0 = first)
 
-    // Relation inverse : tous les vols effectués avec cette voile
+    // Inverse relationship: all flights flown with this wing.
+    // Must stay optional for CloudKit compatibility.
     @Relationship(deleteRule: .cascade, inverse: \Flight.wing)
     var flights: [Flight]?
 
@@ -42,62 +45,32 @@ final class Wing {
         self.displayOrder = displayOrder
     }
 
-    /// Convertit le modèle SwiftData en DTO pour l'envoi vers la Watch
-    func toDTO() -> WingDTO {
-        WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: photoData, displayOrder: displayOrder)
-    }
-
-    /// Convertit en DTO avec photo redimensionnée pour la Watch (max 120x120)
-    /// Préserve la transparence PNG pour s'adapter à tous les fonds
-    func toDTOForWatch() -> WingDTO {
-        var compressedPhotoData: Data? = nil
-
-        if let originalData = photoData, let image = UIImage(data: originalData) {
-            // Calculer la taille cible (max 120x120)
-            let maxSize: CGFloat = 120
-            let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
-            let targetSize = CGSize(
-                width: max(1, round(image.size.width * scale)),
-                height: max(1, round(image.size.height * scale))
-            )
-
-            // Utiliser UIGraphicsImageRenderer avec transparence
-            let format = UIGraphicsImageRendererFormat()
-            format.scale = 1.0
-            format.opaque = false  // Préserver la transparence
-
-            let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
-            let resizedImage = renderer.image { _ in
-                image.draw(in: CGRect(origin: .zero, size: targetSize))
-            }
-
-            // Encoder en PNG pour préserver la transparence
-            compressedPhotoData = resizedImage.pngData()
-        }
-
-        return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: compressedPhotoData, displayOrder: displayOrder)
-    }
-
-    /// Convertit en DTO sans photo (fallback si la sync avec images échoue)
-    func toDTOWithoutPhoto() -> WingDTO {
-        return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
-    }
-
-    /// Convertit en DTO avec miniature pour la Watch (72x72 max)
-    /// Préserve la transparence PNG pour s'adapter à tous les fonds
+    /// Converts to a DTO with a small PNG thumbnail (max 72x72) for the Watch.
+    /// Preserves PNG transparency so the image adapts to any background.
     func toDTOWithThumbnail() -> WingDTO {
-        // Pas de photo = pas de miniature
+        Wing.thumbnailDTO(from: toDTOWithoutPhoto(), photoData: photoData)
+    }
+
+    /// Converts to a DTO without any photo (fallback when the payload is too large).
+    func toDTOWithoutPhoto() -> WingDTO {
+        WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
+    }
+
+    /// Builds a thumbnail DTO (max 72x72 PNG) from a no-photo DTO + raw photo data.
+    /// Static and model-free on purpose: safe to call from a background thread
+    /// after snapshotting the photo Data on the main queue.
+    static func thumbnailDTO(from dto: WingDTO, photoData: Data?) -> WingDTO {
+        // No photo = no thumbnail
         guard let originalData = photoData else {
-            logInfo("Wing \(name): no photo data", category: .watchSync)
-            return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
+            return dto
         }
 
         guard let image = UIImage(data: originalData) else {
-            logWarning("Wing \(name): failed to create UIImage from \(originalData.count) bytes", category: .watchSync)
-            return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
+            logWarning("Wing \(dto.name): failed to create UIImage from \(originalData.count) bytes", category: .watchSync)
+            return dto
         }
 
-        // Calculer la taille cible (max 72x72)
+        // Compute the target size (max 72x72)
         let maxSize: CGFloat = 72
         let scale = min(maxSize / image.size.width, maxSize / image.size.height, 1.0)
         let targetSize = CGSize(
@@ -105,54 +78,54 @@ final class Wing {
             height: max(1, round(image.size.height * scale))
         )
 
-        // Utiliser UIGraphicsImageRenderer avec transparence
+        // Use UIGraphicsImageRenderer preserving transparency
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1.0
-        format.opaque = false  // Préserver la transparence
+        format.opaque = false
 
         let renderer = UIGraphicsImageRenderer(size: targetSize, format: format)
         let resizedImage = renderer.image { _ in
             image.draw(in: CGRect(origin: .zero, size: targetSize))
         }
 
-        // Encoder en PNG pour préserver la transparence
+        // Encode as PNG to keep transparency
         guard let thumbnailData = resizedImage.pngData() else {
-            logWarning("Wing \(name): pngData() returned nil", category: .watchSync)
-            return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: nil, displayOrder: displayOrder)
+            logWarning("Wing \(dto.name): pngData() returned nil", category: .watchSync)
+            return dto
         }
 
-        logInfo("Wing \(name): thumbnail created \(targetSize.width)x\(targetSize.height), \(thumbnailData.count) bytes", category: .watchSync)
-        return WingDTO(id: id, name: name, size: size, type: type, color: color, photoData: thumbnailData, displayOrder: displayOrder)
+        return WingDTO(id: dto.id, name: dto.name, size: dto.size, type: dto.type, color: dto.color, photoData: thumbnailData, displayOrder: dto.displayOrder)
     }
 }
 
 // MARK: - Flight
-/// Modèle SwiftData représentant un vol de parapente
+/// SwiftData model representing a paragliding flight
 @Model
 final class Flight {
-    var id: UUID
-    var startDate: Date
-    var endDate: Date
-    var durationSeconds: Int
-    var spotName: String?    // ex: "Cumbuco", "Saint-Gervais-les-Bains"
+    var id: UUID = UUID()
+    var startDate: Date = Date()
+    var endDate: Date = Date()
+    var durationSeconds: Int = 0
+    var spotName: String?    // e.g. "Cumbuco", "Saint-Gervais-les-Bains"
     var latitude: Double?
     var longitude: Double?
-    var flightType: String?  // ex: "Soaring", "Thermique", "Gonflage"
+    var flightType: String?  // raw value of FlightType (e.g. "Soaring")
     var notes: String?
-    var createdAt: Date
+    var createdAt: Date = Date()
 
-    // Données de tracking (depuis Watch)
-    var startAltitude: Double?      // Altitude de départ (m)
-    var maxAltitude: Double?         // Altitude maximale (m)
-    var endAltitude: Double?         // Altitude d'atterrissage (m)
-    var totalDistance: Double?       // Distance totale parcourue (m)
-    var maxSpeed: Double?            // Vitesse maximale au sol (m/s)
-    var maxGForce: Double?           // G-force maximale (G)
+    // Tracking data (from Watch)
+    var startAltitude: Double?      // Takeoff altitude (m)
+    var maxAltitude: Double?        // Maximum altitude (m)
+    var endAltitude: Double?        // Landing altitude (m)
+    var totalDistance: Double?      // Total distance flown (m)
+    var maxSpeed: Double?           // Maximum ground speed (m/s)
+    var maxGForce: Double?          // Maximum G-force (G)
 
-    // Trace GPS du vol (stockée en JSON)
+    // GPS track of the flight (stored as JSON)
     var gpsTrackData: Data?
 
-    // Relation : la voile utilisée pour ce vol
+    // Relationship: the wing used for this flight.
+    // Must stay optional for CloudKit compatibility.
     var wing: Wing?
 
     init(id: UUID = UUID(),
@@ -193,7 +166,13 @@ final class Flight {
         self.gpsTrackData = gpsTrackData
     }
 
-    /// Décoder la trace GPS
+    /// Typed accessor bridging the raw `flightType` string storage.
+    var flightTypeEnum: FlightType? {
+        get { flightType.flatMap { FlightType(rawValue: $0) } }
+        set { flightType = newValue?.rawValue }
+    }
+
+    /// Decodes the GPS track
     var gpsTrack: [GPSTrackPoint]? {
         guard let data = gpsTrackData else { return nil }
         do {
@@ -204,7 +183,7 @@ final class Flight {
         }
     }
 
-    /// Encoder et sauvegarder la trace GPS
+    /// Encodes and stores the GPS track
     func setGPSTrack(_ points: [GPSTrackPoint]) {
         do {
             gpsTrackData = try JSONEncoder().encode(points)
@@ -213,7 +192,7 @@ final class Flight {
         }
     }
 
-    /// Durée formatée (ex: "1h23" ou "45min")
+    /// Formatted duration (e.g. "1h23" or "45min")
     var durationFormatted: String {
         let hours = durationSeconds / 3600
         let minutes = (durationSeconds % 3600) / 60
@@ -225,12 +204,12 @@ final class Flight {
         }
     }
 
-    /// Date formatée pour l'affichage
+    /// Formatted start date for display (uses the current locale)
     var dateFormatted: String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.timeStyle = .short
-        formatter.locale = Locale(identifier: "fr_FR")
+        formatter.locale = .autoupdatingCurrent
         return formatter.string(from: startDate)
     }
 }

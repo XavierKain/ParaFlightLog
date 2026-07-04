@@ -2,338 +2,279 @@
 //  ZipBackup.swift
 //  ParaFlightLog
 //
-//  Gestion de l'export et import de backups complets au format ZIP
-//  Contient: wings.csv, flights.csv, images/, metadata.json
-//  NOTE: Utilise FileManager pour créer un dossier au lieu d'un vrai ZIP
-//        pour compatibilité iOS (Process n'est pas disponible)
+//  Backup export/import as a `.paraflightlog` folder bundle.
+//
+//  Format v2 (current): backup.json (single JSON manifest, ISO 8601 dates,
+//  all wing and flight fields including full GPS tracks) + images/<wingId>.jpg
+//  JSON removes the CSV-escaping corruption of format v1.
+//
+//  Format v1 (legacy, import only): wings.csv + flights.csv + metadata.json.
+//  Users have real historical backups in this format, so the v1 parser is kept
+//  and hardened: it never crashes on malformed rows, it skips and counts them.
+//
+//  NOTE: the filename ZipBackup.swift is kept so the Xcode project reference
+//  stays valid; the type is BackupManager.
 //
 
 import Foundation
 import SwiftData
-import UniformTypeIdentifiers
 
-// MARK: - Metadata Structure (défini hors de ZipBackup pour éviter l'isolation MainActor implicite)
+// MARK: - Backup v2 Manifest
 
-struct BackupMetadata: Sendable {
-    let version: String
-    let appVersion: String
+/// Wing snapshot in backup.json (all fields, photo stored separately in images/)
+struct BackupWing: Codable {
+    let id: UUID
+    let name: String
+    let brand: String?
+    let size: String?
+    let type: String?
+    let color: String?
+    let isArchived: Bool
+    let createdAt: Date
+    let displayOrder: Int
+    /// Filename inside images/ (e.g. "<wingId>.jpg"), nil when the wing has no photo
+    let photoFilename: String?
+}
+
+/// Flight snapshot in backup.json (all fields, including the full GPS track)
+struct BackupFlight: Codable {
+    let id: UUID
+    let wingId: UUID?
+    let startDate: Date
+    let endDate: Date
+    let durationSeconds: Int
+    let spotName: String?
+    let latitude: Double?
+    let longitude: Double?
+    let flightType: String?
+    let notes: String?
+    let createdAt: Date
+    let startAltitude: Double?
+    let maxAltitude: Double?
+    let endAltitude: Double?
+    let totalDistance: Double?
+    let maxSpeed: Double?
+    let maxGForce: Double?
+    let gpsTrack: [GPSTrackPoint]?
+}
+
+/// Single JSON manifest written to backup.json
+struct BackupManifest: Codable {
+    let formatVersion: Int
     let exportDate: Date
-    let wingsCount: Int
-    let flightsCount: Int
-    let imagesCount: Int
+    let appVersion: String
+    let wings: [BackupWing]
+    let flights: [BackupFlight]
 
-    static func create(wingsCount: Int, flightsCount: Int, imagesCount: Int, appVersion: String) -> BackupMetadata {
-        return BackupMetadata(
-            version: "1.0",
-            appVersion: appVersion,
-            exportDate: Date(),
-            wingsCount: wingsCount,
-            flightsCount: flightsCount,
-            imagesCount: imagesCount
-        )
+    static let currentFormatVersion = 2
+}
+
+// MARK: - Import Types
+
+enum ImportMode {
+    /// Keep existing data, skip wings/flights whose UUID already exists
+    case merge
+    /// Parse and validate everything first, then delete all existing data and insert
+    case replace
+}
+
+/// Result of an import operation
+struct ImportSummary {
+    var wingsImported: Int = 0
+    var flightsImported: Int = 0
+    var skippedDuplicates: Int = 0
+    var skippedMalformed: Int = 0
+
+    /// Human-readable English summary for the UI
+    var message: String {
+        var lines = [
+            "Import complete.",
+            "Wings imported: \(wingsImported)",
+            "Flights imported: \(flightsImported)"
+        ]
+        if skippedDuplicates > 0 {
+            lines.append("Skipped duplicates: \(skippedDuplicates)")
+        }
+        if skippedMalformed > 0 {
+            lines.append("Skipped malformed rows: \(skippedMalformed)")
+        }
+        return lines.joined(separator: "\n")
     }
 }
 
-// Conformances Codable nonisolated pour permettre l'encodage/décodage en background
-extension BackupMetadata: Codable {
-    nonisolated init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        version = try container.decode(String.self, forKey: .version)
-        appVersion = try container.decode(String.self, forKey: .appVersion)
-        exportDate = try container.decode(Date.self, forKey: .exportDate)
-        wingsCount = try container.decode(Int.self, forKey: .wingsCount)
-        flightsCount = try container.decode(Int.self, forKey: .flightsCount)
-        imagesCount = try container.decode(Int.self, forKey: .imagesCount)
-    }
+enum BackupError: LocalizedError {
+    case unrecognizedFormat
+    case invalidManifest(String)
+    case exportFailed(String)
 
-    nonisolated func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(version, forKey: .version)
-        try container.encode(appVersion, forKey: .appVersion)
-        try container.encode(exportDate, forKey: .exportDate)
-        try container.encode(wingsCount, forKey: .wingsCount)
-        try container.encode(flightsCount, forKey: .flightsCount)
-        try container.encode(imagesCount, forKey: .imagesCount)
-    }
-
-    private enum CodingKeys: String, CodingKey {
-        case version, appVersion, exportDate, wingsCount, flightsCount, imagesCount
+    var errorDescription: String? {
+        switch self {
+        case .unrecognizedFormat:
+            return "This folder is not a recognized ParaFlightLog backup (no backup.json or wings.csv/flights.csv found)."
+        case .invalidManifest(let detail):
+            return "The backup file is damaged: \(detail)"
+        case .exportFailed(let detail):
+            return "Backup export failed: \(detail)"
+        }
     }
 }
 
-struct ZipBackup {
+// MARK: - BackupManager
 
-    // MARK: - Export to Folder Bundle (iOS-compatible)
+enum BackupManager {
 
-    /// Exporte toutes les données dans un dossier bundle .paraflightlog
+    // MARK: - Export (format v2)
+
+    /// Exports all data into a `.paraflightlog` folder bundle containing
+    /// backup.json + images/<wingId>.jpg. Deterministic: entries are sorted
+    /// and the JSON uses sorted keys.
     /// - Parameters:
-    ///   - wings: Liste des voiles à exporter
-    ///   - flights: Liste des vols à exporter
-    ///   - completion: Callback avec l'URL du dossier bundle créé (ou erreur)
-    static func exportToZip(wings: [Wing], flights: [Flight], completion: @escaping (Result<URL, Error>) -> Void) {
-        // Capturer appVersion sur le main thread avant d'aller en background
+    ///   - wings: wings to export
+    ///   - flights: flights to export
+    ///   - completion: callback on the main queue with the bundle URL (or error)
+    static func exportBackup(wings: [Wing], flights: [Flight], completion: @escaping (Result<URL, Error>) -> Void) {
+        // Capture everything we need from the models on the calling (main) thread:
+        // SwiftData models must not be touched from a background queue.
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+
+        let backupWings: [(wing: BackupWing, photoData: Data?)] = wings
+            .sorted { $0.createdAt < $1.createdAt }
+            .map { wing in
+                let photoFilename = wing.photoData != nil ? "\(wing.id.uuidString).jpg" : nil
+                let snapshot = BackupWing(
+                    id: wing.id,
+                    name: wing.name,
+                    brand: wing.brand,
+                    size: wing.size,
+                    type: wing.type,
+                    color: wing.color,
+                    isArchived: wing.isArchived,
+                    createdAt: wing.createdAt,
+                    displayOrder: wing.displayOrder,
+                    photoFilename: photoFilename
+                )
+                return (snapshot, wing.photoData)
+            }
+
+        let backupFlights: [BackupFlight] = flights
+            .sorted { $0.startDate < $1.startDate }
+            .map { flight in
+                BackupFlight(
+                    id: flight.id,
+                    wingId: flight.wing?.id,
+                    startDate: flight.startDate,
+                    endDate: flight.endDate,
+                    durationSeconds: flight.durationSeconds,
+                    spotName: flight.spotName,
+                    latitude: flight.latitude,
+                    longitude: flight.longitude,
+                    flightType: flight.flightType,
+                    notes: flight.notes,
+                    createdAt: flight.createdAt,
+                    startAltitude: flight.startAltitude,
+                    maxAltitude: flight.maxAltitude,
+                    endAltitude: flight.endAltitude,
+                    totalDistance: flight.totalDistance,
+                    maxSpeed: flight.maxSpeed,
+                    maxGForce: flight.maxGForce,
+                    gpsTrack: flight.gpsTrack
+                )
+            }
+
+        let manifest = BackupManifest(
+            formatVersion: BackupManifest.currentFormatVersion,
+            exportDate: Date(),
+            appVersion: appVersion,
+            wings: backupWings.map(\.wing),
+            flights: backupFlights
+        )
+
+        let photosByFilename: [String: Data] = backupWings.reduce(into: [:]) { dict, entry in
+            if let filename = entry.wing.photoFilename, let data = entry.photoData {
+                dict[filename] = data
+            }
+        }
 
         DispatchQueue.global(qos: .utility).async {
             do {
-                // Créer le dossier bundle .paraflightlog directement
                 let bundleName = "ParaFlightLog_Backup_\(formatDateForFilename(Date())).paraflightlog"
                 let bundleURL = FileManager.default.temporaryDirectory.appendingPathComponent(bundleName)
 
-                // Supprimer si existe déjà
+                // Remove any previous bundle with the same name
                 try? FileManager.default.removeItem(at: bundleURL)
-
-                // Créer le dossier bundle
                 try FileManager.default.createDirectory(at: bundleURL, withIntermediateDirectories: true)
 
-                // 1. Créer le dossier images/
+                // 1. backup.json (ISO 8601 dates, sorted keys for determinism)
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let manifestData = try encoder.encode(manifest)
+                try manifestData.write(to: bundleURL.appendingPathComponent("backup.json"))
+
+                // 2. images/<wingId>.jpg
                 let imagesDir = bundleURL.appendingPathComponent("images")
                 try FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
-
-                // 2. Exporter les voiles en CSV et sauvegarder les images
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
-
-                var wingsCSV = "ID,Nom,Taille,Type,Couleur,Archivé,Date de création,Ordre d'affichage,Photo\n"
-                var imagesCount = 0
-
-                for wing in wings.sorted(by: { $0.createdAt < $1.createdAt }) {
-                    let id = wing.id.uuidString
-                    let name = escapeCSV(wing.name)
-                    let size = escapeCSV(wing.size ?? "")
-                    let type = escapeCSV(wing.type ?? "")
-                    let color = escapeCSV(wing.color ?? "")
-                    let archived = wing.isArchived ? "Oui" : "Non"
-                    let created = dateFormatter.string(from: wing.createdAt)
-                    let displayOrder = "\(wing.displayOrder)"
-
-                    // Sauvegarder l'image si elle existe
-                    var photoFilename = ""
-                    if let photoData = wing.photoData {
-                        photoFilename = "\(id).jpg"
-                        let photoURL = imagesDir.appendingPathComponent(photoFilename)
-                        try photoData.write(to: photoURL)
-                        imagesCount += 1
-                    }
-
-                    wingsCSV += "\(id),\(name),\(size),\(type),\(color),\(archived),\(created),\(displayOrder),\(photoFilename)\n"
+                for (filename, data) in photosByFilename.sorted(by: { $0.key < $1.key }) {
+                    try data.write(to: imagesDir.appendingPathComponent(filename))
                 }
 
-                // 3. Exporter les vols en CSV
-                var flightsCSV = "ID,Date début,Date fin,Durée (sec),Voile ID,Voile Nom,Spot,Latitude,Longitude,Type,Notes\n"
-
-                for flight in flights.sorted(by: { $0.startDate < $1.startDate }) {
-                    let id = flight.id.uuidString
-                    let startDate = dateFormatter.string(from: flight.startDate)
-                    let endDate = dateFormatter.string(from: flight.endDate)
-                    let duration = "\(flight.durationSeconds)"
-                    let wingId = flight.wing?.id.uuidString ?? ""
-                    let wingName = escapeCSV(flight.wing?.name ?? "Inconnu")
-                    let spotName = escapeCSV(flight.spotName ?? "")
-                    let lat = flight.latitude.map { String($0) } ?? ""
-                    let lon = flight.longitude.map { String($0) } ?? ""
-                    let flightType = escapeCSV(flight.flightType ?? "")
-                    let notes = escapeCSV(flight.notes ?? "")
-
-                    flightsCSV += "\(id),\(startDate),\(endDate),\(duration),\(wingId),\(wingName),\(spotName),\(lat),\(lon),\(flightType),\"\(notes)\"\n"
-                }
-
-                // 4. Écrire les CSVs
-                let wingsURL = bundleURL.appendingPathComponent("wings.csv")
-                let flightsURL = bundleURL.appendingPathComponent("flights.csv")
-                try wingsCSV.write(to: wingsURL, atomically: true, encoding: .utf8)
-                try flightsCSV.write(to: flightsURL, atomically: true, encoding: .utf8)
-
-                // 5. Créer metadata.json
-                let metadata = BackupMetadata.create(
-                    wingsCount: wings.count,
-                    flightsCount: flights.count,
-                    imagesCount: imagesCount,
-                    appVersion: appVersion
-                )
-                let metadataData = try JSONEncoder().encode(metadata)
-                let metadataURL = bundleURL.appendingPathComponent("metadata.json")
-                try metadataData.write(to: metadataURL)
-
-                // 6. Retourner l'URL du dossier bundle (pas besoin d'archiver)
                 DispatchQueue.main.async {
                     completion(.success(bundleURL))
                 }
-
             } catch {
                 DispatchQueue.main.async {
-                    completion(.failure(error))
+                    completion(.failure(BackupError.exportFailed(error.localizedDescription)))
                 }
             }
         }
     }
 
-    // MARK: - Import from Folder Bundle
+    // MARK: - Import (auto-detects v2 / v1)
 
-    /// Importe les données depuis un dossier bundle .paraflightlog
+    /// Imports a `.paraflightlog` folder bundle.
+    /// Auto-detects the format: v2 = backup.json present, v1 legacy = wings.csv/flights.csv.
     /// - Parameters:
-    ///   - zipURL: URL du dossier bundle .paraflightlog à importer
-    ///   - dataController: DataController pour insérer les données
-    ///   - mergeMode: Si true, merge avec données existantes. Si false, remplace tout.
-    ///   - completion: Callback avec le résultat (nombre d'éléments importés ou erreur)
-    static func importFromZip(
-        zipURL: URL,
+    ///   - url: backup bundle URL
+    ///   - dataController: destination store
+    ///   - mode: .merge (dedup by UUID) or .replace (validate everything, then wipe and insert)
+    ///   - completion: callback on the main queue with an ImportSummary (or error)
+    static func importBackup(
+        from url: URL,
         dataController: DataController,
-        mergeMode: Bool = true,
-        completion: @escaping (Result<String, Error>) -> Void
+        mode: ImportMode = .merge,
+        completion: @escaping (Result<ImportSummary, Error>) -> Void
     ) {
         DispatchQueue.global(qos: .utility).async {
+            let gotAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if gotAccess {
+                    url.stopAccessingSecurityScopedResource()
+                }
+            }
+
             do {
-                // Obtenir l'accès sécurisé au fichier
-                let gotAccess = zipURL.startAccessingSecurityScopedResource()
-                defer {
-                    if gotAccess {
-                        zipURL.stopAccessingSecurityScopedResource()
-                    }
+                // Parse + validate EVERYTHING before touching the database
+                let parsed: ParsedBackup
+                let manifestURL = url.appendingPathComponent("backup.json")
+                let wingsCSVURL = url.appendingPathComponent("wings.csv")
+
+                if FileManager.default.fileExists(atPath: manifestURL.path) {
+                    parsed = try parseV2(bundleURL: url)
+                } else if FileManager.default.fileExists(atPath: wingsCSVURL.path) {
+                    parsed = try parseV1(bundleURL: url)
+                } else {
+                    throw BackupError.unrecognizedFormat
                 }
 
-                // Le dossier bundle est directement accessible
-                let extractedDir = zipURL
-
-                // 1. Lire metadata.json pour validation
-                let metadataURL = extractedDir.appendingPathComponent("metadata.json")
-                guard FileManager.default.fileExists(atPath: metadataURL.path) else {
-                    throw NSError(domain: "ZipBackup", code: 3, userInfo: [NSLocalizedDescriptionKey: "Invalid backup: metadata.json not found"])
-                }
-
-                let metadataData = try Data(contentsOf: metadataURL)
-                let metadata = try JSONDecoder().decode(BackupMetadata.self, from: metadataData)
-                logInfo("Importing backup from \(metadata.exportDate): \(metadata.wingsCount) wings, \(metadata.flightsCount) flights", category: .dataController)
-
-                // 2. Parser wings.csv
-                let wingsURL = extractedDir.appendingPathComponent("wings.csv")
-                guard FileManager.default.fileExists(atPath: wingsURL.path) else {
-                    throw NSError(domain: "ZipBackup", code: 4, userInfo: [NSLocalizedDescriptionKey: "wings.csv not found"])
-                }
-
-                let wingsCSV = try String(contentsOf: wingsURL, encoding: .utf8)
-                let wingsRows = wingsCSV.components(separatedBy: "\n").dropFirst() // Skip header
-
-                var importedWings: [UUID: Wing] = [:]
-                var wingsCount = 0
-
-                for row in wingsRows {
-                    guard !row.isEmpty else { continue }
-                    let cols = parseCSVRow(row)
-                    guard cols.count >= 8 else { continue }
-
-                    guard let wingId = UUID(uuidString: cols[0]) else { continue }
-
-                    let wing = Wing(
-                        name: cols[1],
-                        size: cols[2].isEmpty ? nil : cols[2],
-                        type: cols[3].isEmpty ? nil : cols[3],
-                        color: cols[4].isEmpty ? nil : cols[4]
-                    )
-                    wing.id = wingId
-                    wing.isArchived = cols[5] == "Oui"
-                    if let displayOrder = Int(cols[7]) {
-                        wing.displayOrder = displayOrder
-                    }
-
-                    // Charger l'image si elle existe
-                    if !cols[8].isEmpty {
-                        let imagePath = extractedDir.appendingPathComponent("images").appendingPathComponent(cols[8])
-                        if FileManager.default.fileExists(atPath: imagePath.path) {
-                            wing.photoData = try? Data(contentsOf: imagePath)
-                        }
-                    }
-
-                    importedWings[wingId] = wing
-                    wingsCount += 1
-                }
-
-                // 3. Parser flights.csv
-                let flightsURL = extractedDir.appendingPathComponent("flights.csv")
-                guard FileManager.default.fileExists(atPath: flightsURL.path) else {
-                    throw NSError(domain: "ZipBackup", code: 5, userInfo: [NSLocalizedDescriptionKey: "flights.csv not found"])
-                }
-
-                let flightsCSV = try String(contentsOf: flightsURL, encoding: .utf8)
-                let flightsRows = flightsCSV.components(separatedBy: "\n").dropFirst() // Skip header
-
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
-
-                var flights: [Flight] = []
-
-                for row in flightsRows {
-                    guard !row.isEmpty else { continue }
-                    let cols = parseCSVRow(row)
-                    guard cols.count >= 10 else { continue }
-
-                    guard let startDate = dateFormatter.date(from: cols[1]),
-                          let endDate = dateFormatter.date(from: cols[2]),
-                          let durationSeconds = Int(cols[3]) else { continue }
-
-                    let wingId = UUID(uuidString: cols[4])
-                    let wing = wingId.flatMap { importedWings[$0] }
-
-                    let flight = Flight(
-                        wing: wing,
-                        startDate: startDate,
-                        endDate: endDate,
-                        durationSeconds: durationSeconds,
-                        spotName: cols[6].isEmpty ? nil : cols[6],
-                        latitude: Double(cols[7]),
-                        longitude: Double(cols[8])
-                    )
-
-                    if !cols[9].isEmpty {
-                        flight.flightType = cols[9]
-                    }
-                    if cols.count >= 11 && !cols[10].isEmpty {
-                        flight.notes = cols[10].replacingOccurrences(of: "\"", with: "")
-                    }
-
-                    flights.append(flight)
-                }
-
-                // 4. Insérer en base de données (sur main thread, SwiftData requirement)
+                // Insert on the main queue (SwiftData requirement)
                 DispatchQueue.main.async {
                     do {
-                        let modelContext = dataController.modelContext
-
-                        // Si mode merge, vérifier les doublons
-                        // Sinon, tout supprimer d'abord
-                        if !mergeMode {
-                            try modelContext.delete(model: Flight.self)
-                            try modelContext.delete(model: Wing.self)
-                        }
-
-                        // Insérer les voiles
-                        for wing in importedWings.values {
-                            modelContext.insert(wing)
-                        }
-
-                        // Insérer les vols
-                        for flight in flights {
-                            modelContext.insert(flight)
-                        }
-
-                        try modelContext.save()
-
-                        let summary = """
-                        ✅ Import réussi !
-
-                        Voiles importées: \(wingsCount)
-                        Vols importés: \(flights.count)
-                        Images restaurées: \(metadata.imagesCount)
-                        Mode: \(mergeMode ? "Fusion" : "Remplacement")
-                        """
-
+                        let summary = try insert(parsed, into: dataController, mode: mode)
                         completion(.success(summary))
-
                     } catch {
                         completion(.failure(error))
                     }
                 }
-
             } catch {
                 DispatchQueue.main.async {
                     completion(.failure(error))
@@ -342,15 +283,279 @@ struct ZipBackup {
         }
     }
 
-    // MARK: - Helper Functions
+    // MARK: - Parsed intermediate representation
 
-    private static func escapeCSV(_ string: String) -> String {
-        string.replacingOccurrences(of: ",", with: ";")
-            .replacingOccurrences(of: "\n", with: " ")
+    /// Fully parsed backup, validated before any database mutation
+    private struct ParsedBackup {
+        var wings: [BackupWing]
+        var flights: [BackupFlight]
+        var photosByWingId: [UUID: Data]
+        var skippedMalformed: Int
     }
 
+    // MARK: - v2 Parsing
+
+    private static func parseV2(bundleURL: URL) throws -> ParsedBackup {
+        let manifestData = try Data(contentsOf: bundleURL.appendingPathComponent("backup.json"))
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let manifest: BackupManifest
+        do {
+            manifest = try decoder.decode(BackupManifest.self, from: manifestData)
+        } catch {
+            throw BackupError.invalidManifest(error.localizedDescription)
+        }
+
+        logInfo("Importing v\(manifest.formatVersion) backup from \(manifest.exportDate): \(manifest.wings.count) wings, \(manifest.flights.count) flights", category: .dataImport)
+
+        // Load photos referenced by the manifest
+        var photos: [UUID: Data] = [:]
+        let imagesDir = bundleURL.appendingPathComponent("images")
+        for wing in manifest.wings {
+            guard let filename = wing.photoFilename else { continue }
+            let imageURL = imagesDir.appendingPathComponent(filename)
+            if let data = try? Data(contentsOf: imageURL) {
+                photos[wing.id] = data
+            }
+        }
+
+        return ParsedBackup(
+            wings: manifest.wings,
+            flights: manifest.flights,
+            photosByWingId: photos,
+            skippedMalformed: 0
+        )
+    }
+
+    // MARK: - v1 (legacy CSV) Parsing
+
+    /// Parses a legacy v1 backup (wings.csv + flights.csv).
+    /// Robust by design: malformed rows are skipped and counted, never a crash.
+    /// Note: v1 export replaced "," with ";" inside values, so values may
+    /// contain ";" where the original text had a comma - they are kept as-is.
+    private static func parseV1(bundleURL: URL) throws -> ParsedBackup {
+        // v1 dates were written as "dd/MM/yyyy HH:mm" in the device's timezone
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = TimeZone.current
+        dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
+
+        var skippedMalformed = 0
+
+        // --- wings.csv ---
+        // Columns: 0=id, 1=name, 2=size, 3=type, 4=color, 5=archived,
+        //          6=createdAt, 7=displayOrder, 8=photoFilename
+        let wingsCSV = try String(contentsOf: bundleURL.appendingPathComponent("wings.csv"), encoding: .utf8)
+        let wingsRows = wingsCSV.components(separatedBy: "\n").dropFirst() // skip header
+
+        var wings: [BackupWing] = []
+        var photos: [UUID: Data] = [:]
+        let imagesDir = bundleURL.appendingPathComponent("images")
+
+        for row in wingsRows {
+            let trimmed = row.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            let cols = parseCSVRow(trimmed)
+            // Need at least id..displayOrder; the photo column may be missing entirely
+            guard cols.count >= 8, let wingId = UUID(uuidString: cols[0]) else {
+                skippedMalformed += 1
+                logWarning("Skipping malformed wing row", category: .dataImport)
+                continue
+            }
+
+            let createdAt = dateFormatter.date(from: cols[6]) ?? Date()
+            // v1 wrote "Oui"/"Non"; accept English variants too
+            let isArchived = ["oui", "yes", "true"].contains(cols[5].lowercased())
+            let displayOrder = Int(cols[7]) ?? 0
+
+            // Guarded photo column access (v1 importer crashed here on short rows)
+            var photoFilename: String? = nil
+            if cols.count >= 9, !cols[8].isEmpty {
+                let imageURL = imagesDir.appendingPathComponent(cols[8])
+                if let data = try? Data(contentsOf: imageURL) {
+                    photos[wingId] = data
+                    photoFilename = cols[8]
+                }
+            }
+
+            wings.append(BackupWing(
+                id: wingId,
+                name: cols[1],
+                brand: nil,
+                size: cols[2].isEmpty ? nil : cols[2],
+                type: cols[3].isEmpty ? nil : cols[3],
+                color: cols[4].isEmpty ? nil : cols[4],
+                isArchived: isArchived,
+                createdAt: createdAt,
+                displayOrder: displayOrder,
+                photoFilename: photoFilename
+            ))
+        }
+
+        // --- flights.csv ---
+        // Columns: 0=id, 1=startDate, 2=endDate, 3=durationSeconds, 4=wingId,
+        //          5=wingName, 6=spotName, 7=latitude, 8=longitude, 9=flightType, 10=notes
+        let flightsCSV = try String(contentsOf: bundleURL.appendingPathComponent("flights.csv"), encoding: .utf8)
+        let flightsRows = flightsCSV.components(separatedBy: "\n").dropFirst() // skip header
+
+        var flights: [BackupFlight] = []
+
+        for row in flightsRows {
+            let trimmed = row.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            let cols = parseCSVRow(trimmed)
+            guard cols.count >= 10,
+                  let flightId = UUID(uuidString: cols[0]),
+                  let startDate = dateFormatter.date(from: cols[1]),
+                  let endDate = dateFormatter.date(from: cols[2]),
+                  let durationSeconds = Int(cols[3]) else {
+                skippedMalformed += 1
+                logWarning("Skipping malformed flight row", category: .dataImport)
+                continue
+            }
+
+            let notes: String?
+            if cols.count >= 11, !cols[10].isEmpty {
+                notes = cols[10].replacingOccurrences(of: "\"", with: "")
+            } else {
+                notes = nil
+            }
+
+            flights.append(BackupFlight(
+                id: flightId,
+                wingId: UUID(uuidString: cols[4]),
+                startDate: startDate,
+                endDate: endDate,
+                durationSeconds: durationSeconds,
+                spotName: cols[6].isEmpty ? nil : cols[6],
+                latitude: Double(cols[7]),
+                longitude: Double(cols[8]),
+                flightType: cols[9].isEmpty ? nil : cols[9],
+                notes: notes,
+                createdAt: startDate,
+                startAltitude: nil,
+                maxAltitude: nil,
+                endAltitude: nil,
+                totalDistance: nil,
+                maxSpeed: nil,
+                maxGForce: nil,
+                gpsTrack: nil
+            ))
+        }
+
+        logInfo("Parsed legacy v1 backup: \(wings.count) wings, \(flights.count) flights, \(skippedMalformed) malformed rows skipped", category: .dataImport)
+
+        return ParsedBackup(
+            wings: wings,
+            flights: flights,
+            photosByWingId: photos,
+            skippedMalformed: skippedMalformed
+        )
+    }
+
+    // MARK: - Insertion (main queue)
+
+    /// Inserts a fully-parsed backup into the store. Must run on the main queue.
+    private static func insert(_ parsed: ParsedBackup, into dataController: DataController, mode: ImportMode) throws -> ImportSummary {
+        let modelContext = dataController.modelContext
+
+        var summary = ImportSummary()
+        summary.skippedMalformed = parsed.skippedMalformed
+
+        // Replace mode: everything is already parsed and validated - safe to wipe now
+        if mode == .replace {
+            try modelContext.delete(model: Flight.self)
+            try modelContext.delete(model: Wing.self)
+            try modelContext.save()
+        }
+
+        // Existing ids for merge deduplication
+        var existingWingIds = Set<UUID>()
+        var existingFlightIds = Set<UUID>()
+        if mode == .merge {
+            existingWingIds = Set(dataController.fetchWings(includeArchived: true).map(\.id))
+            existingFlightIds = Set(dataController.fetchFlights().map(\.id))
+        }
+
+        // Wings
+        var wingsById: [UUID: Wing] = [:]
+        for backupWing in parsed.wings {
+            if existingWingIds.contains(backupWing.id) {
+                summary.skippedDuplicates += 1
+                // Still resolve it so imported flights can attach to it
+                if let existing = dataController.findWing(byId: backupWing.id) {
+                    wingsById[backupWing.id] = existing
+                }
+                continue
+            }
+
+            let wing = Wing(
+                id: backupWing.id,
+                name: backupWing.name,
+                brand: backupWing.brand,
+                size: backupWing.size,
+                type: backupWing.type,
+                color: backupWing.color,
+                photoData: parsed.photosByWingId[backupWing.id],
+                isArchived: backupWing.isArchived,
+                createdAt: backupWing.createdAt,
+                displayOrder: backupWing.displayOrder
+            )
+            modelContext.insert(wing)
+            wingsById[backupWing.id] = wing
+            summary.wingsImported += 1
+        }
+
+        // Flights
+        for backupFlight in parsed.flights {
+            if existingFlightIds.contains(backupFlight.id) {
+                summary.skippedDuplicates += 1
+                continue
+            }
+
+            var gpsTrackData: Data? = nil
+            if let track = backupFlight.gpsTrack, !track.isEmpty {
+                gpsTrackData = try? JSONEncoder().encode(track)
+            }
+
+            let flight = Flight(
+                id: backupFlight.id,
+                wing: backupFlight.wingId.flatMap { wingsById[$0] },
+                startDate: backupFlight.startDate,
+                endDate: backupFlight.endDate,
+                durationSeconds: backupFlight.durationSeconds,
+                spotName: backupFlight.spotName,
+                latitude: backupFlight.latitude,
+                longitude: backupFlight.longitude,
+                flightType: backupFlight.flightType,
+                notes: backupFlight.notes,
+                createdAt: backupFlight.createdAt,
+                startAltitude: backupFlight.startAltitude,
+                maxAltitude: backupFlight.maxAltitude,
+                endAltitude: backupFlight.endAltitude,
+                totalDistance: backupFlight.totalDistance,
+                maxSpeed: backupFlight.maxSpeed,
+                maxGForce: backupFlight.maxGForce,
+                gpsTrackData: gpsTrackData
+            )
+            modelContext.insert(flight)
+            summary.flightsImported += 1
+        }
+
+        try modelContext.save()
+        logInfo("Backup import done: \(summary.wingsImported) wings, \(summary.flightsImported) flights, \(summary.skippedDuplicates) duplicates skipped, \(summary.skippedMalformed) malformed rows skipped", category: .dataImport)
+
+        return summary
+    }
+
+    // MARK: - Helpers
+
+    /// Minimal CSV row parser handling basic double-quoted fields (v1 legacy)
     private static func parseCSVRow(_ row: String) -> [String] {
-        // Simple CSV parser (gère les guillemets basiques)
         var result: [String] = []
         var currentField = ""
         var inQuotes = false
@@ -372,7 +577,8 @@ struct ZipBackup {
 
     private static func formatDateForFilename(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd_HHhmm"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd_HHmm"
         return formatter.string(from: date)
     }
 }

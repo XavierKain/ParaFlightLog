@@ -2,15 +2,15 @@
 //  FlightSessionManager.swift
 //  ParaFlightLogWatch Watch App
 //
-//  Gère la persistance des sessions de vol pour éviter la perte de données en cas de crash
-//  - Sauvegarde automatique périodique (toutes les 30 secondes)
-//  - Récupération de session après crash/redémarrage
+//  Persists the in-progress flight session so no data is lost on crash
+//  - Automatic periodic save (every 30 seconds)
+//  - Session recovery after a crash/restart
 //  Target: Watch only
 //
 
 import Foundation
 
-/// Données d'une session de vol en cours, sérialisables
+/// Serializable data of an in-progress flight session
 struct FlightSession: Codable {
     let wingId: UUID
     let wingName: String
@@ -18,7 +18,7 @@ struct FlightSession: Codable {
     let startDate: Date
     let spotName: String?
 
-    // Données de tracking
+    // Tracking data
     var startAltitude: Double?
     var maxAltitude: Double?
     var currentAltitude: Double?
@@ -26,10 +26,12 @@ struct FlightSession: Codable {
     var maxSpeed: Double
     var maxGForce: Double
 
-    // Trace GPS (limitée aux 500 derniers points pour économiser la mémoire)
+    // GPS track (compacted to GPSTrackCompaction.maxPoints to save memory)
     var gpsTrackPoints: [GPSTrackPoint]
 
-    // Métadonnées
+    // Metadata
+    /// Last time the session was persisted. Used as the recovered flight's
+    /// end date so dead time after a crash is not counted as flight time.
     var lastSaveDate: Date
     var isActive: Bool
 
@@ -51,51 +53,46 @@ struct FlightSession: Codable {
     }
 }
 
-/// Manager singleton pour la persistance des sessions de vol
+/// Singleton manager for flight session persistence
 final class FlightSessionManager {
     static let shared = FlightSessionManager()
 
     private let sessionKey = "activeFlightSession"
-    private let saveInterval: TimeInterval = 30.0  // Sauvegarde toutes les 30 secondes
+    private let saveInterval: TimeInterval = 30.0  // Save every 30 seconds
     private var saveTimer: Timer?
 
-    // Queue pour synchroniser l'accès à activeSession (thread safety)
+    // Queue synchronizing access to activeSession (thread safety)
     private let sessionQueue = DispatchQueue(label: "com.paraflightlog.flightsession", qos: .userInitiated)
 
-    // Session en cours - accès synchronisé via sessionQueue
+    // Current session - access synchronized via sessionQueue
     private var _activeSession: FlightSession?
     private(set) var activeSession: FlightSession? {
         get { sessionQueue.sync { _activeSession } }
         set { sessionQueue.sync { _activeSession = newValue } }
     }
 
-    // Limite de points GPS pour éviter les problèmes mémoire
-    // 500 points * 5 secondes = ~42 minutes de vol
-    // Pour des vols plus longs, on garde un point sur 2
-    private let maxGPSPoints = 500
-
     private init() {
-        // Charger une éventuelle session récupérable au démarrage
+        // Load a possibly recoverable session at launch
         loadSavedSession()
     }
 
     // MARK: - Session Lifecycle
 
-    /// Démarre une nouvelle session de vol
+    /// Starts a new flight session
     func startSession(wing: WingDTO, spotName: String?) {
         let session = FlightSession(wing: wing, startDate: Date(), spotName: spotName)
         activeSession = session
 
-        // Sauvegarder immédiatement
+        // Save immediately
         saveSession()
 
-        // Démarrer la sauvegarde périodique
+        // Start the periodic save
         startPeriodicSave()
 
         watchLogInfo("Flight session started and saved", category: .session)
     }
 
-    /// Met à jour les données de la session en cours
+    /// Updates the data of the in-progress session
     func updateSession(
         startAltitude: Double?,
         maxAltitude: Double?,
@@ -114,25 +111,14 @@ final class FlightSessionManager {
         session.maxSpeed = maxSpeed
         session.maxGForce = maxGForce
 
-        // Limiter les points GPS pour économiser la mémoire
-        if gpsTrackPoints.count > maxGPSPoints {
-            // Garder un point sur 2 pour les anciens points
-            var limitedPoints: [GPSTrackPoint] = []
-            for (index, point) in gpsTrackPoints.enumerated() {
-                // Garder tous les 100 derniers points, et 1 sur 2 pour les anciens
-                if index >= gpsTrackPoints.count - 100 || index % 2 == 0 {
-                    limitedPoints.append(point)
-                }
-            }
-            session.gpsTrackPoints = limitedPoints
-        } else {
-            session.gpsTrackPoints = gpsTrackPoints
-        }
+        // Shared compaction so the persisted track uses the same limit and
+        // strategy as the in-memory track (see GPSTrackCompaction)
+        session.gpsTrackPoints = GPSTrackCompaction.compact(gpsTrackPoints)
 
         activeSession = session
     }
 
-    /// Termine la session proprement (vol sauvegardé)
+    /// Ends the session cleanly (flight saved)
     func endSession() {
         stopPeriodicSave()
         clearSavedSession()
@@ -140,7 +126,7 @@ final class FlightSessionManager {
         watchLogInfo("Flight session ended and cleared", category: .session)
     }
 
-    /// Annule la session (vol annulé par l'utilisateur)
+    /// Discards the session (flight cancelled by the user)
     func discardSession() {
         stopPeriodicSave()
         clearSavedSession()
@@ -150,7 +136,7 @@ final class FlightSessionManager {
 
     // MARK: - Persistence
 
-    /// Sauvegarde la session en cours dans UserDefaults
+    /// Saves the current session to UserDefaults
     func saveSession() {
         guard var session = activeSession else { return }
         session.lastSaveDate = Date()
@@ -165,7 +151,7 @@ final class FlightSessionManager {
         }
     }
 
-    /// Charge une session sauvegardée (pour récupération après crash)
+    /// Loads a saved session (crash recovery)
     private func loadSavedSession() {
         guard let data = UserDefaults.standard.data(forKey: sessionKey) else {
             watchLogDebug("No saved flight session found", category: .session)
@@ -175,16 +161,15 @@ final class FlightSessionManager {
         do {
             let session = try JSONDecoder().decode(FlightSession.self, from: data)
 
-            // Vérifier si la session est récupérable
-            // Une session est récupérable si elle a moins de 4 heures
-            let maxAge: TimeInterval = 4 * 60 * 60  // 4 heures
+            // A session is recoverable if it is less than 4 hours old
+            let maxAge: TimeInterval = 4 * 60 * 60
             let sessionAge = Date().timeIntervalSince(session.lastSaveDate)
 
             if session.isActive && sessionAge < maxAge {
                 activeSession = session
                 watchLogInfo("Recovered flight session from \(session.lastSaveDate), duration: \(Int(sessionAge / 60)) min, GPS points: \(session.gpsTrackPoints.count)", category: .session)
             } else {
-                // Session trop vieille, la supprimer
+                // Session too old, remove it
                 clearSavedSession()
                 watchLogInfo("Cleared expired session (age: \(Int(sessionAge / 60)) min)", category: .session)
             }
@@ -194,14 +179,14 @@ final class FlightSessionManager {
         }
     }
 
-    /// Supprime la session sauvegardée
+    /// Removes the saved session
     private func clearSavedSession() {
         UserDefaults.standard.removeObject(forKey: sessionKey)
     }
 
     // MARK: - Periodic Save
 
-    /// Démarre la sauvegarde périodique
+    /// Starts the periodic save
     private func startPeriodicSave() {
         stopPeriodicSave()
 
@@ -210,7 +195,7 @@ final class FlightSessionManager {
         }
     }
 
-    /// Arrête la sauvegarde périodique
+    /// Stops the periodic save
     private func stopPeriodicSave() {
         saveTimer?.invalidate()
         saveTimer = nil
@@ -218,21 +203,28 @@ final class FlightSessionManager {
 
     // MARK: - Recovery Check
 
-    /// Vérifie s'il y a une session à récupérer
+    /// True when there is a session to recover
     var hasRecoverableSession: Bool {
         return activeSession != nil
     }
 
-    /// Calcule la durée du vol récupéré
-    var recoveredFlightDuration: Int? {
-        guard let session = activeSession else { return nil }
-        return Int(Date().timeIntervalSince(session.startDate))
+    /// End date of the recovered flight: the last persisted update, NOT now.
+    /// Dead time between the crash and the recovery must not count as flight time.
+    var recoveredFlightEndDate: Date? {
+        return activeSession?.lastSaveDate
     }
 
-    /// Retourne les données de la session récupérée pour créer un FlightDTO
+    /// Duration of the recovered flight, bounded by the last persisted update
+    var recoveredFlightDuration: Int? {
+        guard let session = activeSession else { return nil }
+        return max(0, Int(session.lastSaveDate.timeIntervalSince(session.startDate)))
+    }
+
+    /// Returns the recovered session data to build a FlightDTO
     func getRecoveredFlightData() -> (
         wingId: UUID,
         startDate: Date,
+        endDate: Date,
         spotName: String?,
         startAltitude: Double?,
         maxAltitude: Double?,
@@ -247,6 +239,7 @@ final class FlightSessionManager {
         return (
             wingId: session.wingId,
             startDate: session.startDate,
+            endDate: session.lastSaveDate,
             spotName: session.spotName,
             startAltitude: session.startAltitude,
             maxAltitude: session.maxAltitude,

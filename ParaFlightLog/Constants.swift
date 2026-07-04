@@ -2,8 +2,7 @@
 //  Constants.swift
 //  ParaFlightLog
 //
-//  Centralisation de toutes les constantes de l'application
-//  Facilite la maintenance et évite les valeurs hardcodées dispersées
+//  Central place for all application constants.
 //  Target: iOS + Watch (shared)
 //
 
@@ -12,111 +11,85 @@ import Foundation
 // MARK: - App Configuration
 
 enum AppConstants {
-    /// Bundle identifier pour OSLog
+    /// Bundle identifier used for OSLog
     static let bundleIdentifier = "com.xavierkain.ParaFlightLog"
 
-    /// Nom de l'application
+    /// Application name
     static let appName = "ParaFlightLog"
 }
 
 // MARK: - Watch Sync Configuration
 
 enum WatchSyncConstants: Sendable {
-    /// Délai avant retry de synchronisation (secondes)
-    static let retryDelay: TimeInterval = 1.0
-
-    /// Nombre maximum de tentatives de synchronisation
-    static let maxRetryAttempts = 5
-
-    /// Timeout pour une opération de sync (secondes)
-    static let syncTimeout: TimeInterval = 30.0
-
-    /// Délai initial pour la première sync après activation (secondes)
+    /// Delay before the first sync after session activation (seconds)
     static let initialSyncDelay: TimeInterval = 2.0
 
-    /// Taille maximale des données pour applicationContext (KB)
-    /// WCSession supporte jusqu'à ~500KB pour applicationContext
+    /// Maximum payload size for applicationContext (KB).
+    /// WCSession supports up to ~500KB for applicationContext.
     static let maxContextSizeKB = 200.0
-
-    /// Backoff exponentiel : multiplicateur pour chaque retry
-    static let backoffMultiplier: Double = 1.5
 }
 
 // MARK: - Image Processing Configuration
 
 enum ImageConstants {
-    /// Taille maximale des miniatures pour la Watch (pixels)
+    /// Maximum thumbnail size for the Watch (pixels)
     static let watchThumbnailSize: CGFloat = 48
 
-    /// Taille maximale des images compressées pour la Watch (pixels)
+    /// Maximum compressed image size for the Watch (pixels)
     static let watchImageMaxSize: CGFloat = 100
 
-    /// Qualité de compression JPEG (0.0 à 1.0)
+    /// JPEG compression quality (0.0 to 1.0)
     static let jpegCompressionQuality: CGFloat = 0.7
 
-    /// Tolérance pour la suppression du fond blanc (0.0 à 1.0)
+    /// Tolerance for white background removal (0.0 to 1.0)
     static let whiteBackgroundTolerance: CGFloat = 0.92
 
-    /// Taille maximale du cache d'images sur Watch (nombre d'éléments)
+    /// Maximum number of items in the Watch image cache
     static let watchImageCacheCount = 20
 
-    /// Taille maximale du cache d'images sur Watch (MB)
+    /// Maximum Watch image cache size (MB)
     static let watchImageCacheSizeMB = 10
 }
 
 // MARK: - GPS Tracking Configuration
 
 enum GPSConstants {
-    /// Nombre maximum de points GPS en mémoire sur Watch
+    /// Maximum GPS points kept in memory on the Watch
     static let maxPointsInMemory = 500
 
-    /// Seuil pour déclencher la compaction (80% de la limite)
+    /// Threshold that triggers compaction (80% of the limit)
     static let compactionThreshold = 400
 
-    /// Intervalle entre chaque point GPS (secondes)
+    /// Interval between GPS track points (seconds)
     static let trackPointInterval: TimeInterval = 5.0
 
-    /// Distance minimale pour comptabiliser un déplacement (mètres)
+    /// Minimum distance to count a movement (meters)
     static let minDistanceFilter: Double = 3.0
 
-    /// Distance maximale entre 2 points (filtre anti-saut GPS, mètres)
+    /// Maximum distance between 2 points (GPS jump filter, meters)
     static let maxDistanceBetweenPoints: Double = 100.0
 
-    /// Précision horizontale acceptable (mètres)
+    /// Acceptable horizontal accuracy (meters)
     static let acceptableHorizontalAccuracy: Double = 20.0
 
-    /// Vitesse minimale pour considérer un mouvement (m/s, ~1.8 km/h)
+    /// Minimum speed to consider a movement (m/s, ~1.8 km/h)
     static let minSpeedThreshold: Double = 0.5
 
-    /// Vitesse maximale raisonnable pour filtrage (m/s, ~360 km/h)
+    /// Maximum reasonable speed for filtering (m/s, ~360 km/h)
     static let maxSpeedThreshold: Double = 100.0
 }
 
 // MARK: - Motion Tracking Configuration
 
 enum MotionConstants {
-    /// Intervalle de mise à jour du capteur de mouvement (secondes)
+    /// Motion sensor update interval (seconds)
     static let updateInterval: TimeInterval = 0.1  // 10 Hz
 
-    /// Taille du buffer pour la moyenne mobile du G-force
+    /// Buffer size for the G-force moving average
     static let gForceBufferSize = 3
 
-    /// G-force maximum raisonnable (filtre anti-aberration)
+    /// Maximum reasonable G-force (outlier filter)
     static let maxGForce: Double = 10.0
-}
-
-// MARK: - Stats Cache Configuration
-
-enum StatsCacheConstants {
-    /// Délai minimum entre deux rafraîchissements du cache (secondes)
-    static let minRefreshInterval: TimeInterval = 1.0
-}
-
-// MARK: - Reverse Geocoding Configuration
-
-enum GeocodingConstants {
-    /// Timeout pour le reverse geocoding (secondes)
-    static let timeout: TimeInterval = 5.0
 }
 
 // MARK: - UserDefaults Keys
@@ -124,30 +97,27 @@ enum GeocodingConstants {
 enum UserDefaultsKeys {
     static let watchAutoWaterLock = "watchAutoWaterLock"
     static let watchAllowSessionDismiss = "watchAllowSessionDismiss"
-    static let savedWings = "savedWings"
-    static let currentLanguage = "currentLanguage"
-    static let appleLanguages = "AppleLanguages"
-    static let pendingSession = "pendingFlightSession"
     static let developerModeEnabled = "developerModeEnabled"
-}
 
-// MARK: - Notification Names
+    /// Vario (audio variometer) enabled
+    static let varioEnabled = "varioEnabled"
 
-enum NotificationNames {
-    static let flightSaved = Notification.Name("flightSaved")
-    static let wingsSynced = Notification.Name("wingsSynced")
-    static let statsCacheInvalidated = Notification.Name("statsCacheInvalidated")
+    /// Phone-only mode: use the iPhone timer as the main flight tracker
+    static let phoneOnlyMode = "phoneOnlyMode"
+
+    /// Raw value of the last FlightType picked by the pilot
+    static let lastFlightType = "lastFlightType"
 }
 
 // MARK: - Wing Library Configuration
 
 enum WingLibraryConstants {
-    /// Durée de validité du cache catalogue (24 heures)
+    /// Catalog cache validity (24 hours)
     static let catalogCacheMaxAge: TimeInterval = 24 * 60 * 60
 
-    /// Durée de validité du cache images (7 jours)
+    /// Image cache validity (7 days)
     static let imageCacheMaxAge: TimeInterval = 7 * 24 * 60 * 60
 
-    /// Timeout pour les requêtes réseau (15 secondes)
+    /// Network request timeout (15 seconds)
     static let networkTimeout: TimeInterval = 15.0
 }

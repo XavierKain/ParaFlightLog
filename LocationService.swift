@@ -2,7 +2,7 @@
 //  LocationService.swift
 //  ParaFlightLog
 //
-//  Gestion de CoreLocation + reverse geocoding pour obtenir le spot
+//  CoreLocation + reverse geocoding to resolve the flying spot name.
 //  Target: iOS only
 //
 
@@ -14,15 +14,20 @@ import MapKit
 final class LocationService: NSObject, CLLocationManagerDelegate {
     private let locationManager = CLLocationManager()
 
-    // Dernière position connue
+    /// Maximum time to wait for a GPS fix before delivering nil to the caller.
+    /// Guarantees callers never hang waiting for a location.
+    private let locationRequestTimeout: TimeInterval = 10.0
+
+    // Last known position
     var lastKnownLocation: CLLocation?
 
-    // État de l'autorisation
+    // Authorization state
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
-    // Callbacks pour les requêtes en cours
+    // Pending request callback + generation counter so a late fix or the
+    // timeout can never fire the same completion twice.
     private var locationCompletionHandler: ((CLLocation?) -> Void)?
-    private var geocodeCompletionHandler: ((String?) -> Void)?
+    private var locationRequestGeneration: Int = 0
 
     override init() {
         super.init()
@@ -33,28 +38,47 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
 
     // MARK: - Permissions
 
-    /// Demande l'autorisation de localisation (When In Use)
+    /// Requests location authorization (When In Use)
     func requestAuthorization() {
         locationManager.requestWhenInUseAuthorization()
     }
 
     // MARK: - Location
 
-    /// Demande la position GPS actuelle
-    /// - Parameter completion: callback avec la position (ou nil si erreur)
+    /// Requests the current GPS position.
+    /// The completion is always called exactly once, with nil after
+    /// `locationRequestTimeout` seconds if no fix was obtained.
+    /// - Parameter completion: callback with the position (or nil)
     func requestLocation(completion: @escaping (CLLocation?) -> Void) {
-        // Vérifier les permissions
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
             logWarning("Location permission not granted", category: .location)
             completion(nil)
             return
         }
 
+        // If a previous request is still pending, resolve it with nil first
+        if let previous = locationCompletionHandler {
+            previous(nil)
+        }
+
+        locationRequestGeneration += 1
+        let generation = locationRequestGeneration
         locationCompletionHandler = completion
         locationManager.requestLocation()
+
+        // Timeout: never leave the caller hanging
+        DispatchQueue.main.asyncAfter(deadline: .now() + locationRequestTimeout) { [weak self] in
+            guard let self = self,
+                  self.locationRequestGeneration == generation,
+                  let pending = self.locationCompletionHandler else { return }
+
+            logWarning("Location request timed out after \(Int(self.locationRequestTimeout))s", category: .location)
+            self.locationCompletionHandler = nil
+            pending(nil)
+        }
     }
 
-    /// Démarre le suivi de position en continu (utile pendant un vol)
+    /// Starts continuous location updates (useful during a flight)
     func startUpdatingLocation() {
         guard authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways else {
             logWarning("Location permission not granted", category: .location)
@@ -64,18 +88,18 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         locationManager.startUpdatingLocation()
     }
 
-    /// Arrête le suivi de position
+    /// Stops location updates
     func stopUpdatingLocation() {
         locationManager.stopUpdatingLocation()
     }
 
     // MARK: - Reverse Geocoding
 
-    /// Convertit une position GPS en nom de spot (locality/subLocality)
-    /// Utilise MKReverseGeocodingRequest (iOS 26+)
+    /// Converts a GPS position into a spot name (locality/subLocality).
+    /// Uses MKReverseGeocodingRequest.
     /// - Parameters:
-    ///   - location: position GPS
-    ///   - completion: callback avec le nom du spot (ou nil si erreur)
+    ///   - location: GPS position
+    ///   - completion: callback with the spot name (or nil on failure)
     func reverseGeocode(location: CLLocation, completion: @escaping (String?) -> Void) {
         Task {
             do {
@@ -92,8 +116,7 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
                     return
                 }
 
-                // iOS 26+ : utiliser addressRepresentations (nouvelle API)
-                // Stratégie : cityName > regionName > name
+                // Strategy: cityName > regionName > name
                 let spotName: String?
                 if let addr = mapItem.addressRepresentations {
                     spotName = addr.cityName ?? addr.regionName ?? mapItem.name
@@ -118,30 +141,23 @@ final class LocationService: NSObject, CLLocationManagerDelegate {
         lastKnownLocation = location
         logDebug("Location updated: \(location.coordinate.latitude), \(location.coordinate.longitude)", category: .location)
 
-        // Si on a un completion handler en attente, l'appeler
         if let completion = locationCompletionHandler {
-            completion(location)
             locationCompletionHandler = nil
+            completion(location)
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         logError("Location error: \(error.localizedDescription)", category: .location)
 
-        // Appeler le completion handler avec nil
         if let completion = locationCompletionHandler {
-            completion(nil)
             locationCompletionHandler = nil
+            completion(nil)
         }
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         authorizationStatus = manager.authorizationStatus
         logInfo("Authorization status changed: \(authorizationStatus.rawValue)", category: .location)
-
-        // Si l'autorisation vient d'être accordée, on peut démarrer la localisation
-        if authorizationStatus == .authorizedWhenInUse || authorizationStatus == .authorizedAlways {
-            logInfo("Location authorized", category: .location)
-        }
     }
 }

@@ -8,7 +8,6 @@
 
 /* Begin PBXBuildFile section */
 		19ACDAC342956718EB1A28C8 /* ScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4AFF1A10FB982DE2DDD31AF /* ScreenshotTests.swift */; };
-		250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 250A317D2EDDFB18004F63C8 /* StatsCache.swift */; };
 		25145BD62EDE096C0095D7A9 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */; };
 		25145C2C2EDE61D80095D7A9 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */; };
 		25145C2E2EDE61D80095D7A9 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25145C2D2EDE61D80095D7A9 /* SwiftUI.framework */; };
@@ -85,8 +84,6 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		250A317D2EDDFB18004F63C8 /* StatsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCache.swift; sourceTree = "<group>"; };
-		25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParaFlightLog/ExcelImporter.swift; sourceTree = "<group>"; };
 		25145C292EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ParaFlightLogWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		25145C2D2EDE61D80095D7A9 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -206,8 +203,6 @@
 		257C68CC2ECB7559005F3773 = {
 			isa = PBXGroup;
 			children = (
-				25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */,
-				250A317D2EDDFB18004F63C8 /* StatsCache.swift */,
 				25C9798E2EDBB5DA009233B8 /* Models.swift */,
 				38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */,
 				2564C6522EDBB92000C716D0 /* DataController.swift */,
@@ -436,7 +431,6 @@
 				2564C6572EDBB92000C716D0 /* LocationService.swift in Sources */,
 				2564C6582EDBB92000C716D0 /* DataController.swift in Sources */,
 				2564C6592EDBB92000C716D0 /* IOSViews.swift in Sources */,
-				250A317E2EDDFB18004F63C8 /* StatsCache.swift in Sources */,
 				2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */,
 				D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */,
 				E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */,

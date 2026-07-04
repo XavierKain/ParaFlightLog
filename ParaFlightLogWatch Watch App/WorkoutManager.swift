@@ -2,7 +2,7 @@
 //  WorkoutManager.swift
 //  ParaFlightLogWatch Watch App
 //
-//  Gère les sessions workout HealthKit pour activer le Water Lock
+//  Manages the HealthKit workout session used to enable Water Lock
 //  Target: Watch only
 //
 
@@ -10,21 +10,15 @@ import Foundation
 import HealthKit
 import WatchKit
 
-@Observable
-final class WorkoutManager: NSObject {
+final class WorkoutManager {
     static let shared = WorkoutManager()
 
     private var healthStore: HKHealthStore?
     private var workoutSession: HKWorkoutSession?
     private var workoutBuilder: HKLiveWorkoutBuilder?
 
-    var isWorkoutActive: Bool = false
-    var isAuthorized: Bool = false
-
-    private override init() {
-        super.init()
-
-        // Vérifier si HealthKit est disponible
+    private init() {
+        // Check that HealthKit is available
         guard HKHealthStore.isHealthDataAvailable() else {
             watchLogWarning("HealthKit not available on this device", category: .workout)
             return
@@ -35,11 +29,11 @@ final class WorkoutManager: NSObject {
 
     // MARK: - Authorization
 
-    /// Demande l'autorisation HealthKit
+    /// Requests HealthKit authorization
     func requestAuthorization() async -> Bool {
         guard let healthStore = healthStore else { return false }
 
-        // Types de données à partager/lire (minimal pour le workout)
+        // Data types to share/read (minimal for the workout)
         let typesToShare: Set<HKSampleType> = [
             HKObjectType.workoutType()
         ]
@@ -50,9 +44,6 @@ final class WorkoutManager: NSObject {
 
         do {
             try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
-            await MainActor.run {
-                isAuthorized = true
-            }
             watchLogInfo("HealthKit authorization granted", category: .workout)
             return true
         } catch {
@@ -63,45 +54,44 @@ final class WorkoutManager: NSObject {
 
     // MARK: - Workout Session
 
-    /// Démarre une session workout pour permettre le Water Lock
+    /// Starts a workout session to allow Water Lock
     func startWorkoutSession() async {
         guard let healthStore = healthStore else {
             watchLogWarning("HealthStore not available", category: .workout)
             return
         }
 
-        // Si une session est déjà active, ne rien faire
+        // If a session is already active, do nothing
         guard workoutSession == nil else {
             watchLogDebug("Workout session already active", category: .workout)
             return
         }
 
-        // Configurer le workout (parapente = "Other")
+        // Configure the workout (paragliding = "Other")
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .other
         configuration.locationType = .outdoor
 
         do {
-            // Créer la session
+            // Create the session
             let session = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
             let builder = session.associatedWorkoutBuilder()
 
-            // Configurer le builder
+            // Configure the builder
             builder.dataSource = HKLiveWorkoutDataSource(healthStore: healthStore, workoutConfiguration: configuration)
 
-            // Démarrer la session
+            // Start the session
             session.startActivity(with: Date())
             try await builder.beginCollection(at: Date())
 
             await MainActor.run {
                 self.workoutSession = session
                 self.workoutBuilder = builder
-                self.isWorkoutActive = true
             }
 
             watchLogInfo("Workout session started", category: .workout)
 
-            // Maintenant on peut activer le Water Lock
+            // Now Water Lock can be enabled
             await MainActor.run {
                 if WatchSettings.shared.autoWaterLockEnabled {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
@@ -116,37 +106,32 @@ final class WorkoutManager: NSObject {
         }
     }
 
-    /// Arrête la session workout
+    /// Properly ends the workout session when the flight stops:
+    /// end the session, end data collection, then discard the workout
+    /// (paragliding flights are not saved to Health)
     func stopWorkoutSession() async {
         guard let session = workoutSession, let builder = workoutBuilder else {
-            // Pas de session active - c'est normal si autoWaterLockEnabled était false
+            // No active session - normal when autoWaterLockEnabled was false
             return
         }
 
-        // Arrêter la session
+        // End the session
         session.end()
 
         do {
             try await builder.endCollection(at: Date())
-            // Optionnel: sauvegarder le workout (on peut skip pour parapente)
-            // try await builder.finishWorkout()
-            watchLogInfo("Workout session ended", category: .workout)
+            // Discard instead of finishWorkout(): nothing is saved to Health
+            builder.discardWorkout()
+            watchLogInfo("Workout session ended and discarded", category: .workout)
         } catch {
-            watchLogError("Failed to end workout session: \(error.localizedDescription)", category: .workout)
+            // Still discard so the builder does not leak a half-open workout
+            builder.discardWorkout()
+            watchLogError("Failed to end workout collection: \(error.localizedDescription)", category: .workout)
         }
 
         await MainActor.run {
             self.workoutSession = nil
             self.workoutBuilder = nil
-            self.isWorkoutActive = false
         }
-    }
-
-    /// Arrête la session sans async (pour les cas où on ne peut pas await)
-    func endWorkoutSession() {
-        workoutSession?.end()
-        workoutSession = nil
-        workoutBuilder = nil
-        isWorkoutActive = false
     }
 }
