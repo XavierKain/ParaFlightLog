@@ -2801,6 +2801,16 @@
     "Flight end" : {
 
     },
+    "Flight groups found: %@. Each becomes \"%@ 1\", \"%@ 2\", … that you can rename." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Flight groups found: %1$@. Each becomes \"%2$@ 1\", \"%3$@ 2\", … that you can rename."
+          }
+        }
+      }
+    },
     "Flight History" : {
 
     },
@@ -3002,6 +3012,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Graphiques"
+          }
+        }
+      }
+    },
+    "Groups this spot's flights by takeoff position (within 1 km = same spot) and creates \"%@ 1\", \"%@ 2\", … — open each one afterwards to rename it to the real launch." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Groups this spot's flights by takeoff position (within 1 km = same spot) and creates \"%1$@ 1\", \"%2$@ 2\", … — open each one afterwards to rename it to the real launch."
           }
         }
       }
@@ -4431,6 +4451,15 @@
     "SoarX Voice — in-flight voice assistant" : {
 
     },
+    "Split by GPS" : {
+
+    },
+    "Split by GPS location" : {
+
+    },
+    "Split into %lld spots" : {
+
+    },
     "Spot" : {
       "localizations" : {
         "en" : {
@@ -4985,6 +5014,9 @@
 
     },
     "Timer (Simulation)" : {
+
+    },
+    "Tools" : {
 
     },
     "Total" : {

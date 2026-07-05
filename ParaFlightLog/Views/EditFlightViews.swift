@@ -27,6 +27,9 @@ struct EditFlightView: View {
     @State private var startDate: Date
     @State private var endDate: Date
     @State private var spotName: String
+    @State private var selectedSpot: Spot?
+    @State private var showingSpotPicker = false
+    @State private var spotMatchMessage: String?
     @State private var notes: String
     @State private var isGeocodingSpot = false
     @State private var geocodingMessage: String?
@@ -41,6 +44,7 @@ struct EditFlightView: View {
         _startDate = State(initialValue: flight.startDate)
         _endDate = State(initialValue: flight.endDate)
         _spotName = State(initialValue: flight.spotName ?? "")
+        _selectedSpot = State(initialValue: flight.spot)
         _notes = State(initialValue: flight.notes ?? "")
         _selectedType = State(initialValue: flight.flightTypeEnum)
         if let lat = flight.latitude, let lon = flight.longitude {
@@ -105,7 +109,58 @@ struct EditFlightView: View {
                 }
 
                 Section("Spot") {
+                    // Pick an existing spot (name + city)
+                    Button {
+                        showingSpotPicker = true
+                    } label: {
+                        HStack {
+                            Label("Existing spot", systemImage: "mappin.circle")
+                                .foregroundStyle(Color.primary)
+                            Spacer()
+                            if let spot = selectedSpot {
+                                VStack(alignment: .trailing, spacing: 1) {
+                                    Text(spot.name)
+                                        .foregroundStyle(.blue)
+                                    if let city = spot.city, city.caseInsensitiveCompare(spot.name) != .orderedSame {
+                                        Text(city)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            } else {
+                                Text("Choose…")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+
+                    // Auto-match against existing spots using the coordinates
+                    if selectedCoordinate != nil {
+                        Button {
+                            matchSpotFromGPS()
+                        } label: {
+                            Label("Match spot from GPS", systemImage: "location.magnifyingglass")
+                        }
+                    }
+
+                    if let message = spotMatchMessage {
+                        Text(message)
+                            .font(.caption)
+                            .foregroundStyle(message.hasPrefix("✅") ? .green : .orange)
+                    }
+
+                    // Free-text name (creates/links a spot with that name on save)
                     TextField("Spot name", text: $spotName)
+                        .onChange(of: spotName) { _, newValue in
+                            // Typing a different name detaches the picked spot
+                            if let spot = selectedSpot, spot.name != newValue {
+                                selectedSpot = nil
+                            }
+                        }
 
                     // Show the coordinates when they exist
                     if let coord = selectedCoordinate {
@@ -217,6 +272,20 @@ struct EditFlightView: View {
                     spotName: spotName
                 )
             }
+            .sheet(isPresented: $showingSpotPicker) {
+                SpotPickerSheet(selected: selectedSpot) { spot in
+                    selectedSpot = spot
+                    if let spot {
+                        spotName = spot.name
+                        // A flight without coordinates inherits the spot's
+                        if selectedCoordinate == nil,
+                           let lat = spot.latitude, let lon = spot.longitude {
+                            selectedCoordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                        }
+                    }
+                    spotMatchMessage = nil
+                }
+            }
             .confirmationDialog("Delete this flight?", isPresented: $showingDeleteConfirmation, titleVisibility: .visible) {
                 Button("Delete", role: .destructive) {
                     deleteFlight()
@@ -236,16 +305,42 @@ struct EditFlightView: View {
         dismiss()
     }
 
+    /// Nearest existing spot to the flight's coordinates (1.5 km radius).
+    private func matchSpotFromGPS() {
+        guard let coord = selectedCoordinate else { return }
+        if let match = dataController.nearestSpot(to: coord) {
+            selectedSpot = match
+            spotName = match.name
+            spotMatchMessage = "✅ Matched: \(match.name)"
+        } else {
+            spotMatchMessage = "No existing spot within 1.5 km"
+        }
+    }
+
     private func saveFlight() {
         flight.wing = selectedWing
         flight.flightTypeEnum = selectedType
         flight.startDate = startDate
         flight.endDate = endDate
         flight.durationSeconds = calculatedDuration
-        flight.spotName = spotName.isEmpty ? nil : spotName
         flight.notes = notes.isEmpty ? nil : notes
         flight.latitude = selectedCoordinate?.latitude
         flight.longitude = selectedCoordinate?.longitude
+
+        // Spot: picked entity wins; a free-typed name finds-or-creates one;
+        // an empty name detaches the flight entirely.
+        let trimmedName = spotName.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let spot = selectedSpot {
+            flight.spot = spot
+            flight.spotName = spot.name
+        } else if !trimmedName.isEmpty {
+            let spot = dataController.findOrCreateSpot(named: trimmedName, coordinate: selectedCoordinate)
+            flight.spot = spot
+            flight.spotName = spot.name
+        } else {
+            flight.spot = nil
+            flight.spotName = nil
+        }
 
         // Tracking statistics are read-only and preserved as-is
 
@@ -290,6 +385,86 @@ struct EditFlightView: View {
                 // context saved) in saveFlight, so Cancel discards them.
                 selectedCoordinate = location.coordinate
                 geocodingMessage = "✅ Coordinates added"
+            }
+        }
+    }
+}
+
+// MARK: - SpotPickerSheet (choose an existing spot)
+
+/// Searchable list of existing spots (name + city + flight count).
+/// Used by the add/edit flight forms.
+struct SpotPickerSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Spot.name) private var spots: [Spot]
+
+    let selected: Spot?
+    let onSelect: (Spot?) -> Void
+
+    @State private var searchText = ""
+
+    private var filteredSpots: [Spot] {
+        let sorted = spots.sorted { ($0.flights?.count ?? 0) > ($1.flights?.count ?? 0) }
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return sorted }
+        return sorted.filter {
+            $0.name.localizedCaseInsensitiveContains(query)
+                || ($0.city?.localizedCaseInsensitiveContains(query) ?? false)
+        }
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button {
+                    onSelect(nil)
+                    dismiss()
+                } label: {
+                    Label("No spot", systemImage: "mappin.slash")
+                        .foregroundStyle(Color.primary)
+                }
+
+                ForEach(filteredSpots) { spot in
+                    Button {
+                        onSelect(spot)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "mappin.circle.fill")
+                                .foregroundStyle(.red)
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(spot.name)
+                                    .foregroundStyle(Color.primary)
+                                if let city = spot.city, city.caseInsensitiveCompare(spot.name) != .orderedSame {
+                                    Text(city)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+
+                            Spacer()
+
+                            Text("^[\(spot.flights?.count ?? 0) flight](inflect: true)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+
+                            if spot.id == selected?.id {
+                                Image(systemName: "checkmark")
+                                    .foregroundStyle(.blue)
+                            }
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .searchable(text: $searchText, prompt: "Spot or city")
+            .navigationTitle("Choose a Spot")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { dismiss() }
+                }
             }
         }
     }

@@ -25,6 +25,8 @@ struct AddFlightView: View {
     @State private var notes = ""
 
     @State private var selectedCoordinate: CLLocationCoordinate2D?
+    @State private var selectedSpot: Spot?
+    @State private var showingSpotPicker = false
     @State private var showingMapPicker = false
     @State private var isGeocodingSpot = false
     @State private var geocodingMessage: String?
@@ -113,7 +115,42 @@ struct AddFlightView: View {
                 }
 
                 Section("Spot") {
+                    // Pick an existing spot (name + city)
+                    Button {
+                        showingSpotPicker = true
+                    } label: {
+                        HStack {
+                            Label("Existing spot", systemImage: "mappin.circle")
+                                .foregroundStyle(Color.primary)
+                            Spacer()
+                            if let spot = selectedSpot {
+                                VStack(alignment: .trailing, spacing: 1) {
+                                    Text(spot.name)
+                                        .foregroundStyle(.blue)
+                                    if let city = spot.city, city.caseInsensitiveCompare(spot.name) != .orderedSame {
+                                        Text(city)
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            } else {
+                                Text("Choose…")
+                                    .foregroundStyle(.secondary)
+                            }
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                    .buttonStyle(.plain)
+
                     TextField("Spot name", text: $spotName)
+                        .onChange(of: spotName) { _, newValue in
+                            // Typing a different name detaches the picked spot
+                            if let spot = selectedSpot, spot.name != newValue {
+                                selectedSpot = nil
+                            }
+                        }
 
                     if let coord = selectedCoordinate {
                         HStack {
@@ -203,6 +240,18 @@ struct AddFlightView: View {
                     spotName: spotName
                 )
             }
+            .sheet(isPresented: $showingSpotPicker) {
+                SpotPickerSheet(selected: selectedSpot) { spot in
+                    selectedSpot = spot
+                    if let spot {
+                        spotName = spot.name
+                        if selectedCoordinate == nil,
+                           let lat = spot.latitude, let lon = spot.longitude {
+                            selectedCoordinate = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+                        }
+                    }
+                }
+            }
             .onAppear {
                 guard !hasAppeared else { return }
                 hasAppeared = true
@@ -250,6 +299,7 @@ struct AddFlightView: View {
             durationSeconds: durationSeconds,
             location: location,
             spotName: spotName.isEmpty ? nil : spotName,
+            spot: selectedSpot,
             flightType: selectedType?.rawValue,
             notes: notes.isEmpty ? nil : notes
         )

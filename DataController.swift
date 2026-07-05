@@ -335,7 +335,7 @@ final class DataController {
     }
 
     /// Adds a flight directly (for flights created on the iPhone)
-    func addFlight(wing: Wing, startDate: Date, endDate: Date, durationSeconds: Int, location: CLLocation?, spotName: String?, flightType: String? = nil, notes: String? = nil) {
+    func addFlight(wing: Wing, startDate: Date, endDate: Date, durationSeconds: Int, location: CLLocation?, spotName: String?, spot: Spot? = nil, flightType: String? = nil, notes: String? = nil) {
         let flight = Flight(
             wing: wing,
             startDate: startDate,
@@ -349,7 +349,13 @@ final class DataController {
         )
 
         modelContext.insert(flight)
-        assignSpot(to: flight)
+        if let spot {
+            // Explicitly chosen in the UI — takes precedence over auto-resolution
+            flight.spot = spot
+            flight.spotName = spot.name
+        } else {
+            assignSpot(to: flight)
+        }
         saveContext()
 
         logInfo("Flight saved: \(flight.durationFormatted) at \(flight.spotName ?? "Unknown")", category: .flight)
