@@ -37,6 +37,7 @@ final class AppwriteService {
 
     let client: Client
     let databases: Databases
+    let tablesDB: TablesDB
     let storage: Storage
     let account: Account
 
@@ -46,6 +47,7 @@ final class AppwriteService {
             .setProject(AppwriteConfig.projectId)
 
         databases = Databases(client)
+        tablesDB = TablesDB(client)
         storage = Storage(client)
         account = Account(client)
     }

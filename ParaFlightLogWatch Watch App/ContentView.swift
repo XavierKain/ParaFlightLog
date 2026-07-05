@@ -14,7 +14,7 @@ struct ContentView: View {
     @Environment(WatchLocationService.self) private var locationService
     @State private var selectedWing: WingDTO?
     @State private var activeFlightWing: WingDTO? // Wing captured at start - also triggers the fullScreenCover
-    @State private var selectedTab: Int = 0
+    @State private var selectedTab: Int = 1  // open on the middle (wing selection)
     @State private var isFlying: Bool = false
     // Timer data stored at ContentView level
     @State private var flightStartDate: Date?
@@ -30,12 +30,17 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            // Screen 1: wing selection
-            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab)
-                .environment(watchManager)
+            // Screen 0 (far left): on-watch settings
+            // Water Lock, vario, and (developer) cancel-flight + flight simulator.
+            WatchSettingsView()
                 .tag(0)
 
-            // Screen 2: wing recap + Start button
+            // Screen 1 (middle, opens here): wing selection
+            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab)
+                .environment(watchManager)
+                .tag(1)
+
+            // Screen 2 (right): wing recap + Start button (the flight)
             FlightStartView(
                 selectedWing: $selectedWing,
                 onStartFlight: {
@@ -43,7 +48,7 @@ struct ContentView: View {
                 }
             )
             .environment(watchManager)
-            .tag(1)
+            .tag(2)
         }
         .tabViewStyle(.page)
         // fullScreenCover(item:) so SwiftUI captures the value at presentation time
@@ -117,13 +122,15 @@ struct ContentView: View {
             gpsTrack: data.gpsTrack.isEmpty ? nil : data.gpsTrack
         )
 
-        // Persist to the outbox FIRST (synchronous), then attempt delivery
-        watchManager.sendFlightToPhone(flight)
-
-        // Clean up the recovered session (the outbox now owns the data)
-        sessionManager.endSession()
-
-        watchLogInfo("Recovered flight saved: \(recoveredDuration) seconds", category: .flight)
+        // Persist to the outbox FIRST (synchronous), then attempt delivery.
+        // Clean up the recovered session ONLY if the outbox write succeeded —
+        // otherwise the session stays recoverable and nothing is lost.
+        if watchManager.sendFlightToPhone(flight) {
+            sessionManager.endSession()
+            watchLogInfo("Recovered flight saved: \(recoveredDuration) seconds", category: .flight)
+        } else {
+            watchLogError("Outbox write failed - keeping recovered session for another attempt", category: .flight)
+        }
     }
 
     private func startFlight() {
@@ -139,12 +146,13 @@ struct ContentView: View {
         // Start the persistence session for automatic saving
         sessionManager.startSession(wing: wing, spotName: locationService.currentSpotName)
 
-        // Start the workout session IN THE BACKGROUND IMMEDIATELY
-        // so it does not block the flight display
-        if WatchSettings.shared.autoWaterLockEnabled {
-            Task.detached(priority: .high) { [workoutManager] in
-                await workoutManager.startWorkoutSession()
-            }
+        // Start the workout session IN THE BACKGROUND IMMEDIATELY.
+        // A running HKWorkoutSession keeps the app frontmost and the screen
+        // ALWAYS ACTIVE for the whole flight (never returns to the watch face),
+        // so this runs for every flight — Water Lock is a separate, optional
+        // behaviour handled inside the workout session.
+        Task.detached(priority: .high) { [workoutManager] in
+            await workoutManager.startWorkoutSession()
         }
 
         // Assigning activeFlightWing automatically triggers fullScreenCover(item:)
@@ -189,12 +197,14 @@ struct ContentView: View {
         )
 
         // Persist to the outbox FIRST (synchronous - the flight can no longer
-        // be lost), then attempt delivery to the iPhone
-        watchManager.sendFlightToPhone(flight)
-
-        // End the persistence session (only clears the live tracking session;
-        // the flight itself is safe in the outbox until the iPhone acks it)
-        sessionManager.endSession()
+        // be lost), then attempt delivery to the iPhone.
+        // The live tracking session is cleared ONLY when the outbox write
+        // succeeded; otherwise it stays recoverable (belt and braces).
+        if watchManager.sendFlightToPhone(flight) {
+            sessionManager.endSession()
+        } else {
+            watchLogError("Outbox write failed - keeping session recoverable", category: .flight)
+        }
 
         // Stop the workout session if active
         Task {
@@ -206,7 +216,7 @@ struct ContentView: View {
         flightStartDate = nil
         activeFlightWing = nil
         selectedWing = nil
-        selectedTab = 0 // Back to wing selection
+        selectedTab = 1 // Back to wing selection (middle)
     }
 
     private func discardFlight() {
@@ -226,7 +236,7 @@ struct ContentView: View {
         flightStartDate = nil
         activeFlightWing = nil
         selectedWing = nil
-        selectedTab = 0
+        selectedTab = 1 // Back to wing selection (middle)
     }
 }
 
@@ -276,7 +286,7 @@ struct WingSelectionView: View {
                                     // Short delay so the selection effect is visible before the scroll
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                                         withAnimation {
-                                            selectedTab = 1
+                                            selectedTab = 2  // go to the flight/start screen
                                         }
                                     }
                                 }
@@ -357,23 +367,26 @@ struct FlightStartView: View {
     @Binding var selectedWing: WingDTO?
     let onStartFlight: () -> Void
 
+    // Flight type is chosen here, before launch. Written to lastFlightType so the
+    // whole active-flight / stop flow is pre-filled with it (still editable on stop).
+    @Bindable private var settings = WatchSettings.shared
+    @State private var showingTypePicker = false
+
     var body: some View {
-        VStack(spacing: 10) {
-            // Selected wing
+        VStack(spacing: 8) {
             if let wing = selectedWing {
-                VStack(spacing: 4) {
-                    // Wing image
-                    CachedWingImage(wing: wing, size: 36, showBackground: false)
+                // Wing: image, then name + size on ONE line
+                CachedWingImage(wing: wing, size: 30, showBackground: false)
 
+                HStack(spacing: 6) {
                     Text(wing.shortName)
-                        .font(.title3)
-                        .fontWeight(.semibold)
+                        .font(.headline)
                         .lineLimit(1)
-
+                        .minimumScaleFactor(0.7)
                     if let size = wing.size {
                         Text("\(size) m²")
                             .font(.caption)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.blue)
                     }
                 }
 
@@ -387,40 +400,127 @@ struct FlightStartView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
-                .padding(.vertical, 2)
 
-                Spacer()
+                Spacer(minLength: 2)
 
-                // Start button
+                // Flight type — roomier card that opens the full picker screen
+                Button {
+                    showingTypePicker = true
+                } label: {
+                    HStack(spacing: 10) {
+                        Image(systemName: settings.lastFlightType.symbolName)
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundStyle(.blue)
+                            .frame(width: 24)
+                        Text(settings.lastFlightType.rawValue)
+                            .font(.body)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                        Spacer(minLength: 0)
+                        Image(systemName: "chevron.right")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 11)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.gray.opacity(0.18))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+
+                // Start button — breathing room from the bottom edge
                 Button {
                     onStartFlight()
                 } label: {
                     Label("Start", systemImage: "play.circle.fill")
-                        .font(.title2)
+                        .font(.title3)
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(.green)
-
-                Spacer()
+                .padding(.bottom, 6)
 
             } else {
                 // No wing selected
-                VStack(spacing: 8) {
-                    Image(systemName: "arrow.left")
-                        .font(.largeTitle)
-                        .foregroundStyle(.orange)
-
-                    Text("Choose a wing")
-                        .font(.headline)
-                        .foregroundStyle(.secondary)
-
-                    Text("Swipe left")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
+                Spacer()
+                Image(systemName: "arrow.left")
+                    .font(.largeTitle)
+                    .foregroundStyle(.orange)
+                Text("Pick a wing first")
+                    .font(.headline)
+                    .foregroundStyle(.secondary)
+                Spacer()
             }
         }
-        // Removed: onAppear that started location updates and caused lag
+        .padding(.horizontal, 6)
+        .sheet(isPresented: $showingTypePicker) {
+            FlightTypePickerView(selected: settings.lastFlightType) { type in
+                settings.lastFlightType = type
+            }
+        }
+    }
+}
+
+// MARK: - FlightTypePickerView (dedicated screen, like wing selection)
+
+/// Full-screen flight-type picker: one labelled row per type (icon + name +
+/// short description) so it's obvious what each icon means.
+struct FlightTypePickerView: View {
+    @Environment(\.dismiss) private var dismiss
+    let selected: FlightType
+    let onSelect: (FlightType) -> Void
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 8) {
+                Text("Flight Type")
+                    .font(.headline)
+                    .padding(.top, 4)
+
+                ForEach(FlightType.allCases) { type in
+                    Button {
+                        onSelect(type)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 10) {
+                            Image(systemName: type.symbolName)
+                                .font(.system(size: 22))
+                                .foregroundStyle(type == selected ? Color.green : Color.blue)
+                                .frame(width: 32)
+
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(type.rawValue)
+                                    .font(.body)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
+                                Text(type.subtitle)
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                            }
+
+                            Spacer(minLength: 0)
+
+                            if type == selected {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundStyle(.green)
+                            }
+                        }
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 10)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10)
+                                .fill(type == selected ? Color.green.opacity(0.18) : Color.gray.opacity(0.15))
+                        )
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.bottom, 8)
+        }
     }
 }
 
@@ -453,7 +553,9 @@ struct ActiveFlightView: View {
                 Circle()
                     .fill(.red)
                     .frame(width: 8, height: 8)
-                Text("Flying")
+                // verbatim: bypasses the string catalog (a leftover fr entry
+                // translated "Flying" to "En vol" on French devices)
+                Text(verbatim: "In flight")
                     .font(.caption2)
                     .foregroundStyle(.red)
                     .fontWeight(.bold)
@@ -485,19 +587,15 @@ struct ActiveFlightView: View {
                     .lineLimit(1)
             }
 
-            // Live flight metrics - flexible tiles so long values
-            // (e.g. 4-digit altitude) scale down instead of clipping
-            HStack(spacing: 6) {
-                MetricTile(value: WatchFormatters.altitude(locationService.currentAltitude),
-                           label: "Alt",
+            // Live flight metrics - three big tiles (altitude / speed / G-force).
+            // Units live in the label so the NUMBER itself can be as large as possible.
+            HStack(spacing: 4) {
+                MetricTile(value: WatchFormatters.altitudeValue(locationService.currentAltitude),
+                           label: "Alt m",
                            color: .orange)
 
-                MetricTile(value: WatchFormatters.distance(locationService.totalDistance),
-                           label: "Dist",
-                           color: .cyan)
-
                 MetricTile(value: WatchFormatters.speedKmh(locationService.maxSpeed),
-                           label: "Max",
+                           label: "km/h",
                            color: .purple)
 
                 MetricTile(value: WatchFormatters.gForce(locationService.currentGForce),
@@ -557,6 +655,7 @@ struct ActiveFlightView: View {
                         .foregroundStyle(settings.varioEnabled ? .green : .gray)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(settings.varioEnabled ? "Turn vario off" : "Turn vario on")
                 .padding(.trailing, 2)
             }
         }
@@ -683,17 +782,105 @@ private struct MetricTile: View {
     var body: some View {
         VStack(spacing: 0) {
             Text(value)
-                .font(.system(size: 20, weight: .semibold, design: .rounded))
+                .font(.system(size: 40, weight: .bold, design: .rounded))
                 .monospacedDigit()
                 .lineLimit(1)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.5)
                 .foregroundStyle(color)
             Text(label)
-                .font(.system(size: 12))
+                .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - WatchSettingsView (on-watch settings, leftmost page)
+
+/// Settings the pilot can change directly on the Watch, without reaching for the
+/// iPhone. Public: Water Lock + Vario. Developer: cancel-flight + flight simulator.
+/// Big card-style toggles; any change is pushed back to the iPhone (two-way sync).
+struct WatchSettingsView: View {
+    @Environment(WatchConnectivityManager.self) private var watchManager
+    @Bindable private var settings = WatchSettings.shared
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 12) {
+                HStack(spacing: 6) {
+                    Image(systemName: "gearshape.fill")
+                        .foregroundStyle(.blue)
+                    Text("Settings")
+                        .font(.headline)
+                }
+                .padding(.top, 4)
+
+                settingCard(icon: "drop.fill", tint: .cyan,
+                            title: "Water Lock",
+                            subtitle: "Locks the screen during a flight",
+                            isOn: $settings.autoWaterLockEnabled)
+
+                settingCard(icon: "waveform.path.ecg", tint: .green,
+                            title: "Vario",
+                            subtitle: "Climb/sink haptics during a flight",
+                            isOn: $settings.varioEnabled)
+
+                if settings.developerModeEnabled {
+                    HStack(spacing: 6) {
+                        Image(systemName: "hammer.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                        Text("Developer")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                    }
+                    .padding(.top, 2)
+
+                    settingCard(icon: "xmark.circle", tint: .orange,
+                                title: "Allow cancel flight",
+                                subtitle: "Lets you discard a flight in progress",
+                                isOn: $settings.allowSessionDismiss)
+
+                    settingCard(icon: "play.circle", tint: .blue,
+                                title: "Simulate flight",
+                                subtitle: "Next flight runs on a fake feed",
+                                isOn: $settings.simulateFlightEnabled)
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.bottom, 8)
+        }
+        // Any change made here is pushed back to the iPhone (two-way sync).
+        .onChange(of: settings.autoWaterLockEnabled) { _, _ in watchManager.sendSettingsToPhone() }
+        .onChange(of: settings.varioEnabled) { _, _ in watchManager.sendSettingsToPhone() }
+        .onChange(of: settings.allowSessionDismiss) { _, _ in watchManager.sendSettingsToPhone() }
+        .onChange(of: settings.simulateFlightEnabled) { _, _ in watchManager.sendSettingsToPhone() }
+    }
+
+    /// Big, readable toggle card (matches the previous on-watch settings style).
+    @ViewBuilder
+    private func settingCard(icon: String, tint: Color, title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Toggle(isOn: isOn) {
+                HStack(spacing: 8) {
+                    Image(systemName: icon)
+                        .foregroundStyle(tint)
+                    Text(title)
+                        .font(.body)
+                }
+            }
+            .tint(tint)
+
+            Text(subtitle)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 12)
+        .background(Color.gray.opacity(0.15))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 }
 
@@ -714,74 +901,58 @@ struct StopFlightOptionsView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 6) {
-                // Title at the top
-                Text("End flight?")
-                    .font(.headline)
+        // Plain VStack (no ScrollView): everything fits on one screen,
+        // including the Discard button.
+        VStack(spacing: 4) {
+            Text("End flight?")
+                .font(.subheadline)
+                .fontWeight(.semibold)
 
-                // Duration
-                Text(WatchFormatters.duration(duration))
-                    .font(.system(size: 26, weight: .bold, design: .rounded))
-                    .monospacedDigit()
+            // Duration + flight type recap on one compact block
+            Text(WatchFormatters.duration(duration))
+                .font(.system(size: 24, weight: .bold, design: .rounded))
+                .monospacedDigit()
+                .foregroundStyle(.blue)
+
+            HStack(spacing: 5) {
+                Image(systemName: selectedType.symbolName)
+                    .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(.blue)
+                Text(selectedType.rawValue)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
 
-                // Flight type picker (compact horizontal icon row)
-                VStack(spacing: 3) {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 5) {
-                            ForEach(FlightType.allCases) { type in
-                                Button {
-                                    selectedType = type
-                                } label: {
-                                    Image(systemName: type.symbolName)
-                                        .font(.system(size: 14, weight: .semibold))
-                                        .foregroundStyle(selectedType == type ? Color.black : Color.secondary)
-                                        .frame(width: 32, height: 26)
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 7)
-                                                .fill(selectedType == type ? Color.blue : Color.gray.opacity(0.2))
-                                        )
-                                }
-                                .buttonStyle(.plain)
-                            }
-                        }
-                        .padding(.horizontal, 2)
-                    }
+            Spacer(minLength: 2)
 
-                    Text(selectedType.rawValue)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
+            // Save button (green)
+            Button {
+                onSave(selectedType)
+            } label: {
+                Label("Save", systemImage: "checkmark.circle.fill")
+                    .font(.subheadline)
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.borderedProminent)
+            .tint(.green)
 
-                // Save button (green)
-                Button {
-                    onSave(selectedType)
+            // Discard button (red) - only if allowed
+            if canDismiss {
+                Button(role: .destructive) {
+                    onDiscard()
                 } label: {
-                    Label("Save", systemImage: "checkmark.circle.fill")
-                        .font(.subheadline)
+                    Text("Discard flight")
+                        .font(.caption)
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
-
-                // Discard button (red) - only if allowed
-                if canDismiss {
-                    Button(role: .destructive) {
-                        onDiscard()
-                    } label: {
-                        Text("Discard flight")
-                            .font(.caption)
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .tint(.red)
-                }
+                .buttonStyle(.bordered)
+                .tint(.red)
+                .controlSize(.small)
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
         }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
         .navigationBarHidden(true)
     }
 }

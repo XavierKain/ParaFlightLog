@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - FlightType
 /// Category of a flight session. Shared between iOS and Watch.
-enum FlightType: String, Codable, CaseIterable, Identifiable {
+nonisolated enum FlightType: String, Codable, CaseIterable, Identifiable {
     case soaring = "Soaring"
     case thermal = "Thermal"
     case airSurfing = "Air Surfing"
@@ -29,12 +29,23 @@ enum FlightType: String, Codable, CaseIterable, Identifiable {
         case .other: return "questionmark.circle"
         }
     }
+
+    /// Short description shown next to the icon in the flight-type picker.
+    var subtitle: String {
+        switch self {
+        case .soaring: return "Ridge / dynamic lift"
+        case .thermal: return "Climbing in thermals"
+        case .airSurfing: return "Speed riding / acro"
+        case .groundHandling: return "Kiting on the ground"
+        case .other: return "Anything else"
+        }
+    }
 }
 
 // MARK: - WatchSyncKeys
 /// Keys and message types used by the Watch <-> iPhone WatchConnectivity protocol.
 /// Kept in one place so both sides always agree.
-enum WatchSyncKeys {
+nonisolated enum WatchSyncKeys {
     /// Message/userInfo payload key holding an encoded FlightDTO.
     static let flightData = "flightData"
     /// applicationContext key holding encoded [WingDTO].
@@ -45,11 +56,13 @@ enum WatchSyncKeys {
     static let flightSaved = "flightSaved"
     /// Payload key: unique flight id (UUID string) used for deduplication and acks.
     static let flightId = "flightId"
+    /// Marker (Bool) set on a Watch->iPhone payload carrying settings changed on the Watch.
+    static let watchSettingsUpdate = "watchSettingsUpdate"
 }
 
 // MARK: - GPSTrackPoint
 /// GPS point of a flight track
-struct GPSTrackPoint: Codable, Identifiable {
+nonisolated struct GPSTrackPoint: Codable, Identifiable {
     let id: UUID
     let timestamp: Date
     let latitude: Double
@@ -69,7 +82,7 @@ struct GPSTrackPoint: Codable, Identifiable {
 
 // MARK: - WingDTO
 /// DTO used to transfer wings from the iPhone to the Watch
-struct WingDTO: Codable, Identifiable, Hashable {
+nonisolated struct WingDTO: Codable, Identifiable, Hashable {
     let id: UUID
     let name: String
     let size: String?
@@ -100,7 +113,7 @@ struct WingDTO: Codable, Identifiable, Hashable {
 
 // MARK: - FlightDTO
 /// DTO used to transfer flights from the Watch to the iPhone
-struct FlightDTO: Codable, Identifiable {
+nonisolated struct FlightDTO: Codable, Identifiable {
     let id: UUID
     let wingId: UUID
     let startDate: Date

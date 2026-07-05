@@ -186,8 +186,8 @@ struct WingManufacturer: Codable, Identifiable, Hashable {
         self.displayOrder = displayOrder
     }
 
-    /// Init from Appwrite document
-    init(from document: Document<[String: AnyCodable]>) {
+    /// Init from an Appwrite table row
+    init(from document: Row<[String: AnyCodable]>) {
         self.id = document.id
         self.name = document.data["name"]?.value as? String ?? ""
         self.displayOrder = document.data["displayOrder"]?.value as? Int ?? 0
@@ -218,8 +218,8 @@ struct LibraryWing: Codable, Identifiable, Hashable {
         self.displayOrder = displayOrder
     }
 
-    /// Init from Appwrite document
-    init(from document: Document<[String: AnyCodable]>, manufacturerName: String) {
+    /// Init from an Appwrite table row
+    init(from document: Row<[String: AnyCodable]>, manufacturerName: String) {
         self.id = document.id
         self.manufacturer = document.data["manufacturerId"]?.value as? String ?? ""
         self.model = document.data["model"]?.value as? String ?? ""
@@ -261,19 +261,22 @@ enum WingLibraryError: LocalizedError {
     case decodingFailed(Error)
     case imageFetchFailed(Error)
     case appwriteError(Error)
+    case timeout
 
     var errorDescription: String? {
         switch self {
         case .networkUnavailable:
-            return "Connexion internet indisponible"
+            return "No internet connection"
         case .invalidResponse:
-            return "Réponse invalide du serveur"
+            return "Invalid server response"
         case .decodingFailed(let error):
-            return "Erreur de décodage: \(error.localizedDescription)"
+            return "Decoding error: \(error.localizedDescription)"
         case .imageFetchFailed(let error):
-            return "Erreur de téléchargement d'image: \(error.localizedDescription)"
+            return "Image download error: \(error.localizedDescription)"
         case .appwriteError(let error):
-            return "Erreur Appwrite: \(error.localizedDescription)"
+            return "Appwrite error: \(error.localizedDescription)"
+        case .timeout:
+            return "The wing library took too long to respond. Check your connection, or verify this app's bundle id is registered as an Apple platform in the Appwrite console."
         }
     }
 }
@@ -291,7 +294,7 @@ final class WingLibraryService {
     private(set) var isOfflineMode = false
 
     // Appwrite services
-    private var databases: Databases { AppwriteService.shared.databases }
+    private var tablesDB: TablesDB { AppwriteService.shared.tablesDB }
     private var storage: Storage { AppwriteService.shared.storage }
 
     // Cache
@@ -333,7 +336,19 @@ final class WingLibraryService {
 
         // Always try network first to get fresh data
         do {
-            let newCatalog = try await fetchFromAppwrite()
+            // Bounded so a hung request can't leave the UI spinning forever.
+            let newCatalog = try await withThrowingTaskGroup(of: WingCatalog.self) { group in
+                group.addTask { try await self.fetchFromAppwrite() }
+                group.addTask {
+                    try await Task.sleep(nanoseconds: 20 * 1_000_000_000) // 20 s
+                    throw WingLibraryError.timeout
+                }
+                guard let first = try await group.next() else {
+                    throw WingLibraryError.timeout
+                }
+                group.cancelAll()
+                return first
+            }
             catalog = newCatalog
             saveCatalogToCache(newCatalog)
             // Clear image cache when catalog is updated to get fresh images
@@ -424,32 +439,34 @@ final class WingLibraryService {
 
     private func fetchFromAppwrite() async throws -> WingCatalog {
         // Fetch manufacturers
-        let manufacturersResponse = try await databases.listDocuments<[String: AnyCodable]>(
+        let manufacturersResponse = try await tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.manufacturersCollectionId,
+            tableId: AppwriteConfig.manufacturersCollectionId,
             queries: [
                 Query.orderAsc("displayOrder"),
                 Query.limit(100)
-            ]
+            ],
+            nestedType: [String: AnyCodable].self
         )
 
-        let manufacturers = manufacturersResponse.documents.map { WingManufacturer(from: $0) }
+        let manufacturers = manufacturersResponse.rows.map { WingManufacturer(from: $0) }
 
         // Create a lookup dictionary for manufacturer names
         let manufacturerNames = Dictionary(uniqueKeysWithValues: manufacturers.map { ($0.id, $0.name) })
 
         // Fetch wings
-        let wingsResponse = try await databases.listDocuments<[String: AnyCodable]>(
+        let wingsResponse = try await tablesDB.listRows(
             databaseId: AppwriteConfig.databaseId,
-            collectionId: AppwriteConfig.wingsCollectionId,
+            tableId: AppwriteConfig.wingsCollectionId,
             queries: [
                 Query.orderAsc("displayOrder"),
                 Query.orderAsc("model"),
                 Query.limit(500)
-            ]
+            ],
+            nestedType: [String: AnyCodable].self
         )
 
-        let wings = wingsResponse.documents.map { doc in
+        let wings = wingsResponse.rows.map { doc in
             let manufacturerId = doc.data["manufacturerId"]?.value as? String ?? ""
             let manufacturerName = manufacturerNames[manufacturerId] ?? ""
             return LibraryWing(from: doc, manufacturerName: manufacturerName)
@@ -489,10 +506,4 @@ final class WingLibraryService {
         }
     }
 
-    private func isCacheValid() -> Bool {
-        guard let cacheDate = UserDefaults.standard.object(forKey: catalogCacheDateKey) as? Date else {
-            return false
-        }
-        return Date().timeIntervalSince(cacheDate) < WingLibraryConstants.catalogCacheMaxAge
-    }
 }

@@ -47,6 +47,16 @@ final class WatchSettings {
         }
     }
 
+    /// Developer tool: when on, starting a flight feeds fake, changing
+    /// altitude/speed/distance/G-force into the live flight screen instead of
+    /// using the real GPS/barometer. Lets you judge on-watch readability
+    /// without moving. Synced from the iPhone Developer settings. Off by default.
+    var simulateFlightEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(simulateFlightEnabled, forKey: "simulateFlightEnabled")
+        }
+    }
+
     /// Last flight type chosen by the pilot when saving a flight.
     /// Used as the default selection for the next flight.
     var lastFlightType: FlightType {
@@ -63,6 +73,7 @@ final class WatchSettings {
         self.allowSessionDismiss = UserDefaults.standard.object(forKey: "allowSessionDismiss") as? Bool ?? true
         self.developerModeEnabled = UserDefaults.standard.object(forKey: "developerModeEnabled") as? Bool ?? false
         self.varioEnabled = UserDefaults.standard.object(forKey: "varioEnabled") as? Bool ?? false
+        self.simulateFlightEnabled = UserDefaults.standard.object(forKey: "simulateFlightEnabled") as? Bool ?? false
         if let rawType = UserDefaults.standard.string(forKey: "lastFlightType"),
            let type = FlightType(rawValue: rawType) {
             self.lastFlightType = type
@@ -85,6 +96,10 @@ final class WatchSettings {
 
         if let devMode = context["developerModeEnabled"] as? Bool {
             developerModeEnabled = devMode
+        }
+
+        if let simulate = context["simulateFlightEnabled"] as? Bool {
+            simulateFlightEnabled = simulate
         }
 
         // Log only when developer mode is on (avoids the startup log otherwise)

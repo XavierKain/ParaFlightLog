@@ -82,9 +82,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     /// Persists the flight to the outbox (synchronously, so it can never be
     /// lost) and then attempts delivery of every pending flight.
     /// The iPhone deduplicates by flight id, so redundant delivery is safe.
-    func sendFlightToPhone(_ flight: FlightDTO) {
-        FlightOutbox.shared.add(flight)
+    /// - Returns: true when the flight is safely persisted in the outbox.
+    ///   On false, the caller must keep the tracking session (recoverable).
+    @discardableResult
+    func sendFlightToPhone(_ flight: FlightDTO) -> Bool {
+        let persisted = FlightOutbox.shared.add(flight)
         retryPendingFlights()
+        return persisted
     }
 
     /// Attempts delivery of every flight still in the outbox.
@@ -197,6 +201,25 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    /// Pushes the current on-watch settings back to the iPhone so the two stay in
+    /// sync when the pilot changes them on the Watch (two-way sync). Uses
+    /// transferUserInfo so the change survives the phone being unreachable.
+    func sendSettingsToPhone() {
+        guard sessionActivated else { return }
+        // NOTE: UserDefaultsKeys (Constants.swift) is iOS-only; use literals here.
+        // These string keys must match the iPhone's UserDefaultsKeys values.
+        let s = WatchSettings.shared
+        let payload: [String: Any] = [
+            WatchSyncKeys.watchSettingsUpdate: true,
+            "watchAutoWaterLock": s.autoWaterLockEnabled,
+            "watchAllowSessionDismiss": s.allowSessionDismiss,
+            "varioEnabled": s.varioEnabled,
+            "simulateFlightEnabled": s.simulateFlightEnabled
+        ]
+        WCSession.default.transferUserInfo(payload)
+        watchLogInfo("Sent settings to iPhone (two-way sync)", category: .watchSync)
+    }
+
     // MARK: - WCSessionDelegate
 
     // WCSession delegate callbacks arrive on a background queue, so they are
@@ -268,6 +291,17 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
         DispatchQueue.main.async { [weak self] in
             self?.processReceivedContext(userInfo)
+        }
+    }
+
+    /// Instant messages from the iPhone (e.g. pull-to-refresh asking the Watch
+    /// to re-attempt delivery of any flights still in the outbox).
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        if message["action"] as? String == "flushOutbox" {
+            DispatchQueue.main.async { [weak self] in
+                watchLogInfo("iPhone requested an outbox flush", category: .watchSync)
+                self?.retryPendingFlights()
+            }
         }
     }
 

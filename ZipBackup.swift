@@ -122,6 +122,7 @@ struct ImportSummary {
     var flightsImported: Int = 0
     var skippedDuplicates: Int = 0
     var skippedMalformed: Int = 0
+    var gpsTracksImported: Int = 0
 
     /// Human-readable English summary for the UI
     var message: String {
@@ -130,6 +131,9 @@ struct ImportSummary {
             "Wings imported: \(wingsImported)",
             "Flights imported: \(flightsImported)"
         ]
+        if gpsTracksImported > 0 {
+            lines.append("GPS tracks restored: \(gpsTracksImported)")
+        }
         if skippedDuplicates > 0 {
             lines.append("Skipped duplicates: \(skippedDuplicates)")
         }
@@ -534,6 +538,12 @@ enum BackupManager {
         let flightsCSV = try String(contentsOf: bundleURL.appendingPathComponent("flights.csv"), encoding: .utf8)
         let flightsRows = flightsCSV.components(separatedBy: "\n").dropFirst() // skip header
 
+        // SoarX v10+ backups store one GPS track per flight as gps/<flightId>.json
+        // (a JSON-encoded [GPSTrackPoint]). Read it so replays/exports survive the
+        // migration; older backups without this folder just import without a track.
+        let gpsDir = bundleURL.appendingPathComponent("gps")
+        var gpsTracksImported = 0
+
         var flights: [BackupFlight] = []
 
         for row in flightsRows {
@@ -558,9 +568,28 @@ enum BackupManager {
                 notes = nil
             }
 
+            // Keep the flight even if its wing link can't be parsed, but surface
+            // it: a non-empty-yet-invalid wingId would silently orphan the flight.
+            let wingId = UUID(uuidString: cols[4])
+            if wingId == nil && !cols[4].isEmpty {
+                logWarning("Imported flight \(flightId) has an unrecognized wing id '\(cols[4])' — it will not be linked to a wing", category: .dataImport)
+            }
+
+            // GPS track from gps/<flightId>.json, if the backup includes it
+            var gpsTrack: [GPSTrackPoint]? = nil
+            let trackURL = gpsDir.appendingPathComponent("\(flightId.uuidString).json")
+            if let trackData = try? Data(contentsOf: trackURL) {
+                if let decoded = try? JSONDecoder().decode([GPSTrackPoint].self, from: trackData), !decoded.isEmpty {
+                    gpsTrack = decoded
+                    gpsTracksImported += 1
+                } else {
+                    logWarning("Could not decode GPS track for flight \(flightId)", category: .dataImport)
+                }
+            }
+
             flights.append(BackupFlight(
                 id: flightId,
-                wingId: UUID(uuidString: cols[4]),
+                wingId: wingId,
                 startDate: startDate,
                 endDate: endDate,
                 durationSeconds: durationSeconds,
@@ -576,11 +605,11 @@ enum BackupManager {
                 totalDistance: nil,
                 maxSpeed: nil,
                 maxGForce: nil,
-                gpsTrack: nil
+                gpsTrack: gpsTrack
             ))
         }
 
-        logInfo("Parsed legacy v1 backup: \(wings.count) wings, \(flights.count) flights, \(skippedMalformed) malformed rows skipped", category: .dataImport)
+        logInfo("Parsed legacy v1 backup: \(wings.count) wings, \(flights.count) flights, \(gpsTracksImported) GPS tracks, \(skippedMalformed) malformed rows skipped", category: .dataImport)
 
         return ParsedBackup(
             wings: wings,
@@ -653,6 +682,9 @@ enum BackupManager {
             var gpsTrackData: Data? = nil
             if let track = backupFlight.gpsTrack, !track.isEmpty {
                 gpsTrackData = try? JSONEncoder().encode(track)
+                if gpsTrackData != nil {
+                    summary.gpsTracksImported += 1
+                }
             }
 
             let flight = Flight(

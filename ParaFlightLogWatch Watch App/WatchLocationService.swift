@@ -50,6 +50,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     var maxGForce: Double = 1.0      // G-force max pendant le vol
     private var previousLocation: CLLocation?
 
+    // Developer flight simulator (fake feed, no real GPS/motion needed)
+    private var simTimer: Timer?
+    private var simTick: Int = 0
+    private(set) var isSimulating: Bool = false
+
     // Nom du spot verrouillé pendant le vol (pour éviter qu'il change)
     private var lockedSpotName: String?
 
@@ -141,7 +146,13 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             lastTrackPointTime = nil
         }
 
-        startMotionUpdates()
+        // Developer mode: drive the live screen with a fake feed instead of
+        // real GPS/motion, so on-watch readability can be judged without moving.
+        if WatchSettings.shared.simulateFlightEnabled {
+            startSimulatedFeed()
+        } else {
+            startMotionUpdates()
+        }
     }
 
     /// Arrête le tracking et retourne l'altitude finale
@@ -150,8 +161,79 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         let endAltitude = currentAltitude
         previousLocation = nil
         lockedSpotName = nil  // Déverrouiller le nom du spot
+        stopSimulatedFeed()
         stopMotionUpdates()
         return endAltitude
+    }
+
+    // MARK: - Flight Simulator (developer tool)
+
+    /// Starts a fake flight feed: altitude climbs and sinks, speed/distance and
+    /// G-force change every second, and a GPS track is recorded so the saved
+    /// flight can still be replayed/exported. Purely local — no GPS needed.
+    private func startSimulatedFeed() {
+        stopSimulatedFeed()
+        isSimulating = true
+        simTick = 0
+
+        // Base takeoff position (a ridge near Annecy) so the recorded track is plausible
+        let baseLat = 45.90
+        let baseLon = 6.10
+        let baseAltitude = 500.0
+
+        currentSpotName = "Simulator"
+        lockedSpotName = "Simulator"
+        startAltitude = baseAltitude
+        maxAltitude = baseAltitude
+        currentAltitude = baseAltitude
+
+        simTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            guard let self else { return }
+            self.simTick += 1
+            let t = Double(self.simTick)
+
+            // Altitude: slow climb/sink between ~500 m and ~1400 m
+            let altitude = baseAltitude + 450.0 * (1.0 - cos(t / 18.0))
+            self.currentAltitude = altitude
+            if altitude > (self.maxAltitude ?? altitude) {
+                self.maxAltitude = altitude
+            }
+
+            // Ground speed oscillating 8–16 m/s; accumulate distance each second
+            let speed = 12.0 + 4.0 * sin(t / 7.0)
+            self.totalDistance += speed
+            if speed > self.maxSpeed {
+                self.maxSpeed = speed
+            }
+
+            // G-force gently oscillating around 1.0 (turns/turbulence)
+            let gForce = 1.0 + 0.4 * abs(sin(t / 5.0))
+            self.currentGForce = gForce
+            if gForce > self.maxGForce {
+                self.maxGForce = gForce
+            }
+
+            // Record a GPS point every 5 s (figure-eight along the ridge)
+            if self.simTick % 5 == 0 {
+                let lat = baseLat + 0.0025 * sin(t / 12.0)
+                let lon = baseLon + 0.0035 * sin(t / 6.0)
+                self.gpsQueue.sync {
+                    self.gpsTrackPoints.append(GPSTrackPoint(
+                        timestamp: Date(),
+                        latitude: lat,
+                        longitude: lon,
+                        altitude: altitude,
+                        speed: speed
+                    ))
+                }
+            }
+        }
+    }
+
+    private func stopSimulatedFeed() {
+        simTimer?.invalidate()
+        simTimer = nil
+        isSimulating = false
     }
 
     /// Retourne les données du vol en cours
@@ -331,6 +413,10 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     // MARK: - CLLocationManagerDelegate
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        // While the developer simulator drives the flight, ignore real GPS so it
+        // doesn't overwrite the simulated altitude/speed/spot.
+        guard !isSimulating else { return }
+
         guard let location = locations.last else { return }
         lastKnownLocation = location
 

@@ -199,6 +199,12 @@ struct TimerView: View {
             if !isFlying && !isSimulation && manualSpotOverride == nil {
                 updateCurrentSpot()
             }
+            // Pre-select the wing used for the most recent flight
+            if selectedWing == nil,
+               let idString = UserDefaults.standard.string(forKey: UserDefaultsKeys.lastUsedWingId),
+               let id = UUID(uuidString: idString) {
+                selectedWing = wings.first { $0.id == id }
+            }
             // Resume the update timer (and vario) if a flight is running
             if isFlying, let start = startDate {
                 elapsedSeconds = Int(Date().timeIntervalSince(start))
@@ -300,9 +306,12 @@ struct TimerView: View {
                                 .font(.title2)
                                 .foregroundStyle(.blue)
 
+                            // White title (matches the Wings page style);
+                            // blue is reserved for icons/secondary accents
                             Text("Select a wing")
                                 .font(.body)
-                                .foregroundStyle(.blue)
+                                .fontWeight(.medium)
+                                .foregroundStyle(Color.primary)
 
                             Spacer()
 
@@ -326,6 +335,9 @@ struct TimerView: View {
                     .cornerRadius(12)
                     .shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
                 }
+                // .plain: inside a default Button, hierarchical styles (.primary/
+                // .secondary) resolve AGAINST THE TINT — everything looked blue.
+                .buttonStyle(.plain)
                 .padding(.horizontal)
             }
         }
@@ -529,27 +541,32 @@ struct TimerView: View {
             let finalSpot = manualSpotOverride ?? spotState.resolvedName
             let points = trackPoints
 
-            locationService.requestLocation { location in
-                DispatchQueue.main.async {
-                    saveFlight(
-                        wing: wing,
-                        start: start,
-                        end: end,
-                        duration: duration,
-                        spotName: finalSpot,
-                        latitude: location?.coordinate.latitude ?? points.first?.latitude,
-                        longitude: location?.coordinate.longitude ?? points.first?.longitude,
-                        flightType: flightType,
-                        points: points
-                    )
-                }
-            }
+            // Save IMMEDIATELY with the best location we already have (the
+            // track's first point, or the last known GPS fix). The previous
+            // code awaited a fresh fix (10s timeout) before saving, leaving
+            // the pilot staring at a reset timer screen until the summary
+            // finally appeared.
+            let knownLocation = points.first.map {
+                CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+            } ?? locationService.lastKnownLocation?.coordinate
+
+            saveFlight(
+                wing: wing,
+                start: start,
+                end: end,
+                duration: duration,
+                spotName: finalSpot,
+                latitude: knownLocation?.latitude,
+                longitude: knownLocation?.longitude,
+                flightType: flightType,
+                points: points
+            )
         }
 
         isFlying = false
         elapsedSeconds = 0
         startDate = nil
-        selectedWing = nil
+        // Keep selectedWing: it's the wing just flown — ready for the next flight
         spotState = .searching
         manualSpotOverride = nil
         trackPoints = []
@@ -573,8 +590,12 @@ struct TimerView: View {
         dataController.modelContext.insert(flight)
         do {
             try dataController.modelContext.save()
+            if let wingId = wing?.id {
+                UserDefaults.standard.set(wingId.uuidString, forKey: UserDefaultsKeys.lastUsedWingId)
+            }
             completedFlight = flight
             showingFlightSummary = true
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
             logInfo("Timer flight saved: \(flight.durationFormatted), \(points.count) track points", category: .flight)
         } catch {
             logError("Failed to save flight from timer: \(error.localizedDescription)", category: .dataController)
@@ -728,6 +749,9 @@ struct WingPickerSheet: View {
                         }
                         .padding(.vertical, 4)
                     }
+                    // .plain keeps titles white (hierarchical styles resolve
+                    // against the tint inside default buttons → blue titles)
+                    .buttonStyle(.plain)
                 }
             }
             .navigationTitle("Choose a Wing")

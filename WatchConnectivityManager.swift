@@ -60,7 +60,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     // MARK: - Send Watch Settings
 
     /// Sends the Watch settings via applicationContext
-    func sendWatchSettings(autoWaterLock: Bool, allowSessionDismiss: Bool, developerMode: Bool? = nil) {
+    func sendWatchSettings(autoWaterLock: Bool, allowSessionDismiss: Bool, developerMode: Bool? = nil, simulateFlight: Bool? = nil) {
         guard WCSession.default.activationState == .activated else {
             logWarning("WCSession not activated, cannot send watch settings", category: .watchSync)
             return
@@ -74,9 +74,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let devMode = developerMode ?? UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled)
         context[UserDefaultsKeys.developerModeEnabled] = devMode
 
+        // Watch flight simulator flag (developer tool)
+        let simulate = simulateFlight ?? UserDefaults.standard.bool(forKey: UserDefaultsKeys.simulateFlightEnabled)
+        context[UserDefaultsKeys.simulateFlightEnabled] = simulate
+
         do {
             try WCSession.default.updateApplicationContext(context)
-            logInfo("Sent watch settings: autoWaterLock=\(autoWaterLock), allowDismiss=\(allowSessionDismiss), devMode=\(devMode)", category: .watchSync)
+            logInfo("Sent watch settings: autoWaterLock=\(autoWaterLock), allowDismiss=\(allowSessionDismiss), devMode=\(devMode), simulate=\(simulate)", category: .watchSync)
         } catch {
             logError("Failed to send watch settings: \(error.localizedDescription)", category: .watchSync)
         }
@@ -245,6 +249,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     func session(_ session: WCSession, didReceiveMessage message: [String: Any], replyHandler: @escaping ([String: Any]) -> Void) {
         logDebug("Received instant message from Watch: \(message.keys)", category: .watchSync)
 
+        // Settings changed on the Watch?
+        if message[WatchSyncKeys.watchSettingsUpdate] as? Bool == true {
+            applyWatchSettings(message)
+            replyHandler(["status": "success"])
+            return
+        }
+
         // Wings sync request?
         if let action = message["action"] as? String, action == "requestWings" {
             logInfo("Watch requested wings sync", category: .watchSync)
@@ -271,6 +282,11 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
         logDebug("Received message from Watch (no reply): \(message.keys)", category: .watchSync)
 
+        if message[WatchSyncKeys.watchSettingsUpdate] as? Bool == true {
+            applyWatchSettings(message)
+            return
+        }
+
         if let action = message["action"] as? String, action == "requestWings" {
             logInfo("Watch requested wings sync", category: .watchSync)
             DispatchQueue.main.async { [weak self] in
@@ -291,6 +307,11 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
         logInfo("Received userInfo from Watch", category: .watchSync)
 
+        if userInfo[WatchSyncKeys.watchSettingsUpdate] as? Bool == true {
+            applyWatchSettings(userInfo)
+            return
+        }
+
         guard let dto = Self.decodeFlightDTO(from: userInfo) else {
             logWarning("Received userInfo is not a flight - ignoring", category: .watchSync)
             return
@@ -298,6 +319,59 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
         DispatchQueue.main.async { [weak self] in
             self?.handleIncomingFlight(dto, replyHandler: nil)
+        }
+    }
+
+    // MARK: - Pull-to-refresh support
+
+    /// Asks the Watch to re-attempt delivery of any flights still in its outbox.
+    /// Used by pull-to-refresh on the Flights list. No-op when unreachable —
+    /// the Watch retries on reconnection anyway.
+    func requestWatchOutboxFlush() {
+        guard WCSession.default.activationState == .activated,
+              WCSession.default.isReachable else { return }
+        WCSession.default.sendMessage(["action": "flushOutbox"], replyHandler: nil) { error in
+            logWarning("Outbox flush request failed: \(error.localizedDescription)", category: .watchSync)
+        }
+    }
+
+    // MARK: - Settings from Watch (two-way sync)
+
+    /// Set while a Watch-originated settings change is being applied locally.
+    /// The Settings UI checks this to avoid echoing the change straight back
+    /// to the Watch (anti-loop guard).
+    private var lastRemoteSettingsApply: Date?
+
+    /// True right after settings arrived FROM the Watch — used by the iPhone
+    /// settings toggles to skip re-sending what the Watch just told us.
+    var isApplyingRemoteSettings: Bool {
+        guard let last = lastRemoteSettingsApply else { return false }
+        return Date().timeIntervalSince(last) < 1.5
+    }
+
+    /// Applies settings changed on the Watch to the iPhone's UserDefaults so the
+    /// iPhone UI (all @AppStorage-backed) reflects them. Only writes values that
+    /// actually differ, so unchanged keys never trigger UI onChange handlers.
+    private func applyWatchSettings(_ payload: [String: Any]) {
+        DispatchQueue.main.async { [weak self] in
+            let defaults = UserDefaults.standard
+            let keys = [
+                UserDefaultsKeys.watchAutoWaterLock,
+                UserDefaultsKeys.watchAllowSessionDismiss,
+                UserDefaultsKeys.varioEnabled,
+                UserDefaultsKeys.simulateFlightEnabled
+            ]
+            var changed = false
+            for key in keys {
+                if let v = payload[key] as? Bool, defaults.object(forKey: key) as? Bool != v {
+                    self?.lastRemoteSettingsApply = Date()
+                    defaults.set(v, forKey: key)
+                    changed = true
+                }
+            }
+            if changed {
+                logInfo("Applied settings changed on the Watch", category: .watchSync)
+            }
         }
     }
 
@@ -353,6 +427,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let saved = dataController.addFlight(from: dto, location: nil, spotName: nil)
 
         if saved {
+            // Remember the wing so pickers pre-select it next time
+            UserDefaults.standard.set(dto.wingId.uuidString, forKey: UserDefaultsKeys.lastUsedWingId)
             replyHandler?([
                 WatchSyncKeys.flightSaved: true,
                 WatchSyncKeys.flightId: dto.id.uuidString

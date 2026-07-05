@@ -47,6 +47,7 @@ struct WingLibraryView: View {
                     } label: {
                         Image(systemName: "arrow.clockwise")
                     }
+                    .accessibilityLabel("Refresh catalog")
                     .disabled(isLoading)
                 }
             }

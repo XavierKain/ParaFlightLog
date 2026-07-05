@@ -46,7 +46,7 @@ struct AddFlightView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Date & Duration") {
+                Section {
                     DatePicker("Flight start", selection: $startDate)
 
                     HStack(spacing: 0) {
@@ -76,6 +76,8 @@ struct AddFlightView: View {
                         Text(endDate, format: .dateTime.day().month().hour().minute())
                             .foregroundStyle(.secondary)
                     }
+                } header: {
+                    Text("Date & Duration")
                 } footer: {
                     if durationSeconds == 0 {
                         Text("Set a duration of at least one minute.")
@@ -252,11 +254,13 @@ struct AddFlightView: View {
             notes: notes.isEmpty ? nil : notes
         )
 
-        // Remember the last flight type picked by the pilot
+        // Remember the last flight type and wing picked by the pilot
         if let type = selectedType {
             UserDefaults.standard.set(type.rawValue, forKey: UserDefaultsKeys.lastFlightType)
         }
+        UserDefaults.standard.set(wing.id.uuidString, forKey: UserDefaultsKeys.lastUsedWingId)
 
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
         dismiss()
     }
 

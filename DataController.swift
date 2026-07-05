@@ -37,64 +37,102 @@ final class DataController {
     // True when we had to fall back to an in-memory database (data won't persist)
     private(set) var isUsingFallbackDatabase: Bool = false
 
+    /// Master switch for iCloud/CloudKit sync.
+    ///
+    /// Currently OFF: the CloudKit container `iCloud.com.xavierkain.ParaFlightLog2`
+    /// has not been created on the Apple developer portal yet, so `.automatic`
+    /// succeeds locally but then spams "Bad Container" errors while trying to
+    /// sync in the background. iCloud sync is a deferred feature (see README),
+    /// so we run local-only until the container exists.
+    ///
+    /// To re-enable: create the CloudKit container in Xcode ▸ Signing &
+    /// Capabilities (iCloud ▸ CloudKit), then flip this to `true`.
+    nonisolated private static let enableCloudKit = false
+
+    /// Synchronous init (previews / non-launch callers). Builds the container
+    /// on the current thread. The app launch path uses `makeAsync()` instead.
+    ///
+    /// IMPORTANT: uses the container's `mainContext` — the SAME context the
+    /// SwiftUI `@Query`s use. A separate `ModelContext(container)` caused
+    /// "Illegal attempt to insert a model in to a different model context"
+    /// whenever a @Query-fetched Wing was attached to a Flight saved here.
     init() {
-        let schema = Schema([
-            Wing.self,
-            Flight.self
-        ])
+        let built = Self.makeContainer()
+        self.modelContainer = built.container
+        self.modelContext = built.container.mainContext
+        self.isCloudSyncActive = built.isCloudSync
+        self.isUsingFallbackDatabase = built.isFallback
+    }
 
-        // NOTE: CloudKit sync requires the iCloud capability with a CloudKit
-        // container entitlement enabled in Xcode > Signing & Capabilities
-        // (plus Background Modes > Remote notifications). Without it, the
-        // CloudKit-backed container creation throws and we fall back to a
-        // purely local store — the app keeps working either way.
-        let cloudConfiguration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            cloudKitDatabase: .automatic
-        )
+    /// Init from an already-built container (created off the main thread by
+    /// `makeAsync`), so this step is instant.
+    private init(prebuilt: ContainerResult) {
+        self.modelContainer = prebuilt.container
+        self.modelContext = prebuilt.container.mainContext
+        self.isCloudSyncActive = prebuilt.isCloudSync
+        self.isUsingFallbackDatabase = prebuilt.isFallback
+    }
 
-        if let container = try? ModelContainer(for: schema, configurations: [cloudConfiguration]) {
-            self.modelContainer = container
-            self.modelContext = ModelContext(container)
-            self.isCloudSyncActive = true
-            logInfo("ModelContainer created with CloudKit sync", category: .dataController)
-            return
+    /// Builds the (heavy, ~1s+) ModelContainer OFF the main thread so app launch
+    /// can show a loading view immediately instead of a black screen.
+    static func makeAsync() async -> DataController {
+        let built = await Task.detached(priority: .userInitiated) {
+            makeContainer()
+        }.value
+        return DataController(prebuilt: built)
+    }
+
+    private struct ContainerResult: @unchecked Sendable {
+        let container: ModelContainer
+        let isCloudSync: Bool
+        let isFallback: Bool
+    }
+
+    /// The actual ModelContainer creation. `nonisolated` so it can run off the
+    /// main actor (this is the ~1200 ms cost measured at launch).
+    nonisolated private static func makeContainer() -> ContainerResult {
+        let start = Date()
+        logInfo("ModelContainer build started", category: .dataController)
+        let schema = Schema([Wing.self, Flight.self])
+        defer {
+            let ms = Int(Date().timeIntervalSince(start) * 1000)
+            logInfo("ModelContainer build finished in \(ms) ms", category: .dataController)
         }
 
-        logWarning("CloudKit container unavailable (missing entitlement or schema issue). Using local store.", category: .dataController)
-
-        // Local-only store (no iCloud sync)
-        let localConfiguration = ModelConfiguration(
-            schema: schema,
-            isStoredInMemoryOnly: false,
-            cloudKitDatabase: .none
-        )
-
-        do {
-            let container = try ModelContainer(for: schema, configurations: [localConfiguration])
-            self.modelContainer = container
-            self.modelContext = ModelContext(container)
-            logInfo("ModelContainer created (local only)", category: .dataController)
-        } catch {
-            // Fallback: in-memory database. Data won't persist, but the app won't crash.
-            logError("Could not create ModelContainer: \(error). Using in-memory fallback.", category: .dataController)
-
-            let fallbackConfiguration = ModelConfiguration(
-                schema: schema,
-                isStoredInMemoryOnly: true,
-                cloudKitDatabase: .none
+        // CloudKit path (currently disabled; see enableCloudKit).
+        if enableCloudKit {
+            let cloudConfiguration = ModelConfiguration(
+                schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .automatic
             )
-
-            do {
-                let fallbackContainer = try ModelContainer(for: schema, configurations: [fallbackConfiguration])
-                self.modelContainer = fallbackContainer
-                self.modelContext = ModelContext(fallbackContainer)
-                self.isUsingFallbackDatabase = true
-                logWarning("Using in-memory database - data will not persist", category: .dataController)
-            } catch {
-                fatalError("Unable to create any ModelContainer - app cannot function: \(error)")
+            if let container = try? ModelContainer(for: schema, configurations: [cloudConfiguration]) {
+                logInfo("ModelContainer created with CloudKit sync", category: .dataController)
+                return ContainerResult(container: container, isCloudSync: true, isFallback: false)
             }
+            logWarning("CloudKit container unavailable. Using local store.", category: .dataController)
+        } else {
+            logInfo("CloudKit disabled by configuration. Using local store.", category: .dataController)
+        }
+
+        // Local-only store.
+        let localConfiguration = ModelConfiguration(
+            schema: schema, isStoredInMemoryOnly: false, cloudKitDatabase: .none
+        )
+        if let container = try? ModelContainer(for: schema, configurations: [localConfiguration]) {
+            logInfo("ModelContainer created (local only)", category: .dataController)
+            return ContainerResult(container: container, isCloudSync: false, isFallback: false)
+        }
+
+        // Last resort: in-memory (data won't persist, but the app still runs).
+        logError("Could not create a persistent ModelContainer. Using in-memory fallback.", category: .dataController)
+        let fallbackConfiguration = ModelConfiguration(
+            schema: schema, isStoredInMemoryOnly: true, cloudKitDatabase: .none
+        )
+        do {
+            let fallbackContainer = try ModelContainer(for: schema, configurations: [fallbackConfiguration])
+            logWarning("Using in-memory database - data will not persist", category: .dataController)
+            return ContainerResult(container: fallbackContainer, isCloudSync: false, isFallback: true)
+        } catch {
+            fatalError("Unable to create any ModelContainer - app cannot function: \(error)")
         }
     }
 
@@ -339,7 +377,13 @@ final class DataController {
     /// Computes all aggregate statistics in a single pass over the flights.
     /// Prefer this over the per-dictionary helpers when a view needs several stats at once.
     func computeStats() -> FlightStats {
-        let flights = fetchFlights()
+        computeStats(from: fetchFlights())
+    }
+
+    /// Aggregates stats from an already-loaded flight array (no fetch). Views
+    /// that already hold a `@Query` of flights should pass it in to avoid a
+    /// redundant fetch.
+    func computeStats(from flights: [Flight]) -> FlightStats {
         var stats = FlightStats()
 
         for flight in flights {

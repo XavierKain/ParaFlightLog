@@ -91,17 +91,27 @@ struct StatsOverviewContent: View {
     let flights: [Flight]
     let wings: [Wing]
 
-    var body: some View {
-        // Single-pass aggregate over all flights, shared by every section below
-        let stats = dataController.computeStats()
+    @State private var stats: FlightStats?
 
+    var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                TotalStatsCard(stats: stats)
-                StatsByWingSection(stats: stats, flights: flights, wings: wings)
-                StatsBySpotSection(stats: stats, flights: flights)
+                if let stats {
+                    TotalStatsCard(stats: stats)
+                    StatsByWingSection(stats: stats, flights: flights, wings: wings)
+                    StatsBySpotSection(stats: stats, flights: flights)
+                } else {
+                    ProgressView()
+                        .padding(.top, 60)
+                }
             }
             .padding()
+        }
+        // Compute after the view is on screen (keeps the tab switch snappy) and
+        // recompute whenever the set of flights changes. Uses the already-loaded
+        // @Query flights (no redundant fetch).
+        .task(id: flights.count) {
+            stats = dataController.computeStats(from: flights)
         }
     }
 }

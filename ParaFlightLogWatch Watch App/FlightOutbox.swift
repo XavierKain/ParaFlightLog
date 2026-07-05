@@ -38,17 +38,22 @@ nonisolated final class FlightOutbox {
 
     // MARK: - API
 
-    /// Persists a flight to disk. Synchronous: when this returns, the flight
-    /// is safely on disk and the live tracking session can be cleared.
-    func add(_ dto: FlightDTO) {
+    /// Persists a flight to disk. Synchronous: when this returns `true`, the
+    /// flight is safely on disk and the live tracking session can be cleared.
+    /// On `false` (disk full, encode failure) the caller must NOT clear the
+    /// tracking session — it stays recoverable via FlightSessionManager.
+    @discardableResult
+    func add(_ dto: FlightDTO) -> Bool {
         queue.sync {
             do {
                 try FileManager.default.createDirectory(at: directoryURL, withIntermediateDirectories: true)
                 let data = try JSONEncoder().encode(dto)
                 try data.write(to: fileURL(for: dto.id), options: .atomic)
                 watchLogInfo("Flight \(dto.id.uuidString) written to outbox", category: .watchSync)
+                return true
             } catch {
                 watchLogError("Failed to write flight \(dto.id.uuidString) to outbox: \(error)", category: .watchSync)
+                return false
             }
         }
     }

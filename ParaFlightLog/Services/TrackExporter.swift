@@ -33,7 +33,9 @@ enum TrackExporter {
         }
 
         let trackName = flight.spotName ?? "Flight"
-        let timeFormatter = iso8601UTCFormatter()
+        let timeFormatter = ISO8601DateFormatter()
+        timeFormatter.formatOptions = [.withInternetDateTime]
+        timeFormatter.timeZone = TimeZone(identifier: "UTC") ?? .current
 
         var gpx = """
         <?xml version="1.0" encoding="UTF-8"?>

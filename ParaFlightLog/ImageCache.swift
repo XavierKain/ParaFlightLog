@@ -13,8 +13,9 @@ import SwiftUI
 // MARK: - Image Cache Manager
 
 /// Cache centralisé pour les images décodées (voiles, etc.)
-/// Évite de décoder les Data en UIImage à chaque rendu de cellule
-final class ImageCacheManager {
+/// Évite de décoder les Data en UIImage à chaque rendu de cellule.
+/// `nonisolated` + thread-safe NSCache so decoding can run off the main thread.
+nonisolated final class ImageCacheManager: @unchecked Sendable {
     static let shared = ImageCacheManager()
 
     // NSCache gère automatiquement la mémoire
@@ -75,6 +76,12 @@ final class ImageCacheManager {
         return finalImage
     }
 
+    /// Fast path: returns an already-decoded image from the in-memory cache only
+    /// (never decodes). Safe to call on the main thread every render.
+    func cachedOnly(key: String, targetSize: CGSize? = nil) -> UIImage? {
+        cache.object(forKey: makeCacheKey(key: key, size: targetSize))
+    }
+
     /// Invalide l'entrée de cache pour une clé donnée
     func invalidate(key: String) {
         // Invalider toutes les tailles pour cette clé
@@ -107,8 +114,9 @@ final class ImageCacheManager {
 // MARK: - UIImage Extension
 
 extension UIImage {
-    /// Redimensionne l'image à la taille cible
-    func resized(to targetSize: CGSize) -> UIImage? {
+    /// Redimensionne l'image à la taille cible.
+    /// `nonisolated` so it can run during off-main image decoding.
+    nonisolated func resized(to targetSize: CGSize) -> UIImage? {
         let widthRatio = targetSize.width / size.width
         let heightRatio = targetSize.height / size.height
         let ratio = max(widthRatio, heightRatio)
@@ -181,16 +189,19 @@ struct CachedImage: View {
             return
         }
 
-        // Charger depuis le cache ou décoder en background
-        if let cached = ImageCacheManager.shared.image(for: data, key: key, targetSize: size) {
+        // Fast path: already decoded in memory — no main-thread work.
+        if let cached = ImageCacheManager.shared.cachedOnly(key: key, targetSize: size) {
             image = cached
-        } else {
-            // Décoder en background pour les grosses images
-            Task.detached(priority: .userInitiated) {
-                let decoded = await ImageCacheManager.shared.image(for: data, key: key, targetSize: size)
-                await MainActor.run {
-                    image = decoded
-                }
+            return
+        }
+
+        // Otherwise decode + resize OFF the main thread, then publish on main.
+        // (Previously the sync decode ran on the main thread, freezing the first
+        // display of a screen full of wing photos.)
+        Task.detached(priority: .userInitiated) {
+            let decoded = ImageCacheManager.shared.image(for: data, key: key, targetSize: size)
+            await MainActor.run {
+                image = decoded
             }
         }
     }

@@ -10,7 +10,7 @@ import Foundation
 
 // MARK: - App Configuration
 
-enum AppConstants {
+nonisolated enum AppConstants {
     /// Bundle identifier used for OSLog
     static let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.xavierkain.ParaFlightLog2"
 
@@ -94,10 +94,20 @@ enum MotionConstants {
 
 // MARK: - UserDefaults Keys
 
-enum UserDefaultsKeys {
+nonisolated enum UserDefaultsKeys {
     static let watchAutoWaterLock = "watchAutoWaterLock"
     static let watchAllowSessionDismiss = "watchAllowSessionDismiss"
     static let developerModeEnabled = "developerModeEnabled"
+
+    /// Developer tool: run a simulated (fake feed) flight on the Watch
+    static let simulateFlightEnabled = "simulateFlightEnabled"
+
+    /// UUID string of the wing used for the most recent flight — used to
+    /// pre-select it wherever a wing must be picked.
+    static let lastUsedWingId = "lastUsedWingId"
+
+    /// True once the first-launch onboarding has been completed or skipped.
+    static let hasCompletedOnboarding = "hasCompletedOnboarding"
 
     /// Vario (audio variometer) enabled
     static let varioEnabled = "varioEnabled"
@@ -112,9 +122,6 @@ enum UserDefaultsKeys {
 // MARK: - Wing Library Configuration
 
 enum WingLibraryConstants {
-    /// Catalog cache validity (24 hours)
-    static let catalogCacheMaxAge: TimeInterval = 24 * 60 * 60
-
     /// Image cache validity (7 days)
     static let imageCacheMaxAge: TimeInterval = 7 * 24 * 60 * 60
 
