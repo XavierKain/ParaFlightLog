@@ -57,9 +57,10 @@ final class Wing {
     }
 
     /// Builds a thumbnail DTO (max 72x72 PNG) from a no-photo DTO + raw photo data.
-    /// Static and model-free on purpose: safe to call from a background thread
-    /// after snapshotting the photo Data on the main queue.
-    static func thumbnailDTO(from dto: WingDTO, photoData: Data?) -> WingDTO {
+    /// Static and model-free on purpose: `nonisolated` so it can run off the
+    /// main actor (Task.detached) after snapshotting the photo Data on the
+    /// main queue. UIGraphicsImageRenderer is thread-safe.
+    nonisolated static func thumbnailDTO(from dto: WingDTO, photoData: Data?) -> WingDTO {
         // No photo = no thumbnail
         guard let originalData = photoData else {
             return dto

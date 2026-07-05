@@ -6,6 +6,8 @@
 //  Each pending FlightDTO is stored as an individual JSON file in
 //  Documents/Outbox so a flight is never lost, even if the app is killed
 //  before delivery. GPS tracks can be large, hence files instead of UserDefaults.
+//  A flight is removed ONLY when the iPhone confirms the save
+//  (sendMessage reply with flightSaved == true).
 //  Target: Watch only
 //
 
@@ -13,10 +15,16 @@ import Foundation
 
 /// Thread-safe persistent store for flights pending delivery to the iPhone.
 /// A flight is added BEFORE any delivery attempt and only removed once the
-/// iPhone has acknowledged it (sendMessage reply) or the userInfo transfer
-/// completed without error. Redundant delivery is safe: the iPhone
-/// deduplicates flights by id.
-final class FlightOutbox {
+/// iPhone has confirmed the SAVE via a sendMessage reply containing
+/// flightSaved == true. Completion of a userInfo transfer is NOT enough:
+/// it only means WatchConnectivity delivered the payload, not that the
+/// iPhone persisted the flight. Redundant delivery is safe: the iPhone
+/// deduplicates flights by id and replies flightSaved == true for flights
+/// it already saved, so retries converge and the outbox drains.
+///
+/// nonisolated: safe to call from any queue (WCSession reply/error handlers
+/// run on a background queue); all file access is serialized internally.
+nonisolated final class FlightOutbox {
     static let shared = FlightOutbox()
 
     /// Serial queue guaranteeing thread-safe file access
@@ -71,7 +79,8 @@ final class FlightOutbox {
         }
     }
 
-    /// Removes a flight after confirmed delivery to the iPhone.
+    /// Removes a flight after the iPhone confirmed the save
+    /// (sendMessage reply with flightSaved == true).
     func remove(id: UUID) {
         queue.sync {
             let url = fileURL(for: id)

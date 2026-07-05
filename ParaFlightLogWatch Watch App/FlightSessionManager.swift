@@ -190,8 +190,12 @@ final class FlightSessionManager {
     private func startPeriodicSave() {
         stopPeriodicSave()
 
+        // The timer block is @Sendable and runs outside the main actor:
+        // hop to main before calling saveSession() (MainActor-isolated).
         saveTimer = Timer.scheduledTimer(withTimeInterval: saveInterval, repeats: true) { [weak self] _ in
-            self?.saveSession()
+            DispatchQueue.main.async {
+                self?.saveSession()
+            }
         }
     }
 

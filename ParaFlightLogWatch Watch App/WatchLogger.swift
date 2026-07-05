@@ -13,7 +13,8 @@ import os.log
 // MARK: - Log Categories
 
 /// Catégories de log pour filtrer dans Console.app
-enum WatchLogCategory: String {
+/// nonisolated : utilisable depuis n'importe quel contexte d'isolation
+nonisolated enum WatchLogCategory: String {
     case general = "General"
     case watchSync = "WatchSync"
     case location = "Location"
@@ -28,10 +29,12 @@ enum WatchLogCategory: String {
 /// Logger centralisé pour l'Apple Watch
 /// Les logs debug/info sont désactivés par défaut pour optimiser les performances
 /// Activer le Mode Développeur dans les réglages iPhone pour les voir
-final class WatchLogger {
+/// nonisolated : appelable depuis n'importe quelle queue (delegates WCSession,
+/// queue de FlightOutbox...) ; l'état interne est synchronisé via sa propre queue.
+nonisolated final class WatchLogger {
     static let shared = WatchLogger()
 
-    private let subsystem = "com.xavierkain.ParaFlightLog.watchkitapp"
+    private let subsystem = Bundle.main.bundleIdentifier ?? "com.xavierkain.ParaFlightLog2.watchkitapp"
 
     // Cache des loggers par catégorie pour éviter de les recréer
     private var loggers: [WatchLogCategory: Logger] = [:]
@@ -85,19 +88,21 @@ final class WatchLogger {
 }
 
 // MARK: - Global Convenience Functions
+// nonisolated pour être appelables depuis n'importe quel contexte
+// (le projet applique l'isolation MainActor par défaut).
 
-func watchLogDebug(_ message: String, category: WatchLogCategory = .general) {
+nonisolated func watchLogDebug(_ message: String, category: WatchLogCategory = .general) {
     WatchLogger.shared.debug(message, category: category)
 }
 
-func watchLogInfo(_ message: String, category: WatchLogCategory = .general) {
+nonisolated func watchLogInfo(_ message: String, category: WatchLogCategory = .general) {
     WatchLogger.shared.info(message, category: category)
 }
 
-func watchLogWarning(_ message: String, category: WatchLogCategory = .general) {
+nonisolated func watchLogWarning(_ message: String, category: WatchLogCategory = .general) {
     WatchLogger.shared.warning(message, category: category)
 }
 
-func watchLogError(_ message: String, category: WatchLogCategory = .general) {
+nonisolated func watchLogError(_ message: String, category: WatchLogCategory = .general) {
     WatchLogger.shared.error(message, category: category)
 }

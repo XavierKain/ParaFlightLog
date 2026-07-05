@@ -1104,11 +1104,10 @@ struct EditFlightView: View {
                             }
                         }
 
-                        // Remove the coordinates
+                        // Remove the coordinates (staged only; the model is
+                        // updated in saveFlight so Cancel leaves it untouched)
                         Button(role: .destructive) {
                             selectedCoordinate = nil
-                            flight.latitude = nil
-                            flight.longitude = nil
                         } label: {
                             HStack {
                                 Image(systemName: "trash")
@@ -1264,20 +1263,10 @@ struct EditFlightView: View {
                 }
                 let location = mapItem.location
 
+                // Stage the coordinates only: the model is updated (and the
+                // context saved) in saveFlight, so Cancel discards them.
                 selectedCoordinate = location.coordinate
-                flight.latitude = location.coordinate.latitude
-                flight.longitude = location.coordinate.longitude
                 geocodingMessage = "✅ Coordinates added"
-
-                Task { @MainActor in
-                    do {
-                        try modelContext.save()
-                    } catch {
-                        logError("Failed to save geocoded coordinates: \(error.localizedDescription)", category: .dataController)
-                        // No alert here: the coordinates are already shown on screen
-                        // and will be persisted the next time the flight is saved
-                    }
-                }
             }
         }
     }

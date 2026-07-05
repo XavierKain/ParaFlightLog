@@ -398,19 +398,28 @@ struct SettingsView: View {
                     importBackupFile(from: url)
                 }
             }
-            .alert(isImporting ? "Importing..." : "Result", isPresented: Binding(
-                get: { showingImportResult || isImporting },
-                set: { if !$0 { showingImportResult = false; isImporting = false } }
-            )) {
-                if !isImporting {
-                    Button("OK") { }
-                }
-            } message: {
+            .disabled(isImporting)
+            // Progress is shown as an overlay (not an alert) so the result
+            // alert below can always be presented once the import finishes.
+            .overlay {
                 if isImporting {
-                    Text("Importing data...")
-                } else {
-                    Text(importMessage)
+                    ZStack {
+                        Color.black.opacity(0.2)
+                            .ignoresSafeArea()
+                        VStack(spacing: 12) {
+                            ProgressView()
+                            Text("Importing data...")
+                                .font(.subheadline)
+                        }
+                        .padding(24)
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
+                    }
                 }
+            }
+            .alert("Result", isPresented: $showingImportResult) {
+                Button("OK") { }
+            } message: {
+                Text(importMessage)
             }
         }
     }
@@ -584,10 +593,12 @@ struct SettingsView: View {
                     onBackup: {
                         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
                             Task { @MainActor in
-                                // Snapshot models on the main actor (SwiftData requirement)
+                                // Snapshot models on the main actor (SwiftData requirement).
+                                // Cloud upload needs a single regular file (Appwrite
+                                // InputFile.fromPath), not the folder bundle.
                                 let allWings = dataController.fetchWings(includeArchived: true)
                                 let allFlights = dataController.fetchFlights()
-                                BackupManager.exportBackup(wings: allWings, flights: allFlights) { result in
+                                BackupManager.exportCloudBackup(wings: allWings, flights: allFlights) { result in
                                     continuation.resume(with: result)
                                 }
                             }

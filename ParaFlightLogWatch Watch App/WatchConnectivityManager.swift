@@ -6,7 +6,8 @@
 //  - Receives the Wings list from the iPhone
 //  - Delivers FlightDTOs to the iPhone through a persistent outbox:
 //    a flight is written to FlightOutbox first and only removed once the
-//    iPhone acknowledged it, so flights are never lost.
+//    iPhone confirmed the save (sendMessage reply with flightSaved == true),
+//    so flights are never lost.
 //  Target: Watch only
 //
 
@@ -26,6 +27,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     // Loading state to avoid re-renders while decoding
     var isLoading: Bool = true
+
+    /// Flight ids that currently have a userInfo transfer queued in WCSession.
+    /// Only used to avoid queueing ANOTHER transferUserInfo for the same
+    /// flight; it never blocks sendMessage retries. Cleared in
+    /// session(_:didFinish:error:) whether the transfer succeeded or failed.
+    /// MainActor state - only touch on the main queue.
+    private var outstandingTransferIds: Set<UUID> = []
 
     private override init() {
         super.init()
@@ -91,19 +99,16 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let pending = FlightOutbox.shared.pending()
         guard !pending.isEmpty else { return }
 
-        // Skip flights that already have a userInfo transfer queued
-        // (the system retries those on its own).
-        let queuedIds = Set(WCSession.default.outstandingUserInfoTransfers.compactMap {
-            $0.userInfo[WatchSyncKeys.flightId] as? String
-        })
-
-        for flight in pending where !queuedIds.contains(flight.id.uuidString) {
+        for flight in pending {
             deliver(flight)
         }
     }
 
     /// Delivers one flight: sendMessage with reply when the iPhone is
     /// reachable, transferUserInfo otherwise (or on sendMessage failure).
+    /// An outstanding userInfo transfer never blocks a sendMessage retry:
+    /// only removal on flightSaved == true drains the outbox, and the iPhone
+    /// deduplicates flights by id, so redundant delivery is safe.
     private func deliver(_ flight: FlightDTO) {
         guard let data = try? JSONEncoder().encode(flight) else {
             watchLogError("Failed to encode flight \(flight.id.uuidString) for delivery", category: .watchSync)
@@ -117,34 +122,69 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
         if isPhoneReachable {
             WCSession.default.sendMessage(payload, replyHandler: { reply in
+                // Background queue: FlightOutbox is nonisolated and
+                // internally synchronized, so this is safe here.
                 if reply[WatchSyncKeys.flightSaved] as? Bool == true {
                     FlightOutbox.shared.remove(id: flight.id)
                 } else {
                     watchLogWarning("iPhone reply did not confirm save for flight \(flight.id.uuidString) - kept in outbox", category: .watchSync)
                 }
-            }, errorHandler: { error in
+            }, errorHandler: { [weak self] error in
                 watchLogWarning("sendMessage failed for flight \(flight.id.uuidString): \(error.localizedDescription) - falling back to transferUserInfo", category: .watchSync)
-                WCSession.default.transferUserInfo(payload)
+                DispatchQueue.main.async {
+                    self?.queueTransferIfNeeded(id: flight.id, payload: payload)
+                }
             })
         } else {
-            // Not reachable: queue a background transfer, confirmed (and
-            // removed from the outbox) in didFinish userInfoTransfer.
-            WCSession.default.transferUserInfo(payload)
+            // Not reachable: queue a background transfer. Completion of the
+            // transfer only means WC delivered the payload - the flight stays
+            // in the outbox until a sendMessage reply confirms the save.
+            queueTransferIfNeeded(id: flight.id, payload: payload)
         }
     }
 
+    /// Queues a transferUserInfo for the flight unless one is already
+    /// outstanding (either tracked in this run or persisted by WCSession
+    /// across relaunches). The system retries queued transfers on its own.
+    private func queueTransferIfNeeded(id: UUID, payload: [String: Any]) {
+        guard !outstandingTransferIds.contains(id) else { return }
+
+        let alreadyQueued = WCSession.default.outstandingUserInfoTransfers.contains {
+            $0.userInfo[WatchSyncKeys.flightId] as? String == id.uuidString
+        }
+        guard !alreadyQueued else {
+            outstandingTransferIds.insert(id)
+            return
+        }
+
+        outstandingTransferIds.insert(id)
+        WCSession.default.transferUserInfo(payload)
+    }
+
     /// Called when a queued userInfo transfer completes (or fails).
-    func session(_ session: WCSession, didFinish userInfoTransfer: WCSessionUserInfoTransfer, error: Error?) {
+    /// Completion only means WatchConnectivity delivered the payload, NOT
+    /// that the iPhone saved the flight - so the flight is never removed
+    /// from the outbox here. We only clear the "outstanding transfer" flag
+    /// (on success and on failure alike) so a later retryPendingFlights()
+    /// can re-attempt delivery. Removal happens exclusively on a sendMessage
+    /// reply with flightSaved == true (see deliver(_:)).
+    nonisolated func session(_ session: WCSession, didFinish userInfoTransfer: WCSessionUserInfoTransfer, error: Error?) {
         guard let idString = userInfoTransfer.userInfo[WatchSyncKeys.flightId] as? String,
               let id = UUID(uuidString: idString) else {
             return
         }
 
-        if let error = error {
-            // Keep the flight in the outbox; it will be retried later.
-            watchLogWarning("userInfo transfer failed for flight \(idString): \(error.localizedDescription) - kept in outbox", category: .watchSync)
-        } else {
-            FlightOutbox.shared.remove(id: id)
+        let errorDescription = error?.localizedDescription
+
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.outstandingTransferIds.remove(id)
+
+            if let errorDescription = errorDescription {
+                watchLogWarning("userInfo transfer failed for flight \(idString): \(errorDescription) - kept in outbox for retry", category: .watchSync)
+            } else {
+                watchLogInfo("userInfo transfer delivered for flight \(idString) - kept in outbox until the iPhone confirms the save", category: .watchSync)
+            }
         }
     }
 
@@ -159,56 +199,76 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
     // MARK: - WCSessionDelegate
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+    // WCSession delegate callbacks arrive on a background queue, so they are
+    // nonisolated and hop to the main queue before touching @Observable state.
+
+    nonisolated func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         if let error = error {
             watchLogError("WCSession activation failed: \(error.localizedDescription)", category: .watchSync)
             return
         }
 
-        sessionActivated = (activationState == .activated)
-        isPhoneReachable = session.isReachable
+        // receivedApplicationContext is the dict the iPhone last SENT to us
+        // (applicationContext would be what this device sent - empty here),
+        // so wings/settings pushed while the watch app was dead are restored.
+        let reachable = session.isReachable
+        let context = session.receivedApplicationContext
 
-        if activationState == .activated {
-            // Try to process the last available context
-            let context = session.applicationContext
-            if !context.isEmpty {
-                watchLogInfo("Processing applicationContext on activation (\(context.keys.count) keys)", category: .watchSync)
-                processReceivedContext(context)
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            self.sessionActivated = (activationState == .activated)
+            self.isPhoneReachable = reachable
+
+            if activationState == .activated {
+                // Try to process the last received context
+                if !context.isEmpty {
+                    watchLogInfo("Processing receivedApplicationContext on activation (\(context.keys.count) keys)", category: .watchSync)
+                    self.processReceivedContext(context)
+                }
+
+                // Always ask the iPhone for a fresh update to catch deletions etc.
+                if self.isPhoneReachable {
+                    watchLogInfo("Requesting fresh wings from iPhone", category: .watchSync)
+                    self.requestWingsFromPhone()
+                }
+
+                // Deliver any flight left over from a previous run
+                self.retryPendingFlights()
             }
-
-            // Always ask the iPhone for a fresh update to catch deletions etc.
-            if isPhoneReachable {
-                watchLogInfo("Requesting fresh wings from iPhone", category: .watchSync)
-                requestWingsFromPhone()
-            }
-
-            // Deliver any flight left over from a previous run
-            retryPendingFlights()
         }
     }
 
-    func sessionReachabilityDidChange(_ session: WCSession) {
-        let wasReachable = isPhoneReachable
-        isPhoneReachable = session.isReachable
+    nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        let reachable = session.isReachable
 
-        // When the iPhone becomes reachable, refresh the wings and flush the outbox
-        if !wasReachable && isPhoneReachable {
-            watchLogInfo("iPhone became reachable, requesting wings sync", category: .watchSync)
-            requestWingsFromPhone()
-            retryPendingFlights()
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            let wasReachable = self.isPhoneReachable
+            self.isPhoneReachable = reachable
+
+            // When the iPhone becomes reachable, refresh the wings and flush the outbox
+            if !wasReachable && reachable {
+                watchLogInfo("iPhone became reachable, requesting wings sync", category: .watchSync)
+                self.requestWingsFromPhone()
+                self.retryPendingFlights()
+            }
         }
     }
 
     // MARK: - Receive Wings from iPhone
 
     /// Receives the updated context from the iPhone (Wings list)
-    func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
-        processReceivedContext(applicationContext)
+    nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
+        DispatchQueue.main.async { [weak self] in
+            self?.processReceivedContext(applicationContext)
+        }
     }
 
     /// Receives data via transferUserInfo (alternative path)
-    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
-        processReceivedContext(userInfo)
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any]) {
+        DispatchQueue.main.async { [weak self] in
+            self?.processReceivedContext(userInfo)
+        }
     }
 
     /// Processes a received context (Wings and settings extraction)

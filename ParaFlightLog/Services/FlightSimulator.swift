@@ -101,8 +101,13 @@ final class FlightSimulator {
         // Initial fix at the takeoff
         currentLocation = makeLocation(east: 0, north: 0, course: 90, speed: 0)
 
+        // The timer closure is @Sendable: hop to the main actor before
+        // touching MainActor-isolated state in tick().
         timer = Timer.scheduledTimer(withTimeInterval: tickInterval, repeats: true) { [weak self] _ in
-            self?.tick()
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.tick()
+            }
         }
 
         logInfo("Flight simulator started at \(baseCoordinate.latitude), \(baseCoordinate.longitude)", category: .flight)

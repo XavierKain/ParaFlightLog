@@ -2,9 +2,11 @@
 //  Logger.swift
 //  ParaFlightLog
 //
-//  Système de logging centralisé basé sur OSLog
-//  Remplace les print() pour un meilleur contrôle et des performances optimales
-//  Target: iOS + Watch (shared)
+//  Centralized OSLog-based logging.
+//  Nonisolated on purpose: log calls happen from background queues
+//  (WatchConnectivity callbacks, backup parsing, image resize) as well as
+//  the main actor, and os.Logger is thread-safe.
+//  Target: iOS
 //
 
 import Foundation
@@ -12,8 +14,8 @@ import os.log
 
 // MARK: - Log Categories
 
-/// Catégories de log pour filtrer dans Console.app
-enum LogCategory: String {
+/// Log categories for filtering in Console.app
+nonisolated enum LogCategory: String {
     case general = "General"
     case watchSync = "WatchSync"
     case dataController = "DataController"
@@ -28,102 +30,86 @@ enum LogCategory: String {
 
 // MARK: - App Logger
 
-/// Logger centralisé pour l'application
+/// Centralized application logger.
 /// Usage: AppLogger.shared.info("Message", category: .watchSync)
-final class AppLogger {
+nonisolated final class AppLogger: @unchecked Sendable {
     static let shared = AppLogger()
 
     private let subsystem = AppConstants.bundleIdentifier
 
-    // Cache des loggers par catégorie pour éviter de les recréer
+    // Logger cache, guarded by `queue` for both reads and writes.
     private var loggers: [LogCategory: Logger] = [:]
-    private let queue = DispatchQueue(label: "com.xavierkain.ParaFlightLog.logger")
+    private let queue = DispatchQueue(label: "com.xavierkain.ParaFlightLog2.logger")
 
-    /// Mode développeur : si false, seuls les logs error/critical sont émis
-    /// Ceci améliore les performances en production
+    /// Developer mode: when false, only warning/error/critical logs are emitted.
     var isDeveloperModeEnabled: Bool {
         UserDefaults.standard.bool(forKey: UserDefaultsKeys.developerModeEnabled)
     }
 
     private init() {}
 
-    /// Récupère ou crée un logger pour une catégorie donnée
+    /// Gets or creates the logger for a category (thread-safe).
     private func logger(for category: LogCategory) -> Logger {
-        if let existing = loggers[category] {
-            return existing
-        }
-
-        let newLogger = Logger(subsystem: subsystem, category: category.rawValue)
         queue.sync {
+            if let existing = loggers[category] {
+                return existing
+            }
+            let newLogger = Logger(subsystem: subsystem, category: category.rawValue)
             loggers[category] = newLogger
+            return newLogger
         }
-        return newLogger
     }
 
     // MARK: - Log Methods
 
-    /// Log de niveau debug (visible uniquement en mode développeur)
+    /// Debug level (developer mode only)
     func debug(_ message: String, category: LogCategory = .general) {
         guard isDeveloperModeEnabled else { return }
         logger(for: category).debug("\(message, privacy: .public)")
     }
 
-    /// Log de niveau info (visible uniquement en mode développeur)
+    /// Info level (developer mode only)
     func info(_ message: String, category: LogCategory = .general) {
         guard isDeveloperModeEnabled else { return }
         logger(for: category).info("\(message, privacy: .public)")
     }
 
-    /// Log de niveau notice (visible uniquement en mode développeur)
+    /// Notice level (developer mode only)
     func notice(_ message: String, category: LogCategory = .general) {
         guard isDeveloperModeEnabled else { return }
         logger(for: category).notice("\(message, privacy: .public)")
     }
 
-    /// Log de niveau warning (toujours actif - problèmes potentiels)
+    /// Warning level (always on — potential problems)
     func warning(_ message: String, category: LogCategory = .general) {
         logger(for: category).warning("\(message, privacy: .public)")
     }
 
-    /// Log de niveau error (toujours actif - erreurs récupérables)
+    /// Error level (always on — recoverable errors)
     func error(_ message: String, category: LogCategory = .general) {
         logger(for: category).error("\(message, privacy: .public)")
     }
 
-    /// Log de niveau critical (toujours actif - erreurs critiques)
+    /// Critical level (always on — critical failures)
     func critical(_ message: String, category: LogCategory = .general) {
         logger(for: category).critical("\(message, privacy: .public)")
-    }
-
-    // MARK: - Convenience Methods
-
-    /// Log avec emoji pour compatibilité visuelle (à utiliser temporairement pendant la migration)
-    func legacy(_ message: String, category: LogCategory = .general) {
-        // En debug, on garde le comportement print pour la compatibilité
-        #if DEBUG
-        print(message)
-        #endif
-        // On log aussi dans OSLog pour la transition
-        logger(for: category).info("\(message, privacy: .public)")
     }
 }
 
 // MARK: - Global Convenience Functions
 
-/// Fonctions globales pour faciliter l'usage (optionnel, pour une migration progressive)
-
-func logDebug(_ message: String, category: LogCategory = .general) {
+nonisolated func logDebug(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.debug(message, category: category)
 }
 
-func logInfo(_ message: String, category: LogCategory = .general) {
+nonisolated func logInfo(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.info(message, category: category)
 }
 
-func logWarning(_ message: String, category: LogCategory = .general) {
+nonisolated func logWarning(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.warning(message, category: category)
 }
 
-func logError(_ message: String, category: LogCategory = .general) {
+nonisolated func logError(_ message: String, category: LogCategory = .general) {
     AppLogger.shared.error(message, category: category)
 }

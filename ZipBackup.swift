@@ -12,6 +12,11 @@
 //  Users have real historical backups in this format, so the v1 parser is kept
 //  and hardened: it never crashes on malformed rows, it skips and counts them.
 //
+//  Cloud format (single file): `ParaFlightLog-backup.paraflightlogx`, a flat
+//  JSON document with the same v2 manifest structure plus an `images` dict
+//  (wingId -> base64 JPEG). Appwrite Storage needs a single regular file, so
+//  the folder bundle cannot be uploaded as-is. Import auto-detects it.
+//
 //  NOTE: the filename ZipBackup.swift is kept so the Xcode project reference
 //  stays valid; the type is BackupManager.
 //
@@ -22,7 +27,8 @@ import SwiftData
 // MARK: - Backup v2 Manifest
 
 /// Wing snapshot in backup.json (all fields, photo stored separately in images/)
-struct BackupWing: Codable {
+/// Pure value type: `nonisolated` so it can be encoded/decoded off the main actor.
+nonisolated struct BackupWing: Codable {
     let id: UUID
     let name: String
     let brand: String?
@@ -37,7 +43,8 @@ struct BackupWing: Codable {
 }
 
 /// Flight snapshot in backup.json (all fields, including the full GPS track)
-struct BackupFlight: Codable {
+/// Pure value type: `nonisolated` so it can be encoded/decoded off the main actor.
+nonisolated struct BackupFlight: Codable {
     let id: UUID
     let wingId: UUID?
     let startDate: Date
@@ -59,7 +66,8 @@ struct BackupFlight: Codable {
 }
 
 /// Single JSON manifest written to backup.json
-struct BackupManifest: Codable {
+/// Pure value type: `nonisolated` so it can be encoded/decoded off the main actor.
+nonisolated struct BackupManifest: Codable {
     let formatVersion: Int
     let exportDate: Date
     let appVersion: String
@@ -67,6 +75,36 @@ struct BackupManifest: Codable {
     let flights: [BackupFlight]
 
     static let currentFormatVersion = 2
+}
+
+/// Single-file cloud backup: the v2 manifest JSON at the top level PLUS an
+/// `images` dict (wingId uuidString -> base64 JPEG). Custom Codable so the
+/// on-disk JSON is literally the manifest structure with one extra key;
+/// the folder bundle format is untouched.
+nonisolated struct CloudBackupFile: Codable {
+    let manifest: BackupManifest
+    let images: [String: String]
+
+    init(manifest: BackupManifest, images: [String: String]) {
+        self.manifest = manifest
+        self.images = images
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case images
+    }
+
+    init(from decoder: Decoder) throws {
+        manifest = try BackupManifest(from: decoder)
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        images = try container.decodeIfPresent([String: String].self, forKey: .images) ?? [:]
+    }
+
+    func encode(to encoder: Encoder) throws {
+        try manifest.encode(to: encoder)
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(images, forKey: .images)
+    }
 }
 
 // MARK: - Import Types
@@ -110,7 +148,7 @@ enum BackupError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unrecognizedFormat:
-            return "This folder is not a recognized ParaFlightLog backup (no backup.json or wings.csv/flights.csv found)."
+            return "This is not a recognized ParaFlightLog backup: expected a .paraflightlog folder bundle (backup.json or wings.csv/flights.csv) or a single-file cloud backup (.paraflightlogx)."
         case .invalidManifest(let detail):
             return "The backup file is damaged: \(detail)"
         case .exportFailed(let detail):
@@ -135,6 +173,87 @@ enum BackupManager {
     static func exportBackup(wings: [Wing], flights: [Flight], completion: @escaping (Result<URL, Error>) -> Void) {
         // Capture everything we need from the models on the calling (main) thread:
         // SwiftData models must not be touched from a background queue.
+        let (manifest, photosByWingId) = makeManifestSnapshot(wings: wings, flights: flights)
+
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                let bundleName = "ParaFlightLog_Backup_\(formatDateForFilename(Date())).paraflightlog"
+                let bundleURL = FileManager.default.temporaryDirectory.appendingPathComponent(bundleName)
+
+                // Remove any previous bundle with the same name
+                try? FileManager.default.removeItem(at: bundleURL)
+                try FileManager.default.createDirectory(at: bundleURL, withIntermediateDirectories: true)
+
+                // 1. backup.json (ISO 8601 dates, sorted keys for determinism)
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+                let manifestData = try encoder.encode(manifest)
+                try manifestData.write(to: bundleURL.appendingPathComponent("backup.json"))
+
+                // 2. images/<wingId>.jpg (manifest.wings is sorted -> deterministic)
+                let imagesDir = bundleURL.appendingPathComponent("images")
+                try FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
+                for wing in manifest.wings {
+                    guard let filename = wing.photoFilename, let data = photosByWingId[wing.id] else { continue }
+                    try data.write(to: imagesDir.appendingPathComponent(filename))
+                }
+
+                DispatchQueue.main.async {
+                    completion(.success(bundleURL))
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(BackupError.exportFailed(error.localizedDescription)))
+                }
+            }
+        }
+    }
+
+    /// Exports all data as a SINGLE regular file suitable for cloud upload
+    /// (`ParaFlightLog-backup.paraflightlogx`): a flat JSON document with the
+    /// same v2 manifest structure plus an `images` dict (wingId -> base64 JPEG).
+    /// Appwrite's `InputFile.fromPath` requires a regular file, so the folder
+    /// bundle produced by `exportBackup` cannot be uploaded directly.
+    /// - Parameters:
+    ///   - wings: wings to export
+    ///   - flights: flights to export
+    ///   - completion: callback on the main queue with the file URL (or error)
+    static func exportCloudBackup(wings: [Wing], flights: [Flight], completion: @escaping (Result<URL, Error>) -> Void) {
+        // Snapshot the models on the calling (main) thread, encode/write off-main.
+        let (manifest, photosByWingId) = makeManifestSnapshot(wings: wings, flights: flights)
+
+        DispatchQueue.global(qos: .utility).async {
+            do {
+                let images: [String: String] = photosByWingId.reduce(into: [:]) { dict, entry in
+                    dict[entry.key.uuidString] = entry.value.base64EncodedString()
+                }
+                let file = CloudBackupFile(manifest: manifest, images: images)
+
+                let encoder = JSONEncoder()
+                encoder.dateEncodingStrategy = .iso8601
+                encoder.outputFormatting = [.sortedKeys]
+                let data = try encoder.encode(file)
+
+                let fileURL = FileManager.default.temporaryDirectory
+                    .appendingPathComponent("ParaFlightLog-backup.paraflightlogx")
+                try? FileManager.default.removeItem(at: fileURL)
+                try data.write(to: fileURL, options: .atomic)
+
+                DispatchQueue.main.async {
+                    completion(.success(fileURL))
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    completion(.failure(BackupError.exportFailed(error.localizedDescription)))
+                }
+            }
+        }
+    }
+
+    /// Snapshots the SwiftData models into a v2 manifest + wingId -> photo data map.
+    /// Must run on the main actor: models must not be touched from a background queue.
+    private static func makeManifestSnapshot(wings: [Wing], flights: [Flight]) -> (manifest: BackupManifest, photosByWingId: [UUID: Data]) {
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
 
         let backupWings: [(wing: BackupWing, photoData: Data?)] = wings
@@ -189,50 +308,20 @@ enum BackupManager {
             flights: backupFlights
         )
 
-        let photosByFilename: [String: Data] = backupWings.reduce(into: [:]) { dict, entry in
-            if let filename = entry.wing.photoFilename, let data = entry.photoData {
-                dict[filename] = data
+        let photosByWingId: [UUID: Data] = backupWings.reduce(into: [:]) { dict, entry in
+            if entry.wing.photoFilename != nil, let data = entry.photoData {
+                dict[entry.wing.id] = data
             }
         }
 
-        DispatchQueue.global(qos: .utility).async {
-            do {
-                let bundleName = "ParaFlightLog_Backup_\(formatDateForFilename(Date())).paraflightlog"
-                let bundleURL = FileManager.default.temporaryDirectory.appendingPathComponent(bundleName)
-
-                // Remove any previous bundle with the same name
-                try? FileManager.default.removeItem(at: bundleURL)
-                try FileManager.default.createDirectory(at: bundleURL, withIntermediateDirectories: true)
-
-                // 1. backup.json (ISO 8601 dates, sorted keys for determinism)
-                let encoder = JSONEncoder()
-                encoder.dateEncodingStrategy = .iso8601
-                encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-                let manifestData = try encoder.encode(manifest)
-                try manifestData.write(to: bundleURL.appendingPathComponent("backup.json"))
-
-                // 2. images/<wingId>.jpg
-                let imagesDir = bundleURL.appendingPathComponent("images")
-                try FileManager.default.createDirectory(at: imagesDir, withIntermediateDirectories: true)
-                for (filename, data) in photosByFilename.sorted(by: { $0.key < $1.key }) {
-                    try data.write(to: imagesDir.appendingPathComponent(filename))
-                }
-
-                DispatchQueue.main.async {
-                    completion(.success(bundleURL))
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    completion(.failure(BackupError.exportFailed(error.localizedDescription)))
-                }
-            }
-        }
+        return (manifest, photosByWingId)
     }
 
-    // MARK: - Import (auto-detects v2 / v1)
+    // MARK: - Import (auto-detects single-file cloud / v2 / v1)
 
-    /// Imports a `.paraflightlog` folder bundle.
-    /// Auto-detects the format: v2 = backup.json present, v1 legacy = wings.csv/flights.csv.
+    /// Imports a backup: a `.paraflightlog` folder bundle or a single-file cloud backup.
+    /// Auto-detects the format: regular file = single-file cloud JSON,
+    /// v2 = backup.json present, v1 legacy = wings.csv/flights.csv.
     /// - Parameters:
     ///   - url: backup bundle URL
     ///   - dataController: destination store
@@ -258,7 +347,13 @@ enum BackupManager {
                 let manifestURL = url.appendingPathComponent("backup.json")
                 let wingsCSVURL = url.appendingPathComponent("wings.csv")
 
-                if FileManager.default.fileExists(atPath: manifestURL.path) {
+                var isDirectory: ObjCBool = false
+                let exists = FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory)
+
+                if exists && !isDirectory.boolValue {
+                    // Regular file: single-file cloud backup (manifest + base64 images)
+                    parsed = try parseSingleFile(fileURL: url)
+                } else if FileManager.default.fileExists(atPath: manifestURL.path) {
                     parsed = try parseV2(bundleURL: url)
                 } else if FileManager.default.fileExists(atPath: wingsCSVURL.path) {
                     parsed = try parseV1(bundleURL: url)
@@ -285,17 +380,54 @@ enum BackupManager {
 
     // MARK: - Parsed intermediate representation
 
-    /// Fully parsed backup, validated before any database mutation
-    private struct ParsedBackup {
+    /// Fully parsed backup, validated before any database mutation.
+    /// Pure value type: `nonisolated` so parsing can run off the main actor.
+    private nonisolated struct ParsedBackup {
         var wings: [BackupWing]
         var flights: [BackupFlight]
         var photosByWingId: [UUID: Data]
         var skippedMalformed: Int
     }
 
+    // MARK: - Single-file (cloud) Parsing
+
+    /// Parses a single-file cloud backup: v2 manifest JSON + inline base64 images.
+    /// Pure file/parse helper: `nonisolated`, runs on the import utility queue.
+    private nonisolated static func parseSingleFile(fileURL: URL) throws -> ParsedBackup {
+        let fileData = try Data(contentsOf: fileURL)
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+
+        let file: CloudBackupFile
+        do {
+            file = try decoder.decode(CloudBackupFile.self, from: fileData)
+        } catch {
+            throw BackupError.invalidManifest(error.localizedDescription)
+        }
+
+        logInfo("Importing single-file v\(file.manifest.formatVersion) cloud backup from \(file.manifest.exportDate): \(file.manifest.wings.count) wings, \(file.manifest.flights.count) flights", category: .dataImport)
+
+        // Decode the inline base64 photos
+        var photos: [UUID: Data] = [:]
+        for (key, base64) in file.images {
+            guard let wingId = UUID(uuidString: key),
+                  let photoData = Data(base64Encoded: base64) else { continue }
+            photos[wingId] = photoData
+        }
+
+        return ParsedBackup(
+            wings: file.manifest.wings,
+            flights: file.manifest.flights,
+            photosByWingId: photos,
+            skippedMalformed: 0
+        )
+    }
+
     // MARK: - v2 Parsing
 
-    private static func parseV2(bundleURL: URL) throws -> ParsedBackup {
+    /// Pure file/parse helper: `nonisolated`, runs on the import utility queue.
+    private nonisolated static func parseV2(bundleURL: URL) throws -> ParsedBackup {
         let manifestData = try Data(contentsOf: bundleURL.appendingPathComponent("backup.json"))
 
         let decoder = JSONDecoder()
@@ -335,7 +467,8 @@ enum BackupManager {
     /// Robust by design: malformed rows are skipped and counted, never a crash.
     /// Note: v1 export replaced "," with ";" inside values, so values may
     /// contain ";" where the original text had a comma - they are kept as-is.
-    private static func parseV1(bundleURL: URL) throws -> ParsedBackup {
+    /// Pure file/parse helper: `nonisolated`, runs on the import utility queue.
+    private nonisolated static func parseV1(bundleURL: URL) throws -> ParsedBackup {
         // v1 dates were written as "dd/MM/yyyy HH:mm" in the device's timezone
         let dateFormatter = DateFormatter()
         dateFormatter.locale = Locale(identifier: "en_US_POSIX")
@@ -554,8 +687,9 @@ enum BackupManager {
 
     // MARK: - Helpers
 
-    /// Minimal CSV row parser handling basic double-quoted fields (v1 legacy)
-    private static func parseCSVRow(_ row: String) -> [String] {
+    /// Minimal CSV row parser handling basic double-quoted fields (v1 legacy).
+    /// Pure parse helper: `nonisolated`, safe off the main actor.
+    private nonisolated static func parseCSVRow(_ row: String) -> [String] {
         var result: [String] = []
         var currentField = ""
         var inQuotes = false
@@ -575,7 +709,8 @@ enum BackupManager {
         return result
     }
 
-    private static func formatDateForFilename(_ date: Date) -> String {
+    /// Pure format helper: `nonisolated`, called from the export utility queue.
+    private nonisolated static func formatDateForFilename(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd_HHmm"

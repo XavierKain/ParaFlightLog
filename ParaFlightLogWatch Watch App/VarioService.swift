@@ -61,15 +61,23 @@ final class VarioService {
 
         let altimeter = CMAltimeter()
         self.altimeter = altimeter
+        // The handler closure is @Sendable: extract the plain values, then hop
+        // to the main actor before touching @Observable/MainActor state.
         altimeter.startRelativeAltitudeUpdates(to: .main) { [weak self] data, error in
-            guard let self = self, let data = data, error == nil else { return }
-            self.process(relativeAltitude: data.relativeAltitude.doubleValue,
-                         timestamp: data.timestamp)
+            guard let data = data, error == nil else { return }
+            let relativeAltitude = data.relativeAltitude.doubleValue
+            let timestamp = data.timestamp
+            DispatchQueue.main.async {
+                self?.process(relativeAltitude: relativeAltitude, timestamp: timestamp)
+            }
         }
 
-        // Small tick timer that decides when to play the next haptic
+        // Small tick timer that decides when to play the next haptic.
+        // The timer block is @Sendable: hop to main before calling hapticTick().
         let timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
-            self?.hapticTick()
+            DispatchQueue.main.async {
+                self?.hapticTick()
+            }
         }
         hapticTimer = timer
 

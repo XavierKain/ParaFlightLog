@@ -20,6 +20,7 @@ import Foundation
 import CoreMotion
 import AVFoundation
 import UIKit
+import os
 
 @Observable
 final class PhoneVarioService {
@@ -99,16 +100,25 @@ final class PhoneVarioService {
         if mode == .altimeter {
             let altimeter = CMAltimeter()
             self.altimeter = altimeter
+            // The handler is a @Sendable callback: extract plain values, then
+            // hop to the main actor before touching MainActor state.
             altimeter.startRelativeAltitudeUpdates(to: .main) { [weak self] data, error in
                 guard let self = self, let data = data, error == nil else { return }
-                self.process(relativeAltitude: data.relativeAltitude.doubleValue,
-                             timestamp: data.timestamp)
+                let relativeAltitude = data.relativeAltitude.doubleValue
+                let timestamp = data.timestamp
+                Task { @MainActor in
+                    self.process(relativeAltitude: relativeAltitude, timestamp: timestamp)
+                }
             }
         }
 
-        // Small tick timer that schedules beeps and the tone envelope
+        // Small tick timer that schedules beeps and the tone envelope.
+        // The timer closure is @Sendable: hop to the main actor explicitly.
         beepTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            self?.beepTick()
+            guard let self = self else { return }
+            Task { @MainActor in
+                self.beepTick()
+            }
         }
 
         logInfo("Phone vario started (mode: \(mode == .altimeter ? "altimeter" : "manual"))", category: .flight)
@@ -262,14 +272,36 @@ final class PhoneVarioService {
 // MARK: - ToneGenerator
 
 /// Simple sine wave generator shared with the audio render thread.
-/// `frequency` and `targetAmplitude` are written from the main thread and
-/// read on the render thread; the amplitude is ramped per-sample to avoid
-/// clicks at beep boundaries.
-private final class ToneGenerator {
+/// `nonisolated`: the render callback runs on the realtime audio thread, so
+/// this class must not be MainActor-isolated. `frequency` and `targetAmplitude`
+/// are written from the main thread and read on the render thread through a
+/// single `OSAllocatedUnfairLock` (both values read in one lock acquisition;
+/// no allocation in the render path). The amplitude is ramped per-sample to
+/// avoid clicks at beep boundaries.
+private nonisolated final class ToneGenerator: @unchecked Sendable {
     let sampleRate: Double
-    var frequency: Double = 700.0
-    var targetAmplitude: Float = 0.0
 
+    /// Control values shared between the main thread (writer) and the
+    /// realtime render thread (reader). Pure value type: `nonisolated` so it
+    /// can be mutated under the lock from any thread.
+    private nonisolated struct Controls {
+        var frequency: Double = 700.0
+        var targetAmplitude: Float = 0.0
+    }
+
+    private let controls = OSAllocatedUnfairLock(initialState: Controls())
+
+    var frequency: Double {
+        get { controls.withLock { $0.frequency } }
+        set { controls.withLock { $0.frequency = newValue } }
+    }
+
+    var targetAmplitude: Float {
+        get { controls.withLock { $0.targetAmplitude } }
+        set { controls.withLock { $0.targetAmplitude = newValue } }
+    }
+
+    // Render-thread-only state (never touched from any other thread)
     private var currentAmplitude: Float = 0.0
     private var phase: Double = 0.0
 
@@ -279,10 +311,11 @@ private final class ToneGenerator {
 
     func render(bufferList: UnsafeMutablePointer<AudioBufferList>, frameCount: AVAudioFrameCount) {
         let buffers = UnsafeMutableAudioBufferListPointer(bufferList)
+        // Read both control values in a single lock acquisition
+        let (frequency, target) = controls.withLock { ($0.frequency, $0.targetAmplitude) }
         let phaseIncrement = 2.0 * Double.pi * frequency / sampleRate
         // ~5 ms attack/release ramp
         let ramp = Float(1.0 / (0.005 * sampleRate))
-        let target = targetAmplitude
 
         for frame in 0..<Int(frameCount) {
             if currentAmplitude < target {
