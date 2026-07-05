@@ -14,6 +14,7 @@ nonisolated enum FlightType: String, Codable, CaseIterable, Identifiable {
     case soaring = "Soaring"
     case thermal = "Thermal"
     case airSurfing = "Air Surfing"
+    case speedflying = "Speedflying"
     case groundHandling = "Ground Handling"
     case other = "Other"
 
@@ -25,6 +26,7 @@ nonisolated enum FlightType: String, Codable, CaseIterable, Identifiable {
         case .soaring: return "wind"
         case .thermal: return "sun.max"
         case .airSurfing: return "figure.surfing"
+        case .speedflying: return "hare.fill"
         case .groundHandling: return "figure.walk"
         case .other: return "questionmark.circle"
         }
@@ -36,6 +38,7 @@ nonisolated enum FlightType: String, Codable, CaseIterable, Identifiable {
         case .soaring: return "Ridge / dynamic lift"
         case .thermal: return "Climbing in thermals"
         case .airSurfing: return "Speed riding / acro"
+        case .speedflying: return "Small wing, fast descents"
         case .groundHandling: return "Kiting on the ground"
         case .other: return "Anything else"
         }
