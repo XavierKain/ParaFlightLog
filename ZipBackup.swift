@@ -123,6 +123,7 @@ struct ImportSummary {
     var skippedDuplicates: Int = 0
     var skippedMalformed: Int = 0
     var gpsTracksImported: Int = 0
+    var flightTypesFilled: Int = 0
 
     /// Human-readable English summary for the UI
     var message: String {
@@ -133,6 +134,9 @@ struct ImportSummary {
         ]
         if gpsTracksImported > 0 {
             lines.append("GPS tracks restored: \(gpsTracksImported)")
+        }
+        if flightTypesFilled > 0 {
+            lines.append("Flight types filled on existing flights: \(flightTypesFilled)")
         }
         if skippedDuplicates > 0 {
             lines.append("Skipped duplicates: \(skippedDuplicates)")
@@ -654,12 +658,17 @@ enum BackupManager {
             try modelContext.save()
         }
 
-        // Existing ids for merge deduplication
+        // Existing entities for merge deduplication (flights kept as a dict so
+        // duplicates can still be ENRICHED — e.g. a type edited in the CSV on
+        // a computer fills the local flight's missing type on reimport)
         var existingWingIds = Set<UUID>()
-        var existingFlightIds = Set<UUID>()
+        var existingFlightsById: [UUID: Flight] = [:]
         if mode == .merge {
             existingWingIds = Set(dataController.fetchWings(includeArchived: true).map(\.id))
-            existingFlightIds = Set(dataController.fetchFlights().map(\.id))
+            existingFlightsById = Dictionary(
+                dataController.fetchFlights().map { ($0.id, $0) },
+                uniquingKeysWith: { first, _ in first }
+            )
         }
 
         // Wings
@@ -693,7 +702,14 @@ enum BackupManager {
 
         // Flights
         for backupFlight in parsed.flights {
-            if existingFlightIds.contains(backupFlight.id) {
+            if let existing = existingFlightsById[backupFlight.id] {
+                // Duplicate — but fill a missing flight type from the backup
+                // (lets you categorize in a spreadsheet and reimport).
+                if (existing.flightType?.isEmpty ?? true),
+                   let type = backupFlight.flightType, !type.isEmpty {
+                    existing.flightType = type
+                    summary.flightTypesFilled += 1
+                }
                 summary.skippedDuplicates += 1
                 continue
             }

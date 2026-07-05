@@ -75,6 +75,7 @@ struct FlightsView: View {
 
     @State private var showingFlightDetail: Flight?
     @State private var showingAddFlight = false
+    @State private var showingCategorize = false
     @State private var editingFlight: Flight?
 
     // Optional flight-type filter (nil = all)
@@ -247,7 +248,13 @@ struct FlightsView: View {
                     .tint(.green)
                 }
 
-                ToolbarItem(placement: .primaryAction) {
+                ToolbarItemGroup(placement: .primaryAction) {
+                    Button {
+                        showingCategorize = true
+                    } label: {
+                        Label("Categorize Flights", systemImage: "tag")
+                    }
+
                     Button {
                         showingAddFlight = true
                     } label: {
@@ -261,6 +268,9 @@ struct FlightsView: View {
         }
         .sheet(isPresented: $showingAddFlight) {
             AddFlightView()
+        }
+        .sheet(isPresented: $showingCategorize) {
+            CategorizeFlightsView()
         }
         .sheet(item: $editingFlight) { flight in
             EditFlightView(flight: flight)

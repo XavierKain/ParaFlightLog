@@ -372,6 +372,23 @@ final class DataController {
         saveContext()
     }
 
+    /// Bulk-assigns a flight type (nil clears it). One save for the whole batch.
+    /// - Returns: the number of flights actually changed.
+    @discardableResult
+    func setFlightType(_ type: FlightType?, for flights: [Flight]) -> Int {
+        let newValue = type?.rawValue
+        var changed = 0
+        for flight in flights where flight.flightType != newValue {
+            flight.flightType = newValue
+            changed += 1
+        }
+        if changed > 0 {
+            saveContext()
+            logInfo("Bulk flight-type update: \(changed) flights set to \(newValue ?? "none")", category: .flight)
+        }
+        return changed
+    }
+
     // MARK: - Stats
 
     /// Computes all aggregate statistics in a single pass over the flights.

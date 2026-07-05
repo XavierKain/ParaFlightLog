@@ -98,6 +98,7 @@ struct StatsOverviewContent: View {
             VStack(spacing: 20) {
                 if let stats {
                     TotalStatsCard(stats: stats)
+                    StatsByTypeSection(flights: flights)
                     StatsByWingSection(stats: stats, flights: flights, wings: wings)
                     StatsBySpotSection(stats: stats, flights: flights)
                 } else {
@@ -366,6 +367,107 @@ struct StatsByWingSection: View {
 }
 
 // MARK: - StatsBySpotSection
+
+// MARK: - StatsByTypeSection (hours & sessions per flight type)
+
+struct StatsByTypeSection: View {
+    /// Per-type stats derived once at init (uncategorized flights get their own row)
+    private let typeStats: [(type: FlightType?, sessions: Int, hours: Int, minutes: Int, totalHours: Double)]
+
+    init(flights: [Flight]) {
+        let grouped = Dictionary(grouping: flights) { $0.flightTypeEnum }
+        self.typeStats = grouped.map { type, typeFlights in
+            let totalHours = typeFlights.reduce(0.0) { $0 + Double($1.durationSeconds) / 3600.0 }
+            let (h, m) = splitHours(totalHours)
+            return (type: type, sessions: typeFlights.count, hours: h, minutes: m, totalHours: totalHours)
+        }
+        // Typed rows by hours desc; "uncategorized" always last
+        .sorted {
+            switch ($0.type, $1.type) {
+            case (nil, _): return false
+            case (_, nil): return true
+            default: return $0.totalHours > $1.totalHours
+            }
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("By Flight Type")
+                .font(.title2)
+                .fontWeight(.bold)
+                .padding(.horizontal)
+
+            if typeStats.isEmpty {
+                Text("No data")
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .cornerRadius(12)
+            } else {
+                VStack(spacing: 0) {
+                    // Header
+                    HStack {
+                        Text("Type")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        Text("Sessions")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 70, alignment: .trailing)
+
+                        Text("Time")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundStyle(.secondary)
+                            .frame(width: 70, alignment: .trailing)
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+
+                    Divider()
+
+                    ForEach(Array(typeStats.enumerated()), id: \.offset) { index, entry in
+                        HStack {
+                            HStack(spacing: 8) {
+                                Image(systemName: entry.type?.symbolName ?? "questionmark.circle.dashed")
+                                    .font(.caption)
+                                    .foregroundStyle(entry.type != nil ? Color.indigo : Color.orange)
+                                    .frame(width: 20)
+                                Text(entry.type?.rawValue ?? "Uncategorized")
+                                    .font(.subheadline)
+                                    .foregroundStyle(entry.type != nil ? Color.primary : Color.secondary)
+                                    .lineLimit(1)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                            Text("\(entry.sessions)")
+                                .font(.subheadline.monospacedDigit())
+                                .frame(width: 70, alignment: .trailing)
+
+                            Text(entry.minutes > 0 ? "\(entry.hours)h\(String(format: "%02d", entry.minutes))" : "\(entry.hours)h")
+                                .font(.subheadline.monospacedDigit())
+                                .frame(width: 70, alignment: .trailing)
+                        }
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+
+                        if index < typeStats.count - 1 {
+                            Divider()
+                        }
+                    }
+                }
+                .background(Color(.systemBackground))
+                .cornerRadius(12)
+            }
+        }
+    }
+}
 
 struct StatsBySpotSection: View {
     let flights: [Flight]
