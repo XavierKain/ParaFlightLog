@@ -93,7 +93,7 @@ final class DataController {
     nonisolated private static func makeContainer() -> ContainerResult {
         let start = Date()
         logInfo("ModelContainer build started", category: .dataController)
-        let schema = Schema([Wing.self, Flight.self])
+        let schema = Schema([Wing.self, Flight.self, Spot.self])
         defer {
             let ms = Int(Date().timeIntervalSince(start) * 1000)
             logInfo("ModelContainer build finished in \(ms) ms", category: .dataController)
@@ -320,6 +320,13 @@ final class DataController {
         )
 
         modelContext.insert(flight)
+        // Attach to the nearest spot when the track gives us coordinates;
+        // the deferred geocode (updateFlightLocation) completes it otherwise.
+        if flight.latitude == nil, let firstPoint = dto.gpsTrack?.first {
+            flight.latitude = firstPoint.latitude
+            flight.longitude = firstPoint.longitude
+        }
+        assignSpot(to: flight)
         let saved = saveContext()
         if saved {
             logInfo("Flight saved: \(flight.durationFormatted) with \(wing?.name ?? "no wing")", category: .flight)
@@ -342,9 +349,10 @@ final class DataController {
         )
 
         modelContext.insert(flight)
+        assignSpot(to: flight)
         saveContext()
 
-        logInfo("Flight saved: \(flight.durationFormatted) at \(spotName ?? "Unknown")", category: .flight)
+        logInfo("Flight saved: \(flight.durationFormatted) at \(flight.spotName ?? "Unknown")", category: .flight)
     }
 
     /// Updates a flight's location info after background reverse geocoding.
@@ -359,11 +367,14 @@ final class DataController {
             flight.latitude = location.coordinate.latitude
             flight.longitude = location.coordinate.longitude
         }
-        if let spotName = spotName {
+        // Don't fight an existing spot link: the geocoded locality only fills
+        // flights that aren't attached to a real spot yet.
+        if flight.spot == nil, let spotName = spotName {
             flight.spotName = spotName
         }
+        assignSpot(to: flight)
         saveContext()
-        logInfo("Flight \(flightId) location updated: \(spotName ?? "no spot")", category: .flight)
+        logInfo("Flight \(flightId) location updated: \(flight.spotName ?? "no spot")", category: .flight)
     }
 
     /// Deletes a flight
@@ -387,6 +398,137 @@ final class DataController {
             logInfo("Bulk flight-type update: \(changed) flights set to \(newValue ?? "none")", category: .flight)
         }
         return changed
+    }
+
+    // MARK: - Spots
+
+    /// All spots, most-flown first.
+    func fetchSpots() -> [Spot] {
+        let descriptor = FetchDescriptor<Spot>(sortBy: [SortDescriptor(\.name)])
+        let spots = (try? modelContext.fetch(descriptor)) ?? []
+        return spots.sorted { ($0.flights?.count ?? 0) > ($1.flights?.count ?? 0) }
+    }
+
+    /// Nearest existing spot within `radius` meters of a coordinate.
+    func nearestSpot(to coordinate: CLLocationCoordinate2D, within radius: Double = 1500) -> Spot? {
+        let target = CLLocation(latitude: coordinate.latitude, longitude: coordinate.longitude)
+        var best: (spot: Spot, distance: Double)?
+        for spot in fetchSpots() {
+            guard let lat = spot.latitude, let lon = spot.longitude else { continue }
+            let distance = target.distance(from: CLLocation(latitude: lat, longitude: lon))
+            if distance <= radius && (best == nil || distance < best!.distance) {
+                best = (spot, distance)
+            }
+        }
+        return best?.spot
+    }
+
+    /// Finds a spot by exact name (case-insensitive) or creates one.
+    /// A newly created spot gets `city = name` when no city is known —
+    /// geocoding only yields the locality, so both fields start equal.
+    @discardableResult
+    func findOrCreateSpot(named name: String, city: String? = nil, coordinate: CLLocationCoordinate2D? = nil) -> Spot {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let existing = fetchSpots().first(where: { $0.name.compare(trimmed, options: .caseInsensitive) == .orderedSame }) {
+            // Opportunistically fill missing data
+            if existing.latitude == nil, let coordinate {
+                existing.latitude = coordinate.latitude
+                existing.longitude = coordinate.longitude
+            }
+            if existing.city == nil, let city { existing.city = city }
+            return existing
+        }
+
+        let spot = Spot(
+            name: trimmed,
+            city: city ?? trimmed,
+            latitude: coordinate?.latitude,
+            longitude: coordinate?.longitude
+        )
+        modelContext.insert(spot)
+        logInfo("Spot created: \(trimmed)", category: .flight)
+        return spot
+    }
+
+    /// Attaches a flight to a spot: nearest existing spot within 1.5 km wins
+    /// (so a split spot like "Punta Paloma" captures future flights there),
+    /// otherwise find-or-create by the flight's (geocoded) spot name.
+    /// Skips flights already linked — a manual reassignment is never fought.
+    func assignSpot(to flight: Flight) {
+        guard flight.spot == nil else { return }
+
+        if let lat = flight.latitude, let lon = flight.longitude,
+           let nearby = nearestSpot(to: CLLocationCoordinate2D(latitude: lat, longitude: lon)) {
+            flight.spot = nearby
+            flight.spotName = nearby.name
+            return
+        }
+
+        guard let name = flight.spotName, !name.isEmpty else { return }
+        let coordinate = flight.latitude.flatMap { lat in
+            flight.longitude.map { CLLocationCoordinate2D(latitude: lat, longitude: $0) }
+        }
+        let spot = findOrCreateSpot(named: name, coordinate: coordinate)
+        flight.spot = spot
+        flight.spotName = spot.name
+    }
+
+    /// Links every unlinked flight to a spot (startup migration + post-import).
+    /// Groups by spotName so "Tarifa" becomes ONE spot with city "Tarifa" that
+    /// can then be renamed or split from the spot manager.
+    func linkUnlinkedFlights() {
+        let unlinked = fetchFlights().filter { $0.spot == nil && !($0.spotName ?? "").isEmpty }
+        guard !unlinked.isEmpty else { return }
+
+        for flight in unlinked {
+            assignSpot(to: flight)
+        }
+        saveContext()
+        logInfo("Linked \(unlinked.count) flights to spots", category: .flight)
+    }
+
+    /// Renames a spot (name and/or city) and rewrites the denormalized
+    /// spotName on all its flights.
+    func updateSpot(_ spot: Spot, name: String, city: String?, coordinate: CLLocationCoordinate2D?) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+
+        spot.name = trimmedName
+        let trimmedCity = city?.trimmingCharacters(in: .whitespacesAndNewlines)
+        spot.city = (trimmedCity?.isEmpty == false) ? trimmedCity : spot.city
+        if let coordinate {
+            spot.latitude = coordinate.latitude
+            spot.longitude = coordinate.longitude
+        }
+        for flight in spot.flights ?? [] {
+            flight.spotName = trimmedName
+        }
+        saveContext()
+        logInfo("Spot updated: \(trimmedName) (\(spot.flights?.count ?? 0) flights renamed)", category: .flight)
+    }
+
+    /// Moves flights to another spot (used to split a city-spot into real
+    /// launches). Updates the denormalized name on every moved flight.
+    func reassignFlights(_ flights: [Flight], to spot: Spot) {
+        for flight in flights {
+            flight.spot = spot
+            flight.spotName = spot.name
+        }
+        // A spot without coordinates inherits them from its first flight
+        if spot.latitude == nil,
+           let first = flights.first(where: { $0.latitude != nil && $0.longitude != nil }) {
+            spot.latitude = first.latitude
+            spot.longitude = first.longitude
+        }
+        saveContext()
+        logInfo("\(flights.count) flights reassigned to \(spot.name)", category: .flight)
+    }
+
+    /// Deletes a spot; its flights keep their spotName but lose the link
+    /// (they can be re-linked or reassigned later).
+    func deleteSpot(_ spot: Spot) {
+        modelContext.delete(spot)
+        saveContext()
     }
 
     // MARK: - Stats

@@ -99,6 +99,42 @@ final class Wing {
     }
 }
 
+// MARK: - Spot
+/// A flying site. `name` is the precise launch ("Punta Paloma") and `city`
+/// the locality it belongs to ("Tarifa"). When only reverse geocoding is
+/// available, both start equal to the geocoded city — editable afterwards.
+///
+/// `Flight.spotName` stays as a denormalized copy of `spot.name` so lists,
+/// stats and backups keep working unchanged; DataController rewrites it on
+/// rename/reassign.
+@Model
+final class Spot {
+    var id: UUID = UUID()
+    var name: String = ""
+    var city: String?
+    var latitude: Double?
+    var longitude: Double?
+    var createdAt: Date = Date()
+
+    // Inverse of Flight.spot. Optional for CloudKit compatibility.
+    @Relationship(deleteRule: .nullify, inverse: \Flight.spot)
+    var flights: [Flight]?
+
+    init(id: UUID = UUID(),
+         name: String,
+         city: String? = nil,
+         latitude: Double? = nil,
+         longitude: Double? = nil,
+         createdAt: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.city = city
+        self.latitude = latitude
+        self.longitude = longitude
+        self.createdAt = createdAt
+    }
+}
+
 // MARK: - Flight
 /// SwiftData model representing a paragliding flight
 @Model
@@ -128,6 +164,10 @@ final class Flight {
     // Relationship: the wing used for this flight.
     // Must stay optional for CloudKit compatibility.
     var wing: Wing?
+
+    // Relationship: the flying site (source of truth for name/city/coords).
+    // `spotName` above remains a denormalized copy of `spot.name`.
+    var spot: Spot?
 
     init(id: UUID = UUID(),
          wing: Wing? = nil,

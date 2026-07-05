@@ -747,6 +747,10 @@ enum BackupManager {
         }
 
         try modelContext.save()
+
+        // Attach imported flights to Spot entities (find-or-create by name)
+        dataController.linkUnlinkedFlights()
+
         logInfo("Backup import done: \(summary.wingsImported) wings, \(summary.flightsImported) flights, \(summary.skippedDuplicates) duplicates skipped, \(summary.skippedMalformed) malformed rows skipped", category: .dataImport)
 
         return summary

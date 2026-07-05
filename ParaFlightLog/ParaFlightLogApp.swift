@@ -137,6 +137,10 @@ private struct IOSRootView: View {
                     watchManager.locationService = locationService
                     dataController.watchConnectivityManager = watchManager
 
+                    // Spot migration: link legacy spotName-only flights to Spot
+                    // entities (idempotent, no-op once everything is linked)
+                    dataController.linkUnlinkedFlights()
+
                     locationService.requestAuthorization()
 
                     // Keep WatchConnectivity setup off the first-paint path.

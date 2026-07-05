@@ -2,8 +2,12 @@
 //  SpotsViews.swift
 //  ParaFlightLog
 //
-//  Spot management: list, row, map picker.
-//  Split from SettingsViews.swift (Lot C).
+//  Spot management, entity-based:
+//  - SpotsManagementView: all spots (name + city + flight count), add/delete.
+//  - SpotDetailView: edit name/city/coordinates, and REASSIGN flights to
+//    another (or a brand-new) spot — how a geocoded city-spot like "Tarifa"
+//    gets split into its real launches (Punta Paloma, La Peña, ...).
+//  - SpotMapPicker: coordinate picker with place search.
 //  Target: iOS only
 //
 
@@ -13,61 +17,16 @@ import MapKit
 
 // MARK: - SpotsManagementView
 
-/// View to manage the spots detected in flights
 struct SpotsManagementView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Flight.startDate, order: .reverse) private var flights: [Flight]
+    @Environment(DataController.self) private var dataController
+    @Query(sort: \Spot.name) private var spots: [Spot]
 
-    @State private var selectedSpot: SpotInfo?
-    @State private var showingMapPicker = false
+    @State private var showingAddSpot = false
+    @State private var newSpotName = ""
+    @State private var newSpotCity = ""
 
-    /// Groups the info of a single spot
-    struct SpotInfo: Identifiable, Hashable {
-        let id = UUID()
-        let name: String
-        var latitude: Double?
-        var longitude: Double?
-        var flightCount: Int
-
-        var hasCoordinates: Bool {
-            latitude != nil && longitude != nil
-        }
-
-        func hash(into hasher: inout Hasher) {
-            hasher.combine(name)
-        }
-
-        static func == (lhs: SpotInfo, rhs: SpotInfo) -> Bool {
-            lhs.name == rhs.name
-        }
-    }
-
-    /// Extracts all unique spots from the flights
-    var spots: [SpotInfo] {
-        var spotDict: [String: SpotInfo] = [:]
-
-        for flight in flights {
-            guard let spotName = flight.spotName, !spotName.isEmpty else { continue }
-
-            if var existing = spotDict[spotName] {
-                existing.flightCount += 1
-                // Update the coordinates if this flight has some
-                if existing.latitude == nil, let lat = flight.latitude, let lon = flight.longitude {
-                    existing.latitude = lat
-                    existing.longitude = lon
-                }
-                spotDict[spotName] = existing
-            } else {
-                spotDict[spotName] = SpotInfo(
-                    name: spotName,
-                    latitude: flight.latitude,
-                    longitude: flight.longitude,
-                    flightCount: 1
-                )
-            }
-        }
-
-        return spotDict.values.sorted { $0.flightCount > $1.flightCount }
+    private var sortedSpots: [Spot] {
+        spots.sorted { ($0.flights?.count ?? 0) > ($1.flights?.count ?? 0) }
     }
 
     var body: some View {
@@ -76,155 +35,379 @@ struct SpotsManagementView: View {
                 ContentUnavailableView(
                     "No Spots",
                     systemImage: "mappin.slash",
-                    description: Text("Spots will appear here once you have recorded flights")
+                    description: Text("Spots are created automatically from your flights' locations. You can also add one manually.")
                 )
             } else {
                 Section {
-                    ForEach(spots) { spot in
-                        SpotRowView(spot: spot) {
-                            selectedSpot = spot
-                            showingMapPicker = true
+                    ForEach(sortedSpots) { spot in
+                        NavigationLink {
+                            SpotDetailView(spot: spot)
+                        } label: {
+                            SpotEntityRow(spot: spot)
                         }
                     }
-                } header: {
-                    Text(spotsCountText(spots.count))
                 } footer: {
-                    Text("Add GPS coordinates to a spot to apply them automatically to all associated flights")
+                    Text("Tap a spot to rename it, set its city and coordinates, or move flights to another spot (e.g. split a city into its real launches).")
                 }
             }
         }
         .navigationTitle("Spots")
-        .sheet(isPresented: $showingMapPicker) {
-            if let spot = selectedSpot {
-                SpotMapPicker(spot: spot) { coordinate in
-                    updateSpotCoordinates(spotName: spot.name, coordinate: coordinate)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    newSpotName = ""
+                    newSpotCity = ""
+                    showingAddSpot = true
+                } label: {
+                    Label("Add Spot", systemImage: "plus")
                 }
             }
         }
-    }
-
-    /// Updates the coordinates of all flights with this spot name
-    private func updateSpotCoordinates(spotName: String, coordinate: CLLocationCoordinate2D) {
-        var updatedCount = 0
-
-        for flight in flights {
-            if flight.spotName == spotName {
-                flight.latitude = coordinate.latitude
-                flight.longitude = coordinate.longitude
-                updatedCount += 1
+        .alert("New Spot", isPresented: $showingAddSpot) {
+            TextField("Spot name (e.g. Punta Paloma)", text: $newSpotName)
+            TextField("City (e.g. Tarifa)", text: $newSpotCity)
+            Button("Create") {
+                let name = newSpotName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty else { return }
+                let city = newSpotCity.trimmingCharacters(in: .whitespacesAndNewlines)
+                dataController.findOrCreateSpot(named: name, city: city.isEmpty ? nil : city)
+                _ = dataController.saveContext()
             }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Flights can then be moved to this spot from any spot's detail page.")
         }
-
-        Task { @MainActor in
-            do {
-                try modelContext.save()
-                logInfo("Updated \(updatedCount) flights with coordinates for spot: \(spotName)", category: .location)
-            } catch {
-                logError("Failed to save spot coordinates: \(error.localizedDescription)", category: .dataController)
-            }
-        }
-    }
-
-    /// Correctly pluralized spot count text
-    private func spotsCountText(_ count: Int) -> String {
-        count == 1 ? "1 spot detected" : "\(count) spots detected"
     }
 }
 
-/// Row displaying a spot
-struct SpotRowView: View {
-    let spot: SpotsManagementView.SpotInfo
-    let onMapTap: () -> Void
+// MARK: - SpotEntityRow
+
+private struct SpotEntityRow: View {
+    let spot: Spot
 
     var body: some View {
         HStack(spacing: 12) {
-            // Icon
-            ZStack {
-                Circle()
-                    .fill(spot.hasCoordinates ? Color.green.opacity(0.15) : Color.orange.opacity(0.15))
-                    .frame(width: 40, height: 40)
+            Image(systemName: spot.latitude != nil ? "mappin.circle.fill" : "mappin.slash.circle")
+                .font(.title3)
+                .foregroundStyle(spot.latitude != nil ? .red : .orange)
 
-                Image(systemName: spot.hasCoordinates ? "mappin.circle.fill" : "mappin.slash")
-                    .font(.title3)
-                    .foregroundStyle(spot.hasCoordinates ? .green : .orange)
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(spot.name)
                     .font(.headline)
-
-                HStack(spacing: 8) {
-                    Label(flightsCountText(spot.flightCount), systemImage: "airplane")
+                    .lineLimit(1)
+                // City shown only when it differs from the spot name
+                if let city = spot.city, city.caseInsensitiveCompare(spot.name) != .orderedSame {
+                    Text(city)
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
 
-                    if spot.hasCoordinates {
-                        Text("•")
-                            .foregroundStyle(.secondary)
-                        Text("GPS ✓")
+            Spacer()
+
+            Text("^[\(spot.flights?.count ?? 0) flight](inflect: true)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 2)
+    }
+}
+
+// MARK: - SpotDetailView (edit + flight reassignment)
+
+struct SpotDetailView: View {
+    @Environment(DataController.self) private var dataController
+    @Environment(\.dismiss) private var dismiss
+    @Bindable var spot: Spot
+
+    @State private var editedName: String = ""
+    @State private var editedCity: String = ""
+    @State private var showingMapPicker = false
+
+    // Reassignment state
+    @State private var selection = Set<UUID>()
+    @State private var showingNewSpotPrompt = false
+    @State private var newSpotName = ""
+    @State private var newSpotCity = ""
+
+    @State private var showingDeleteConfirm = false
+
+    private var spotFlights: [Flight] {
+        (spot.flights ?? []).sorted { $0.startDate > $1.startDate }
+    }
+
+    var body: some View {
+        List(selection: $selection) {
+            // Identity
+            Section("Spot") {
+                LabeledContent("Name") {
+                    TextField("Spot name", text: $editedName)
+                        .multilineTextAlignment(.trailing)
+                        .onSubmit { commitEdits() }
+                }
+                LabeledContent("City") {
+                    TextField("City", text: $editedCity)
+                        .multilineTextAlignment(.trailing)
+                        .onSubmit { commitEdits() }
+                }
+
+                Button {
+                    showingMapPicker = true
+                } label: {
+                    HStack {
+                        Label("Coordinates", systemImage: "map")
+                        Spacer()
+                        if let lat = spot.latitude, let lon = spot.longitude {
+                            Text("\(lat, specifier: "%.4f"), \(lon, specifier: "%.4f")")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else {
+                            Text("Set on map")
+                                .font(.caption)
+                                .foregroundStyle(.blue)
+                        }
+                    }
+                }
+            }
+
+            // Flights, selectable for reassignment
+            Section {
+                if spotFlights.isEmpty {
+                    Text("No flights at this spot.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(spotFlights) { flight in
+                        SpotFlightRow(flight: flight)
+                            .tag(flight.id)
+                    }
+                }
+            } header: {
+                HStack {
+                    Text("^[\(spotFlights.count) flight](inflect: true)")
+                    Spacer()
+                    if !spotFlights.isEmpty {
+                        Button(selection.count == spotFlights.count ? "Deselect All" : "Select All") {
+                            if selection.count == spotFlights.count {
+                                selection.removeAll()
+                            } else {
+                                selection = Set(spotFlights.map(\.id))
+                            }
+                        }
+                        .font(.caption)
+                        .textCase(nil)
+                    }
+                }
+            } footer: {
+                if !spotFlights.isEmpty {
+                    Text("Select flights to move them to another spot — e.g. split \"\(spot.name)\" into its real launches.")
+                }
+            }
+
+            // Danger zone
+            Section {
+                Button(role: .destructive) {
+                    showingDeleteConfirm = true
+                } label: {
+                    Label("Delete Spot", systemImage: "trash")
+                }
+            } footer: {
+                Text("Flights keep their spot name but lose the link; they can be reassigned later.")
+            }
+        }
+        .environment(\.editMode, .constant(.active))
+        .navigationTitle(spot.name)
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            if !selection.isEmpty {
+                moveBar
+            }
+        }
+        .onAppear {
+            editedName = spot.name
+            editedCity = spot.city ?? ""
+        }
+        .onDisappear {
+            commitEdits()
+        }
+        .sheet(isPresented: $showingMapPicker) {
+            SpotMapPicker(
+                title: spot.name,
+                initialCoordinate: spot.latitude.flatMap { lat in
+                    spot.longitude.map { CLLocationCoordinate2D(latitude: lat, longitude: $0) }
+                },
+                searchSeed: spot.city ?? spot.name
+            ) { coordinate in
+                dataController.updateSpot(spot, name: editedName.isEmpty ? spot.name : editedName,
+                                          city: editedCity, coordinate: coordinate)
+            }
+        }
+        .alert("New Spot", isPresented: $showingNewSpotPrompt) {
+            TextField("Spot name (e.g. Punta Paloma)", text: $newSpotName)
+            TextField("City", text: $newSpotCity)
+            Button("Create & Move") {
+                moveSelectionToNewSpot()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("^[\(selection.count) flight](inflect: true) will be moved to this new spot.")
+        }
+        .confirmationDialog(
+            "Delete \"\(spot.name)\"?",
+            isPresented: $showingDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                dataController.deleteSpot(spot)
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) { }
+        }
+    }
+
+    // MARK: - Move bar
+
+    private var moveBar: some View {
+        HStack(spacing: 12) {
+            Text("^[\(selection.count) flight](inflect: true) selected")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            Menu {
+                Button {
+                    newSpotName = ""
+                    newSpotCity = spot.city ?? ""
+                    showingNewSpotPrompt = true
+                } label: {
+                    Label("New Spot…", systemImage: "plus.circle")
+                }
+
+                Divider()
+
+                ForEach(otherSpots) { target in
+                    Button {
+                        moveSelection(to: target)
+                    } label: {
+                        if let city = target.city, city.caseInsensitiveCompare(target.name) != .orderedSame {
+                            Text("\(target.name) — \(city)")
+                        } else {
+                            Text(target.name)
+                        }
+                    }
+                }
+            } label: {
+                Label("Move To", systemImage: "arrow.turn.up.right")
+                    .font(.headline)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(Color.blue, in: Capsule())
+                    .foregroundStyle(.white)
+            }
+        }
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+        .background(.bar)
+    }
+
+    private var otherSpots: [Spot] {
+        dataController.fetchSpots().filter { $0.id != spot.id }
+    }
+
+    // MARK: - Actions
+
+    private func commitEdits() {
+        let name = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let city = editedCity.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        if name != spot.name || city != (spot.city ?? "") {
+            dataController.updateSpot(spot, name: name, city: city, coordinate: nil)
+        }
+    }
+
+    private func moveSelection(to target: Spot) {
+        let flights = spotFlights.filter { selection.contains($0.id) }
+        dataController.reassignFlights(flights, to: target)
+        selection.removeAll()
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+    }
+
+    private func moveSelectionToNewSpot() {
+        let name = newSpotName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty else { return }
+        let city = newSpotCity.trimmingCharacters(in: .whitespacesAndNewlines)
+        let target = dataController.findOrCreateSpot(named: name, city: city.isEmpty ? nil : city)
+        moveSelection(to: target)
+    }
+}
+
+// MARK: - SpotFlightRow (compact flight row for reassignment lists)
+
+private struct SpotFlightRow: View {
+    let flight: Flight
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(flight.startDate, format: .dateTime.day().month().year())
+                    .font(.subheadline.weight(.medium))
+                HStack(spacing: 6) {
+                    Text(flight.durationFormatted)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let wing = flight.wing {
+                        Text("• \(wing.name)")
                             .font(.caption)
-                            .foregroundStyle(.green)
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(1)
                     }
                 }
             }
 
             Spacer()
 
-            // Add/edit coordinates button
-            Button {
-                onMapTap()
-            } label: {
-                Image(systemName: spot.hasCoordinates ? "map" : "map.fill")
-                    .font(.title3)
-                    .foregroundStyle(.blue)
+            if let type = flight.flightTypeEnum {
+                Image(systemName: type.symbolName)
+                    .font(.caption)
+                    .foregroundStyle(.indigo)
             }
-            .buttonStyle(.plain)
         }
-        .padding(.vertical, 4)
-    }
-
-    /// Correctly pluralized flight count text
-    private func flightsCountText(_ count: Int) -> String {
-        count == 1 ? "1 flight" : "\(count) flights"
     }
 }
 
-/// Correctly pluralized "flights will be updated" text
-private func flightsWillBeUpdatedText(_ count: Int) -> String {
-    count == 1 ? "📍 1 flight will be updated" : "📍 \(count) flights will be updated"
-}
+// MARK: - SpotMapPicker (coordinate picker with place search)
 
-/// Map picker for a spot
 struct SpotMapPicker: View {
     @Environment(\.dismiss) private var dismiss
-    let spot: SpotsManagementView.SpotInfo
+    let title: String
     let onSave: (CLLocationCoordinate2D) -> Void
 
     @State private var cameraPosition: MapCameraPosition
     @State private var markerCoordinate: CLLocationCoordinate2D?
-    @State private var searchText: String = ""
+    @State private var searchText: String
     @State private var isSearching = false
 
-    init(spot: SpotsManagementView.SpotInfo, onSave: @escaping (CLLocationCoordinate2D) -> Void) {
-        self.spot = spot
+    init(title: String,
+         initialCoordinate: CLLocationCoordinate2D?,
+         searchSeed: String,
+         onSave: @escaping (CLLocationCoordinate2D) -> Void) {
+        self.title = title
         self.onSave = onSave
 
-        // Initial position
-        if let lat = spot.latitude, let lon = spot.longitude {
-            let coord = CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        if let coord = initialCoordinate {
             _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
                 center: coord,
                 span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
             )))
             _markerCoordinate = State(initialValue: coord)
         } else {
-            // France by default
             _cameraPosition = State(initialValue: .region(MKCoordinateRegion(
                 center: CLLocationCoordinate2D(latitude: 45.9, longitude: 6.1),
                 span: MKCoordinateSpan(latitudeDelta: 2.0, longitudeDelta: 2.0)
             )))
         }
-        _searchText = State(initialValue: spot.name)
+        _searchText = State(initialValue: searchSeed)
     }
 
     var body: some View {
@@ -233,7 +416,7 @@ struct SpotMapPicker: View {
                 MapReader { proxy in
                     Map(position: $cameraPosition) {
                         if let coord = markerCoordinate {
-                            Marker(spot.name, coordinate: coord)
+                            Marker(title, coordinate: coord)
                                 .tint(.red)
                         }
                     }
@@ -270,6 +453,7 @@ struct SpotMapPicker: View {
                                     Image(systemName: "arrow.right.circle.fill")
                                         .foregroundStyle(.blue)
                                 }
+                                .accessibilityLabel("Search")
                             }
                         }
                         .padding(10)
@@ -293,20 +477,11 @@ struct SpotMapPicker: View {
                                 .background(.ultraThinMaterial)
                                 .clipShape(Capsule())
                         }
-
-                        // How many flights will be updated
-                        Text(flightsWillBeUpdatedText(spot.flightCount))
-                            .font(.caption)
-                            .foregroundStyle(.orange)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
-                            .background(.ultraThinMaterial)
-                            .clipShape(Capsule())
                     }
                     .padding()
                 }
             }
-            .navigationTitle(spot.name)
+            .navigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -361,4 +536,3 @@ struct SpotMapPicker: View {
         }
     }
 }
-

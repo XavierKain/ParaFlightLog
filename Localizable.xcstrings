@@ -637,7 +637,6 @@
       }
     },
     "%lldh" : {
-      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -760,6 +759,9 @@
         }
       }
     },
+    "• %@" : {
+
+    },
     "• %@ m²" : {
 
     },
@@ -767,6 +769,25 @@
 
     },
     "^[%lld flight](inflect: true)" : {
+
+    },
+    "^[%lld flight](inflect: true) — %lld untyped" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld flight](inflect: true) — %2$lld untyped"
+          }
+        }
+      }
+    },
+    "^[%lld flight](inflect: true) — all typed" : {
+
+    },
+    "^[%lld flight](inflect: true) selected" : {
+
+    },
+    "^[%lld flight](inflect: true) still without a type" : {
 
     },
     "+ %lld autre%@ spot%@" : {
@@ -1275,6 +1296,9 @@
     "All" : {
 
     },
+    "All flights are categorized 🎉" : {
+
+    },
     "All Types" : {
 
     },
@@ -1527,6 +1551,12 @@
         }
       }
     },
+    "Assign Type" : {
+
+    },
+    "Assigning a type to a spot fills its untyped flights. A spot that already has flights of one type shows it as the suggestion — one tap applies it." : {
+
+    },
     "Attributes" : {
 
     },
@@ -1737,6 +1767,9 @@
         }
       }
     },
+    "By Flight Type" : {
+
+    },
     "By Spot" : {
 
     },
@@ -1802,6 +1835,9 @@
           }
         }
       }
+    },
+    "Categorize Flights" : {
+
     },
     "Ce spot sera utilisé en priorité sur la détection GPS automatique" : {
       "extractionState" : "stale",
@@ -1985,6 +2021,9 @@
     "Choose a Photo" : {
 
     },
+    "Choose a type for %@" : {
+
+    },
     "Choose a Wing" : {
 
     },
@@ -2021,6 +2060,9 @@
           }
         }
       }
+    },
+    "Clear type" : {
+
     },
     "Close" : {
 
@@ -2367,6 +2409,9 @@
         }
       }
     },
+    "Deselect All" : {
+
+    },
     "Détail du vol" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2672,6 +2717,9 @@
           }
         }
       }
+    },
+    "Fill %lld untyped" : {
+
     },
     "Fin" : {
       "extractionState" : "stale",
@@ -3351,6 +3399,9 @@
     "Minutes" : {
 
     },
+    "Mode" : {
+
+    },
     "Model" : {
 
     },
@@ -3468,6 +3519,9 @@
 
     },
     "No spots with GPS coordinates" : {
+
+    },
+    "No type" : {
 
     },
     "No wing available — the simulated flight will be saved without a wing" : {
@@ -3677,6 +3731,9 @@
       }
     },
     "Overview of the whole flight" : {
+
+    },
+    "Overwrite all %lld flights" : {
 
     },
     "Par spot" : {
@@ -4186,6 +4243,9 @@
 
     },
     "Select a wing" : {
+
+    },
+    "Select All" : {
 
     },
     "Select Period" : {
@@ -4919,6 +4979,9 @@
           }
         }
       }
+    },
+    "Untyped only" : {
+
     },
     "Use iPhone as tracker" : {
 

@@ -588,6 +588,7 @@ struct TimerView: View {
         applyTrackData(to: flight, points: points)
 
         dataController.modelContext.insert(flight)
+        dataController.assignSpot(to: flight)
         do {
             try dataController.modelContext.save()
             if let wingId = wing?.id {
