@@ -387,6 +387,16 @@
         }
       }
     },
+    "%@ — %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ — %2$@"
+          }
+        }
+      }
+    },
     "%@ %@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -790,6 +800,9 @@
     "^[%lld flight](inflect: true) still without a type" : {
 
     },
+    "^[%lld flight](inflect: true) will be moved to this new spot." : {
+
+    },
     "+ %lld autre%@ spot%@" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1040,13 +1053,13 @@
     "Add Flight" : {
 
     },
-    "Add GPS coordinates to a spot to apply them automatically to all associated flights" : {
-
-    },
     "Add My Wing" : {
 
     },
     "Add one from the iPhone" : {
+
+    },
+    "Add Spot" : {
 
     },
     "Add your first wing" : {
@@ -2061,6 +2074,12 @@
         }
       }
     },
+    "City" : {
+
+    },
+    "City (e.g. Tarifa)" : {
+
+    },
     "Clear type" : {
 
     },
@@ -2171,6 +2190,12 @@
           }
         }
       }
+    },
+    "Create" : {
+
+    },
+    "Create & Move" : {
+
     },
     "Create Account" : {
 
@@ -2347,6 +2372,9 @@
 
     },
     "Delete permanently?" : {
+
+    },
+    "Delete Spot" : {
 
     },
     "Delete this flight" : {
@@ -2821,6 +2849,12 @@
     "Flights are linked to a wing. Add yours now — pick it from the online library or enter it manually." : {
 
     },
+    "Flights can then be moved to this spot from any spot's detail page." : {
+
+    },
+    "Flights keep their spot name but lose the link; they can be reassigned later." : {
+
+    },
     "Flying" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2936,6 +2970,7 @@
       }
     },
     "GPS ✓" : {
+      "extractionState" : "stale",
       "localizations" : {
         "en" : {
           "stringUnit" : {
@@ -3473,13 +3508,25 @@
         }
       }
     },
+    "Move To" : {
+
+    },
     "My Flights" : {
 
     },
     "My Wings" : {
 
     },
+    "Name" : {
+
+    },
     "New Flight" : {
+
+    },
+    "New Spot" : {
+
+    },
+    "New Spot…" : {
 
     },
     "New Wing" : {
@@ -3507,6 +3554,9 @@
 
     },
     "No Flights" : {
+
+    },
+    "No flights at this spot." : {
 
     },
     "No flights during this period" : {
@@ -4213,6 +4263,9 @@
     "Save Failed" : {
 
     },
+    "Search" : {
+
+    },
     "Search for a place..." : {
 
     },
@@ -4246,6 +4299,9 @@
 
     },
     "Select All" : {
+
+    },
+    "Select flights to move them to another spot — e.g. split \"%@\" into its real launches." : {
 
     },
     "Select Period" : {
@@ -4330,6 +4386,9 @@
     "Set a duration of at least one minute." : {
 
     },
+    "Set on map" : {
+
+    },
     "Set spot manually" : {
 
     },
@@ -4411,6 +4470,9 @@
     "Spot name" : {
 
     },
+    "Spot name (e.g. Punta Paloma)" : {
+
+    },
     "Spot, wing or notes" : {
 
     },
@@ -4430,6 +4492,9 @@
         }
       }
     },
+    "Spots are created automatically from your flights' locations. You can also add one manually." : {
+
+    },
     "Spots de vol" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4446,9 +4511,6 @@
           }
         }
       }
-    },
-    "Spots will appear here once you have recorded flights" : {
-
     },
     "Start" : {
       "localizations" : {
@@ -4764,6 +4826,9 @@
 
     },
     "Talk to your logbook while flying. Coming in a future version." : {
+
+    },
+    "Tap a spot to rename it, set its city and coordinates, or move flights to another spot (e.g. split a city into its real launches)." : {
 
     },
     "Tap the map to place the marker" : {

@@ -531,6 +531,111 @@ final class DataController {
         saveContext()
     }
 
+    // MARK: - Spot Splitting (GPS clustering)
+
+    /// Groups flights into clusters of nearby GPS positions: a flight joins a
+    /// cluster when it is within `radius` meters of the cluster's (running)
+    /// centroid, otherwise it starts a new one. Flights without coordinates
+    /// are ignored. Clusters come back largest-first.
+    func clusterFlightsByLocation(_ flights: [Flight], radius: Double = 1000) -> [[Flight]] {
+        var clusters: [(lat: Double, lon: Double, flights: [Flight])] = []
+
+        for flight in flights {
+            guard let lat = flight.latitude, let lon = flight.longitude else { continue }
+            let location = CLLocation(latitude: lat, longitude: lon)
+
+            var placed = false
+            for i in clusters.indices {
+                let center = CLLocation(latitude: clusters[i].lat, longitude: clusters[i].lon)
+                if location.distance(from: center) <= radius {
+                    clusters[i].flights.append(flight)
+                    // Running centroid update
+                    let n = Double(clusters[i].flights.count)
+                    clusters[i].lat += (lat - clusters[i].lat) / n
+                    clusters[i].lon += (lon - clusters[i].lon) / n
+                    placed = true
+                    break
+                }
+            }
+            if !placed {
+                clusters.append((lat, lon, [flight]))
+            }
+        }
+
+        return clusters
+            .sorted { $0.flights.count > $1.flights.count }
+            .map(\.flights)
+    }
+
+    /// Result of a spot split.
+    struct SpotSplitResult {
+        let createdNames: [String]
+        let movedFlights: Int
+        let keptWithoutLocation: Int
+        let originalDeleted: Bool
+    }
+
+    /// Splits a spot into GPS clusters: each cluster becomes a new spot named
+    /// "<name> 1", "<name> 2", ... (largest first, city inherited, coordinates
+    /// = cluster centroid) ready to be renamed to the real launch. Flights
+    /// without GPS stay in the original spot; if none remain, it is deleted.
+    /// Returns nil when everything already sits within one cluster.
+    @discardableResult
+    func splitSpotByLocation(_ spot: Spot, radius: Double = 1000) -> SpotSplitResult? {
+        let allFlights = spot.flights ?? []
+        let clusters = clusterFlightsByLocation(allFlights, radius: radius)
+        guard clusters.count >= 2 else { return nil }
+
+        // Unique numbered names (skip names already taken by other spots)
+        var takenNames = Set(fetchSpots().map { $0.name.lowercased() })
+        let city = spot.city ?? spot.name
+
+        var createdNames: [String] = []
+        var moved = 0
+        var counter = 1
+
+        for cluster in clusters {
+            var name = "\(spot.name) \(counter)"
+            while takenNames.contains(name.lowercased()) {
+                counter += 1
+                name = "\(spot.name) \(counter)"
+            }
+            counter += 1
+            takenNames.insert(name.lowercased())
+
+            let centroidLat = cluster.compactMap(\.latitude).reduce(0, +) / Double(cluster.count)
+            let centroidLon = cluster.compactMap(\.longitude).reduce(0, +) / Double(cluster.count)
+
+            let newSpot = Spot(name: name, city: city, latitude: centroidLat, longitude: centroidLon)
+            modelContext.insert(newSpot)
+
+            for flight in cluster {
+                flight.spot = newSpot
+                flight.spotName = name
+            }
+            moved += cluster.count
+            createdNames.append(name)
+        }
+
+        // Flights without GPS stay behind; delete the original only when empty
+        let remaining = (spot.flights ?? []).count
+        var originalDeleted = false
+        if remaining == 0 {
+            modelContext.delete(spot)
+            originalDeleted = true
+        }
+
+        saveContext()
+        logInfo("Spot split: \(createdNames.count) spots created from \(spot.name), \(moved) flights moved", category: .flight)
+
+        return SpotSplitResult(
+            createdNames: createdNames,
+            movedFlights: moved,
+            keptWithoutLocation: remaining,
+            originalDeleted: originalDeleted
+        )
+    }
+
     // MARK: - Stats
 
     /// Computes all aggregate statistics in a single pass over the flights.

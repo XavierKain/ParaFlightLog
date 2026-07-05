@@ -133,6 +133,11 @@ struct SpotDetailView: View {
 
     @State private var showingDeleteConfirm = false
 
+    // Split-by-GPS state
+    @State private var splitClusterSizes: [Int] = []
+    @State private var showingSplitConfirm = false
+    @State private var splitInfoMessage: String?
+
     private var spotFlights: [Flight] {
         (spot.flights ?? []).sorted { $0.startDate > $1.startDate }
     }
@@ -204,6 +209,19 @@ struct SpotDetailView: View {
                 }
             }
 
+            // Tools
+            Section {
+                Button {
+                    prepareSplit()
+                } label: {
+                    Label("Split by GPS location", systemImage: "arrow.triangle.branch")
+                }
+            } header: {
+                Text("Tools")
+            } footer: {
+                Text("Groups this spot's flights by takeoff position (within 1 km = same spot) and creates \"\(spot.name) 1\", \"\(spot.name) 2\", … — open each one afterwards to rename it to the real launch.")
+            }
+
             // Danger zone
             Section {
                 Button(role: .destructive) {
@@ -262,6 +280,64 @@ struct SpotDetailView: View {
                 dismiss()
             }
             Button("Cancel", role: .cancel) { }
+        }
+        .confirmationDialog(
+            splitConfirmTitle,
+            isPresented: $showingSplitConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Split into \(splitClusterSizes.count) spots") {
+                performSplit()
+            }
+            Button("Cancel", role: .cancel) { }
+        } message: {
+            Text("Flight groups found: \(splitClusterSizes.map(String.init).joined(separator: ", ")). Each becomes \"\(spot.name) 1\", \"\(spot.name) 2\", … that you can rename.")
+        }
+        .alert("Split by GPS", isPresented: Binding(
+            get: { splitInfoMessage != nil },
+            set: { if !$0 { splitInfoMessage = nil } }
+        )) {
+            Button("OK") { splitInfoMessage = nil }
+        } message: {
+            Text(splitInfoMessage ?? "")
+        }
+    }
+
+    private var splitConfirmTitle: String {
+        "Split \"\(spot.name)\" into \(splitClusterSizes.count) spots?"
+    }
+
+    // MARK: - Split by GPS
+
+    private func prepareSplit() {
+        let clusters = dataController.clusterFlightsByLocation(spotFlights)
+        let locatedCount = clusters.reduce(0) { $0 + $1.count }
+
+        if locatedCount == 0 {
+            splitInfoMessage = "None of these flights have GPS coordinates, so they can't be grouped by position."
+            return
+        }
+        if clusters.count < 2 {
+            splitInfoMessage = "All located flights are within 1 km of each other — this already looks like a single spot."
+            return
+        }
+
+        splitClusterSizes = clusters.map(\.count)
+        showingSplitConfirm = true
+    }
+
+    private func performSplit() {
+        guard let result = dataController.splitSpotByLocation(spot) else {
+            splitInfoMessage = "Nothing to split."
+            return
+        }
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+
+        if result.originalDeleted {
+            // The spot this screen shows no longer exists
+            dismiss()
+        } else {
+            splitInfoMessage = "Created \(result.createdNames.joined(separator: ", ")) (\(result.movedFlights) flights moved). \(result.keptWithoutLocation) flights without GPS stayed here."
         }
     }
 
