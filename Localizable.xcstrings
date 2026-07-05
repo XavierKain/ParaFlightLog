@@ -1689,7 +1689,7 @@
     "Back" : {
 
     },
-    "Back to chase camera" : {
+    "Back to the pilot" : {
 
     },
     "Back Up Now" : {
@@ -1744,6 +1744,9 @@
 
     },
     "Calculated duration" : {
+
+    },
+    "Camera follows the pilot — tap for free camera" : {
 
     },
     "Cancel" : {
@@ -2788,6 +2791,9 @@
       }
     },
     "Flying Spots" : {
+
+    },
+    "Free camera — tap to follow the pilot" : {
 
     },
     "From the Library" : {

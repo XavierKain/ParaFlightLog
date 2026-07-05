@@ -203,6 +203,11 @@ enum BackupManager {
                     try data.write(to: imagesDir.appendingPathComponent(filename))
                 }
 
+                // 3. Legacy interop files (wings.csv / flights.csv / gps/ /
+                //    metadata.json) so the dev-3 (old) app can import this
+                //    bundle too. v20 itself always prefers backup.json.
+                try writeLegacyInterop(into: bundleURL, manifest: manifest)
+
                 DispatchQueue.main.async {
                     completion(.success(bundleURL))
                 }
@@ -521,7 +526,8 @@ enum BackupManager {
             wings.append(BackupWing(
                 id: wingId,
                 name: cols[1],
-                brand: nil,
+                // Column 9 (Marque/brand) exists in extended dev-3 exports
+                brand: (cols.count >= 10 && !cols[9].isEmpty) ? cols[9] : nil,
                 size: cols[2].isEmpty ? nil : cols[2],
                 type: cols[3].isEmpty ? nil : cols[3],
                 color: cols[4].isEmpty ? nil : cols[4],
@@ -533,8 +539,10 @@ enum BackupManager {
         }
 
         // --- flights.csv ---
-        // Columns: 0=id, 1=startDate, 2=endDate, 3=durationSeconds, 4=wingId,
-        //          5=wingName, 6=spotName, 7=latitude, 8=longitude, 9=flightType, 10=notes
+        // Base columns: 0=id, 1=startDate, 2=endDate, 3=durationSeconds, 4=wingId,
+        //               5=wingName, 6=spotName, 7=latitude, 8=longitude, 9=flightType, 10=notes
+        // Extended (dev-3 exports): 11=startAlt, 12=maxAlt, 13=endAlt,
+        //               14=distance(m), 15=maxSpeed(m/s), 16=maxGForce, 17=createdAt
         let flightsCSV = try String(contentsOf: bundleURL.appendingPathComponent("flights.csv"), encoding: .utf8)
         let flightsRows = flightsCSV.components(separatedBy: "\n").dropFirst() // skip header
 
@@ -587,6 +595,17 @@ enum BackupManager {
                 }
             }
 
+            // Extended tracking columns (dev-3 exports); absent in older backups
+            func extendedDouble(_ index: Int) -> Double? {
+                cols.count > index ? Double(cols[index]) : nil
+            }
+            let createdAt: Date
+            if cols.count > 17, let parsed = dateFormatter.date(from: cols[17]) {
+                createdAt = parsed
+            } else {
+                createdAt = startDate
+            }
+
             flights.append(BackupFlight(
                 id: flightId,
                 wingId: wingId,
@@ -598,13 +617,13 @@ enum BackupManager {
                 longitude: Double(cols[8]),
                 flightType: cols[9].isEmpty ? nil : cols[9],
                 notes: notes,
-                createdAt: startDate,
-                startAltitude: nil,
-                maxAltitude: nil,
-                endAltitude: nil,
-                totalDistance: nil,
-                maxSpeed: nil,
-                maxGForce: nil,
+                createdAt: createdAt,
+                startAltitude: extendedDouble(11),
+                maxAltitude: extendedDouble(12),
+                endAltitude: extendedDouble(13),
+                totalDistance: extendedDouble(14),
+                maxSpeed: extendedDouble(15),
+                maxGForce: extendedDouble(16),
                 gpsTrack: gpsTrack
             ))
         }
@@ -747,5 +766,102 @@ enum BackupManager {
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.dateFormat = "yyyy-MM-dd_HHmm"
         return formatter.string(from: date)
+    }
+
+    // MARK: - Legacy Interop Export (dev-3 / SoarX v10 compatible)
+
+    /// CSV escaping matching the dev-3 exporter/importer: commas become
+    /// semicolons and newlines spaces. Lossy on purpose — these files exist
+    /// only so the OLD app can read the bundle; backup.json holds the truth.
+    private nonisolated static func legacyEscapeCSV(_ string: String) -> String {
+        string.replacingOccurrences(of: ",", with: ";")
+            .replacingOccurrences(of: "\n", with: " ")
+    }
+
+    /// Writes the dev-3-compatible files into the export bundle:
+    /// wings.csv (17 columns), flights.csv (18 columns incl. tracking metrics),
+    /// gps/<flightId>.json (default-strategy JSON, what the old app decodes)
+    /// and metadata.json. The old app's importer keys off wings.csv.
+    private nonisolated static func writeLegacyInterop(into bundleURL: URL, manifest: BackupManifest) throws {
+        // dev-3 dates: "dd/MM/yyyy HH:mm" in the device's timezone
+        let dateFormatter = DateFormatter()
+        dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dateFormatter.timeZone = TimeZone.current
+        dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
+
+        // --- wings.csv (17 columns; ownership/maintenance columns left empty) ---
+        var wingsCSV = "ID,Nom,Taille,Type,Couleur,Archivé,Date de création,Ordre d'affichage,Photo,Marque,Possédée,Heures initiales,Date achat,Date revente,Intervalle maintenance (h),Heures dern. maintenance,Date dern. maintenance\n"
+        for wing in manifest.wings {
+            let fields = [
+                wing.id.uuidString,
+                legacyEscapeCSV(wing.name),
+                legacyEscapeCSV(wing.size ?? ""),
+                legacyEscapeCSV(wing.type ?? ""),
+                legacyEscapeCSV(wing.color ?? ""),
+                wing.isArchived ? "Oui" : "Non",
+                dateFormatter.string(from: wing.createdAt),
+                "\(wing.displayOrder)",
+                wing.photoFilename ?? "",
+                legacyEscapeCSV(wing.brand ?? "")
+            ]
+            wingsCSV += fields.joined(separator: ",") + ",,,,,,,\n"
+        }
+        try wingsCSV.write(to: bundleURL.appendingPathComponent("wings.csv"), atomically: true, encoding: .utf8)
+
+        // --- flights.csv (18 columns) + gps/<id>.json ---
+        var flightsCSV = "ID,Date début,Date fin,Durée (sec),Voile ID,Voile Nom,Spot,Latitude,Longitude,Type,Notes,Alt départ,Alt max,Alt fin,Distance (m),Vitesse max (m/s),GForce max,Date de création\n"
+
+        let gpsDir = bundleURL.appendingPathComponent("gps")
+        try FileManager.default.createDirectory(at: gpsDir, withIntermediateDirectories: true)
+        // Default date strategy: the old app decodes these blobs with a plain
+        // JSONDecoder(), so the encoder must match.
+        let trackEncoder = JSONEncoder()
+
+        // Small helper keeps the row-building expressions simple enough for
+        // the type-checker (a single mixed array literal timed it out).
+        func optionalNumber(_ value: Double?) -> String {
+            value.map { String($0) } ?? ""
+        }
+
+        for flight in manifest.flights {
+            var fields: [String] = []
+            fields.append(flight.id.uuidString)
+            fields.append(dateFormatter.string(from: flight.startDate))
+            fields.append(dateFormatter.string(from: flight.endDate))
+            fields.append(String(flight.durationSeconds))
+            fields.append(flight.wingId?.uuidString ?? "")
+            fields.append("")   // wing name: informational only, resolved by id on import
+            fields.append(legacyEscapeCSV(flight.spotName ?? ""))
+            fields.append(optionalNumber(flight.latitude))
+            fields.append(optionalNumber(flight.longitude))
+            fields.append(legacyEscapeCSV(flight.flightType ?? ""))
+            fields.append("\"" + legacyEscapeCSV(flight.notes ?? "") + "\"")
+            fields.append(optionalNumber(flight.startAltitude))
+            fields.append(optionalNumber(flight.maxAltitude))
+            fields.append(optionalNumber(flight.endAltitude))
+            fields.append(optionalNumber(flight.totalDistance))
+            fields.append(optionalNumber(flight.maxSpeed))
+            fields.append(optionalNumber(flight.maxGForce))
+            fields.append(dateFormatter.string(from: flight.createdAt))
+            flightsCSV += fields.joined(separator: ",") + "\n"
+
+            if let track = flight.gpsTrack, !track.isEmpty,
+               let trackData = try? trackEncoder.encode(track) {
+                try trackData.write(to: gpsDir.appendingPathComponent("\(flight.id.uuidString).json"))
+            }
+        }
+        try flightsCSV.write(to: bundleURL.appendingPathComponent("flights.csv"), atomically: true, encoding: .utf8)
+
+        // --- metadata.json (informational, dev-3 shape) ---
+        let metadata: [String: Any] = [
+            "version": "1.0",
+            "appVersion": manifest.appVersion,
+            "exportDate": manifest.exportDate.timeIntervalSinceReferenceDate,
+            "wingsCount": manifest.wings.count,
+            "flightsCount": manifest.flights.count,
+            "imagesCount": manifest.wings.filter { $0.photoFilename != nil }.count
+        ]
+        let metadataData = try JSONSerialization.data(withJSONObject: metadata, options: [.sortedKeys])
+        try metadataData.write(to: bundleURL.appendingPathComponent("metadata.json"))
     }
 }
