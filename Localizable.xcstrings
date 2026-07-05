@@ -2034,10 +2034,16 @@
     "Choose a Photo" : {
 
     },
+    "Choose a Spot" : {
+
+    },
     "Choose a type for %@" : {
 
     },
     "Choose a Wing" : {
+
+    },
+    "Choose…" : {
 
     },
     "Chrono" : {
@@ -2701,6 +2707,9 @@
       }
     },
     "Error" : {
+
+    },
+    "Existing spot" : {
 
     },
     "Export" : {
@@ -3375,6 +3384,9 @@
     "Manage Spots" : {
 
     },
+    "Match spot from GPS" : {
+
+    },
     "Max" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3583,6 +3595,9 @@
 
     },
     "No GPS Track" : {
+
+    },
+    "No spot" : {
 
     },
     "No Spots" : {
@@ -4500,6 +4515,9 @@
 
     },
     "Spot name (e.g. Punta Paloma)" : {
+
+    },
+    "Spot or city" : {
 
     },
     "Spot, wing or notes" : {
