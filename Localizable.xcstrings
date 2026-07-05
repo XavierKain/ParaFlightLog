@@ -1689,6 +1689,9 @@
     "Back" : {
 
     },
+    "Back to chase camera" : {
+
+    },
     "Back Up Now" : {
 
     },
@@ -2017,6 +2020,9 @@
       }
     },
     "Close" : {
+
+    },
+    "Close replay" : {
 
     },
     "Cloud Backup" : {
@@ -2477,6 +2483,9 @@
         }
       }
     },
+    "Drag to move through the flight" : {
+
+    },
     "Duration" : {
 
     },
@@ -2735,6 +2744,9 @@
 
     },
     "FLIGHT TIME" : {
+
+    },
+    "Flight timeline" : {
 
     },
     "Flight Timer" : {
@@ -3658,6 +3670,9 @@
         }
       }
     },
+    "Overview of the whole flight" : {
+
+    },
     "Par spot" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3727,6 +3742,9 @@
       }
     },
     "Password" : {
+
+    },
+    "Pause" : {
 
     },
     "Période" : {
@@ -3823,6 +3841,12 @@
 
     },
     "Pick on the map" : {
+
+    },
+    "Play" : {
+
+    },
+    "Playback speed" : {
 
     },
     "Please wait" : {
@@ -4029,6 +4053,9 @@
 
     },
     "Replay Onboarding" : {
+
+    },
+    "Restart replay" : {
 
     },
     "Restaurer" : {

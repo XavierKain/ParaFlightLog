@@ -2,10 +2,14 @@
 //  FlightReplayView.swift
 //  ParaFlightLog
 //
-//  Full-screen 3D flight replay (Wingman-style):
-//  a chase camera follows the pilot over realistic 3D terrain, the track is
-//  colored by climb/sink (vario), and the timeline is an altitude-profile
-//  scrubber. Playback auto-starts; an overview mode frames the whole flight.
+//  Full-screen 3D flight replay (Wingman/Surfr-style):
+//  - Chase camera with adjustable zoom & tilt (pinch / two-finger drag), or a
+//    fully free camera the pilot moves by hand.
+//  - Fading comet trail (the last ~10 viewed seconds) so circling in lift
+//    doesn't build up into an unreadable blob; the whole vario-colored track
+//    is shown in overview mode instead.
+//  - Continuous vario color gradient (red sink → cyan neutral → green climb).
+//  - Altitude-profile timeline scrubber, auto-play, HUD with live vario.
 //  Target: iOS only
 //
 
@@ -22,8 +26,8 @@ struct FlightReplayView: View {
     private let timeOffsets: [TimeInterval]
     private let duration: TimeInterval
     private let trackStart: Date
-    /// Track split into consecutive runs of similar vertical speed, pre-colored
-    /// (green = climb, red = sink) so the 3D line reads like a vario trace.
+    /// Full track split into runs of similar vertical speed, pre-colored
+    /// (used in overview mode, where the whole flight is visible).
     private let varioSegments: [VarioSegment]
     /// Altitude samples normalized for the profile scrubber (0...1 by time).
     private let altitudeProfile: [CGPoint]
@@ -33,16 +37,28 @@ struct FlightReplayView: View {
     @State private var isPlaying = false
     @State private var isScrubbing = false
     @State private var isOverview = false
-    @State private var speedIndex = 1          // default 10x
+    /// true = chase camera follows the pilot; false = free camera (manual)
+    @State private var followMode = true
+    @State private var speedIndex = 2          // default 10x
     @State private var cameraHeading: Double
     @State private var cameraPosition: MapCameraPosition
     @State private var lastTickDate: Date?
 
+    // Adjustable chase-camera framing: pinch to zoom and two-finger drag to
+    // tilt keep working in follow mode — the values are captured from the map
+    // and fed back into every camera update.
+    @State private var cameraDistance: Double = 900
+    @State private var cameraPitch: Double = 62
+
     private let playbackSpeeds: [Double] = [1, 5, 10, 30]
-    private let cameraDistance: Double = 900
-    private let cameraPitch: Double = 62
     private let tickInterval: TimeInterval = 1.0 / 30.0
     private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
+
+    /// Trail window in flight-seconds: roughly the last 10 *viewed* seconds,
+    /// whatever the playback speed.
+    private var trailWindow: TimeInterval {
+        max(20, 10 * playbackSpeeds[speedIndex])
+    }
 
     private static let clockFormatter: DateFormatter = {
         let formatter = DateFormatter()
@@ -90,15 +106,36 @@ struct FlightReplayView: View {
 
     // MARK: - Content
 
+    /// Gestures: free camera = everything; follow mode keeps zoom + pitch so
+    /// the pilot can adjust the chase framing even during playback.
+    private var interactionModes: MapInteractionModes {
+        if !followMode || isOverview || !isPlaying {
+            return .all
+        }
+        return [.zoom, .pitch]
+    }
+
     private var replayContent: some View {
         let current = sample(at: elapsed)
 
         return ZStack {
-            Map(position: $cameraPosition, interactionModes: isPlaying ? [] : .all) {
-                // Vario-colored track: green while climbing, red while sinking
-                ForEach(varioSegments) { segment in
-                    MapPolyline(coordinates: segment.coordinates)
-                        .stroke(segment.color, lineWidth: 3.5)
+            Map(position: $cameraPosition, interactionModes: interactionModes) {
+                if isOverview {
+                    // Whole flight, vario-colored (readable from high up)
+                    ForEach(varioSegments) { segment in
+                        MapPolyline(coordinates: segment.coordinates)
+                            .stroke(segment.color, lineWidth: 3.5)
+                    }
+                } else {
+                    // Faint full route for context only
+                    MapPolyline(coordinates: coordinates)
+                        .stroke(.white.opacity(0.18), lineWidth: 1.5)
+
+                    // Comet trail: last ~10 viewed seconds, fading with age
+                    ForEach(trailChunks(at: elapsed)) { chunk in
+                        MapPolyline(coordinates: chunk.coordinates)
+                            .stroke(chunk.color, lineWidth: 4)
+                    }
                 }
 
                 // Takeoff and landing markers
@@ -122,8 +159,8 @@ struct FlightReplayView: View {
                 }
 
                 // The pilot, rotated to the current heading, ringed with the
-                // current vario color (relative to camera heading: annotations
-                // are screen-aligned)
+                // live vario color (annotations are screen-aligned, hence the
+                // camera-heading compensation)
                 Annotation("", coordinate: current.coordinate) {
                     ZStack {
                         Circle()
@@ -141,6 +178,14 @@ struct FlightReplayView: View {
                 }
             }
             .mapStyle(.hybrid(elevation: .realistic))
+            .onMapCameraChange(frequency: .continuous) { context in
+                // Capture pinch-zoom / tilt so follow mode keeps the pilot's
+                // framing on the next tick (values from our own programmatic
+                // moves simply echo back unchanged).
+                guard followMode, !isOverview else { return }
+                cameraDistance = min(max(context.camera.distance, 250), 6000)
+                cameraPitch = min(max(context.camera.pitch, 0), 75)
+            }
             .ignoresSafeArea()
 
             // HUD + controls overlays
@@ -154,7 +199,7 @@ struct FlightReplayView: View {
             tick(now)
         }
         .onAppear {
-            // Auto-start the flyover (Wingman-style) after the map settles
+            // Auto-start the flyover after the map settles
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
                 if !isPlaying && elapsed == 0 {
                     isPlaying = true
@@ -236,7 +281,7 @@ struct FlightReplayView: View {
 
     private var controls: some View {
         VStack(spacing: 10) {
-            // Altitude-profile scrubber (replaces the plain slider)
+            // Altitude-profile scrubber (the timeline IS the altitude curve)
             AltitudeProfileScrubber(
                 profile: altitudeProfile,
                 progress: duration > 0 ? elapsed / duration : 0,
@@ -246,7 +291,7 @@ struct FlightReplayView: View {
                 },
                 onScrubEnd: {
                     isScrubbing = false
-                    snapCamera()
+                    if followMode { snapCamera() }
                 }
             )
             .frame(height: 56)
@@ -261,18 +306,33 @@ struct FlightReplayView: View {
                     .foregroundStyle(.secondary)
             }
 
-            HStack(spacing: 24) {
+            HStack(spacing: 18) {
                 // Playback speed cycle
                 Button {
                     speedIndex = (speedIndex + 1) % playbackSpeeds.count
                 } label: {
                     Text("\(Int(playbackSpeeds[speedIndex]))x")
                         .font(.headline.monospacedDigit())
-                        .frame(width: 52, height: 36)
+                        .frame(width: 50, height: 36)
                         .background(Color(.tertiarySystemFill), in: Capsule())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Playback speed")
+
+                // Camera: follow the pilot, or free (move it by hand)
+                Button {
+                    toggleFollow()
+                } label: {
+                    Image(systemName: followMode ? "video.fill" : "hand.draw.fill")
+                        .font(.headline)
+                        .frame(width: 50, height: 36)
+                        .background(
+                            followMode ? Color.blue.opacity(0.25) : Color(.tertiarySystemFill),
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(followMode ? "Camera follows the pilot — tap for free camera" : "Free camera — tap to follow the pilot")
 
                 // Play / pause
                 Button {
@@ -285,26 +345,29 @@ struct FlightReplayView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(isPlaying ? "Pause" : "Play")
 
-                // Chase / overview camera toggle
+                // Whole-flight overview
                 Button {
                     toggleOverview()
                 } label: {
                     Image(systemName: isOverview ? "location.fill.viewfinder" : "map")
                         .font(.headline)
-                        .frame(width: 52, height: 36)
-                        .background(Color(.tertiarySystemFill), in: Capsule())
+                        .frame(width: 50, height: 36)
+                        .background(
+                            isOverview ? Color.blue.opacity(0.25) : Color(.tertiarySystemFill),
+                            in: Capsule()
+                        )
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(isOverview ? "Back to chase camera" : "Overview of the whole flight")
+                .accessibilityLabel(isOverview ? "Back to the pilot" : "Overview of the whole flight")
 
                 // Restart
                 Button {
                     scrub(to: 0)
-                    snapCamera()
+                    if followMode { snapCamera() }
                 } label: {
                     Image(systemName: "arrow.counterclockwise")
                         .font(.headline)
-                        .frame(width: 52, height: 36)
+                        .frame(width: 50, height: 36)
                         .background(Color(.tertiarySystemFill), in: Capsule())
                 }
                 .buttonStyle(.plain)
@@ -323,29 +386,38 @@ struct FlightReplayView: View {
         if !isPlaying && elapsed >= duration {
             // Replay from the start when finished
             elapsed = 0
-            snapCamera()
+            if followMode { snapCamera() }
         }
         if isOverview {
             isOverview = false
-            snapCamera()
+            if followMode { snapCamera() }
         }
         isPlaying.toggle()
     }
 
-    /// Frames the whole flight from above (paused), or returns to the chase cam.
-    private func toggleOverview() {
-        isOverview.toggle()
-        if isOverview {
-            isPlaying = false
-            withAnimation(.easeInOut(duration: 0.6)) {
-                cameraPosition = .automatic
-            }
-        } else {
+    /// Chase camera on/off. Free camera keeps playing — the pilot marker moves
+    /// while the camera stays wherever the user put it.
+    private func toggleFollow() {
+        followMode.toggle()
+        if followMode {
+            isOverview = false
             snapCamera()
         }
     }
 
-    /// Advances playback on every timer tick and moves the chase camera.
+    /// Frames the whole flight from above, or returns to the previous camera.
+    private func toggleOverview() {
+        isOverview.toggle()
+        if isOverview {
+            withAnimation(.easeInOut(duration: 0.6)) {
+                cameraPosition = .automatic
+            }
+        } else if followMode {
+            snapCamera()
+        }
+    }
+
+    /// Advances playback on every timer tick; moves the camera in follow mode.
     private func tick(_ now: Date) {
         defer { lastTickDate = now }
         guard isPlaying, !isScrubbing, let last = lastTickDate else { return }
@@ -360,7 +432,9 @@ struct FlightReplayView: View {
         }
         elapsed = newElapsed
 
-        // Chase camera: center on the pilot, lerp the heading so turns stay smooth
+        // Chase camera: center on the pilot with the user-adjusted zoom/tilt,
+        // lerping the heading so turns stay smooth. Free camera: hands off.
+        guard followMode, !isOverview else { return }
         let current = sample(at: elapsed)
         cameraHeading = Self.lerpAngle(from: cameraHeading, to: current.heading, factor: 0.08)
         withAnimation(.linear(duration: tickInterval)) {
@@ -468,7 +542,58 @@ struct FlightReplayView: View {
         return l1.distance(from: l0) / dt
     }
 
-    // MARK: - Vario Coloring
+    // MARK: - Comet Trail
+
+    private struct TrailChunk: Identifiable {
+        let id: Int
+        let coordinates: [CLLocationCoordinate2D]
+        let color: Color
+    }
+
+    /// The last `trailWindow` flight-seconds as a handful of slices, colored by
+    /// vario and fading out with age (oldest almost transparent). Keeps the
+    /// screen readable when the pilot circles in the same spot for minutes.
+    private func trailChunks(at time: TimeInterval) -> [TrailChunk] {
+        let window = trailWindow
+        let start = max(0, time - window)
+        guard time > start else { return [] }
+
+        let sliceCount = 8
+        let sliceDuration = (time - start) / Double(sliceCount)
+        guard sliceDuration > 0 else { return [] }
+
+        var chunks: [TrailChunk] = []
+        chunks.reserveCapacity(sliceCount)
+
+        for k in 0..<sliceCount {
+            let t0 = start + sliceDuration * Double(k)
+            let t1 = start + sliceDuration * Double(k + 1)
+
+            // Slice coordinates: interpolated ends + the raw points in between
+            var coords: [CLLocationCoordinate2D] = [sample(at: t0).coordinate]
+            let i0 = segmentIndex(for: t0)
+            let i1 = segmentIndex(for: t1)
+            if i1 > i0 {
+                coords.append(contentsOf: coordinates[(i0 + 1)...i1])
+            }
+            coords.append(sample(at: t1).coordinate)
+            guard coords.count >= 2 else { continue }
+
+            // Age fade: newest slice fully opaque, oldest nearly gone
+            let ageFactor = Double(k + 1) / Double(sliceCount)
+            let opacity = 0.12 + 0.88 * ageFactor
+            let vario = sample(at: (t0 + t1) / 2).verticalSpeed ?? 0
+
+            chunks.append(TrailChunk(
+                id: k,
+                coordinates: coords,
+                color: Self.varioColor(vario).opacity(opacity)
+            ))
+        }
+        return chunks
+    }
+
+    // MARK: - Vario Coloring (continuous gradient)
 
     private struct VarioSegment: Identifiable {
         let id: Int
@@ -484,19 +609,43 @@ struct FlightReplayView: View {
         return (a1 - a0) / dt
     }
 
-    /// Variometer color scale: strong climb → green, neutral → cyan, sink → orange/red.
+    /// Continuous variometer gradient: strong sink → red, weak sink → orange,
+    /// neutral → cyan, weak climb → light green, strong climb → green.
+    /// Piecewise-linear RGB interpolation between the stops.
     private static func varioColor(_ verticalSpeed: Double) -> Color {
-        switch verticalSpeed {
-        case 1.5...:            return .green
-        case 0.3..<1.5:         return Color(red: 0.55, green: 0.85, blue: 0.35)
-        case -0.8..<0.3:        return .cyan
-        case -2.5..<(-0.8):     return .orange
-        default:                return .red
+        // (vario m/s, r, g, b)
+        let stops: [(Double, Double, Double, Double)] = [
+            (-4.0, 0.95, 0.15, 0.15),   // strong sink: red
+            (-1.5, 1.00, 0.55, 0.10),   // sink: orange
+            ( 0.0, 0.25, 0.80, 0.95),   // neutral: cyan
+            ( 1.5, 0.55, 0.90, 0.30),   // climb: light green
+            ( 4.0, 0.10, 0.85, 0.25)    // strong climb: green
+        ]
+
+        let v = min(max(verticalSpeed, stops.first!.0), stops.last!.0)
+        for i in 0..<(stops.count - 1) {
+            let (v0, r0, g0, b0) = stops[i]
+            let (v1, r1, g1, b1) = stops[i + 1]
+            if v <= v1 {
+                let f = v1 > v0 ? (v - v0) / (v1 - v0) : 0
+                return Color(
+                    red: r0 + (r1 - r0) * f,
+                    green: g0 + (g1 - g0) * f,
+                    blue: b0 + (b1 - b0) * f
+                )
+            }
         }
+        return Color(red: stops.last!.1, green: stops.last!.2, blue: stops.last!.3)
     }
 
-    /// Groups consecutive points into runs of the same vario color so the
-    /// track renders as a handful of polylines instead of one per segment.
+    /// Quantized color id used to group consecutive points into polyline runs
+    /// (full-track overview rendering).
+    private static func varioBucket(_ verticalSpeed: Double) -> Int {
+        Int((min(max(verticalSpeed, -4), 4) * 2).rounded())   // 0.5 m/s buckets
+    }
+
+    /// Groups consecutive points into runs of similar vario so the full track
+    /// renders as a limited number of polylines with a smooth-looking gradient.
     private static func makeVarioSegments(points: [GPSTrackPoint]) -> [VarioSegment] {
         guard points.count >= 2 else { return [] }
 
@@ -504,29 +653,32 @@ struct FlightReplayView: View {
         var runCoords: [CLLocationCoordinate2D] = [
             CLLocationCoordinate2D(latitude: points[0].latitude, longitude: points[0].longitude)
         ]
-        var runColor = varioColor(segmentVerticalSpeed(from: points[0], to: points[1]) ?? 0)
+        var runVario = segmentVerticalSpeed(from: points[0], to: points[1]) ?? 0
+        var runBucket = varioBucket(runVario)
 
         for i in 1..<points.count {
             let coord = CLLocationCoordinate2D(latitude: points[i].latitude, longitude: points[i].longitude)
-            let color: Color
+            let vario: Double
             if i < points.count - 1 {
-                color = varioColor(segmentVerticalSpeed(from: points[i], to: points[i + 1]) ?? 0)
+                vario = segmentVerticalSpeed(from: points[i], to: points[i + 1]) ?? 0
             } else {
-                color = runColor
+                vario = runVario
             }
+            let bucket = varioBucket(vario)
 
             runCoords.append(coord)
 
-            if color != runColor {
-                segments.append(VarioSegment(id: segments.count, coordinates: runCoords, color: runColor))
+            if bucket != runBucket {
+                segments.append(VarioSegment(id: segments.count, coordinates: runCoords, color: varioColor(runVario)))
                 // Start the next run from the current point so lines connect
                 runCoords = [coord]
-                runColor = color
+                runVario = vario
+                runBucket = bucket
             }
         }
 
         if runCoords.count >= 2 {
-            segments.append(VarioSegment(id: segments.count, coordinates: runCoords, color: runColor))
+            segments.append(VarioSegment(id: segments.count, coordinates: runCoords, color: varioColor(runVario)))
         }
         return segments
     }
