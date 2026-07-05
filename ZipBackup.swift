@@ -3,9 +3,18 @@
 //  ParaFlightLog
 //
 //  Gestion de l'export et import de backups complets au format ZIP
-//  Contient: wings.csv, flights.csv, images/, metadata.json
+//  Contient: wings.csv, flights.csv, gps/<vol>.json, images/, metadata.json
 //  NOTE: Utilise FileManager pour créer un dossier au lieu d'un vrai ZIP
 //        pour compatibilité iOS (Process n'est pas disponible)
+//
+//  Format « riche » compatible avec l'import de l'app SoarX V10 :
+//   - wings.csv   : 17 colonnes (les colonnes propriété/maintenance sont émises
+//                   vides ici, ce modèle ne les stockant pas, mais présentes pour
+//                   que V10 puisse les relire)
+//   - flights.csv : colonnes de tracking (altitudes, distance, vitesse, G-force)
+//                   + Date de création, en plus des colonnes de base
+//   - gps/<id>.json : trace GPS complète du vol (blob JSON brut, un fichier par vol)
+//   L'objectif est un export EXHAUSTIF, réimportable à l'identique.
 //
 
 import Foundation
@@ -94,7 +103,9 @@ struct ZipBackup {
                 let dateFormatter = DateFormatter()
                 dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
 
-                var wingsCSV = "ID,Nom,Taille,Type,Couleur,Archivé,Date de création,Ordre d'affichage,Photo\n"
+                // En-tête 17 colonnes (compat. import SoarX V10). Les colonnes
+                // propriété/maintenance (à partir de « Possédée ») sont émises vides.
+                var wingsCSV = "ID,Nom,Taille,Type,Couleur,Archivé,Date de création,Ordre d'affichage,Photo,Marque,Possédée,Heures initiales,Date achat,Date revente,Intervalle maintenance (h),Heures dern. maintenance,Date dern. maintenance\n"
                 var imagesCount = 0
 
                 for wing in wings.sorted(by: { $0.createdAt < $1.createdAt }) {
@@ -106,6 +117,7 @@ struct ZipBackup {
                     let archived = wing.isArchived ? "Oui" : "Non"
                     let created = dateFormatter.string(from: wing.createdAt)
                     let displayOrder = "\(wing.displayOrder)"
+                    let brand = escapeCSV(wing.brand ?? "")
 
                     // Sauvegarder l'image si elle existe
                     var photoFilename = ""
@@ -116,11 +128,17 @@ struct ZipBackup {
                         imagesCount += 1
                     }
 
-                    wingsCSV += "\(id),\(name),\(size),\(type),\(color),\(archived),\(created),\(displayOrder),\(photoFilename)\n"
+                    // Colonnes 0..9 renseignées ; 10..16 (propriété/maintenance) vides.
+                    wingsCSV += "\(id),\(name),\(size),\(type),\(color),\(archived),\(created),\(displayOrder),\(photoFilename),\(brand),,,,,,,\n"
                 }
 
-                // 3. Exporter les vols en CSV
-                var flightsCSV = "ID,Date début,Date fin,Durée (sec),Voile ID,Voile Nom,Spot,Latitude,Longitude,Type,Notes\n"
+                // 3. Exporter les vols en CSV (colonnes de base + tracking + date de création)
+                var flightsCSV = "ID,Date début,Date fin,Durée (sec),Voile ID,Voile Nom,Spot,Latitude,Longitude,Type,Notes,Alt départ,Alt max,Alt fin,Distance (m),Vitesse max (m/s),GForce max,Date de création\n"
+
+                // Dossier gps/ pour les traces GPS (une par vol, JSON brut)
+                let gpsDir = bundleURL.appendingPathComponent("gps")
+                try FileManager.default.createDirectory(at: gpsDir, withIntermediateDirectories: true)
+                var gpsTracksCount = 0
 
                 for flight in flights.sorted(by: { $0.startDate < $1.startDate }) {
                     let id = flight.id.uuidString
@@ -134,9 +152,25 @@ struct ZipBackup {
                     let lon = flight.longitude.map { String($0) } ?? ""
                     let flightType = escapeCSV(flight.flightType ?? "")
                     let notes = escapeCSV(flight.notes ?? "")
+                    let startAlt = flight.startAltitude.map { String($0) } ?? ""
+                    let maxAlt = flight.maxAltitude.map { String($0) } ?? ""
+                    let endAlt = flight.endAltitude.map { String($0) } ?? ""
+                    let distance = flight.totalDistance.map { String($0) } ?? ""
+                    let maxSpeed = flight.maxSpeed.map { String($0) } ?? ""
+                    let maxGForce = flight.maxGForce.map { String($0) } ?? ""
+                    let createdAt = dateFormatter.string(from: flight.createdAt)
 
-                    flightsCSV += "\(id),\(startDate),\(endDate),\(duration),\(wingId),\(wingName),\(spotName),\(lat),\(lon),\(flightType),\"\(notes)\"\n"
+                    flightsCSV += "\(id),\(startDate),\(endDate),\(duration),\(wingId),\(wingName),\(spotName),\(lat),\(lon),\(flightType),\"\(notes)\",\(startAlt),\(maxAlt),\(endAlt),\(distance),\(maxSpeed),\(maxGForce),\(createdAt)\n"
+
+                    // Sauvegarder la trace GPS complète si elle existe (blob JSON brut)
+                    if let trackData = flight.gpsTrackData {
+                        let trackURL = gpsDir.appendingPathComponent("\(id).json")
+                        try trackData.write(to: trackURL)
+                        gpsTracksCount += 1
+                    }
                 }
+
+                Log.info("Backup: \(gpsTracksCount) GPS tracks exported", category: .dataController)
 
                 // 4. Écrire les CSVs
                 let wingsURL = bundleURL.appendingPathComponent("wings.csv")
@@ -205,6 +239,10 @@ struct ZipBackup {
                 let metadata = try JSONDecoder().decode(BackupMetadata.self, from: metadataData)
                 Log.info("Importing backup from \(metadata.exportDate): \(metadata.wingsCount) wings, \(metadata.flightsCount) flights", category: .dataController)
 
+                // Formatter partagé par les deux parseurs (voiles + vols)
+                let dateFormatter = DateFormatter()
+                dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
+
                 // 2. Parser wings.csv
                 let wingsURL = extractedDir.appendingPathComponent("wings.csv")
                 guard FileManager.default.fileExists(atPath: wingsURL.path) else {
@@ -215,7 +253,6 @@ struct ZipBackup {
                 let wingsRows = wingsCSV.components(separatedBy: "\n").dropFirst() // Skip header
 
                 var importedWings: [UUID: Wing] = [:]
-                var wingsCount = 0
 
                 for row in wingsRows {
                     guard !row.isEmpty else { continue }
@@ -232,8 +269,15 @@ struct ZipBackup {
                     )
                     wing.id = wingId
                     wing.isArchived = cols[5] == "Oui"
+                    if let created = dateFormatter.date(from: cols[6]) {
+                        wing.createdAt = created
+                    }
                     if let displayOrder = Int(cols[7]) {
                         wing.displayOrder = displayOrder
+                    }
+                    // Marque (colonne 9, présente dans les backups riches)
+                    if cols.count > 9 && !cols[9].isEmpty {
+                        wing.brand = cols[9]
                     }
 
                     // Charger l'image si elle existe
@@ -245,7 +289,6 @@ struct ZipBackup {
                     }
 
                     importedWings[wingId] = wing
-                    wingsCount += 1
                 }
 
                 // 3. Parser flights.csv
@@ -257,10 +300,8 @@ struct ZipBackup {
                 let flightsCSV = try String(contentsOf: flightsURL, encoding: .utf8)
                 let flightsRows = flightsCSV.components(separatedBy: "\n").dropFirst() // Skip header
 
-                let dateFormatter = DateFormatter()
-                dateFormatter.dateFormat = "dd/MM/yyyy HH:mm"
-
                 var flights: [Flight] = []
+                let gpsDir = extractedDir.appendingPathComponent("gps")
 
                 for row in flightsRows {
                     guard !row.isEmpty else { continue }
@@ -284,11 +325,40 @@ struct ZipBackup {
                         longitude: Double(cols[8])
                     )
 
+                    // Conserver l'ID d'origine (stabilité inter-backups + lien avec gps/<id>.json)
+                    if let flightId = UUID(uuidString: cols[0]) {
+                        flight.id = flightId
+                    }
+
                     if !cols[9].isEmpty {
                         flight.flightType = cols[9]
                     }
                     if cols.count >= 11 && !cols[10].isEmpty {
                         flight.notes = cols[10].replacingOccurrences(of: "\"", with: "")
+                    }
+
+                    // Colonnes de tracking (backups riches : >= 17 colonnes)
+                    if cols.count >= 17 {
+                        flight.startAltitude = Double(cols[11])
+                        flight.maxAltitude = Double(cols[12])
+                        flight.endAltitude = Double(cols[13])
+                        flight.totalDistance = Double(cols[14])
+                        flight.maxSpeed = Double(cols[15])
+                        flight.maxGForce = Double(cols[16])
+                    }
+
+                    // Date de création (colonne 17, optionnelle)
+                    if cols.count >= 18, let created = dateFormatter.date(from: cols[17]) {
+                        flight.createdAt = created
+                    }
+
+                    // Trace GPS complète (dossier gps/<id>.json). On valide que le blob
+                    // se décode bien en [GPSTrackPoint] avant de l'attacher au vol.
+                    let trackURL = gpsDir.appendingPathComponent("\(cols[0]).json")
+                    if FileManager.default.fileExists(atPath: trackURL.path),
+                       let trackData = try? Data(contentsOf: trackURL),
+                       (try? JSONDecoder().decode([GPSTrackPoint].self, from: trackData)) != nil {
+                        flight.gpsTrackData = trackData
                     }
 
                     flights.append(flight)
@@ -299,30 +369,43 @@ struct ZipBackup {
                     do {
                         let modelContext = dataController.modelContext
 
-                        // Si mode merge, vérifier les doublons
-                        // Sinon, tout supprimer d'abord
+                        // Mode remplacement : tout supprimer d'abord
                         if !mergeMode {
                             try modelContext.delete(model: Flight.self)
                             try modelContext.delete(model: Wing.self)
                         }
 
-                        // Insérer les voiles
-                        for wing in importedWings.values {
+                        // Mode fusion : ignorer les éléments déjà présents (import idempotent)
+                        let existingWingIds = Set((try? modelContext.fetch(FetchDescriptor<Wing>()))?.map(\.id) ?? [])
+                        let existingFlightIds = Set((try? modelContext.fetch(FetchDescriptor<Flight>()))?.map(\.id) ?? [])
+
+                        // Insérer les voiles (en réutilisant les existantes pour lier les vols)
+                        var insertedWings = 0
+                        for wing in importedWings.values where !existingWingIds.contains(wing.id) {
                             modelContext.insert(wing)
+                            insertedWings += 1
                         }
 
                         // Insérer les vols
-                        for flight in flights {
+                        var insertedFlights = 0
+                        for flight in flights where !existingFlightIds.contains(flight.id) {
+                            // Si la voile du backup existait déjà, rattacher le vol à la voile en base
+                            if let wingId = flight.wing?.id, existingWingIds.contains(wingId) {
+                                flight.wing = dataController.findWing(byId: wingId)
+                            }
                             modelContext.insert(flight)
+                            insertedFlights += 1
                         }
 
                         try modelContext.save()
+                        dataController.statsCache.invalidate()
 
+                        let skipped = flights.count - insertedFlights
                         let summary = """
                         ✅ Import réussi !
 
-                        Voiles importées: \(wingsCount)
-                        Vols importés: \(flights.count)
+                        Voiles importées: \(insertedWings)
+                        Vols importés: \(insertedFlights)\(skipped > 0 ? " (\(skipped) doublons ignorés)" : "")
                         Images restaurées: \(metadata.imagesCount)
                         Mode: \(mergeMode ? "Fusion" : "Remplacement")
                         """
