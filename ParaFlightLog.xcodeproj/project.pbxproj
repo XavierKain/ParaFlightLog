@@ -131,7 +131,7 @@
 		0E921B100E3A40230D211CD4 /* ParaFlightLogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ParaFlightLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		21464456E8865E0A82BF5E42 /* VarioEngineTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = VarioEngineTests.swift; sourceTree = "<group>"; };
 		250A317D2EDDFB18004F63C8 /* StatsCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatsCache.swift; sourceTree = "<group>"; };
-		25145B8B2EDE042F0095D7A9 /* ExcelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParaFlightLog/ExcelImporter.swift; sourceTree = "<group>"; };
+		25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParaFlightLog/ExcelImporter.swift; sourceTree = "<group>"; };
 		25145C292EDE61D80095D7A9 /* ParaFlightLogWidgetExtensionExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ParaFlightLogWidgetExtensionExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		25145C2D2EDE61D80095D7A9 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -205,8 +205,6 @@
 		};
 		257C68EA2ECB7650005F3773 /* ParaFlightLogWatch Watch App */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-			);
 			path = "ParaFlightLogWatch Watch App";
 			sourceTree = "<group>";
 		};
@@ -295,7 +293,7 @@
 		257C68CC2ECB7559005F3773 = {
 			isa = PBXGroup;
 			children = (
-				25145B8B2EDE042F0095D7A9 /* ExcelImporter.swift */,
+				25145B8B2EDE042F0095D7A9 /* ParaFlightLog/ExcelImporter.swift */,
 				250A317D2EDDFB18004F63C8 /* StatsCache.swift */,
 				25C9798E2EDBB5DA009233B8 /* Models.swift */,
 				38054EE6ECB34782BD8BBD6F /* Localizable.xcstrings */,
@@ -354,7 +352,6 @@
 				75820C513D4CDFBC7E48C746 /* SoarXLiveActivityBundle.swift */,
 				4A6E9181CA1EE4E3E1FA3871 /* FlightLiveActivity.swift */,
 			);
-			name = SoarXLiveActivity;
 			path = SoarXLiveActivity;
 			sourceTree = "<group>";
 		};
@@ -366,7 +363,6 @@
 				63CD68A57ABDC171A32B0C6A /* FlightAutoDetectorTests.swift */,
 				D3525165A281EBB21043C65E /* FlightAutoDetector.swift */,
 			);
-			name = ParaFlightLogTests;
 			path = ParaFlightLogTests;
 			sourceTree = "<group>";
 		};
@@ -715,7 +711,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.watchkitapp.ParaFlightLogWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10.watchkitapp.ParaFlightLogWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -749,7 +745,7 @@
 					"@executable_path/../../../../Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.watchkitapp.ParaFlightLogWidgetExtension;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10.watchkitapp.ParaFlightLogWidgetExtension;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -904,6 +900,7 @@
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "SoarX utilise le baromètre pour le variomètre (taux de montée) pendant vos vols.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -914,7 +911,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -942,6 +939,7 @@
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer automatiquement vos vols de parapente, même en arrière-plan.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de décollage de vos vols de parapente.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "SoarX utilise le baromètre pour le variomètre (taux de montée) pendant vos vols.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -952,7 +950,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -981,13 +979,13 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de vos vols.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.SoarX;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.SoarXv10;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1019,13 +1017,13 @@
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SOARX utilise votre position pour enregistrer le lieu de vos vols.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Utilisé pour détecter les mouvements pendant votre vol";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.SoarX;
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.SoarXv10;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.watchkitapp;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10.watchkitapp;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = watchos;
 				SKIP_INSTALL = YES;
@@ -1049,7 +1047,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10Tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -1071,7 +1069,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -1088,7 +1086,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXTests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10Tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
@@ -1110,7 +1108,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.LiveActivity;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -1133,7 +1131,7 @@
 				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
 				MARKETING_VERSION = 2.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarX.LiveActivity;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10.LiveActivity;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
@@ -1156,7 +1154,7 @@
 					"@executable_path/Frameworks",
 					"@loader_path/Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = com.xavierkain.SoarXv10UITests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
