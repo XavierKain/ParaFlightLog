@@ -168,7 +168,8 @@ struct DashboardView: View {
             }
             .navigationTitle("Home")
             .background(Color(.systemGroupedBackground))
-            .task(id: flights.count) {
+            // Token (not just count) so in-place flight edits refresh the totals
+            .task(id: flights.statsChangeToken) {
                 stats = dataController.computeStats(from: flights)
             }
             .sheet(item: $showingFlightDetail) { flight in

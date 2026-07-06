@@ -209,11 +209,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         // NOTE: UserDefaultsKeys (Constants.swift) is iOS-only; use literals here.
         // These string keys must match the iPhone's UserDefaultsKeys values.
         let s = WatchSettings.shared
+        // varioEnabled is deliberately NOT sent: on the iPhone that key drives
+        // the PHONE's timer vario, not a mirror of the Watch vario, and the
+        // reverse direction never synced it. The watch vario stays watch-local.
         let payload: [String: Any] = [
             WatchSyncKeys.watchSettingsUpdate: true,
             "watchAutoWaterLock": s.autoWaterLockEnabled,
             "watchAllowSessionDismiss": s.allowSessionDismiss,
-            "varioEnabled": s.varioEnabled,
             "simulateFlightEnabled": s.simulateFlightEnabled
         ]
         WCSession.default.transferUserInfo(payload)

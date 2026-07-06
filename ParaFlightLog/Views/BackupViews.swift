@@ -16,6 +16,7 @@ import UniformTypeIdentifiers
 struct BackupExportView: View {
     let wings: [Wing]
     let flights: [Flight]
+    var spots: [Spot] = []
 
     @State private var exportStatus: ExportStatus = .idle
     @State private var backupURL: URL?
@@ -149,7 +150,7 @@ struct BackupExportView: View {
     private func startExport() {
         exportStatus = .exporting
 
-        BackupManager.exportBackup(wings: Array(wings), flights: Array(flights)) { result in
+        BackupManager.exportBackup(wings: Array(wings), flights: Array(flights), spots: spots) { result in
             switch result {
             case .success(let url):
                 self.backupURL = url

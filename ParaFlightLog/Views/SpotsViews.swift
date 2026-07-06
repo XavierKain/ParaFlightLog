@@ -26,7 +26,7 @@ struct SpotsManagementView: View {
     @State private var newSpotCity = ""
 
     private var sortedSpots: [Spot] {
-        spots.sorted { ($0.flights?.count ?? 0) > ($1.flights?.count ?? 0) }
+        DataController.popularityOrder(spots)
     }
 
     var body: some View {
@@ -132,6 +132,11 @@ struct SpotDetailView: View {
     @State private var newSpotCity = ""
 
     @State private var showingDeleteConfirm = false
+
+    // Set before dismiss() when the spot was deleted (delete button or a split
+    // that emptied it): the onDisappear commitEdits() must not touch the
+    // now-deleted @Model.
+    @State private var didDelete = false
 
     // Split-by-GPS state
     @State private var splitClusterSizes: [Int] = []
@@ -276,6 +281,7 @@ struct SpotDetailView: View {
             titleVisibility: .visible
         ) {
             Button("Delete", role: .destructive) {
+                didDelete = true
                 dataController.deleteSpot(spot)
                 dismiss()
             }
@@ -335,6 +341,7 @@ struct SpotDetailView: View {
 
         if result.originalDeleted {
             // The spot this screen shows no longer exists
+            didDelete = true
             dismiss()
         } else {
             splitInfoMessage = "Created \(result.createdNames.joined(separator: ", ")) (\(result.movedFlights) flights moved). \(result.keptWithoutLocation) flights without GPS stayed here."
@@ -394,6 +401,9 @@ struct SpotDetailView: View {
     // MARK: - Actions
 
     private func commitEdits() {
+        // The spot was deleted on this screen: any access to it would touch a
+        // deleted @Model (onDisappear fires after the deleting dismiss()).
+        guard !didDelete else { return }
         let name = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
         let city = editedCity.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }

@@ -138,8 +138,10 @@ private struct IOSRootView: View {
                     dataController.watchConnectivityManager = watchManager
 
                     // Spot migration: link legacy spotName-only flights to Spot
-                    // entities (idempotent, no-op once everything is linked)
-                    dataController.linkUnlinkedFlights()
+                    // entities. Runs ONCE ever (persisted flag) — repeating it
+                    // every launch resurrected deleted spots from the spotName
+                    // their flights keep after deleteSpot.
+                    dataController.runSpotMigrationIfNeeded()
 
                     locationService.requestAuthorization()
 

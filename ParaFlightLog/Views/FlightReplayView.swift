@@ -43,6 +43,12 @@ struct FlightReplayView: View {
     @State private var cameraHeading: Double
     @State private var cameraPosition: MapCameraPosition
     @State private var lastTickDate: Date?
+    /// Set whenever the code (not the user) moves the camera, so the transition
+    /// animation's intermediate frames aren't captured as the pilot's framing.
+    /// Initialized to "now": the initial camera setup counts as programmatic.
+    @State private var lastProgrammaticCameraChange = Date()
+    /// Drives playback at ~30 Hz; only alive while actually playing.
+    @State private var playbackTimer: AnyCancellable?
 
     // Adjustable chase-camera framing: pinch to zoom and two-finger drag to
     // tilt keep working in follow mode — the values are captured from the map
@@ -52,7 +58,6 @@ struct FlightReplayView: View {
 
     private let playbackSpeeds: [Double] = [1, 5, 10, 30]
     private let tickInterval: TimeInterval = 1.0 / 30.0
-    private let timer = Timer.publish(every: 1.0 / 30.0, on: .main, in: .common).autoconnect()
 
     /// Trail window in flight-seconds: roughly the last 10 *viewed* seconds,
     /// whatever the playback speed.
@@ -180,9 +185,13 @@ struct FlightReplayView: View {
             .mapStyle(.hybrid(elevation: .realistic))
             .onMapCameraChange(frequency: .continuous) { context in
                 // Capture pinch-zoom / tilt so follow mode keeps the pilot's
-                // framing on the next tick (values from our own programmatic
-                // moves simply echo back unchanged).
-                guard followMode, !isOverview else { return }
+                // framing on the next tick (values from our own per-tick chase
+                // updates simply echo back unchanged). Skip right after a
+                // programmatic transition (snap / overview / initial setup):
+                // its animation reports intermediate distances up to 6000 m
+                // that would corrupt the saved framing.
+                guard followMode, !isOverview,
+                      Date().timeIntervalSince(lastProgrammaticCameraChange) >= 0.8 else { return }
                 cameraDistance = min(max(context.camera.distance, 250), 6000)
                 cameraPitch = min(max(context.camera.pitch, 0), 75)
             }
@@ -195,8 +204,14 @@ struct FlightReplayView: View {
                 controls
             }
         }
-        .onReceive(timer) { now in
-            tick(now)
+        .onChange(of: isPlaying) { _, playing in
+            // The 30 Hz timer only lives while playing — no wasted wakeups
+            // while paused or parked in overview.
+            if playing {
+                startPlaybackTimer()
+            } else {
+                stopPlaybackTimer()
+            }
         }
         .onAppear {
             // Auto-start the flyover after the map settles
@@ -205,6 +220,9 @@ struct FlightReplayView: View {
                     isPlaying = true
                 }
             }
+        }
+        .onDisappear {
+            stopPlaybackTimer()
         }
     }
 
@@ -383,16 +401,37 @@ struct FlightReplayView: View {
     // MARK: - Playback Engine
 
     private func togglePlayback() {
-        if !isPlaying && elapsed >= duration {
-            // Replay from the start when finished
-            elapsed = 0
-            if followMode { snapCamera() }
-        }
-        if isOverview {
-            isOverview = false
-            if followMode { snapCamera() }
+        if !isPlaying {
+            // Starting playback (pause leaves the overview state alone)
+            if elapsed >= duration {
+                // Replay from the start when finished
+                elapsed = 0
+                if followMode { snapCamera() }
+            }
+            if isOverview {
+                isOverview = false
+                if followMode { snapCamera() }
+            }
         }
         isPlaying.toggle()
+    }
+
+    /// Runs `tick` at ~30 Hz while playing. Started on play, invalidated on
+    /// pause and on disappear (via onChange(of: isPlaying) / onDisappear).
+    private func startPlaybackTimer() {
+        guard playbackTimer == nil else { return }
+        lastTickDate = Date()
+        playbackTimer = Timer.publish(every: tickInterval, on: .main, in: .common)
+            .autoconnect()
+            .sink { now in
+                tick(now)
+            }
+    }
+
+    private func stopPlaybackTimer() {
+        playbackTimer?.cancel()
+        playbackTimer = nil
+        lastTickDate = nil
     }
 
     /// Chase camera on/off. Free camera keeps playing — the pilot marker moves
@@ -408,6 +447,7 @@ struct FlightReplayView: View {
     /// Frames the whole flight from above, or returns to the previous camera.
     private func toggleOverview() {
         isOverview.toggle()
+        lastProgrammaticCameraChange = Date()
         if isOverview {
             withAnimation(.easeInOut(duration: 0.6)) {
                 cameraPosition = .automatic
@@ -422,7 +462,9 @@ struct FlightReplayView: View {
         defer { lastTickDate = now }
         guard isPlaying, !isScrubbing, let last = lastTickDate else { return }
 
-        let dt = now.timeIntervalSince(last)
+        // Clamp: after a main-thread stall or backgrounding, one tick must not
+        // apply the whole gap × playback speed.
+        let dt = min(now.timeIntervalSince(last), 0.5)
         guard dt > 0 else { return }
 
         var newElapsed = elapsed + dt * playbackSpeeds[speedIndex]
@@ -454,6 +496,7 @@ struct FlightReplayView: View {
 
     /// Re-centers the camera instantly on the current point (no heading lerp).
     private func snapCamera() {
+        lastProgrammaticCameraChange = Date()
         let current = sample(at: elapsed)
         cameraHeading = current.heading
         withAnimation(.easeInOut(duration: 0.35)) {
@@ -646,39 +689,68 @@ struct FlightReplayView: View {
 
     /// Groups consecutive points into runs of similar vario so the full track
     /// renders as a limited number of polylines with a smooth-looking gradient.
+    /// The raw per-point vario is smoothed with a short moving average and
+    /// sub-3-point runs are merged into their neighbor: otherwise noisy tracks
+    /// flip 0.5 m/s buckets constantly and produce thousands of polylines.
     private static func makeVarioSegments(points: [GPSTrackPoint]) -> [VarioSegment] {
         guard points.count >= 2 else { return [] }
 
-        var segments: [VarioSegment] = []
-        var runCoords: [CLLocationCoordinate2D] = [
-            CLLocationCoordinate2D(latitude: points[0].latitude, longitude: points[0].longitude)
-        ]
-        var runVario = segmentVerticalSpeed(from: points[0], to: points[1]) ?? 0
-        var runBucket = varioBucket(runVario)
+        let coords = points.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) }
 
-        for i in 1..<points.count {
-            let coord = CLLocationCoordinate2D(latitude: points[i].latitude, longitude: points[i].longitude)
-            let vario: Double
-            if i < points.count - 1 {
-                vario = segmentVerticalSpeed(from: points[i], to: points[i + 1]) ?? 0
-            } else {
-                vario = runVario
-            }
-            let bucket = varioBucket(vario)
+        // Per-point vertical speed: point i carries the vario of segment i→i+1
+        // (the last point repeats its predecessor's value).
+        var varios = [Double](repeating: 0, count: points.count)
+        for i in 0..<(points.count - 1) {
+            varios[i] = segmentVerticalSpeed(from: points[i], to: points[i + 1]) ?? 0
+        }
+        varios[points.count - 1] = varios[points.count - 2]
 
-            runCoords.append(coord)
-
-            if bucket != runBucket {
-                segments.append(VarioSegment(id: segments.count, coordinates: runCoords, color: varioColor(runVario)))
-                // Start the next run from the current point so lines connect
-                runCoords = [coord]
-                runVario = vario
-                runBucket = bucket
-            }
+        // Centered moving average over 5 points tames GPS altitude noise.
+        let radius = 2
+        let smoothed = varios.indices.map { i -> Double in
+            let lo = max(0, i - radius)
+            let hi = min(varios.count - 1, i + radius)
+            return varios[lo...hi].reduce(0, +) / Double(hi - lo + 1)
         }
 
-        if runCoords.count >= 2 {
-            segments.append(VarioSegment(id: segments.count, coordinates: runCoords, color: varioColor(runVario)))
+        // Runs of consecutive points sharing a bucket.
+        var runs: [(bucket: Int, range: ClosedRange<Int>)] = []
+        var runStart = 0
+        var runBucket = varioBucket(smoothed[0])
+        for i in 1..<smoothed.count where varioBucket(smoothed[i]) != runBucket {
+            runs.append((runBucket, runStart...(i - 1)))
+            runStart = i
+            runBucket = varioBucket(smoothed[i])
+        }
+        runs.append((runBucket, runStart...(smoothed.count - 1)))
+
+        // Merge runs shorter than 3 points into the previous run (coalescing
+        // same-bucket neighbors that touch as a result).
+        let minRunLength = 3
+        var merged: [(bucket: Int, range: ClosedRange<Int>)] = []
+        for run in runs {
+            if let last = merged.last, run.range.count < minRunLength || last.bucket == run.bucket {
+                merged[merged.count - 1] = (last.bucket, last.range.lowerBound...run.range.upperBound)
+            } else {
+                merged.append(run)
+            }
+        }
+        // A short leading run has no previous neighbor: fold it forward.
+        if merged.count >= 2, merged[0].range.count < minRunLength {
+            merged[1] = (merged[1].bucket, merged[0].range.lowerBound...merged[1].range.upperBound)
+            merged.removeFirst()
+        }
+
+        // One polyline per run, extended by one point so consecutive runs
+        // connect, colored by the run's mean smoothed vario.
+        var segments: [VarioSegment] = []
+        segments.reserveCapacity(merged.count)
+        for run in merged {
+            let last = min(run.range.upperBound + 1, coords.count - 1)
+            let runCoords = Array(coords[run.range.lowerBound...last])
+            guard runCoords.count >= 2 else { continue }
+            let meanVario = smoothed[run.range].reduce(0, +) / Double(run.range.count)
+            segments.append(VarioSegment(id: segments.count, coordinates: runCoords, color: varioColor(meanVario)))
         }
         return segments
     }

@@ -7,6 +7,9 @@
 //  Format v2 (current): backup.json (single JSON manifest, ISO 8601 dates,
 //  all wing and flight fields including full GPS tracks) + images/<wingId>.jpg
 //  JSON removes the CSV-escaping corruption of format v1.
+//  Additive v2 fields (optional, still formatVersion 2): a `spots` array and
+//  a per-flight `spotId`. Older v2 files without them import unchanged and
+//  fall back to name-based linking (linkUnlinkedFlights).
 //
 //  Format v1 (legacy, import only): wings.csv + flights.csv + metadata.json.
 //  Users have real historical backups in this format, so the v1 parser is kept
@@ -63,6 +66,20 @@ nonisolated struct BackupFlight: Codable {
     let maxSpeed: Double?
     let maxGForce: Double?
     let gpsTrack: [GPSTrackPoint]?
+    /// Additive v2 field: id of the Spot entity this flight is linked to.
+    /// nil in older backups — the import then falls back to name linking.
+    let spotId: UUID?
+}
+
+/// Spot snapshot in backup.json (additive v2 field; older v2 files lack it)
+/// Pure value type: `nonisolated` so it can be encoded/decoded off the main actor.
+nonisolated struct BackupSpot: Codable {
+    let id: UUID
+    let name: String
+    let city: String?
+    let latitude: Double?
+    let longitude: Double?
+    let createdAt: Date
 }
 
 /// Single JSON manifest written to backup.json
@@ -73,6 +90,8 @@ nonisolated struct BackupManifest: Codable {
     let appVersion: String
     let wings: [BackupWing]
     let flights: [BackupFlight]
+    /// Additive v2 field: optional so older v2 files (without spots) decode.
+    let spots: [BackupSpot]?
 
     static let currentFormatVersion = 2
 }
@@ -120,6 +139,7 @@ enum ImportMode {
 struct ImportSummary {
     var wingsImported: Int = 0
     var flightsImported: Int = 0
+    var spotsImported: Int = 0
     var skippedDuplicates: Int = 0
     var skippedMalformed: Int = 0
     var gpsTracksImported: Int = 0
@@ -132,6 +152,9 @@ struct ImportSummary {
             "Wings imported: \(wingsImported)",
             "Flights imported: \(flightsImported)"
         ]
+        if spotsImported > 0 {
+            lines.append("Spots imported: \(spotsImported)")
+        }
         if gpsTracksImported > 0 {
             lines.append("GPS tracks restored: \(gpsTracksImported)")
         }
@@ -177,11 +200,14 @@ enum BackupManager {
     /// - Parameters:
     ///   - wings: wings to export
     ///   - flights: flights to export
+    ///   - spots: spots to export; when nil, the spots linked from `flights`
+    ///     are exported (existing call sites keep working, but spots without
+    ///     any flight are only included when the caller passes them)
     ///   - completion: callback on the main queue with the bundle URL (or error)
-    static func exportBackup(wings: [Wing], flights: [Flight], completion: @escaping (Result<URL, Error>) -> Void) {
+    static func exportBackup(wings: [Wing], flights: [Flight], spots: [Spot]? = nil, completion: @escaping (Result<URL, Error>) -> Void) {
         // Capture everything we need from the models on the calling (main) thread:
         // SwiftData models must not be touched from a background queue.
-        let (manifest, photosByWingId) = makeManifestSnapshot(wings: wings, flights: flights)
+        let (manifest, photosByWingId) = makeManifestSnapshot(wings: wings, flights: flights, spots: spots)
 
         DispatchQueue.global(qos: .utility).async {
             do {
@@ -231,10 +257,12 @@ enum BackupManager {
     /// - Parameters:
     ///   - wings: wings to export
     ///   - flights: flights to export
+    ///   - spots: spots to export; when nil, the spots linked from `flights`
+    ///     are exported (see `exportBackup`)
     ///   - completion: callback on the main queue with the file URL (or error)
-    static func exportCloudBackup(wings: [Wing], flights: [Flight], completion: @escaping (Result<URL, Error>) -> Void) {
+    static func exportCloudBackup(wings: [Wing], flights: [Flight], spots: [Spot]? = nil, completion: @escaping (Result<URL, Error>) -> Void) {
         // Snapshot the models on the calling (main) thread, encode/write off-main.
-        let (manifest, photosByWingId) = makeManifestSnapshot(wings: wings, flights: flights)
+        let (manifest, photosByWingId) = makeManifestSnapshot(wings: wings, flights: flights, spots: spots)
 
         DispatchQueue.global(qos: .utility).async {
             do {
@@ -266,8 +294,31 @@ enum BackupManager {
 
     /// Snapshots the SwiftData models into a v2 manifest + wingId -> photo data map.
     /// Must run on the main actor: models must not be touched from a background queue.
-    private static func makeManifestSnapshot(wings: [Wing], flights: [Flight]) -> (manifest: BackupManifest, photosByWingId: [UUID: Data]) {
+    private static func makeManifestSnapshot(wings: [Wing], flights: [Flight], spots: [Spot]?) -> (manifest: BackupManifest, photosByWingId: [UUID: Data]) {
         let appVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+
+        // Spots: the caller's array when provided, always completed with any
+        // spot still reachable from the flights so every flight.spotId in the
+        // manifest resolves to a spots entry.
+        var spotsToExport: [Spot] = spots ?? []
+        var seenSpotIds = Set(spotsToExport.map(\.id))
+        for flight in flights {
+            if let spot = flight.spot, seenSpotIds.insert(spot.id).inserted {
+                spotsToExport.append(spot)
+            }
+        }
+        let backupSpots: [BackupSpot] = spotsToExport
+            .sorted { $0.createdAt < $1.createdAt }
+            .map { spot in
+                BackupSpot(
+                    id: spot.id,
+                    name: spot.name,
+                    city: spot.city,
+                    latitude: spot.latitude,
+                    longitude: spot.longitude,
+                    createdAt: spot.createdAt
+                )
+            }
 
         let backupWings: [(wing: BackupWing, photoData: Data?)] = wings
             .sorted { $0.createdAt < $1.createdAt }
@@ -309,7 +360,8 @@ enum BackupManager {
                     totalDistance: flight.totalDistance,
                     maxSpeed: flight.maxSpeed,
                     maxGForce: flight.maxGForce,
-                    gpsTrack: flight.gpsTrack
+                    gpsTrack: flight.gpsTrack,
+                    spotId: flight.spot?.id
                 )
             }
 
@@ -318,7 +370,8 @@ enum BackupManager {
             exportDate: Date(),
             appVersion: appVersion,
             wings: backupWings.map(\.wing),
-            flights: backupFlights
+            flights: backupFlights,
+            spots: backupSpots
         )
 
         let photosByWingId: [UUID: Data] = backupWings.reduce(into: [:]) { dict, entry in
@@ -398,6 +451,8 @@ enum BackupManager {
     private nonisolated struct ParsedBackup {
         var wings: [BackupWing]
         var flights: [BackupFlight]
+        /// Empty for v1 backups and older v2 files without the spots field.
+        var spots: [BackupSpot]
         var photosByWingId: [UUID: Data]
         var skippedMalformed: Int
     }
@@ -432,6 +487,7 @@ enum BackupManager {
         return ParsedBackup(
             wings: file.manifest.wings,
             flights: file.manifest.flights,
+            spots: file.manifest.spots ?? [],
             photosByWingId: photos,
             skippedMalformed: 0
         )
@@ -469,6 +525,7 @@ enum BackupManager {
         return ParsedBackup(
             wings: manifest.wings,
             flights: manifest.flights,
+            spots: manifest.spots ?? [],
             photosByWingId: photos,
             skippedMalformed: 0
         )
@@ -628,7 +685,8 @@ enum BackupManager {
                 totalDistance: extendedDouble(14),
                 maxSpeed: extendedDouble(15),
                 maxGForce: extendedDouble(16),
-                gpsTrack: gpsTrack
+                gpsTrack: gpsTrack,
+                spotId: nil  // v1 predates Spot entities; name linking applies
             ))
         }
 
@@ -637,6 +695,7 @@ enum BackupManager {
         return ParsedBackup(
             wings: wings,
             flights: flights,
+            spots: [],
             photosByWingId: photos,
             skippedMalformed: skippedMalformed
         )
@@ -655,6 +714,7 @@ enum BackupManager {
         if mode == .replace {
             try modelContext.delete(model: Flight.self)
             try modelContext.delete(model: Wing.self)
+            try modelContext.delete(model: Spot.self)
             try modelContext.save()
         }
 
@@ -700,6 +760,45 @@ enum BackupManager {
             summary.wingsImported += 1
         }
 
+        // Spots: upsert by id — existing ids are kept (only missing city/coords
+        // are backfilled, never overwritten). A same-name spot with a different
+        // id (e.g. auto-created independently on another device) is reused
+        // instead of duplicated. Old backups without spots skip this entirely.
+        var spotsById: [UUID: Spot] = [:]
+        if !parsed.spots.isEmpty {
+            let existingSpots = dataController.fetchSpots()
+            var existingById = Dictionary(existingSpots.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            var existingByName = Dictionary(existingSpots.map { ($0.name.lowercased(), $0) }, uniquingKeysWith: { first, _ in first })
+
+            for backupSpot in parsed.spots {
+                if let existing = existingById[backupSpot.id] ?? existingByName[backupSpot.name.lowercased()] {
+                    if existing.city == nil, let city = backupSpot.city {
+                        existing.city = city
+                    }
+                    if existing.latitude == nil, let lat = backupSpot.latitude, let lon = backupSpot.longitude {
+                        existing.latitude = lat
+                        existing.longitude = lon
+                    }
+                    spotsById[backupSpot.id] = existing
+                    continue
+                }
+
+                let spot = Spot(
+                    id: backupSpot.id,
+                    name: backupSpot.name,
+                    city: backupSpot.city,
+                    latitude: backupSpot.latitude,
+                    longitude: backupSpot.longitude,
+                    createdAt: backupSpot.createdAt
+                )
+                modelContext.insert(spot)
+                existingById[backupSpot.id] = spot
+                existingByName[backupSpot.name.lowercased()] = spot
+                spotsById[backupSpot.id] = spot
+                summary.spotsImported += 1
+            }
+        }
+
         // Flights
         for backupFlight in parsed.flights {
             if let existing = existingFlightsById[backupFlight.id] {
@@ -743,12 +842,19 @@ enum BackupManager {
                 gpsTrackData: gpsTrackData
             )
             modelContext.insert(flight)
+            // Direct spot link when the backup carries it; flights without a
+            // spotId (older backups) are left to linkUnlinkedFlights below.
+            if let spotId = backupFlight.spotId, let spot = spotsById[spotId] {
+                flight.spot = spot
+                flight.spotName = spot.name
+            }
             summary.flightsImported += 1
         }
 
         try modelContext.save()
 
-        // Attach imported flights to Spot entities (find-or-create by name)
+        // Attach remaining unlinked flights to Spot entities by name
+        // (intentional explicit call — the launch migration runs only once)
         dataController.linkUnlinkedFlights()
 
         logInfo("Backup import done: \(summary.wingsImported) wings, \(summary.flightsImported) flights, \(summary.skippedDuplicates) duplicates skipped, \(summary.skippedMalformed) malformed rows skipped", category: .dataImport)
@@ -791,10 +897,13 @@ enum BackupManager {
     // MARK: - Legacy Interop Export (dev-3 / SoarX v10 compatible)
 
     /// CSV escaping matching the dev-3 exporter/importer: commas become
-    /// semicolons and newlines spaces. Lossy on purpose — these files exist
-    /// only so the OLD app can read the bundle; backup.json holds the truth.
+    /// semicolons, double quotes apostrophes (a stray `"` desynchronizes
+    /// parseCSVRow's quote toggling on re-import) and newlines spaces.
+    /// Lossy on purpose — these files exist only so the OLD app can read the
+    /// bundle; backup.json holds the truth.
     private nonisolated static func legacyEscapeCSV(_ string: String) -> String {
         string.replacingOccurrences(of: ",", with: ";")
+            .replacingOccurrences(of: "\"", with: "'")
             .replacingOccurrences(of: "\n", with: " ")
     }
 

@@ -47,6 +47,9 @@ struct ContentView: View {
     @Query private var flights: [Flight]
     @State private var showingOnboarding = false
     @State private var showingAddWingFromOnboarding = false
+    /// Set by onboarding's "Add wing" action; the sheet is presented once the
+    /// fullScreenCover is actually gone (see onChange(of: showingOnboarding)).
+    @State private var pendingAddWingFromOnboarding = false
 
     @State private var selectedTab: Int = Tab.home
 
@@ -110,9 +113,15 @@ struct ContentView: View {
             }
         }
         .onAppear {
-            // Brand-new logbook: run the onboarding once.
-            if !hasCompletedOnboarding && wings.isEmpty && flights.isEmpty {
+            guard !hasCompletedOnboarding else { return }
+            if wings.isEmpty && flights.isEmpty {
+                // Brand-new logbook: run the onboarding once.
                 showingOnboarding = true
+            } else {
+                // Upgrader with existing data: onboarding never showed, so the
+                // flag stayed false forever and everything gated on it (e.g.
+                // the keyboard prewarm) was skipped. Mark it completed.
+                hasCompletedOnboarding = true
             }
         }
         // Dev tool "Replay Onboarding" resets the flag → re-present it,
@@ -122,17 +131,24 @@ struct ContentView: View {
                 showingOnboarding = true
             }
         }
+        // Deterministic onboarding → add-wing handoff: present the sheet only
+        // once the fullScreenCover state has flipped off (a fixed asyncAfter
+        // delay could be swallowed).
+        .onChange(of: showingOnboarding) { _, isShowing in
+            if !isShowing && pendingAddWingFromOnboarding {
+                pendingAddWingFromOnboarding = false
+                showingAddWingFromOnboarding = true
+            }
+        }
         .fullScreenCover(isPresented: $showingOnboarding) {
             OnboardingView(
                 onAddWing: {
                     hasCompletedOnboarding = true
-                    showingOnboarding = false
                     selectedTab = Tab.wings
-                    // Open the add-wing flow right away (small delay so the
-                    // cover dismissal animation finishes first)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
-                        showingAddWingFromOnboarding = true
-                    }
+                    // The add-wing sheet opens from onChange(of: showingOnboarding)
+                    // once the cover is dismissed.
+                    pendingAddWingFromOnboarding = true
+                    showingOnboarding = false
                 },
                 onSkip: {
                     hasCompletedOnboarding = true

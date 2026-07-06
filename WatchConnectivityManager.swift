@@ -355,10 +355,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     private func applyWatchSettings(_ payload: [String: Any]) {
         DispatchQueue.main.async { [weak self] in
             let defaults = UserDefaults.standard
+            // UserDefaultsKeys.varioEnabled is deliberately absent: that key
+            // drives the PHONE's timer vario, while the Watch payload's
+            // "varioEnabled" described the watch-local vario. Older queued
+            // payloads may still carry the key — it is ignored here.
             let keys = [
                 UserDefaultsKeys.watchAutoWaterLock,
                 UserDefaultsKeys.watchAllowSessionDismiss,
-                UserDefaultsKeys.varioEnabled,
                 UserDefaultsKeys.simulateFlightEnabled
             ]
             var changed = false

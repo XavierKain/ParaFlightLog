@@ -595,7 +595,7 @@ struct ActiveFlightView: View {
                            color: .orange)
 
                 MetricTile(value: WatchFormatters.speedKmh(locationService.maxSpeed),
-                           label: "km/h",
+                           label: "Max km/h",   // it's the MAX speed, not the current one
                            color: .purple)
 
                 MetricTile(value: WatchFormatters.gForce(locationService.currentGForce),
@@ -791,6 +791,7 @@ private struct MetricTile: View {
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
         .frame(maxWidth: .infinity)
     }

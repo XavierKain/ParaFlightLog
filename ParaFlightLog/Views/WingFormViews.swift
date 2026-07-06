@@ -166,6 +166,9 @@ struct AddWingView: View {
                     logInfo("Wing added from library: \(wing.name) (\(wing.brand ?? "no brand"))", category: .dataController)
                     dismiss()
                 } catch {
+                    // Same duplicate-on-retry hazard as CustomAddWingView:
+                    // drop the failed insert before the user tries again.
+                    modelContext.delete(wing)
                     logError("Failed to save wing: \(error.localizedDescription)", category: .dataController)
                     isAddingFromLibrary = false
                 }
@@ -381,6 +384,10 @@ struct CustomAddWingView: View {
                 watchManager.sendWingsToWatch()
                 dismiss()
             } catch {
+                // Remove the failed insert from the context: tapping "Add"
+                // again inserts a fresh wing, so leaving this one behind
+                // would create a duplicate on a successful retry.
+                modelContext.delete(wing)
                 logError("Failed to save wing: \(error.localizedDescription)", category: .dataController)
                 showSaveError = true
             }

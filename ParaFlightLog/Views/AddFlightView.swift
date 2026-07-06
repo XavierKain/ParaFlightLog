@@ -256,7 +256,15 @@ struct AddFlightView: View {
                 guard !hasAppeared else { return }
                 hasAppeared = true
 
-                selectedWing = wings.first
+                // Pre-select the wing used for the most recent flight
+                // (same behavior as TimerView), falling back to the first wing
+                if let idString = UserDefaults.standard.string(forKey: UserDefaultsKeys.lastUsedWingId),
+                   let id = UUID(uuidString: idString),
+                   let lastWing = wings.first(where: { $0.id == id }) {
+                    selectedWing = lastWing
+                } else {
+                    selectedWing = wings.first
+                }
 
                 // Pre-select the last flight type picked by the pilot
                 if let raw = UserDefaults.standard.string(forKey: UserDefaultsKeys.lastFlightType),

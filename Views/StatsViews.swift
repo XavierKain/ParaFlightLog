@@ -109,10 +109,27 @@ struct StatsOverviewContent: View {
             .padding()
         }
         // Compute after the view is on screen (keeps the tab switch snappy) and
-        // recompute whenever the set of flights changes. Uses the already-loaded
+        // recompute whenever the flights change. Uses the already-loaded
         // @Query flights (no redundant fetch).
-        .task(id: flights.count) {
+        .task(id: flights.statsChangeToken) {
             stats = dataController.computeStats(from: flights)
+        }
+    }
+}
+
+// MARK: - Stats change token
+
+extension Array where Element == Flight {
+    /// Cheap change token over @Query results, used as a `.task(id:)` value so
+    /// stats recompute when a flight is edited in place. `count` alone misses
+    /// edits to an existing flight's duration/type/spot/wing.
+    /// (Overflow arithmetic: the value only needs to *change*, not mean anything.)
+    var statsChangeToken: Int {
+        reduce(count) {
+            $0 &+ $1.durationSeconds
+               &+ ($1.flightType?.utf8.count ?? 0)
+               &+ ($1.spotName?.utf8.count ?? 0)
+               &+ ($1.wing?.id.hashValue ?? 0)
         }
     }
 }

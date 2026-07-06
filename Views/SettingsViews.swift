@@ -207,7 +207,7 @@ struct SettingsView: View {
             }
 
             NavigationLink {
-                BackupExportView(wings: wings, flights: flights)
+                BackupExportView(wings: wings, flights: flights, spots: dataController.fetchSpots())
             } label: {
                 Label("Export Backup", systemImage: "archivebox")
             }
@@ -246,7 +246,8 @@ struct SettingsView: View {
                                 // InputFile.fromPath), not the folder bundle.
                                 let allWings = dataController.fetchWings(includeArchived: true)
                                 let allFlights = dataController.fetchFlights()
-                                BackupManager.exportCloudBackup(wings: allWings, flights: allFlights) { result in
+                                let allSpots = dataController.fetchSpots()
+                                BackupManager.exportCloudBackup(wings: allWings, flights: allFlights, spots: allSpots) { result in
                                     continuation.resume(with: result)
                                 }
                             }
