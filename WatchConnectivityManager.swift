@@ -446,20 +446,39 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     }
 
     /// Background reverse geocoding for a flight that is already persisted.
+    /// Also triggers the best-effort takeoff weather snapshot once the
+    /// deferred enrichment settled (the flight may carry coordinates from its
+    /// GPS track even when no fresh location fix arrives).
     private func resolveFlightLocation(flightId: UUID) {
-        guard let locationService = locationService else { return }
+        guard let locationService = locationService else {
+            captureTakeoffWeather(flightId: flightId)
+            return
+        }
 
         locationService.requestLocation { [weak self] location in
             guard let location = location else {
                 logInfo("No location fix for flight \(flightId) - keeping it without a spot", category: .flight)
+                DispatchQueue.main.async {
+                    self?.captureTakeoffWeather(flightId: flightId)
+                }
                 return
             }
 
             self?.locationService?.reverseGeocode(location: location) { spotName in
                 DispatchQueue.main.async {
                     self?.dataController?.updateFlightLocation(flightId: flightId, location: location, spotName: spotName)
+                    self?.captureTakeoffWeather(flightId: flightId)
                 }
             }
         }
+    }
+
+    /// Best-effort weather-at-takeoff snapshot for a flight that is already
+    /// saved and ACKed. Fire-and-forget: it never blocks or fails the
+    /// save/ACK path, skips flights without coordinates, and respects the
+    /// "Record weather at takeoff" setting.
+    private func captureTakeoffWeather(flightId: UUID) {
+        guard let dataController = dataController else { return }
+        WeatherService.shared.captureSnapshot(for: flightId, dataController: dataController)
     }
 }

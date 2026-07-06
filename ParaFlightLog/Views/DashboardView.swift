@@ -14,12 +14,14 @@ struct DashboardView: View {
     @Environment(DataController.self) private var dataController
     @Query(sort: \Flight.startDate, order: .reverse) private var flights: [Flight]
     @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
+    @Query(sort: \Spot.name) private var spots: [Spot]
 
     /// Switches the TabView to another tab (provided by ContentView).
     let onOpenTab: (Int) -> Void
 
     @State private var stats = FlightStats()
     @State private var showingFlightDetail: Flight?
+    @State private var showingSpotDetail: Spot?
 
     // Most recently flown wing (flights are sorted newest first), with its
     // aggregate hours. "Most-used" would surface long-retired wings after a
@@ -33,6 +35,16 @@ struct DashboardView: View {
     private var topSpot: (name: String, hours: Double, count: Int)? {
         guard let best = stats.hoursBySpot.max(by: { $0.value < $1.value }) else { return nil }
         return (best.key, best.value, stats.countBySpot[best.key] ?? 0)
+    }
+
+    // Spot whose current conditions the dashboard shows: the top spot when it
+    // has coordinates, otherwise the most recent flight's located spot.
+    private var conditionsSpot: Spot? {
+        if let name = topSpot?.name,
+           let spot = spots.first(where: { $0.name == name && $0.latitude != nil && $0.longitude != nil }) {
+            return spot
+        }
+        return flights.first(where: { $0.spot?.latitude != nil && $0.spot?.longitude != nil })?.spot
     }
 
     // Hours flown this calendar year
@@ -161,6 +173,18 @@ struct DashboardView: View {
                                 }
                                 .buttonStyle(.plain)
                             }
+
+                            // Current conditions at the pilot's main spot
+                            if let spot = conditionsSpot {
+                                HStack {
+                                    Text("Conditions")
+                                        .font(.headline)
+                                    Spacer()
+                                }
+                                DashboardConditionsCard(spot: spot) {
+                                    showingSpotDetail = spot
+                                }
+                            }
                         }
                         .padding()
                     }
@@ -174,6 +198,13 @@ struct DashboardView: View {
             }
             .sheet(item: $showingFlightDetail) { flight in
                 FlightDetailView(flight: flight)
+            }
+            .sheet(item: $showingSpotDetail) { spot in
+                // SpotDetailView expects a navigation context (title, push
+                // reassignment flows) — wrap it like a mini spot page.
+                NavigationStack {
+                    SpotDetailView(spot: spot)
+                }
             }
         }
     }
@@ -198,6 +229,109 @@ struct DashboardView: View {
         let h = Int(hours)
         let m = Int((hours - Double(h)) * 60)
         return m > 0 ? "\(h)h\(String(format: "%02d", m))" : "\(h)h"
+    }
+}
+
+// MARK: - DashboardConditionsCard
+
+/// Current wind conditions at the pilot's main spot, with a flyability badge
+/// rated against the spot's configured launch directions. Tapping opens the
+/// spot detail (weather section + forecast).
+private struct DashboardConditionsCard: View {
+    let spot: Spot
+    let onTap: () -> Void
+
+    @State private var weather: SpotWeather?
+    @State private var loadFailed = false
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: 12) {
+                Image(systemName: "wind")
+                    .font(.system(size: 30))
+                    .foregroundStyle(.teal)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(spot.name)
+                        .font(.headline)
+                        .foregroundStyle(Color.primary)
+
+                    if let weather {
+                        HStack(spacing: 6) {
+                            if let speed = weather.windSpeed {
+                                Text("\(Int(speed.rounded())) km/h")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(Color.primary)
+                            }
+                            if let gusts = weather.windGusts {
+                                Text("gusts \(Int(gusts.rounded()))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let direction = weather.windDirectionDeg {
+                                HStack(spacing: 2) {
+                                    // Wind comes FROM `direction`; arrow shows the flow.
+                                    Image(systemName: "location.north.fill")
+                                        .font(.caption2)
+                                        .foregroundStyle(.teal)
+                                        .rotationEffect(.degrees(direction + 180))
+                                    Text(WeatherService.degreesToCompass(direction))
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    } else {
+                        Text(loadFailed ? "Conditions unavailable" : "Loading conditions…")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                if let weather {
+                    let flyability = WeatherService.flyability(
+                        windDirectionDeg: weather.windDirectionDeg,
+                        windSpeed: weather.windSpeed,
+                        windGusts: weather.windGusts,
+                        spotDirections: spot.windDirections
+                    )
+                    if flyability != .unknown {
+                        Text(flyability.displayLabel)
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .foregroundStyle(flyability.displayColor)
+                            .background(flyability.displayColor.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                }
+
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(12)
+            .background(Color(.secondarySystemGroupedBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 14))
+        }
+        .buttonStyle(.plain)
+        .task(id: spot.id) {
+            await load()
+        }
+    }
+
+    private func load() async {
+        loadFailed = false
+        do {
+            weather = try await WeatherService.shared.weather(
+                latitude: spot.latitude ?? 0, longitude: spot.longitude ?? 0
+            )
+        } catch {
+            logWarning("Dashboard conditions failed: \(error.localizedDescription)", category: .weather)
+            loadFailed = weather == nil
+        }
     }
 }
 

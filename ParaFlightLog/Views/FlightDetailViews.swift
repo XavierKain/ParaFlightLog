@@ -295,6 +295,11 @@ struct FlightDetailView: View {
                             .background(Color(.secondarySystemBackground))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                         }
+
+                        // Weather snapshot at takeoff (best-effort, may be absent)
+                        if hasTakeoffWeather {
+                            takeoffConditionsCard
+                        }
                     }
                     .padding(.horizontal)
 
@@ -369,6 +374,62 @@ struct FlightDetailView: View {
                 Text(exportErrorMessage ?? "Unknown error.")
             }
         }
+    }
+
+    // MARK: - Conditions at takeoff
+
+    private var hasTakeoffWeather: Bool {
+        flight.takeoffWindSpeed != nil || flight.takeoffWindGusts != nil ||
+        flight.takeoffWindDirection != nil || flight.takeoffTemperature != nil
+    }
+
+    /// Compact "Conditions at takeoff" card: wind speed + gusts + direction
+    /// arrow/compass + temperature (whatever the snapshot managed to record).
+    private var takeoffConditionsCard: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "wind")
+                .foregroundStyle(.teal)
+                .font(.title2)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Conditions at takeoff")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                HStack(spacing: 8) {
+                    if let speed = flight.takeoffWindSpeed {
+                        Text("\(Int(speed.rounded())) km/h")
+                            .font(.headline)
+                    }
+                    if let gusts = flight.takeoffWindGusts {
+                        Text("gusts \(Int(gusts.rounded()))")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    if let direction = flight.takeoffWindDirection {
+                        HStack(spacing: 3) {
+                            // Wind comes FROM `direction`; arrow shows the flow.
+                            Image(systemName: "location.north.fill")
+                                .font(.caption)
+                                .foregroundStyle(.teal)
+                                .rotationEffect(.degrees(direction + 180))
+                            Text(WeatherService.degreesToCompass(direction))
+                                .font(.subheadline.weight(.medium))
+                        }
+                    }
+                }
+            }
+
+            Spacer()
+
+            if let temperature = flight.takeoffTemperature {
+                Text("\(Int(temperature.rounded()))°C")
+                    .font(.title3.weight(.medium))
+            }
+        }
+        .padding()
+        .background(Color(.secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
     }
 
     private func export(_ format: TrackExportFormat) {

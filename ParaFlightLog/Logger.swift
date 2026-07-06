@@ -26,6 +26,7 @@ nonisolated enum LogCategory: String {
     case ui = "UI"
     case dataImport = "DataImport"
     case wingLibrary = "WingLibrary"
+    case weather = "Weather"
 }
 
 // MARK: - App Logger

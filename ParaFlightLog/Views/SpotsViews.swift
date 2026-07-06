@@ -123,6 +123,7 @@ struct SpotDetailView: View {
 
     @State private var editedName: String = ""
     @State private var editedCity: String = ""
+    @State private var editedDirections: Set<String> = []
     @State private var showingMapPicker = false
 
     // Reassignment state
@@ -179,6 +180,43 @@ struct SpotDetailView: View {
                         }
                     }
                 }
+            }
+
+            // Launch directions (feed the flyability hints below)
+            Section {
+                VStack(spacing: 8) {
+                    ForEach([Array(WeatherService.compassPoints.prefix(4)),
+                             Array(WeatherService.compassPoints.suffix(4))], id: \.self) { row in
+                        HStack(spacing: 8) {
+                            ForEach(row, id: \.self) { direction in
+                                DirectionChip(
+                                    direction: direction,
+                                    isSelected: editedDirections.contains(direction)
+                                ) {
+                                    if editedDirections.contains(direction) {
+                                        editedDirections.remove(direction)
+                                    } else {
+                                        editedDirections.insert(direction)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .padding(.vertical, 2)
+            } header: {
+                Text("Launch directions")
+            } footer: {
+                Text("Wind directions this launch works with — used for the flyability dots in the forecast.")
+            }
+
+            // Weather (only when the spot is located)
+            if let lat = spot.latitude, let lon = spot.longitude {
+                SpotWeatherSection(
+                    latitude: lat,
+                    longitude: lon,
+                    windDirections: sortedDirections
+                )
             }
 
             // Flights, selectable for reassignment
@@ -249,6 +287,7 @@ struct SpotDetailView: View {
         .onAppear {
             editedName = spot.name
             editedCity = spot.city ?? ""
+            editedDirections = Set(spot.windDirections)
         }
         .onDisappear {
             commitEdits()
@@ -398,12 +437,23 @@ struct SpotDetailView: View {
         dataController.fetchSpots().filter { $0.id != spot.id }
     }
 
+    /// The edited launch directions in canonical compass order (N first,
+    /// clockwise) — the order they are persisted and displayed in.
+    private var sortedDirections: [String] {
+        WeatherService.compassPoints.filter { editedDirections.contains($0) }
+    }
+
     // MARK: - Actions
 
     private func commitEdits() {
         // The spot was deleted on this screen: any access to it would touch a
         // deleted @Model (onDisappear fires after the deleting dismiss()).
         guard !didDelete else { return }
+        let directions = sortedDirections
+        if directions != spot.windDirections {
+            spot.windDirections = directions
+            dataController.saveContext()
+        }
         let name = editedName.trimmingCharacters(in: .whitespacesAndNewlines)
         let city = editedCity.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty else { return }
@@ -459,6 +509,241 @@ private struct SpotFlightRow: View {
                     .foregroundStyle(.indigo)
             }
         }
+    }
+}
+
+// MARK: - DirectionChip (compass point toggle for launch directions)
+
+private struct DirectionChip: View {
+    let direction: String
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(direction)
+                .font(.subheadline)
+                .fontWeight(isSelected ? .semibold : .regular)
+                .foregroundStyle(isSelected ? .white : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(isSelected ? Color.blue : Color(.tertiarySystemFill))
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Flyability display (shared with DashboardView)
+
+extension Flyability {
+    /// Dot/badge color: green / orange / red / gray.
+    var displayColor: Color {
+        switch self {
+        case .good: return .green
+        case .marginal: return .orange
+        case .bad: return .red
+        case .unknown: return .gray
+        }
+    }
+
+    /// Short English badge label.
+    var displayLabel: String {
+        switch self {
+        case .good: return "Flyable"
+        case .marginal: return "Marginal"
+        case .bad: return "Not flyable"
+        case .unknown: return "No directions set"
+        }
+    }
+}
+
+// MARK: - SpotWeatherSection (current conditions + 7-day forecast)
+
+private struct SpotWeatherSection: View {
+    let latitude: Double
+    let longitude: Double
+    /// The spot's launch directions (live edit state) for the flyability dots.
+    let windDirections: [String]
+
+    @State private var weather: SpotWeather?
+    @State private var isLoading = false
+    @State private var loadFailed = false
+
+    var body: some View {
+        Section {
+            if let weather {
+                currentRow(weather)
+                ForEach(weather.daily) { day in
+                    dailyRow(day)
+                }
+            } else if isLoading {
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading forecast…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if loadFailed {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                    Text("Could not load the forecast.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Retry") {
+                        Task { await load(forceRefresh: true) }
+                    }
+                    .font(.caption)
+                    .buttonStyle(.borderless)
+                }
+            }
+        } header: {
+            HStack {
+                Text("Weather")
+                Spacer()
+                Button {
+                    Task { await load(forceRefresh: true) }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .font(.caption)
+                }
+                .buttonStyle(.borderless)
+                .disabled(isLoading)
+                .accessibilityLabel("Refresh weather")
+            }
+            // On the header (a plain view), NOT on the Section: modifiers on
+            // a Section inside a List can break its section rendering.
+            .task {
+                await load(forceRefresh: false)
+            }
+        } footer: {
+            if weather != nil {
+                // Attribution not required by Open-Meteo, kept as a courtesy.
+                Text("Forecast by Open-Meteo. Dots rate the wind against the launch directions above.")
+            }
+        }
+    }
+
+    // MARK: Rows
+
+    /// Big current wind speed + gusts, direction arrow + compass, temperature.
+    private func currentRow(_ weather: SpotWeather) -> some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    Text(weather.windSpeed.map { "\(Int($0.rounded()))" } ?? "—")
+                        .font(.system(size: 36, weight: .bold, design: .rounded))
+                        .foregroundStyle(.blue)
+                    Text("km/h")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let gusts = weather.windGusts {
+                    Text("Gusts \(Int(gusts.rounded())) km/h")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            if let direction = weather.windDirectionDeg {
+                VStack(spacing: 2) {
+                    // Wind comes FROM `direction`; the arrow shows where it blows TO.
+                    Image(systemName: "location.north.fill")
+                        .font(.title3)
+                        .foregroundStyle(.blue)
+                        .rotationEffect(.degrees(direction + 180))
+                    Text(WeatherService.degreesToCompass(direction))
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let temperature = weather.temperature {
+                Text("\(Int(temperature.rounded()))°C")
+                    .font(.title2.weight(.medium))
+            }
+        }
+        .padding(.vertical, 4)
+    }
+
+    /// One forecast day: flyability dot, weekday, direction arrow, wind, precip.
+    private func dailyRow(_ day: DayForecast) -> some View {
+        let flyability = WeatherService.flyability(
+            windDirectionDeg: day.windDirectionDominantDeg,
+            windSpeed: day.windSpeedMax,
+            windGusts: day.windGustsMax,
+            spotDirections: windDirections
+        )
+
+        return HStack(spacing: 10) {
+            Circle()
+                .fill(flyability.displayColor)
+                .frame(width: 8, height: 8)
+                .accessibilityLabel(flyability.displayLabel)
+
+            Text(day.date, format: .dateTime.weekday(.abbreviated))
+                .font(.subheadline.weight(.medium))
+                .frame(width: 40, alignment: .leading)
+
+            if let direction = day.windDirectionDominantDeg {
+                Image(systemName: "location.north.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(direction + 180))
+            }
+
+            Text(windText(day))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if let precip = day.precipProbabilityMax {
+                HStack(spacing: 2) {
+                    Image(systemName: "drop.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.cyan)
+                    Text("\(Int(precip.rounded()))%")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let temp = day.tempMax {
+                Text("\(Int(temp.rounded()))°")
+                    .font(.caption.weight(.medium))
+                    .frame(width: 30, alignment: .trailing)
+            }
+        }
+    }
+
+    /// "18 / 32 km/h" (max wind / max gusts).
+    private func windText(_ day: DayForecast) -> String {
+        let speed = day.windSpeedMax.map { "\(Int($0.rounded()))" } ?? "—"
+        if let gusts = day.windGustsMax {
+            return "\(speed) / \(Int(gusts.rounded())) km/h"
+        }
+        return "\(speed) km/h"
+    }
+
+    // MARK: Loading
+
+    private func load(forceRefresh: Bool) async {
+        isLoading = true
+        loadFailed = false
+        do {
+            weather = try await WeatherService.shared.weather(
+                latitude: latitude, longitude: longitude, forceRefresh: forceRefresh
+            )
+        } catch {
+            logWarning("Spot forecast failed: \(error.localizedDescription)", category: .weather)
+            loadFailed = weather == nil
+        }
+        isLoading = false
     }
 }
 

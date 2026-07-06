@@ -598,6 +598,9 @@ struct TimerView: View {
             showingFlightSummary = true
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             logInfo("Timer flight saved: \(flight.durationFormatted), \(points.count) track points", category: .flight)
+            // Best-effort weather-at-takeoff snapshot (never blocks the save;
+            // skipped when disabled in Settings or without coordinates)
+            WeatherService.shared.captureSnapshot(for: flight.id, dataController: dataController)
         } catch {
             logError("Failed to save flight from timer: \(error.localizedDescription)", category: .dataController)
             showSaveError = true

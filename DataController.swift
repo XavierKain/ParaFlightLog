@@ -334,8 +334,11 @@ final class DataController {
         return saved
     }
 
-    /// Adds a flight directly (for flights created on the iPhone)
-    func addFlight(wing: Wing, startDate: Date, endDate: Date, durationSeconds: Int, location: CLLocation?, spotName: String?, spot: Spot? = nil, flightType: String? = nil, notes: String? = nil) {
+    /// Adds a flight directly (for flights created on the iPhone).
+    /// - Returns: the inserted flight, so callers can run post-save
+    ///   enrichment (e.g. the takeoff weather snapshot).
+    @discardableResult
+    func addFlight(wing: Wing, startDate: Date, endDate: Date, durationSeconds: Int, location: CLLocation?, spotName: String?, spot: Spot? = nil, flightType: String? = nil, notes: String? = nil) -> Flight {
         let flight = Flight(
             wing: wing,
             startDate: startDate,
@@ -359,6 +362,7 @@ final class DataController {
         saveContext()
 
         logInfo("Flight saved: \(flight.durationFormatted) at \(flight.spotName ?? "Unknown")", category: .flight)
+        return flight
     }
 
     /// Updates a flight's location info after background reverse geocoding.

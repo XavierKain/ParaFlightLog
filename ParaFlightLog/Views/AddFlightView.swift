@@ -300,7 +300,7 @@ struct AddFlightView: View {
     }
 
     private func finalizeSave(wing: Wing, spotName: String, location: CLLocation?) {
-        dataController.addFlight(
+        let flight = dataController.addFlight(
             wing: wing,
             startDate: startDate,
             endDate: endDate,
@@ -311,6 +311,10 @@ struct AddFlightView: View {
             flightType: selectedType?.rawValue,
             notes: notes.isEmpty ? nil : notes
         )
+
+        // Best-effort weather-at-takeoff snapshot (skipped automatically when
+        // disabled in Settings, without coordinates, or older than 90 days).
+        WeatherService.shared.captureSnapshot(for: flight.id, dataController: dataController)
 
         // Remember the last flight type and wing picked by the pilot
         if let type = selectedType {

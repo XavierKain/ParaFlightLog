@@ -116,6 +116,11 @@ final class Spot {
     var longitude: Double?
     var createdAt: Date = Date()
 
+    /// Compass points this launch works with ("N", "NE", "E", "SE", "S",
+    /// "SW", "W", "NW") — drives the flyability hints in the weather views.
+    /// Inline default keeps the field CloudKit-compatible.
+    var windDirections: [String] = []
+
     // Inverse of Flight.spot. Optional for CloudKit compatibility.
     @Relationship(deleteRule: .nullify, inverse: \Flight.spot)
     var flights: [Flight]?
@@ -157,6 +162,13 @@ final class Flight {
     var totalDistance: Double?      // Total distance flown (m)
     var maxSpeed: Double?           // Maximum ground speed (m/s)
     var maxGForce: Double?          // Maximum G-force (G)
+
+    // Weather snapshot at takeoff (best-effort, filled asynchronously by
+    // WeatherService.captureSnapshot after the flight is saved).
+    var takeoffWindSpeed: Double?       // km/h
+    var takeoffWindGusts: Double?       // km/h
+    var takeoffWindDirection: Double?   // degrees (direction the wind comes FROM)
+    var takeoffTemperature: Double?     // °C
 
     // GPS track of the flight (stored as JSON)
     var gpsTrackData: Data?

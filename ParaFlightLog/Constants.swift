@@ -117,6 +117,19 @@ nonisolated enum UserDefaultsKeys {
 
     /// Raw value of the last FlightType picked by the pilot
     static let lastFlightType = "lastFlightType"
+
+    /// Automatically record wind/temperature at takeoff when a flight is
+    /// saved (Open-Meteo, best-effort). Default TRUE: read through
+    /// `WeatherService.autoSnapshotEnabled`, which treats a never-set key
+    /// as enabled (`object(forKey:) == nil` pattern).
+    static let autoWeatherSnapshot = "autoWeatherSnapshot"
+}
+
+// MARK: - Weather Configuration
+
+enum WeatherConstants {
+    /// Open-Meteo request timeout (15 seconds)
+    static let networkTimeout: TimeInterval = 15.0
 }
 
 // MARK: - Wing Library Configuration

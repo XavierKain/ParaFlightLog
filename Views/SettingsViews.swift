@@ -22,6 +22,8 @@ struct SettingsView: View {
 
     @AppStorage(UserDefaultsKeys.phoneOnlyMode) private var phoneOnlyMode = false
     @AppStorage(UserDefaultsKeys.varioEnabled) private var varioEnabled = false
+    // Default TRUE (matches WeatherService.autoSnapshotEnabled's fallback)
+    @AppStorage(UserDefaultsKeys.autoWeatherSnapshot) private var autoWeatherSnapshot = true
     @AppStorage(UserDefaultsKeys.developerModeEnabled) private var developerModeEnabled = false
     @AppStorage(UserDefaultsKeys.simulateFlightEnabled) private var simulateFlightEnabled = false
     // Reactive so changes made on the Watch (pushed back via WCSession) show live here.
@@ -94,10 +96,14 @@ struct SettingsView: View {
             Toggle(isOn: $varioEnabled) {
                 Text("Vario sound & haptics")
             }
+
+            Toggle(isOn: $autoWeatherSnapshot) {
+                Text("Record weather at takeoff")
+            }
         } header: {
             Text("Tracking")
         } footer: {
-            Text("Use iPhone as tracker adds a Timer tab so you can track flights without an Apple Watch. The vario plays climb beeps and sink alerts while a flight is running.")
+            Text("Use iPhone as tracker adds a Timer tab so you can track flights without an Apple Watch. The vario plays climb beeps and sink alerts while a flight is running. Record weather at takeoff saves wind and temperature (Open-Meteo) with each new flight.")
         }
     }
 

@@ -69,6 +69,12 @@ nonisolated struct BackupFlight: Codable {
     /// Additive v2 field: id of the Spot entity this flight is linked to.
     /// nil in older backups — the import then falls back to name linking.
     let spotId: UUID?
+    /// Additive v2 fields (Step B): weather snapshot at takeoff.
+    /// nil in older backups.
+    let takeoffWindSpeed: Double?
+    let takeoffWindGusts: Double?
+    let takeoffWindDirection: Double?
+    let takeoffTemperature: Double?
 }
 
 /// Spot snapshot in backup.json (additive v2 field; older v2 files lack it)
@@ -80,6 +86,9 @@ nonisolated struct BackupSpot: Codable {
     let latitude: Double?
     let longitude: Double?
     let createdAt: Date
+    /// Additive v2 field (Step B): launch wind directions ("N", "NE", ...).
+    /// nil in older backups.
+    let windDirections: [String]?
 }
 
 /// Single JSON manifest written to backup.json
@@ -316,7 +325,8 @@ enum BackupManager {
                     city: spot.city,
                     latitude: spot.latitude,
                     longitude: spot.longitude,
-                    createdAt: spot.createdAt
+                    createdAt: spot.createdAt,
+                    windDirections: spot.windDirections.isEmpty ? nil : spot.windDirections
                 )
             }
 
@@ -361,7 +371,11 @@ enum BackupManager {
                     maxSpeed: flight.maxSpeed,
                     maxGForce: flight.maxGForce,
                     gpsTrack: flight.gpsTrack,
-                    spotId: flight.spot?.id
+                    spotId: flight.spot?.id,
+                    takeoffWindSpeed: flight.takeoffWindSpeed,
+                    takeoffWindGusts: flight.takeoffWindGusts,
+                    takeoffWindDirection: flight.takeoffWindDirection,
+                    takeoffTemperature: flight.takeoffTemperature
                 )
             }
 
@@ -686,7 +700,11 @@ enum BackupManager {
                 maxSpeed: extendedDouble(15),
                 maxGForce: extendedDouble(16),
                 gpsTrack: gpsTrack,
-                spotId: nil  // v1 predates Spot entities; name linking applies
+                spotId: nil,  // v1 predates Spot entities; name linking applies
+                takeoffWindSpeed: nil,
+                takeoffWindGusts: nil,
+                takeoffWindDirection: nil,
+                takeoffTemperature: nil
             ))
         }
 
@@ -779,6 +797,9 @@ enum BackupManager {
                         existing.latitude = lat
                         existing.longitude = lon
                     }
+                    if existing.windDirections.isEmpty, let directions = backupSpot.windDirections, !directions.isEmpty {
+                        existing.windDirections = directions
+                    }
                     spotsById[backupSpot.id] = existing
                     continue
                 }
@@ -791,6 +812,7 @@ enum BackupManager {
                     longitude: backupSpot.longitude,
                     createdAt: backupSpot.createdAt
                 )
+                spot.windDirections = backupSpot.windDirections ?? []
                 modelContext.insert(spot)
                 existingById[backupSpot.id] = spot
                 existingByName[backupSpot.name.lowercased()] = spot
@@ -808,6 +830,20 @@ enum BackupManager {
                    let type = backupFlight.flightType, !type.isEmpty {
                     existing.flightType = type
                     summary.flightTypesFilled += 1
+                }
+                // Backfill missing takeoff weather from the backup (never
+                // overwrites values the local flight already has).
+                if existing.takeoffWindSpeed == nil, let v = backupFlight.takeoffWindSpeed {
+                    existing.takeoffWindSpeed = v
+                }
+                if existing.takeoffWindGusts == nil, let v = backupFlight.takeoffWindGusts {
+                    existing.takeoffWindGusts = v
+                }
+                if existing.takeoffWindDirection == nil, let v = backupFlight.takeoffWindDirection {
+                    existing.takeoffWindDirection = v
+                }
+                if existing.takeoffTemperature == nil, let v = backupFlight.takeoffTemperature {
+                    existing.takeoffTemperature = v
                 }
                 summary.skippedDuplicates += 1
                 continue
@@ -841,6 +877,10 @@ enum BackupManager {
                 maxGForce: backupFlight.maxGForce,
                 gpsTrackData: gpsTrackData
             )
+            flight.takeoffWindSpeed = backupFlight.takeoffWindSpeed
+            flight.takeoffWindGusts = backupFlight.takeoffWindGusts
+            flight.takeoffWindDirection = backupFlight.takeoffWindDirection
+            flight.takeoffTemperature = backupFlight.takeoffTemperature
             modelContext.insert(flight)
             // Direct spot link when the backup carries it; flights without a
             // spotId (older backups) are left to linkUnlinkedFlights below.
