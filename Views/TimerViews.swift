@@ -456,6 +456,16 @@ struct TimerView: View {
                 captureTrackPoint()
             }
         }
+
+        // Refresh the Live Activity (best-effort). The controller throttles
+        // pushes to >=15 s — the visible timer ticks by itself on the Lock
+        // Screen, so pushes only carry altitude / vario / spot changes.
+        FlightActivityController.shared.update(
+            elapsedSeconds: elapsedSeconds,
+            altitude: liveActivityAltitude,
+            verticalSpeed: liveActivityVerticalSpeed,
+            spotName: liveActivitySpotName
+        )
     }
 
     /// Appends the last known GPS fix to the track (real flights only).
@@ -516,6 +526,16 @@ struct TimerView: View {
         if varioEnabled {
             vario.start(mode: isSimulation ? .manual : .altimeter)
         }
+
+        // Live Activity (best-effort, fail-soft — never affects the flight).
+        // Simulated flights start one too: it's the easiest way to test the
+        // Live Activity end-to-end; their spot name is flagged "(Simulation)".
+        FlightActivityController.shared.start(
+            wingName: selectedWing?.name ?? "No wing",
+            flightType: selectedFlightType.wrappedValue.rawValue,
+            spotName: liveActivitySpotName,
+            startDate: startDate ?? Date()
+        )
     }
 
     private func stopFlight() {
@@ -529,6 +549,9 @@ struct TimerView: View {
         backgroundTask?.invalidate()
         backgroundTask = nil
         vario.stop()
+
+        // End the Live Activity first (fail-soft, never blocks the save)
+        FlightActivityController.shared.end()
 
         if isSimulation {
             simulator?.stop()
@@ -639,6 +662,30 @@ struct TimerView: View {
             distance += to.distance(from: from)
         }
         flight.totalDistance = distance > 0 ? distance : nil
+    }
+
+    // MARK: - Live Activity helpers
+
+    /// Spot name pushed to the Live Activity. Simulated flights carry an
+    /// explicit "(Simulation)" suffix so the Lock Screen is unambiguous.
+    private var liveActivitySpotName: String {
+        if isSimulation { return "Simulated Flight (Simulation)" }
+        return manualSpotOverride ?? spotState.displayText
+    }
+
+    /// Current altitude for the Live Activity: simulator value in simulation,
+    /// otherwise the last GPS fix (only when its vertical accuracy is valid).
+    private var liveActivityAltitude: Double? {
+        if isSimulation { return simulator?.altitude }
+        guard let location = locationService.lastKnownLocation,
+              location.verticalAccuracy >= 0 else { return nil }
+        return location.altitude
+    }
+
+    /// Vertical speed for the Live Activity; nil hides the vario readout.
+    private var liveActivityVerticalSpeed: Double? {
+        if isSimulation { return simulator?.verticalSpeed }
+        return vario.isRunning ? vario.verticalSpeed : nil
     }
 
     // MARK: - Spot detection

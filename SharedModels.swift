@@ -173,3 +173,43 @@ nonisolated struct FlightDTO: Codable, Identifiable {
         self.gpsTrack = gpsTrack
     }
 }
+
+// MARK: - FlightActivityAttributes
+//
+// Lives HERE (and not in ParaFlightLog/ or ParaFlightLogWidgetExtension/)
+// on purpose: this root-level file is the only source file explicitly
+// compiled into BOTH the iOS app target and the widget extension target
+// (pbxproj Sources phases: app 25C97992, widget extension 25145C44, watch
+// app 25C97990), so both sides share ONE definition — ActivityKit matches
+// activities by attributes type name + coding, so app and widget must agree.
+//
+// The whole block is compile-guarded: ActivityKit does not exist on watchOS
+// (the current widget extension and the watch app build with SDKROOT =
+// watchos), so the type simply vanishes from those targets.
+#if canImport(ActivityKit)
+import ActivityKit
+
+/// Attributes of the Live Activity shown while a phone-tracked flight runs.
+/// Static data (wing, flight type) is fixed at start; everything that can
+/// change in-flight lives in `ContentState`.
+nonisolated struct FlightActivityAttributes: ActivityAttributes {
+    nonisolated struct ContentState: Codable, Hashable {
+        /// Elapsed flight time at the moment of the push (the visible timer
+        /// ticks by itself via Text(timerInterval:), anchored to startDate).
+        var elapsedSeconds: Int
+        /// Current altitude in meters (GPS or simulator), nil when unknown.
+        var altitude: Double?
+        /// Current vertical speed in m/s (vario), nil when the vario is off.
+        var verticalSpeed: Double?
+        /// Takeoff spot name; carries a "(Simulation)" suffix for simulated flights.
+        var spotName: String
+        /// Flight start — the anchor for the self-ticking timer.
+        var startDate: Date
+    }
+
+    /// Name of the wing being flown (fixed for the whole activity).
+    var wingName: String
+    /// Raw value of the FlightType chosen by the pilot.
+    var flightType: String
+}
+#endif

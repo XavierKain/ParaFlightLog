@@ -35,6 +35,12 @@ struct SettingsView: View {
     @State private var showingDocumentPicker = false
     @State private var isImporting = false
 
+    // IGC/GPX track import
+    @State private var showingTrackFilePicker = false
+    @State private var pendingTrackImports: [PendingTrackImport] = []
+    @State private var trackParseFailures: [String] = []
+    @State private var showingTrackImportSheet = false
+
     var body: some View {
         NavigationStack {
             List {
@@ -52,6 +58,19 @@ struct SettingsView: View {
             .sheet(isPresented: $showingDocumentPicker) {
                 DocumentPicker { url in
                     importBackupFile(from: url)
+                }
+            }
+            .fileImporter(
+                isPresented: $showingTrackFilePicker,
+                allowedContentTypes: Self.trackImportContentTypes,
+                allowsMultipleSelection: true
+            ) { result in
+                handleTrackFileSelection(result)
+            }
+            .sheet(isPresented: $showingTrackImportSheet) {
+                TrackImportSheet(files: pendingTrackImports, parseFailures: trackParseFailures) { message in
+                    importMessage = message
+                    showingImportResult = true
                 }
             }
             .disabled(isImporting)
@@ -225,6 +244,12 @@ struct SettingsView: View {
                 Label("Import Backup", systemImage: "square.and.arrow.down")
             }
 
+            Button {
+                showingTrackFilePicker = true
+            } label: {
+                Label("Import IGC / GPX Track", systemImage: "point.topleft.down.curvedto.point.bottomright.up")
+            }
+
             NavigationLink {
                 SpotsManagementView()
             } label: {
@@ -234,9 +259,9 @@ struct SettingsView: View {
             Text("Data")
         } footer: {
             if dataController.isCloudSyncActive {
-                Text("Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks.")
+                Text("Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights.")
             } else {
-                Text("Enable iCloud in Settings to sync across devices. Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks.")
+                Text("Enable iCloud in Settings to sync across devices. Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights.")
             }
         }
     }
@@ -444,6 +469,72 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: - IGC/GPX Track Import
+
+    /// Content types accepted by the track file picker: XML/GPX plus the
+    /// custom "igc" extension (dynamic UTType), with broad text/data
+    /// fallbacks so IGC files served with a generic type stay selectable.
+    private static var trackImportContentTypes: [UTType] {
+        var types: [UTType] = [.xml]
+        if let gpxType = UTType(filenameExtension: "gpx") {
+            types.append(gpxType)
+        }
+        if let igcType = UTType(filenameExtension: "igc") {
+            types.append(igcType)
+        } else {
+            types.append(.plainText)
+            types.append(.data)
+        }
+        return types
+    }
+
+    /// Parses every picked IGC/GPX file (security-scoped access handled here),
+    /// then opens the confirmation sheet with the parsed previews. Files that
+    /// fail to parse are listed in the sheet and counted as skipped.
+    private func handleTrackFileSelection(_ result: Result<[URL], Error>) {
+        switch result {
+        case .failure(let error):
+            importMessage = "Could not open the selected files: \(error.localizedDescription)"
+            showingImportResult = true
+
+        case .success(let urls):
+            var parsed: [PendingTrackImport] = []
+            var failures: [String] = []
+
+            for url in urls {
+                let gotAccess = url.startAccessingSecurityScopedResource()
+                defer {
+                    if gotAccess {
+                        url.stopAccessingSecurityScopedResource()
+                    }
+                }
+                do {
+                    let data = try Data(contentsOf: url)
+                    let track = try TrackImporter.parse(data: data, filename: url.lastPathComponent)
+                    parsed.append(PendingTrackImport(filename: url.lastPathComponent, track: track))
+                } catch {
+                    logWarning("Track parse failed for \(url.lastPathComponent): \(error.localizedDescription)", category: .dataImport)
+                    failures.append("\(url.lastPathComponent): \(error.localizedDescription)")
+                }
+            }
+
+            if parsed.isEmpty {
+                importMessage = failures.isEmpty
+                    ? "No files were selected."
+                    : "0 imported, \(failures.count) skipped (duplicates/errors).\n" + failures.joined(separator: "\n")
+                showingImportResult = true
+            } else {
+                pendingTrackImports = parsed.sorted { $0.track.startDate < $1.track.startDate }
+                trackParseFailures = failures
+                // One runloop hop: presenting a sheet in the same cycle the
+                // file picker dismisses can silently fail.
+                Task { @MainActor in
+                    showingTrackImportSheet = true
+                }
+            }
+        }
+    }
+
     /// Imports a `.paraflightlog` backup bundle (v2 JSON or legacy v1 CSV,
     /// auto-detected by BackupManager).
     private func importBackupFile(from url: URL) {
@@ -477,6 +568,159 @@ struct SettingsView: View {
             importMessage = "❌ Error: \(error.localizedDescription)"
             showingImportResult = true
         }
+    }
+}
+
+// MARK: - TrackImportSheet (IGC/GPX import confirmation)
+
+/// Confirmation sheet for the IGC/GPX track import: one preview line per
+/// parsed file plus a shared wing (required) and flight type (optional)
+/// applied to all of them. Import creates the flights and reports
+/// "N imported, M skipped (duplicates/errors)" back to the Settings alert.
+private struct TrackImportSheet: View {
+    let files: [PendingTrackImport]
+    let parseFailures: [String]
+    /// Called with the result message; the presenting view shows the alert.
+    let onFinish: (String) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @Environment(DataController.self) private var dataController
+    @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
+
+    @State private var selectedWing: Wing?
+    @State private var selectedType: FlightType?
+    @State private var hasAppeared = false
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("^[\(files.count) flight](inflect: true) to import") {
+                    ForEach(files) { file in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(file.filename)
+                                .font(.subheadline)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Text(preview(for: file.track))
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                Section("Wing") {
+                    if wings.isEmpty {
+                        Text("Add a wing in the Wings tab first.")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Picker("Wing", selection: $selectedWing) {
+                            ForEach(wings) { wing in
+                                Text(wing.name).tag(wing as Wing?)
+                            }
+                        }
+                    }
+                }
+
+                Section("Flight Type") {
+                    Picker("Flight Type", selection: $selectedType) {
+                        Text("None").tag(FlightType?.none)
+                        ForEach(FlightType.allCases) { type in
+                            Label(type.rawValue, systemImage: type.symbolName)
+                                .tag(type as FlightType?)
+                        }
+                    }
+                }
+
+                if !parseFailures.isEmpty {
+                    Section("Skipped Files") {
+                        ForEach(parseFailures, id: \.self) { failure in
+                            Text(failure)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            .navigationTitle("Import Tracks")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Import") {
+                        importAll()
+                    }
+                    .disabled(selectedWing == nil)
+                }
+            }
+            .onAppear {
+                guard !hasAppeared else { return }
+                hasAppeared = true
+                // Pre-select the last used wing (same behavior as AddFlightView)
+                if let idString = UserDefaults.standard.string(forKey: UserDefaultsKeys.lastUsedWingId),
+                   let id = UUID(uuidString: idString),
+                   let lastWing = wings.first(where: { $0.id == id }) {
+                    selectedWing = lastWing
+                } else {
+                    selectedWing = wings.first
+                }
+            }
+        }
+    }
+
+    /// "Jul 4, 2026, 11:20 · 1h23 · 12.4 km · max 1850 m"
+    private func preview(for track: ParsedTrack) -> String {
+        var parts: [String] = [
+            track.startDate.formatted(date: .abbreviated, time: .shortened),
+            durationText(track.durationSeconds)
+        ]
+        if let distance = track.totalDistance, distance > 0 {
+            parts.append(String(format: "%.1f km", distance / 1000))
+        }
+        if let maxAltitude = track.maxAltitude {
+            parts.append(String(format: "max %.0f m", maxAltitude))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    /// Same "1h23" / "45min" style as Flight.durationFormatted.
+    private func durationText(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        return hours > 0 ? "\(hours)h\(String(format: "%02d", minutes))" : "\(minutes)min"
+    }
+
+    private func importAll() {
+        guard let wing = selectedWing else { return }
+
+        var imported = 0
+        var skippedDetails: [String] = parseFailures
+
+        for file in files {
+            do {
+                try TrackImporter.createFlight(
+                    from: file.track,
+                    wing: wing,
+                    flightType: selectedType,
+                    dataController: dataController
+                )
+                imported += 1
+            } catch {
+                skippedDetails.append("\(file.filename): \(error.localizedDescription)")
+            }
+        }
+
+        UserDefaults.standard.set(wing.id.uuidString, forKey: UserDefaultsKeys.lastUsedWingId)
+
+        var message = "\(imported) imported, \(skippedDetails.count) skipped (duplicates/errors)."
+        if !skippedDetails.isEmpty {
+            message += "\n" + skippedDetails.joined(separator: "\n")
+        }
+        onFinish(message)
+        dismiss()
     }
 }
 
