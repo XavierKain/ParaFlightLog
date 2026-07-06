@@ -61,6 +61,11 @@ nonisolated enum WatchSyncKeys {
     static let flightId = "flightId"
     /// Marker (Bool) set on a Watch->iPhone payload carrying settings changed on the Watch.
     static let watchSettingsUpdate = "watchSettingsUpdate"
+    /// Marker (Bool) on a best-effort Watch->iPhone sendMessage when a flight
+    /// STARTS, alongside "latitude"/"longitude" (Double). Drives the live
+    /// presence heartbeat (Step C2). Ephemeral by design: sent via
+    /// sendMessage only, never through the persistent outbox.
+    static let flightStarted = "flightStarted"
 }
 
 // MARK: - GPSTrackPoint

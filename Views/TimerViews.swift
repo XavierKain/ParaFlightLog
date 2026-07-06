@@ -500,6 +500,17 @@ struct TimerView: View {
                     updateCurrentSpot()
                 }
             }
+
+            // Best-effort live presence (Step C2): fire-and-forget, only
+            // when a GPS fix already exists (no fix -> no presence, silently).
+            // Simulated flights never post presence (guarded by this branch).
+            if let coordinate = locationService.lastKnownLocation?.coordinate {
+                CommunityService.shared.startPresence(
+                    latitude: coordinate.latitude,
+                    longitude: coordinate.longitude,
+                    spotName: manualSpotOverride ?? spotState.resolvedName ?? "Unknown spot"
+                )
+            }
         }
 
         if varioEnabled {
@@ -536,6 +547,10 @@ struct TimerView: View {
             )
         } else {
             locationService.stopUpdatingLocation()
+
+            // Best-effort presence cleanup (Step C2, fire-and-forget).
+            // Simulated flights never posted presence, so nothing to end there.
+            CommunityService.shared.endPresence()
 
             // Manual spot takes priority over the detected one
             let finalSpot = manualSpotOverride ?? spotState.resolvedName

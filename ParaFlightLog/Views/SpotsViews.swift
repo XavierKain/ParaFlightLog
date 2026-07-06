@@ -219,6 +219,15 @@ struct SpotDetailView: View {
                 )
             }
 
+            // Community activity (Step C, only when the spot is located).
+            // Prefer the key recorded when a flight here was shared; derive
+            // it from name + coordinates otherwise.
+            if let lat = spot.latitude, let lon = spot.longitude,
+               let communityKey = spot.communitySpotKey
+                   ?? CommunitySpotKey.make(name: spot.name, latitude: lat, longitude: lon) {
+                SpotCommunitySection(spotKey: communityKey)
+            }
+
             // Flights, selectable for reassignment
             Section {
                 if spotFlights.isEmpty {
@@ -744,6 +753,139 @@ private struct SpotWeatherSection: View {
             loadFailed = weather == nil
         }
         isLoading = false
+    }
+}
+
+// MARK: - SpotCommunitySection (community activity at this spot, Step C)
+
+/// Community stats for one spot, loaded from CommunityService (same
+/// header-attached .task pattern as SpotWeatherSection). When the backend
+/// isn't configured (CommunityError.backendNotConfigured) the whole section
+/// disappears silently — community is optional infrastructure.
+private struct SpotCommunitySection: View {
+    let spotKey: String
+
+    private enum LoadState {
+        case loading
+        case loaded(SpotCommunityStats)
+        case failed
+        /// Backend not configured: render nothing at all.
+        case hidden
+    }
+
+    @State private var state: LoadState = .loading
+
+    var body: some View {
+        switch state {
+        case .hidden:
+            EmptyView()
+        default:
+            section
+        }
+    }
+
+    private var section: some View {
+        Section {
+            switch state {
+            case .loading:
+                HStack(spacing: 10) {
+                    ProgressView()
+                    Text("Loading community activity…")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            case .failed:
+                HStack {
+                    Image(systemName: "exclamationmark.triangle")
+                        .foregroundStyle(.orange)
+                    Text("Could not load community activity.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Retry") {
+                        Task { await load() }
+                    }
+                    .font(.caption)
+                    .buttonStyle(.borderless)
+                }
+            case .loaded(let stats):
+                statsRows(stats)
+            case .hidden:
+                EmptyView()
+            }
+        } header: {
+            Text("Community")
+                // On the header (a plain view), NOT on the Section: modifiers on
+                // a Section inside a List can break its section rendering.
+                .task {
+                    await load()
+                }
+        } footer: {
+            if case .loaded = state {
+                Text("From pilots who share their flights in Settings › Community.")
+            }
+        }
+    }
+
+    // MARK: Rows
+
+    @ViewBuilder
+    private func statsRows(_ stats: SpotCommunityStats) -> some View {
+        if stats.pilotsFlyingNow > 0 {
+            Text("🪂 \(stats.pilotsFlyingNow) flying now")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.green)
+        }
+
+        if stats.flightsThisMonth == 0 && stats.hoursThisYear == 0 {
+            if stats.pilotsFlyingNow == 0 {
+                Text("No shared flights at this spot yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        } else {
+            Text("^[\(stats.flightsThisMonth) flight](inflect: true) by ^[\(stats.pilotsThisMonth) pilot](inflect: true) this month")
+                .font(.subheadline)
+
+            Text("\(hoursText(stats.hoursThisYear)) this year")
+                .font(.subheadline)
+
+            ForEach(Array(stats.topPilots.enumerated()), id: \.offset) { index, pilot in
+                HStack(spacing: 8) {
+                    Text("\(index + 1).")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18, alignment: .trailing)
+                    Text(pilot.name)
+                        .font(.subheadline)
+                        .lineLimit(1)
+                    Spacer()
+                    Text(hoursText(pilot.hours))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    /// "12 h" above 10 hours, "3.5 h" below.
+    private func hoursText(_ hours: Double) -> String {
+        hours >= 10 ? "\(Int(hours.rounded())) h" : String(format: "%.1f h", hours)
+    }
+
+    // MARK: Loading
+
+    private func load() async {
+        if case .loaded = state { } else { state = .loading }
+        do {
+            state = .loaded(try await CommunityService.shared.communityStats(forSpotKey: spotKey))
+        } catch CommunityError.backendNotConfigured {
+            state = .hidden
+        } catch {
+            // Keep the last stats on a refresh failure; the service's
+            // 15-minute cache makes them recent anyway.
+            if case .loaded = state { } else { state = .failed }
+        }
     }
 }
 

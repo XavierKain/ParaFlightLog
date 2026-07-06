@@ -21,6 +21,7 @@
 
 import Foundation
 import WatchConnectivity
+import CoreLocation
 
 @Observable
 final class WatchConnectivityManager: NSObject, WCSessionDelegate {
@@ -266,6 +267,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             return
         }
 
+        // Flight started on the Watch? Best-effort live presence (Step C2).
+        if message[WatchSyncKeys.flightStarted] as? Bool == true {
+            handleFlightStarted(message)
+            replyHandler(["status": "success"])
+            return
+        }
+
         // Otherwise it should be a flight
         guard let dto = Self.decodeFlightDTO(from: message) else {
             logWarning("Received message is not a valid flight payload", category: .watchSync)
@@ -292,6 +300,12 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             DispatchQueue.main.async { [weak self] in
                 self?.sendWingsToWatch()
             }
+            return
+        }
+
+        // Flight started on the Watch? Best-effort live presence (Step C2).
+        if message[WatchSyncKeys.flightStarted] as? Bool == true {
+            handleFlightStarted(message)
             return
         }
 
@@ -378,6 +392,42 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    // MARK: - Live Presence (Step C2)
+
+    /// Handles the ephemeral "flight started" signal from the Watch:
+    /// [WatchSyncKeys.flightStarted: true, "latitude": Double, "longitude": Double].
+    /// Resolves the spot name from the takeoff coordinates (nearest known
+    /// spot within 1.5 km, else "Unknown spot") and starts the opt-in
+    /// presence heartbeat. Fully best-effort: presence is ephemeral, the
+    /// signal is never retried and failures are only logged.
+    private func handleFlightStarted(_ payload: [String: Any]) {
+        let latitude = payload["latitude"] as? Double
+        let longitude = payload["longitude"] as? Double
+
+        DispatchQueue.main.async { [weak self] in
+            guard let latitude, let longitude else {
+                logDebug("Flight-started signal without coordinates - skipping presence", category: .community)
+                return
+            }
+
+            let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            let spot = self?.dataController?.nearestSpot(to: coordinate, within: 1500)
+            let spotName = spot?.name ?? "Unknown spot"
+            // Prefer the spot's canonical community key (its own coordinates)
+            // so presence and shared flights aggregate under the same key.
+            let spotKey = spot.flatMap {
+                $0.communitySpotKey ?? CommunitySpotKey.make(name: $0.name, latitude: $0.latitude, longitude: $0.longitude)
+            }
+
+            CommunityService.shared.startPresence(
+                latitude: spot?.latitude ?? latitude,
+                longitude: spot?.longitude ?? longitude,
+                spotName: spotName,
+                spotKey: spotKey
+            )
+        }
+    }
+
     // MARK: - Flight Handling
 
     /// Decodes a FlightDTO from a Watch payload.
@@ -415,6 +465,10 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             replyHandler?([WatchSyncKeys.flightSaved: false, "error": "Data store unavailable"])
             return
         }
+
+        // Receiving a flight means it ENDED — clear any live presence
+        // heartbeat (best-effort, no-op when presence is off or signed out).
+        CommunityService.shared.endPresence()
 
         // Deduplication: already saved = success
         if dataController.flightExists(id: dto.id) {

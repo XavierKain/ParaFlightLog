@@ -123,6 +123,18 @@ nonisolated enum UserDefaultsKeys {
     /// `WeatherService.autoSnapshotEnabled`, which treats a never-set key
     /// as enabled (`object(forKey:) == nil` pattern).
     static let autoWeatherSnapshot = "autoWeatherSnapshot"
+
+    /// Opt-in community sharing (Step C): upload flight summaries to
+    /// Appwrite. Default FALSE — read/written via
+    /// `CommunityService.isSharingEnabled`.
+    static let communitySharingEnabled = "communitySharingEnabled"
+
+    /// Opt-in live presence heartbeat while a flight is active (Step C2).
+    /// Default FALSE — read/written via `CommunityService.isPresenceEnabled`.
+    static let presenceEnabled = "presenceEnabled"
+
+    /// Public display name attached to shared flights (empty -> "A pilot").
+    static let pilotDisplayName = "pilotDisplayName"
 }
 
 // MARK: - Weather Configuration

@@ -163,6 +163,37 @@ struct ContentView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
             locationService.startUpdatingLocation()
             locationService.startFlightTracking()
+
+            // Best-effort live presence signal to the iPhone (Step C2).
+            // Simulated flights use a fake feed with fake coordinates and
+            // must never post presence.
+            if !WatchSettings.shared.simulateFlightEnabled {
+                sendFlightStartedSignal()
+            }
+        }
+    }
+
+    /// Sends the ephemeral "flight started" presence signal to the iPhone
+    /// with the takeoff coordinates. Uses the same GPS fix the tracking flow
+    /// reads (lastKnownLocation); when no fix exists yet, retries ONCE after
+    /// ~10 s and then gives up silently — presence is best-effort and must
+    /// never interfere with the flight itself.
+    private func sendFlightStartedSignal() {
+        if let location = locationService.lastKnownLocation {
+            watchManager.notifyFlightStarted(
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude
+            )
+            return
+        }
+
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(10))
+            guard isFlying, let location = locationService.lastKnownLocation else { return }
+            watchManager.notifyFlightStarted(
+                latitude: location.coordinate.latitude,
+                longitude: location.coordinate.longitude
+            )
         }
     }
 

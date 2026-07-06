@@ -222,6 +222,30 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         watchLogInfo("Sent settings to iPhone (two-way sync)", category: .watchSync)
     }
 
+    // MARK: - Live Presence signal (Step C2)
+
+    /// Ephemeral "flight started" signal so the iPhone can post the pilot's
+    /// live presence at the takeoff spot. Best-effort sendMessage ONLY:
+    /// presence is ephemeral, so this NEVER goes through the outbox and must
+    /// not interfere with the flight-delivery contract. If the iPhone is not
+    /// reachable right now the signal is simply dropped (no retry, no queue);
+    /// failures are only logged.
+    func notifyFlightStarted(latitude: Double, longitude: Double) {
+        guard sessionActivated, isPhoneReachable else {
+            watchLogDebug("Flight-started signal skipped: iPhone not reachable", category: .watchSync)
+            return
+        }
+
+        let payload: [String: Any] = [
+            WatchSyncKeys.flightStarted: true,
+            "latitude": latitude,
+            "longitude": longitude
+        ]
+        WCSession.default.sendMessage(payload, replyHandler: nil) { error in
+            watchLogDebug("Flight-started signal failed (best-effort, dropped): \(error.localizedDescription)", category: .watchSync)
+        }
+    }
+
     // MARK: - WCSessionDelegate
 
     // WCSession delegate callbacks arrive on a background queue, so they are

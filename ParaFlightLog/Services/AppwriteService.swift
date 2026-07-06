@@ -21,6 +21,13 @@ enum AppwriteConfig {
     static let manufacturersCollectionId = "manufacturers"
     static let wingsCollectionId = "wings"
 
+    // Community sharing collections (Step C). Console setup: see
+    // APPWRITE_COMMUNITY_SETUP.md at the repo root. All community calls
+    // fail soft while these don't exist yet.
+    static let communitySpotsCollectionId = "community_spots"
+    static let sharedFlightsCollectionId = "shared_flights"
+    static let presenceCollectionId = "presence"
+
     // Storage
     static let wingImagesBucketId = "wing-images"
 

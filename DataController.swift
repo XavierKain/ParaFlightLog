@@ -330,6 +330,9 @@ final class DataController {
         let saved = saveContext()
         if saved {
             logInfo("Flight saved: \(flight.durationFormatted) with \(wing?.name ?? "no wing")", category: .flight)
+            // Opt-in community share. Fire-and-forget: never affects the
+            // save/ACK path (same pattern as the weather snapshot).
+            CommunityService.shared.shareFlightIfEnabled(flight, dataController: self)
         }
         return saved
     }
@@ -362,6 +365,8 @@ final class DataController {
         saveContext()
 
         logInfo("Flight saved: \(flight.durationFormatted) at \(flight.spotName ?? "Unknown")", category: .flight)
+        // Opt-in community share. Fire-and-forget: never affects the save path.
+        CommunityService.shared.shareFlightIfEnabled(flight, dataController: self)
         return flight
     }
 
@@ -389,6 +394,13 @@ final class DataController {
         assignSpot(to: flight)
         saveContext()
         logInfo("Flight \(flightId) location updated: \(flight.spotName ?? "no spot")", category: .flight)
+
+        // A spot may only have been resolved by this late geocode — give the
+        // opt-in community share a second chance. Idempotent (doc ID = flight
+        // id) and fire-and-forget: never affects this update path.
+        if flight.spot != nil {
+            CommunityService.shared.shareFlightIfEnabled(flight, dataController: self)
+        }
     }
 
     /// Deletes a flight

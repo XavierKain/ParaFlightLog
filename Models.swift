@@ -121,6 +121,11 @@ final class Spot {
     /// Inline default keeps the field CloudKit-compatible.
     var windDirections: [String] = []
 
+    /// Global community identity of this spot (Appwrite `community_spots`
+    /// document ID, see CommunitySpotKey). Set on first share, nil until
+    /// then. Optional keeps the field CloudKit-compatible.
+    var communitySpotKey: String?
+
     // Inverse of Flight.spot. Optional for CloudKit compatibility.
     @Relationship(deleteRule: .nullify, inverse: \Flight.spot)
     var flights: [Flight]?
