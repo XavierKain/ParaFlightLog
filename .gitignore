@@ -99,3 +99,8 @@ DerivedData/
 # Xcode Project files
 *.xcodeproj/xcuserdata/
 *.xcodeproj/project.xcworkspace/xcuserdata/
+
+# Personal flight-data backups (never commit — private GPS traces etc.)
+Backup export/
+*.paraflightlog/
+*.paraflightlogx
