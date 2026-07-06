@@ -102,9 +102,11 @@ struct FlightWidgetEntryView: View {
                 .containerBackground(.clear, for: .widget)
         case .accessoryInline:
             InlineWidgetView(entry: entry)
+#if os(watchOS)
         case .accessoryCorner:
             CornerWidgetView(entry: entry)
                 .containerBackground(.clear, for: .widget)
+#endif
         default:
             CircularWidgetView(entry: entry)
                 .containerBackground(.clear, for: .widget)
@@ -186,7 +188,8 @@ struct RectangularWidgetView: View {
     }
 }
 
-// Vue coin (pour la complication de coin)
+#if os(watchOS)
+// Corner view (corner complications are watchOS-only, like .widgetLabel)
 struct CornerWidgetView: View {
     let entry: FlightEntry
 
@@ -198,6 +201,7 @@ struct CornerWidgetView: View {
             }
     }
 }
+#endif
 
 // Vue inline (pour les complications simples)
 struct InlineWidgetView: View {
@@ -224,12 +228,20 @@ struct ParaFlightLogWidget: Widget {
         }
         .configurationDisplayName("ParaFlightLog")
         .description(WidgetStrings.description)
+#if os(watchOS)
         .supportedFamilies([
             .accessoryCircular,
             .accessoryRectangular,
             .accessoryInline,
             .accessoryCorner
         ])
+#else
+        .supportedFamilies([
+            .accessoryCircular,
+            .accessoryRectangular,
+            .accessoryInline
+        ])
+#endif
     }
 }
 
