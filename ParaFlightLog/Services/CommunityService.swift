@@ -61,6 +61,33 @@ struct SpotCommunityStats {
     var pilotsFlyingNow: Int
 }
 
+// MARK: - Explore models (Step D, client-side v1)
+
+/// One community spot on the Explore map/list: identity + coordinates from
+/// `community_spots`, decorated with recent activity (shared flights in the
+/// last 30 days) and live presence, both aggregated on device.
+struct CommunitySpotSummary: Identifiable {
+    let spotKey: String
+    let name: String
+    let latitude: Double
+    let longitude: Double
+    var flightsLast30Days: Int
+    var pilotsFlyingNow: Int
+
+    var id: String { spotKey }
+}
+
+/// One shared flight in a spot's recent-activity feed (Explore detail sheet).
+struct SharedFlightSummary: Identifiable {
+    /// Appwrite row ID (the shared flight's UUID, lowercased).
+    let id: String
+    let pilotName: String
+    let date: Date
+    let durationSeconds: Int
+    /// Raw flight-type string as shared (maps onto `FlightType` when known).
+    let flightType: String?
+}
+
 // MARK: - Service
 
 @Observable @MainActor
@@ -76,6 +103,13 @@ final class CommunityService {
     /// In-memory stats cache per spot key, 15-minute TTL.
     private var statsCache: [String: (stats: SpotCommunityStats, fetchedAt: Date)] = [:]
     private static let statsCacheTTL: TimeInterval = 15 * 60
+
+    /// Explore screen cache (all community spots + activity), 15-minute TTL.
+    /// Single entry: the whole screen is built from one aggregate fetch.
+    private var exploreCache: (spots: [CommunitySpotSummary], fetchedAt: Date)?
+
+    /// Recent shared flights per spot key (Explore detail sheet), 15-minute TTL.
+    private var recentFlightsCache: [String: (flights: [SharedFlightSummary], fetchedAt: Date)] = [:]
 
     /// Presence heartbeats expire 2 hours after takeoff.
     private static let presenceTTL: TimeInterval = 2 * 3600
@@ -185,6 +219,8 @@ final class CommunityService {
         )
 
         statsCache.removeValue(forKey: spotKey)
+        recentFlightsCache.removeValue(forKey: spotKey)
+        exploreCache = nil
         return spotKey
     }
 
@@ -294,6 +330,8 @@ final class CommunityService {
             )
 
             statsCache.removeAll()
+            recentFlightsCache.removeAll()
+            exploreCache = nil
             logInfo("Deleted \(deleted) shared flights for user \(userId)", category: .community)
         } catch {
             logWarning("Unshare-all failed: \(error)", category: .community)
@@ -451,6 +489,149 @@ final class CommunityService {
         }
     }
 
+    // MARK: - Explore (Step D, client-side v1)
+
+    /// All community spots with recent activity for the Explore screen:
+    /// lists `community_spots` (paginated, ~500 cap), then ONE query on
+    /// `shared_flights` (last 30 days) and ONE on `presence` (non-expired),
+    /// both grouped by spot key on device. The spots list is authoritative —
+    /// the two activity queries are decoration and fail soft to zero counts.
+    /// Cached in memory for 15 minutes (single entry); `forceRefresh` is the
+    /// pull-to-refresh bypass.
+    func exploreSpots(forceRefresh: Bool = false) async throws -> [CommunitySpotSummary] {
+        if !forceRefresh,
+           let cache = exploreCache,
+           Date().timeIntervalSince(cache.fetchedAt) < Self.statsCacheTTL {
+            return cache.spots
+        }
+
+        // 1. All community spots (cursor pagination, capped at ~500 —
+        //    server-side aggregation takes over before that matters).
+        var summaries: [CommunitySpotSummary] = []
+        var indexByKey: [String: Int] = [:]
+        do {
+            var cursor: String?
+            for _ in 0..<5 {
+                var queries = [Query.limit(100)]
+                if let cursor {
+                    queries.append(Query.cursorAfter(cursor))
+                }
+                let page = try await tablesDB.listRows(
+                    databaseId: AppwriteConfig.databaseId,
+                    tableId: AppwriteConfig.communitySpotsCollectionId,
+                    queries: queries
+                )
+                for row in page.rows {
+                    let data = row.data
+                    // A spot without coordinates can't be explored — skip it.
+                    guard let latitude = Self.doubleValue(data["latitude"]),
+                          let longitude = Self.doubleValue(data["longitude"]) else { continue }
+                    let name = (data["name"]?.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? row.id
+                    indexByKey[row.id] = summaries.count
+                    summaries.append(CommunitySpotSummary(
+                        spotKey: row.id,
+                        name: name,
+                        latitude: latitude,
+                        longitude: longitude,
+                        flightsLast30Days: 0,
+                        pilotsFlyingNow: 0
+                    ))
+                }
+                guard page.rows.count == 100, let last = page.rows.last else { break }
+                cursor = last.id
+            }
+        } catch {
+            logInfo("Explore spots unavailable: \(error)", category: .community)
+            throw Self.mapError(error)
+        }
+
+        // 2. Shared flights in the last 30 days, grouped by spot key.
+        //    Query.select keeps the payload tiny (one string per row).
+        do {
+            let since = Self.isoString(from: Date().addingTimeInterval(-30 * 24 * 3600))
+            let flightsPage = try await tablesDB.listRows(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.sharedFlightsCollectionId,
+                queries: [
+                    Query.greaterThan("date", value: since),
+                    Query.select(["spotKey"]),
+                    Query.limit(500)
+                ]
+            )
+            for row in flightsPage.rows {
+                guard let key = row.data["spotKey"]?.value as? String,
+                      let index = indexByKey[key] else { continue }
+                summaries[index].flightsLast30Days += 1
+            }
+        } catch {
+            logInfo("Explore flight counts unavailable: \(error)", category: .community)
+        }
+
+        // 3. Live presence (non-expired heartbeats), grouped by spot key.
+        do {
+            let presencePage = try await tablesDB.listRows(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.presenceCollectionId,
+                queries: [
+                    Query.greaterThan("expiresAt", value: Self.isoString(from: Date())),
+                    Query.select(["spotKey"]),
+                    Query.limit(500)
+                ]
+            )
+            for row in presencePage.rows {
+                guard let key = row.data["spotKey"]?.value as? String,
+                      let index = indexByKey[key] else { continue }
+                summaries[index].pilotsFlyingNow += 1
+            }
+        } catch {
+            logInfo("Explore presence unavailable: \(error)", category: .community)
+        }
+
+        summaries.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        exploreCache = (summaries, Date())
+        logInfo("Explore loaded \(summaries.count) community spots", category: .community)
+        return summaries
+    }
+
+    /// Most recent shared flights at one community spot (Explore detail
+    /// sheet), newest first. Cached in memory for 15 minutes per spot key.
+    func recentFlights(forSpotKey spotKey: String, limit: Int = 20) async throws -> [SharedFlightSummary] {
+        if let entry = recentFlightsCache[spotKey],
+           Date().timeIntervalSince(entry.fetchedAt) < Self.statsCacheTTL {
+            return Array(entry.flights.prefix(limit))
+        }
+
+        do {
+            let page = try await tablesDB.listRows(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.sharedFlightsCollectionId,
+                queries: [
+                    Query.equal("spotKey", value: spotKey),
+                    Query.orderDesc("date"),
+                    Query.limit(max(1, min(limit, 100)))
+                ]
+            )
+            let flights: [SharedFlightSummary] = page.rows.compactMap { row in
+                let data = row.data
+                guard let dateString = data["date"]?.value as? String,
+                      let date = Self.parseISODate(dateString) else { return nil }
+                let pilotName = (data["pilotName"]?.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "A pilot"
+                return SharedFlightSummary(
+                    id: row.id,
+                    pilotName: pilotName,
+                    date: date,
+                    durationSeconds: Self.intValue(data["durationSeconds"]),
+                    flightType: data["flightType"]?.value as? String
+                )
+            }
+            recentFlightsCache[spotKey] = (flights, Date())
+            return flights
+        } catch {
+            logInfo("Recent community flights unavailable for \(spotKey): \(error)", category: .community)
+            throw Self.mapError(error)
+        }
+    }
+
     // MARK: - Helpers
 
     /// Read/write permissions for a community document: anyone can read,
@@ -500,6 +681,13 @@ final class CommunityService {
         if let int = value?.value as? Int { return int }
         if let double = value?.value as? Double { return Int(double) }
         return 0
+    }
+
+    /// Tolerant Double extraction from an Appwrite row value (Double or Int).
+    private static func doubleValue(_ value: AnyCodable?) -> Double? {
+        if let double = value?.value as? Double { return double }
+        if let int = value?.value as? Int { return Double(int) }
+        return nil
     }
 
     /// True for "document already exists" conflicts (create-or-ignore path).

@@ -89,6 +89,37 @@ struct DashboardView: View {
                                 )
                             }
 
+                            // Explore the community (Step D): spots map/list
+                            // with live activity, pushed onto this stack.
+                            NavigationLink {
+                                ExploreView()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "globe")
+                                        .font(.system(size: 30))
+                                        .foregroundStyle(.blue)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("Explore")
+                                            .font(.headline)
+                                            .foregroundStyle(Color.primary)
+                                        Text("Community spots, live activity & conditions")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(12)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
+                            .buttonStyle(.plain)
+
                             // Latest flight (reuses the featured card)
                             if let latest = flights.first {
                                 sectionHeader("Latest flight", tab: 0)
@@ -192,6 +223,18 @@ struct DashboardView: View {
             }
             .navigationTitle("Home")
             .background(Color(.systemGroupedBackground))
+            .toolbar {
+                // Same destination as the Explore card — also reachable from
+                // the empty-logbook welcome state.
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink {
+                        ExploreView()
+                    } label: {
+                        Image(systemName: "globe")
+                    }
+                    .accessibilityLabel("Explore community spots")
+                }
+            }
             // Token (not just count) so in-place flight edits refresh the totals
             .task(id: flights.statsChangeToken) {
                 stats = dataController.computeStats(from: flights)
