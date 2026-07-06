@@ -1,0 +1,46 @@
+name: Build check
+
+# Compile-check CI: builds the iOS app (which also builds the embedded
+# Watch app and widget via target dependencies) for the simulator, without
+# code signing. Free on public repos. Errors surface as check-run
+# annotations readable via the GitHub API.
+
+on:
+  push:
+    branches: [v20, main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build iOS + watchOS (simulator, no signing)
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Build ParaFlightLog scheme
+        run: |
+          set -o pipefail
+          build() {
+            xcodebuild build \
+              -project ParaFlightLog.xcodeproj \
+              -scheme ParaFlightLog \
+              -destination 'generic/platform=iOS Simulator' \
+              -skipPackagePluginValidation \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              2>&1
+          }
+          if command -v xcbeautify >/dev/null 2>&1; then
+            build | xcbeautify --renderer github-actions
+          else
+            build
+          fi
