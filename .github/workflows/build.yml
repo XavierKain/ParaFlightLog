@@ -44,3 +44,24 @@ jobs:
           else
             build
           fi
+
+      - name: Run unit tests
+        run: |
+          set -o pipefail
+          DEVICE=$(xcrun simctl list devices available | grep -oE "iPhone [^(]+" | head -1 | xargs)
+          echo "Using simulator: $DEVICE"
+          run_tests() {
+            xcodebuild test \
+              -project ParaFlightLog.xcodeproj \
+              -scheme ParaFlightLog \
+              -destination "platform=iOS Simulator,name=$DEVICE" \
+              -skipPackagePluginValidation \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGN_IDENTITY="" \
+              2>&1
+          }
+          if command -v xcbeautify >/dev/null 2>&1; then
+            run_tests | xcbeautify --renderer github-actions
+          else
+            run_tests
+          fi
