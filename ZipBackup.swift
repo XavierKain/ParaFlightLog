@@ -16,9 +16,12 @@
 //  and hardened: it never crashes on malformed rows, it skips and counts them.
 //
 //  Cloud format (single file): `ParaFlightLog-backup.paraflightlogx`, a flat
-//  JSON document with the same v2 manifest structure plus an `images` dict
-//  (wingId -> base64 JPEG). Appwrite Storage needs a single regular file, so
-//  the folder bundle cannot be uploaded as-is. Import auto-detects it.
+//  JSON document with the same v2 manifest structure plus an optional `images`
+//  dict (wingId -> base64 JPEG). Cloud backups are stored in an Appwrite
+//  database column (CloudBackupService) and omit the images to stay small —
+//  wing photos are excluded from cloud backups; the LOCAL folder/file backup
+//  keeps them. Import auto-detects the single-file format and tolerates a
+//  missing/empty `images` dict.
 //
 //  NOTE: the filename ZipBackup.swift is kept so the Xcode project reference
 //  stays valid; the type is BackupManager.
@@ -261,23 +264,29 @@ enum BackupManager {
     /// Exports all data as a SINGLE regular file suitable for cloud upload
     /// (`ParaFlightLog-backup.paraflightlogx`): a flat JSON document with the
     /// same v2 manifest structure plus an `images` dict (wingId -> base64 JPEG).
-    /// Appwrite's `InputFile.fromPath` requires a regular file, so the folder
-    /// bundle produced by `exportBackup` cannot be uploaded directly.
+    /// The single-file layout is also what the cloud backup table stores.
     /// - Parameters:
     ///   - wings: wings to export
     ///   - flights: flights to export
     ///   - spots: spots to export; when nil, the spots linked from `flights`
     ///     are exported (see `exportBackup`)
+    ///   - includeImages: base64 wing photos bloat the file and cloud backups
+    ///     store it in a size-limited database column, so cloud backups omit
+    ///     them (default). Photos are only in the LOCAL folder/file backup.
+    ///     Import tolerates a missing `images` dict — flights/wings/spots/tracks
+    ///     are what matter.
     ///   - completion: callback on the main queue with the file URL (or error)
-    static func exportCloudBackup(wings: [Wing], flights: [Flight], spots: [Spot]? = nil, completion: @escaping (Result<URL, Error>) -> Void) {
+    static func exportCloudBackup(wings: [Wing], flights: [Flight], spots: [Spot]? = nil, includeImages: Bool = false, completion: @escaping (Result<URL, Error>) -> Void) {
         // Snapshot the models on the calling (main) thread, encode/write off-main.
         let (manifest, photosByWingId) = makeManifestSnapshot(wings: wings, flights: flights, spots: spots)
 
         DispatchQueue.global(qos: .utility).async {
             do {
-                let images: [String: String] = photosByWingId.reduce(into: [:]) { dict, entry in
-                    dict[entry.key.uuidString] = entry.value.base64EncodedString()
-                }
+                let images: [String: String] = includeImages
+                    ? photosByWingId.reduce(into: [:]) { dict, entry in
+                        dict[entry.key.uuidString] = entry.value.base64EncodedString()
+                    }
+                    : [:]
                 let file = CloudBackupFile(manifest: manifest, images: images)
 
                 let encoder = JSONEncoder()

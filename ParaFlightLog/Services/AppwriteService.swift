@@ -28,12 +28,21 @@ enum AppwriteConfig {
     static let sharedFlightsCollectionId = "shared_flights"
     static let presenceCollectionId = "presence"
 
+    /// Cloud backup collection: one row per user (row ID = user ID) holding
+    /// the single-file `.paraflightlogx` JSON in a `payload` String attribute.
+    /// See CloudBackupService. Console: create("users"), documentSecurity ON;
+    /// each row is additionally restricted to its owner via per-row permissions.
+    static let userBackupsCollectionId = "user_backups"
+
     // Storage
     static let wingImagesBucketId = "wing-images"
 
-    /// Bucket holding one backup archive per user (see CloudBackupService).
-    /// Console setup: create this bucket with file-level security ON and
-    /// Create/Read/Update/Delete permissions for role "users".
+    /// UNUSED. Cloud backup used to live in a Storage bucket, but the free
+    /// Appwrite plan allows only ONE bucket and it is taken by `wing-images`,
+    /// so the `user-backups` bucket could never be created and every upload
+    /// failed silently. Cloud backup now stores the archive in the
+    /// `user_backups` database table (see userBackupsCollectionId / CloudBackupService).
+    /// Kept only for reference; safe to remove.
     static let backupsBucketId = "user-backups"
 }
 

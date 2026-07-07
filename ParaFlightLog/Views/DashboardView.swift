@@ -21,7 +21,6 @@ struct DashboardView: View {
 
     @State private var stats = FlightStats()
     @State private var showingFlightDetail: Flight?
-    @State private var showingSpotDetail: Spot?
 
     // Most recently flown wing (flights are sorted newest first), with its
     // aggregate hours. "Most-used" would surface long-retired wings after a
@@ -126,6 +125,38 @@ struct DashboardView: View {
                             }
                             .buttonStyle(.plain)
 
+                            // My Spots: reach the local spots list (each spot's
+                            // weather, forecast & flyability) without going
+                            // through Settings or Explore.
+                            NavigationLink {
+                                SpotsManagementView()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "mappin.and.ellipse")
+                                        .font(.system(size: 30))
+                                        .foregroundStyle(.red)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("My Spots")
+                                            .font(.headline)
+                                            .foregroundStyle(Color.primary)
+                                        Text("Your spots' weather, forecast & flyability")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(12)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
+                            .buttonStyle(.plain)
+
                             // Latest flight (reuses the featured card)
                             if let latest = flights.first {
                                 sectionHeader("Latest flight", tab: 0)
@@ -211,16 +242,21 @@ struct DashboardView: View {
                                 .buttonStyle(.plain)
                             }
 
-                            // Current conditions at the pilot's main spot
+                            // Current conditions at the pilot's main spot —
+                            // pushes the full spot page (forecast, flyability,
+                            // your stats).
                             if let spot = conditionsSpot {
                                 HStack {
                                     Text("Conditions")
                                         .font(.headline)
                                     Spacer()
                                 }
-                                DashboardConditionsCard(spot: spot) {
-                                    showingSpotDetail = spot
+                                NavigationLink {
+                                    SpotDetailView(spot: spot)
+                                } label: {
+                                    DashboardConditionsCard(spot: spot)
                                 }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding()
@@ -247,13 +283,6 @@ struct DashboardView: View {
             }
             .sheet(item: $showingFlightDetail) { flight in
                 FlightDetailView(flight: flight)
-            }
-            .sheet(item: $showingSpotDetail) { spot in
-                // SpotDetailView expects a navigation context (title, push
-                // reassignment flows) — wrap it like a mini spot page.
-                NavigationStack {
-                    SpotDetailView(spot: spot)
-                }
             }
         }
     }
@@ -284,18 +313,16 @@ struct DashboardView: View {
 // MARK: - DashboardConditionsCard
 
 /// Current wind conditions at the pilot's main spot, with a flyability badge
-/// rated against the spot's configured launch directions. Tapping opens the
-/// spot detail (weather section + forecast).
+/// rated against the spot's configured launch directions. Presented inside a
+/// NavigationLink that pushes the spot detail (weather section + forecast).
 private struct DashboardConditionsCard: View {
     let spot: Spot
-    let onTap: () -> Void
 
     @State private var weather: SpotWeather?
     @State private var loadFailed = false
 
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 12) {
+        HStack(spacing: 12) {
                 Image(systemName: "wind")
                     .font(.system(size: 30))
                     .foregroundStyle(.teal)
@@ -364,8 +391,6 @@ private struct DashboardConditionsCard: View {
             .padding(12)
             .background(Color(.secondarySystemGroupedBackground))
             .clipShape(RoundedRectangle(cornerRadius: 14))
-        }
-        .buttonStyle(.plain)
         .task(id: spot.id) {
             await load()
         }

@@ -350,6 +350,7 @@ private struct CommunitySpotSheet: View {
     @State private var weatherFailed = false
     @State private var flights: [SharedFlightSummary]?
     @State private var flightsFailed = false
+    @State private var selectedFlight: SharedFlightSummary?
 
     /// Live presence: prefer the fresh per-spot stats over the (possibly
     /// 15-minute-old) Explore summary once they arrive.
@@ -407,6 +408,10 @@ private struct CommunitySpotSheet: View {
             .task { await loadStats() }
             .task { await loadWeather() }
             .task { await loadFlights() }
+            .sheet(item: $selectedFlight) { flight in
+                SharedFlightDetailView(flight: flight, spotName: summary.name)
+                    .presentationDetents([.medium])
+            }
         }
     }
 
@@ -416,6 +421,11 @@ private struct CommunitySpotSheet: View {
         Section {
             if let weather {
                 currentConditionsRow(weather)
+                // Coming days. No flyability rating: community spots carry no
+                // launch orientations, so these are raw forecast rows only.
+                ForEach(weather.daily) { day in
+                    forecastRow(day)
+                }
             } else if weatherFailed {
                 Text("Conditions unavailable.")
                     .font(.caption)
@@ -424,12 +434,64 @@ private struct CommunitySpotSheet: View {
                 loadingRow("Loading conditions…")
             }
         } header: {
-            Text("Current conditions")
+            Text("Weather")
         } footer: {
             if weather != nil {
                 Text("Weather by Open-Meteo.")
             }
         }
+    }
+
+    /// One forecast day: weekday, wind direction arrow, max wind / gusts,
+    /// precip probability and max temperature. Mirrors the local spot detail's
+    /// daily row but WITHOUT the flyability dot (no launch orientations here).
+    private func forecastRow(_ day: DayForecast) -> some View {
+        HStack(spacing: 10) {
+            Text(day.date, format: .dateTime.weekday(.abbreviated))
+                .font(.subheadline.weight(.medium))
+                .frame(width: 40, alignment: .leading)
+
+            if let direction = day.windDirectionDominantDeg {
+                // Wind comes FROM `direction`; the arrow shows where it blows TO.
+                Image(systemName: "location.north.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(direction + 180))
+            }
+
+            Text(windText(day))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            Spacer()
+
+            if let precip = day.precipProbabilityMax {
+                HStack(spacing: 2) {
+                    Image(systemName: "drop.fill")
+                        .font(.caption2)
+                        .foregroundStyle(.cyan)
+                    Text("\(Int(precip.rounded()))%")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if let temp = day.tempMax {
+                Text("\(Int(temp.rounded()))°")
+                    .font(.caption.weight(.medium))
+                    .frame(width: 30, alignment: .trailing)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    /// "18 / 32 km/h" (max wind / max gusts).
+    private func windText(_ day: DayForecast) -> String {
+        let speed = day.windSpeedMax.map { "\(Int($0.rounded()))" } ?? "—"
+        if let gusts = day.windGustsMax {
+            return "\(speed) / \(Int(gusts.rounded())) km/h"
+        }
+        return "\(speed) km/h"
     }
 
     /// Big current wind speed + gusts, direction arrow + compass, temperature
@@ -526,7 +588,12 @@ private struct CommunitySpotSheet: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(flights) { flight in
-                        SharedFlightRow(flight: flight)
+                        Button {
+                            selectedFlight = flight
+                        } label: {
+                            SharedFlightRow(flight: flight)
+                        }
+                        .buttonStyle(.plain)
                     }
                 }
             } else if flightsFailed {
@@ -537,7 +604,7 @@ private struct CommunitySpotSheet: View {
                 loadingRow("Loading recent flights…")
             }
         } header: {
-            Text("Recent shared flights")
+            Text("Recent flights here")
         } footer: {
             Text("From pilots who share their flights in Settings › Community.")
         }
@@ -621,7 +688,12 @@ private struct SharedFlightRow: View {
                     .padding(.vertical, 4)
                     .background(Color.indigo.opacity(0.12), in: Capsule())
             }
+
+            Image(systemName: "chevron.right")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
         }
+        .contentShape(Rectangle())
     }
 
     /// "1h05" / "45 min" from the shared duration.

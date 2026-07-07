@@ -2,29 +2,42 @@
 //  CloudBackupService.swift
 //  ParaFlightLog
 //
-//  Uploads/downloads the user's backup archive to/from Appwrite Storage.
-//  This service only moves files: creating the local backup archive and
-//  importing a downloaded one are handled elsewhere (backup manager).
+//  Stores the user's backup archive in an Appwrite DATABASE table (one row
+//  per user, row ID = user ID) instead of Appwrite Storage.
+//
+//  Why a table and not a bucket: the free Appwrite plan allows only ONE
+//  storage bucket, and it is already used by the wing catalog (`wing-images`).
+//  The `user-backups` bucket could never be created, so every Storage
+//  upload/download failed silently. The backup archive is small once wing
+//  photos are excluded (see below), so it fits comfortably in a String column.
+//
+//  The archive is the single-file `.paraflightlogx` JSON produced by
+//  BackupManager.exportCloudBackup(...). For cloud backups the JSON is
+//  generated WITHOUT base64 wing photos to keep it small — photos are NOT
+//  part of cloud backups. Use the local backup export for a full copy.
 //
 //  Appwrite console setup (one-time):
-//  - Create a Storage bucket with ID "user-backups" (AppwriteConfig.backupsBucketId)
-//  - Enable file-level security ("File security" toggle ON)
-//  - Bucket permissions: Create, Read, Update, Delete for role "users"
-//  Each uploaded file is additionally restricted to its owner via per-file
-//  permissions, so users can only ever see their own backup.
+//  - Table `user_backups` (AppwriteConfig.userBackupsCollectionId)
+//    Attributes: payload (String, size 5,000,000, required),
+//    appVersion (String, optional), flightCount (Integer, optional),
+//    updatedAt (Datetime, optional).
+//  - Collection permissions: create("users"); Document Security ON.
+//  Each row is additionally restricted to its owner via per-row
+//  read/update/delete permissions written on every upload, so users can only
+//  ever see their own backup.
 //
 //  Target: iOS only
 //
 
 import Foundation
-import Appwrite
-import NIOCore // transitive dependency of the Appwrite SDK, needed for ByteBuffer
+import Appwrite // re-exports JSONCodable (AnyCodable)
 
 // MARK: - Errors
 
 enum CloudBackupError: LocalizedError {
     case notSignedIn
     case noBackupFound
+    case backupTooLarge
     case network
     case unknown(String)
 
@@ -34,6 +47,8 @@ enum CloudBackupError: LocalizedError {
             return "You must be signed in to use cloud backup."
         case .noBackupFound:
             return "No cloud backup found for this account."
+        case .backupTooLarge:
+            return "This backup is too large for cloud backup (photos aren't included in cloud backups — use the local backup export for a full copy)."
         case .network:
             return "Network error. Check your connection and try again."
         case .unknown(let message):
@@ -48,44 +63,84 @@ enum CloudBackupError: LocalizedError {
 final class CloudBackupService {
     static let shared = CloudBackupService()
 
-    /// Date of the last cloud backup (the stored file's $updatedAt),
+    /// Date of the last cloud backup (the stored row's updatedAt),
     /// nil if none exists or it hasn't been fetched yet
     private(set) var lastBackupDate: Date?
 
-    private var storage: Storage { AppwriteService.shared.storage }
+    private var tablesDB: TablesDB { AppwriteService.shared.tablesDB }
+
+    /// The `payload` attribute is sized 5,000,000 bytes; stay safely below it
+    /// so headers/escaping never push a valid backup over the column limit.
+    private static let maxPayloadBytes = 4_800_000
 
     private init() {}
 
     // MARK: - Public API
 
     /// Uploads (or overwrites) the current user's backup archive.
-    /// Appwrite Storage has no overwrite, so any existing backup is deleted first.
+    /// Reads the single-file `.paraflightlogx` JSON at `backupFile` as UTF-8
+    /// and upserts it into the `user_backups` row keyed by the user ID.
+    /// Throws `.backupTooLarge` (nothing is uploaded) when the archive exceeds
+    /// the payload column limit.
     /// - Parameter backupFile: local URL of the backup archive to upload
     @MainActor
     func upload(backupFile: URL) async throws {
         let userId = try requireUserId()
-        let fileId = Self.backupFileId(for: userId)
+        let rowId = Self.rowId(for: userId)
 
-        // Delete any previous backup; ignore failures ("file not found" is
-        // expected on first upload, anything else will surface in createFile)
-        _ = try? await storage.deleteFile(
-            bucketId: AppwriteConfig.backupsBucketId,
-            fileId: fileId
-        )
+        // Read the single-file cloud backup JSON as a UTF-8 string.
+        let payload: String
+        do {
+            payload = try String(contentsOf: backupFile, encoding: .utf8)
+        } catch {
+            logError("Cloud backup read failed: \(error)", category: .general)
+            throw CloudBackupError.unknown("Could not read the backup file for upload.")
+        }
+
+        // Size guard: refuse oversized backups outright, never partially upload.
+        let byteCount = payload.utf8.count
+        guard byteCount <= Self.maxPayloadBytes else {
+            logError("Cloud backup too large: \(byteCount) bytes (limit \(Self.maxPayloadBytes))", category: .general)
+            throw CloudBackupError.backupTooLarge
+        }
+
+        let now = Date()
+        var data: [String: Any] = [
+            "payload": payload,
+            "updatedAt": Self.isoString(from: now),
+            "appVersion": Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        ]
+        if let flightCount = Self.flightCount(inPayload: payload) {
+            data["flightCount"] = flightCount
+        }
+        let permissions = [
+            Permission.read(Role.user(userId)),
+            Permission.update(Role.user(userId)),
+            Permission.delete(Role.user(userId))
+        ]
 
         do {
-            let file = try await storage.createFile(
-                bucketId: AppwriteConfig.backupsBucketId,
-                fileId: fileId,
-                file: InputFile.fromPath(backupFile.path),
-                permissions: [
-                    Permission.read(Role.user(userId)),
-                    Permission.update(Role.user(userId)),
-                    Permission.delete(Role.user(userId))
-                ]
-            )
-            lastBackupDate = Self.parseAppwriteDate(file.updatedAt) ?? Date()
-            logInfo("Uploaded cloud backup (\(file.sizeOriginal) bytes)", category: .general)
+            // Upsert by id: update the existing row, create it on first backup.
+            let row: Row<[String: AnyCodable]>
+            do {
+                row = try await tablesDB.updateRow(
+                    databaseId: AppwriteConfig.databaseId,
+                    tableId: AppwriteConfig.userBackupsCollectionId,
+                    rowId: rowId,
+                    data: data,
+                    permissions: permissions
+                )
+            } catch let error where Self.isNotFound(error) {
+                row = try await tablesDB.createRow(
+                    databaseId: AppwriteConfig.databaseId,
+                    tableId: AppwriteConfig.userBackupsCollectionId,
+                    rowId: rowId,
+                    data: data,
+                    permissions: permissions
+                )
+            }
+            lastBackupDate = Self.backupDate(from: row) ?? now
+            logInfo("Uploaded cloud backup (\(byteCount) bytes) to table", category: .general)
         } catch {
             logError("Cloud backup upload failed: \(error)", category: .general)
             throw Self.mapError(error)
@@ -97,33 +152,26 @@ final class CloudBackupService {
     @MainActor
     func downloadLatestBackup() async throws -> URL {
         let userId = try requireUserId()
-        let fileId = Self.backupFileId(for: userId)
 
         do {
-            // Fetch metadata first (original filename + last backup date)
-            let file = try await storage.getFile(
-                bucketId: AppwriteConfig.backupsBucketId,
-                fileId: fileId
+            let row = try await tablesDB.getRow(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.userBackupsCollectionId,
+                rowId: Self.rowId(for: userId)
             )
-            lastBackupDate = Self.parseAppwriteDate(file.updatedAt)
-
-            let buffer = try await storage.getFileDownload(
-                bucketId: AppwriteConfig.backupsBucketId,
-                fileId: fileId
-            )
-            let data = Data(buffer.readableBytesView)
-
-            // Preserve the original file extension so the importer recognizes it
-            let ext = (file.name as NSString).pathExtension
-            var fileName = "ParaFlightLog-CloudBackup-\(UUID().uuidString)"
-            if !ext.isEmpty {
-                fileName += ".\(ext)"
+            guard let payload = row.data["payload"]?.value as? String, !payload.isEmpty else {
+                throw CloudBackupError.noBackupFound
             }
-            let destination = FileManager.default.temporaryDirectory
-                .appendingPathComponent(fileName)
-            try data.write(to: destination, options: .atomic)
+            lastBackupDate = Self.backupDate(from: row)
 
-            logInfo("Downloaded cloud backup (\(data.count) bytes) to \(destination.lastPathComponent)", category: .general)
+            // Write to a fixed-name temp file; the importer recognizes the
+            // .paraflightlogx extension as a single-file cloud backup.
+            let destination = FileManager.default.temporaryDirectory
+                .appendingPathComponent("ParaFlightLog-cloud.paraflightlogx")
+            try? FileManager.default.removeItem(at: destination)
+            try Data(payload.utf8).write(to: destination, options: .atomic)
+
+            logInfo("Downloaded cloud backup (\(payload.utf8.count) bytes) to \(destination.lastPathComponent)", category: .general)
             return destination
         } catch {
             logError("Cloud backup download failed: \(error)", category: .general)
@@ -131,7 +179,7 @@ final class CloudBackupService {
         }
     }
 
-    /// Refreshes `lastBackupDate` from the stored file's metadata.
+    /// Refreshes `lastBackupDate` from the stored row's metadata.
     /// Sets it to nil when signed out or when no backup exists yet.
     @MainActor
     func refreshLastBackupDate() async {
@@ -141,11 +189,12 @@ final class CloudBackupService {
         }
 
         do {
-            let file = try await storage.getFile(
-                bucketId: AppwriteConfig.backupsBucketId,
-                fileId: Self.backupFileId(for: userId)
+            let row = try await tablesDB.getRow(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.userBackupsCollectionId,
+                rowId: Self.rowId(for: userId)
             )
-            lastBackupDate = Self.parseAppwriteDate(file.updatedAt)
+            lastBackupDate = Self.backupDate(from: row)
         } catch {
             // No backup yet (404) or server unreachable
             lastBackupDate = nil
@@ -161,22 +210,61 @@ final class CloudBackupService {
         return userId
     }
 
-    /// Deterministic per-user file ID. Appwrite file IDs allow a-z, 0-9 and
+    /// Deterministic per-user row ID. Appwrite row IDs allow a-z, 0-9 and
     /// hyphen (max 36 chars); user IDs generated by ID.unique() already
     /// satisfy these rules, lowercasing/truncating is only defensive.
-    private static func backupFileId(for userId: String) -> String {
+    /// (Same convention as CommunityService.)
+    private static func rowId(for userId: String) -> String {
         String(userId.lowercased().prefix(36))
+    }
+
+    /// Prefers the `updatedAt` attribute the app writes; falls back to the
+    /// row's system `$updatedAt`.
+    private static func backupDate(from row: Row<[String: AnyCodable]>) -> Date? {
+        if let stored = row.data["updatedAt"]?.value as? String,
+           let date = parseAppwriteDate(stored) {
+            return date
+        }
+        return parseAppwriteDate(row.updatedAt)
+    }
+
+    /// Best-effort flight count from the cloud backup JSON, so the row carries
+    /// a lightweight metric without decoding the whole manifest. Returns nil
+    /// when it can't be derived (the attribute is optional).
+    private static func flightCount(inPayload payload: String) -> Int? {
+        guard let data = payload.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let flights = object["flights"] as? [Any] else {
+            return nil
+        }
+        return flights.count
+    }
+
+    private static let isoFormatter: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    private static func isoString(from date: Date) -> String {
+        isoFormatter.string(from: date)
     }
 
     /// Parses Appwrite ISO 8601 timestamps (e.g. "2026-07-04T10:15:30.123+00:00")
     private static func parseAppwriteDate(_ string: String) -> Date? {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let date = formatter.date(from: string) {
+        if let date = isoFormatter.date(from: string) {
             return date
         }
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter.date(from: string)
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        return plain.date(from: string)
+    }
+
+    /// True for "row/table not found" (HTTP 404) — the first-upload case where
+    /// updateRow must fall back to createRow.
+    private static func isNotFound(_ error: Error) -> Bool {
+        guard let appwriteError = error as? AppwriteError else { return false }
+        return appwriteError.code == 404
     }
 
     private static func mapError(_ error: Error) -> Error {
@@ -188,9 +276,10 @@ final class CloudBackupService {
             return CloudBackupError.network
         }
         switch appwriteError.type {
-        case "storage_file_not_found", "storage_bucket_not_found":
+        case "document_not_found", "row_not_found",
+             "collection_not_found", "table_not_found", "database_not_found":
             return CloudBackupError.noBackupFound
-        case "user_unauthorized", "general_unauthorized_scope":
+        case "user_unauthorized", "general_unauthorized_scope", "general_unauthorized":
             return CloudBackupError.notSignedIn
         default:
             return CloudBackupError.unknown(appwriteError.message)

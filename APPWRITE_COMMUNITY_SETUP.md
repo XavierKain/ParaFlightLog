@@ -1,5 +1,14 @@
 # Appwrite console setup — community sharing (roadmap Step C)
 
+> **Status (2026-07-07): all backend objects below were created via API and verified.**
+> Tables `community_spots`, `shared_flights`, `presence` exist with the exact
+> columns / indexes / permissions here. A fourth table `user_backups` was added
+> for cloud backup: the free Appwrite plan allows only **one storage bucket**
+> (already used by `wing-images`), so cloud backup stores a JSON payload in a DB
+> table instead of Storage — private per user, **photos excluded** (they stay in
+> the local file backup). Nothing more to do in the console unless you recreate
+> the project from scratch.
+
 One-time console setup for the opt-in community features (shared flight
 summaries, live presence, per-spot stats). Until this is done, every
 community call in the app fails soft (logged under the `Community`

@@ -292,12 +292,13 @@ struct SettingsView: View {
                         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<URL, Error>) in
                             Task { @MainActor in
                                 // Snapshot models on the main actor (SwiftData requirement).
-                                // Cloud upload needs a single regular file (Appwrite
-                                // InputFile.fromPath), not the folder bundle.
+                                // Cloud backups are stored in an Appwrite database
+                                // column (CloudBackupService), so this must be the small
+                                // single-file variant WITHOUT base64 wing photos.
                                 let allWings = dataController.fetchWings(includeArchived: true)
                                 let allFlights = dataController.fetchFlights()
                                 let allSpots = dataController.fetchSpots()
-                                BackupManager.exportCloudBackup(wings: allWings, flights: allFlights, spots: allSpots) { result in
+                                BackupManager.exportCloudBackup(wings: allWings, flights: allFlights, spots: allSpots, includeImages: false) { result in
                                     continuation.resume(with: result)
                                 }
                             }

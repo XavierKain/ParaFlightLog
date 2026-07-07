@@ -225,7 +225,9 @@ final class CommunityService {
 
     /// Uploads one snapshotted flight summary (spot upsert + flight upsert).
     /// Pure plain values: safe to run long after the source models changed.
-    private func share(snapshot: FlightShareSnapshot, userId: String) async throws -> String {
+    /// `skipSpotUpsert` lets a batch backfill upsert each community spot once
+    /// for the whole run rather than once per flight.
+    private func share(snapshot: FlightShareSnapshot, userId: String, skipSpotUpsert: Bool = false) async throws -> String {
         var document: [String: Any] = [
             "userId": userId,
             "pilotName": effectivePilotName,
@@ -240,13 +242,15 @@ final class CommunityService {
             document["flightType"] = String(flightType.prefix(32))
         }
 
-        try await ensureCommunitySpot(
-            key: snapshot.spotKey,
-            name: snapshot.spotName,
-            latitude: snapshot.latitude,
-            longitude: snapshot.longitude,
-            userId: userId
-        )
+        if !skipSpotUpsert {
+            try await ensureCommunitySpot(
+                key: snapshot.spotKey,
+                name: snapshot.spotName,
+                latitude: snapshot.latitude,
+                longitude: snapshot.longitude,
+                userId: userId
+            )
+        }
 
         // Upsert = idempotent re-share; the doc is owned by this user only.
         _ = try await tablesDB.upsertRow(
@@ -290,9 +294,11 @@ final class CommunityService {
     }
 
     /// Batched backfill of the user's flight history (Settings action after
-    /// enabling sharing). Sequential with a small pause every 10 documents
-    /// to stay well under Appwrite's rate limit. Reports progress as
-    /// (done, totalEligible) and returns the number of flights shared.
+    /// enabling sharing). Sequential with a steady ~300 ms pace between
+    /// flights, exponential-backoff retries on rate limits, and one community
+    /// spot upsert per spot for the whole run (not per flight) to stay well
+    /// under Appwrite's rate limit. Reports progress as (done, totalEligible)
+    /// and returns the number of flights shared.
     /// Per-row permission failures (rows owned by a previous account after
     /// an account switch) are skipped, not fatal.
     /// NOTE: sets `communitySpotKey` on shared spots — the caller should
@@ -309,11 +315,26 @@ final class CommunityService {
         let snapshots = flights.compactMap(Self.makeSnapshot(of:))
         guard !snapshots.isEmpty else { return 0 }
 
+        // Spots upserted during THIS run: the per-flight spot upsert is the
+        // main request cost, so each community spot is written at most once
+        // for the whole backfill (the session-level `ensuredSpotKeys` cache
+        // guarantees the same, but this makes the intent local and explicit).
+        var upsertedSpotKeys: Set<String> = []
+
         var shared = 0
         var skippedPermission = 0
         for (index, snapshot) in snapshots.enumerated() {
             do {
-                let spotKey = try await share(snapshot: snapshot, userId: userId)
+                // Retry the SAME item with exponential backoff on rate limits
+                // instead of aborting the whole backfill halfway through.
+                let spotKey = try await withRateLimitRetry {
+                    try await self.share(
+                        snapshot: snapshot,
+                        userId: userId,
+                        skipSpotUpsert: upsertedSpotKeys.contains(snapshot.spotKey)
+                    )
+                }
+                upsertedSpotKeys.insert(spotKey)
                 shared += 1
                 // Re-fetch the flight through the live DataController (never
                 // a stale model reference) to record its community spot key.
@@ -334,8 +355,9 @@ final class CommunityService {
             }
             progress(index + 1, snapshots.count)
 
-            if (index + 1) % 10 == 0 && index + 1 < snapshots.count {
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 s
+            // Steady pace between shared flights to stay under the rate limit.
+            if index + 1 < snapshots.count {
+                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 s
             }
         }
         if skippedPermission > 0 {
@@ -343,6 +365,26 @@ final class CommunityService {
         }
         logInfo("History backfill shared \(shared)/\(snapshots.count) flights", category: .community)
         return shared
+    }
+
+    /// Runs `operation`, retrying on Appwrite rate-limit errors with
+    /// exponential backoff (2 s, 4 s, 8 s) up to `maxAttempts` total tries.
+    /// Any non-rate-limit error, or an exhausted budget, propagates.
+    private func withRateLimitRetry<T>(
+        maxAttempts: Int = 4,
+        _ operation: () async throws -> T
+    ) async throws -> T {
+        var attempt = 0
+        while true {
+            do {
+                return try await operation()
+            } catch where Self.isRateLimited(error) && attempt < maxAttempts - 1 {
+                let delaySeconds = pow(2.0, Double(attempt + 1)) // 2, 4, 8
+                logWarning("Community rate-limited; backing off \(Int(delaySeconds))s (attempt \(attempt + 1)/\(maxAttempts))", category: .community)
+                try? await Task.sleep(nanoseconds: UInt64(delaySeconds * 1_000_000_000))
+                attempt += 1
+            }
+        }
     }
 
     /// Deletes every shared flight owned by the current user, plus the live
@@ -783,6 +825,13 @@ final class CommunityService {
     private static func isPermissionDenied(_ error: Error) -> Bool {
         guard let appwriteError = error as? AppwriteError else { return false }
         return appwriteError.code == 401
+    }
+
+    /// True for Appwrite rate-limit errors: HTTP 429 or an error type that
+    /// mentions "rate_limit" (e.g. `general_rate_limit_exceeded`).
+    private static func isRateLimited(_ error: Error) -> Bool {
+        guard let appwriteError = error as? AppwriteError else { return false }
+        return appwriteError.code == 429 || appwriteError.type.contains("rate_limit")
     }
 
     /// Maps Appwrite errors to short English user-facing messages.
