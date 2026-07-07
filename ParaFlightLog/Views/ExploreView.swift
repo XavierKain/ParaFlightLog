@@ -225,13 +225,13 @@ struct ExploreView: View {
     }
 
     private func activityText(_ spot: CommunitySpotSummary) -> Text {
-        var text = Text("^[\(spot.flightsLast30Days) flight](inflect: true) in the last 30 days")
-        if spot.pilotsFlyingNow > 0 {
-            text = text + Text(" · 🪂 \(spot.pilotsFlyingNow) flying now")
-                .foregroundStyle(.green)
-                .bold()
-        }
-        return text
+        let base = Text("^[\(spot.flightsLast30Days) flight](inflect: true) in the last 30 days")
+        guard spot.pilotsFlyingNow > 0 else { return base }
+        // Interpolating styled Text runs (iOS 26 replaces the deprecated Text `+`).
+        let live = Text(" · 🪂 \(spot.pilotsFlyingNow) flying now")
+            .foregroundStyle(.green)
+            .bold()
+        return Text("\(base)\(live)")
     }
 
     // MARK: Loading

@@ -1,6 +1,12 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    " · 🪂 %lld flying now" : {
+
+    },
+    "—" : {
+
+    },
     "(\\(size) m²)" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -470,6 +476,19 @@
         }
       }
     },
+    "%@ this year" : {
+
+    },
+    "%@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@"
+          }
+        }
+      }
+    },
     "%@m" : {
 
     },
@@ -646,6 +665,18 @@
         }
       }
     },
+    "%lld." : {
+
+    },
+    "%lld%%" : {
+
+    },
+    "%lld°" : {
+
+    },
+    "%lld°C" : {
+
+    },
     "%lldh" : {
       "localizations" : {
         "en" : {
@@ -794,10 +825,26 @@
     "^[%lld flight](inflect: true) — all typed" : {
 
     },
+    "^[%lld flight](inflect: true) by ^[%lld pilot](inflect: true) this month" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld flight](inflect: true) by ^[%2$lld pilot](inflect: true) this month"
+          }
+        }
+      }
+    },
+    "^[%lld flight](inflect: true) in the last 30 days" : {
+
+    },
     "^[%lld flight](inflect: true) selected" : {
 
     },
     "^[%lld flight](inflect: true) still without a type" : {
+
+    },
+    "^[%lld flight](inflect: true) to import" : {
 
     },
     "^[%lld flight](inflect: true) will be moved to this new spot." : {
@@ -935,6 +982,12 @@
         }
       }
     },
+    "🪂 %lld" : {
+
+    },
+    "🪂 %lld flying now" : {
+
+    },
     "1" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -970,6 +1023,9 @@
       }
     },
     "A flight of %@ was interrupted. Do you want to save it?" : {
+
+    },
+    "A pilot" : {
 
     },
     "À propos" : {
@@ -1036,6 +1092,9 @@
       }
     },
     "Activity" : {
+
+    },
+    "Activity from pilots who share their flights in Settings › Community." : {
 
     },
     "Add" : {
@@ -1758,7 +1817,10 @@
         }
       }
     },
-    "Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks." : {
+    "Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights." : {
+
+    },
+    "Be the first to share your flights! Turn on sharing in Settings › Community and your spots will appear here for every pilot." : {
 
     },
     "Brand" : {
@@ -1960,6 +2022,9 @@
         }
       }
     },
+    "Check your connection and try again." : {
+
+    },
     "Choisir la période" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -2154,6 +2219,30 @@
         }
       }
     },
+    "Community" : {
+
+    },
+    "Community features are not available yet. Please check back later." : {
+
+    },
+    "Community spots, live activity & conditions" : {
+
+    },
+    "Community stats unavailable." : {
+
+    },
+    "Conditions" : {
+
+    },
+    "Conditions at takeoff" : {
+
+    },
+    "Conditions unavailable" : {
+
+    },
+    "Conditions unavailable." : {
+
+    },
     "Coordinates" : {
 
     },
@@ -2173,6 +2262,15 @@
           }
         }
       }
+    },
+    "Could not load community activity." : {
+
+    },
+    "Could not load community spots" : {
+
+    },
+    "Could not load the forecast." : {
+
     },
     "Could not save the changes. Please try again." : {
 
@@ -2228,6 +2326,9 @@
           }
         }
       }
+    },
+    "Current conditions" : {
+
     },
     "Custom color" : {
 
@@ -2374,10 +2475,19 @@
     "Delete All Data" : {
 
     },
+    "Delete all my shared data" : {
+
+    },
+    "Delete all your shared data?" : {
+
+    },
     "Delete Permanently" : {
 
     },
     "Delete permanently?" : {
+
+    },
+    "Delete Shared Data" : {
 
     },
     "Delete Spot" : {
@@ -2651,7 +2761,7 @@
     "Email" : {
 
     },
-    "Enable iCloud in Settings to sync across devices. Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks." : {
+    "Enable iCloud in Settings to sync across devices. Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights." : {
 
     },
     "Enables detailed logging (may slow down the app)" : {
@@ -2710,6 +2820,12 @@
 
     },
     "Existing spot" : {
+
+    },
+    "Explore" : {
+
+    },
+    "Explore community spots" : {
 
     },
     "Export" : {
@@ -2894,7 +3010,16 @@
     "Flying Spots" : {
 
     },
+    "For each flight at a located spot, this shares the spot, date, duration and flight type — never your GPS tracks or notes. Flights without a located spot are skipped." : {
+
+    },
+    "Forecast by Open-Meteo. Dots rate the wind against the launch directions above." : {
+
+    },
     "Free camera — tap to follow the pilot" : {
+
+    },
+    "From pilots who share their flights in Settings › Community." : {
 
     },
     "From the Library" : {
@@ -3035,6 +3160,12 @@
         }
       }
     },
+    "gusts %lld" : {
+
+    },
+    "Gusts %lld km/h" : {
+
+    },
     "h" : {
       "localizations" : {
         "en" : {
@@ -3140,6 +3271,9 @@
     "IGC" : {
 
     },
+    "Import" : {
+
+    },
     "Import Backup" : {
 
     },
@@ -3159,6 +3293,12 @@
           }
         }
       }
+    },
+    "Import IGC / GPX Track" : {
+
+    },
+    "Import Tracks" : {
+
     },
     "Importation des données..." : {
       "extractionState" : "stale",
@@ -3251,6 +3391,9 @@
         }
       }
     },
+    "km/h" : {
+
+    },
     "Lancer un vol" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3328,6 +3471,9 @@
     "Latest flight" : {
 
     },
+    "Launch directions" : {
+
+    },
     "Les spots apparaîtront ici une fois que vous aurez enregistré des vols" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -3363,6 +3509,21 @@
       }
     },
     "Lets you cancel an ongoing flight without saving it" : {
+
+    },
+    "Loading community activity…" : {
+
+    },
+    "Loading community spots…" : {
+
+    },
+    "Loading conditions…" : {
+
+    },
+    "Loading forecast…" : {
+
+    },
+    "Loading recent flights…" : {
 
     },
     "m²" : {
@@ -3579,6 +3740,9 @@
     "No cloud backup yet." : {
 
     },
+    "No community spots yet" : {
+
+    },
     "No coordinates" : {
 
     },
@@ -3595,6 +3759,12 @@
 
     },
     "No GPS Track" : {
+
+    },
+    "No shared flights at this spot yet." : {
+
+    },
+    "No shared flights yet." : {
 
     },
     "No spot" : {
@@ -3763,6 +3933,9 @@
 
     },
     "Off" : {
+
+    },
+    "Off by default. Sharing sends flight summaries only — spot, date, duration and type. GPS tracks and notes never leave your device." : {
 
     },
     "OK" : {
@@ -3991,6 +4164,12 @@
     "Pick on the map" : {
 
     },
+    "Pilot name (public)" : {
+
+    },
+    "Pilots checking your spot see \"🪂 flying now\" for up to 2 hours after takeoff. Anonymous — your name is never shown." : {
+
+    },
     "Play" : {
 
     },
@@ -4114,6 +4293,12 @@
         }
       }
     },
+    "Recent flights unavailable." : {
+
+    },
+    "Recent shared flights" : {
+
+    },
     "Recherche..." : {
       "extractionState" : "stale",
       "localizations" : {
@@ -4151,7 +4336,16 @@
     "Record flights with your Apple Watch or tap + to add one manually." : {
 
     },
+    "Record weather at takeoff" : {
+
+    },
     "Refresh catalog" : {
+
+    },
+    "Refresh community spots" : {
+
+    },
+    "Refresh weather" : {
 
     },
     "Réglages" : {
@@ -4178,6 +4372,9 @@
 
     },
     "Remove Photo" : {
+
+    },
+    "Removes every flight you shared with the community, and your live presence. Your local logbook is not affected." : {
 
     },
     "Répartition des heures" : {
@@ -4271,6 +4468,9 @@
           }
         }
       }
+    },
+    "Retry" : {
+
     },
     "Sauvegarder" : {
       "extractionState" : "stale",
@@ -4436,7 +4636,35 @@
     "Share / Save" : {
 
     },
+    "Share ^[%lld flight](inflect: true)" : {
+
+    },
+    "Share my flight history" : {
+
+    },
+    "Share my flights" : {
+
+    },
+    "Share your flight history?" : {
+
+    },
+    "Sharing %lld / %lld…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Sharing %1$lld / %2$lld…"
+          }
+        }
+      }
+    },
+    "Show me as flying now" : {
+
+    },
     "Sign In" : {
+
+    },
+    "Sign in first (Account section above)" : {
 
     },
     "Sign in to back up your logbook in the cloud and restore it on a new device. Passwords must be at least 8 characters." : {
@@ -4458,6 +4686,9 @@
 
     },
     "Skip" : {
+
+    },
+    "Skipped Files" : {
 
     },
     "SoarX" : {
@@ -5101,7 +5332,7 @@
     "Use iPhone as tracker" : {
 
     },
-    "Use iPhone as tracker adds a Timer tab so you can track flights without an Apple Watch. The vario plays climb beeps and sink alerts while a flight is running." : {
+    "Use iPhone as tracker adds a Timer tab so you can track flights without an Apple Watch. The vario plays climb beeps and sink alerts while a flight is running. Record weather at takeoff saves wind and temperature (Open-Meteo) with each new flight." : {
 
     },
     "Valider" : {
@@ -5173,6 +5404,12 @@
           }
         }
       }
+    },
+    "View" : {
+
+    },
+    "View my spot" : {
+
     },
     "Vitesse" : {
       "extractionState" : "stale",
@@ -5398,6 +5635,12 @@
     "Watch App" : {
 
     },
+    "Weather" : {
+
+    },
+    "Weather by Open-Meteo." : {
+
+    },
     "Welcome to SoarX" : {
 
     },
@@ -5451,6 +5694,9 @@
           }
         }
       }
+    },
+    "Wind directions this launch works with — used for the flyability dots in the forecast." : {
+
     },
     "Wing" : {
 
@@ -5588,6 +5834,9 @@
 
     },
     "Yes" : {
+
+    },
+    "You fly here too — open your own spot page (forecast, flyability, your flights)." : {
 
     },
     "Your dashboard fills up as you log flights. Start with your Watch, or add a flight manually from the Flights tab." : {
