@@ -187,9 +187,15 @@ struct ContentView: View {
             return
         }
 
+        // Capture the identity of THIS flight before scheduling the retry:
+        // if it ended — or a new one started — during the 10 s wait, the
+        // signal would post presence for a different flight.
+        let scheduledFlightStart = flightStartDate
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(10))
-            guard isFlying, let location = locationService.lastKnownLocation else { return }
+            guard isFlying,
+                  flightStartDate == scheduledFlightStart,
+                  let location = locationService.lastKnownLocation else { return }
             watchManager.notifyFlightStarted(
                 latitude: location.coordinate.latitude,
                 longitude: location.coordinate.longitude

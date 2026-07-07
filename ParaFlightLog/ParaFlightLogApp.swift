@@ -148,6 +148,10 @@ private struct IOSRootView: View {
                     // Keep WatchConnectivity setup off the first-paint path.
                     DispatchQueue.main.async {
                         watchManager.activateSession()
+                        // Clean up Live Activities orphaned by a crash or
+                        // force-quit mid-flight (fail-soft: no-op when
+                        // ActivityKit is unavailable/disabled or nothing runs).
+                        FlightActivityController.shared.endAllOrphans()
                     }
 
                     // Trigger a wing sync to the Watch shortly after startup

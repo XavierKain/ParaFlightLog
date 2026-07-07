@@ -43,6 +43,11 @@ struct TimerView: View {
     @Environment(DataController.self) private var dataController
     @Environment(LocationService.self) private var locationService
     @Environment(\.scenePhase) private var scenePhase
+    // True for instances pushed onto a NavigationStack (Settings, Flights);
+    // false for the Timer tab. Flips to false on pop — used to detect a
+    // pushed instance being dismissed mid-flight (its state is destroyed,
+    // unlike a tab switch where SwiftUI keeps the tab's state alive).
+    @Environment(\.isPresented) private var isPresented
     @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
 
     @AppStorage(UserDefaultsKeys.varioEnabled) private var varioEnabled = false
@@ -66,6 +71,15 @@ struct TimerView: View {
     @State private var showingFlightSummary = false
     @State private var completedFlight: Flight?
     @State private var showSaveError = false
+    /// True when THIS view started the Live Activity — update()/end() are
+    /// gated on it so a simulated flight never touches a real flight's one.
+    @State private var ownsLiveActivity = false
+    /// True when no fresh GPS fix existed at takeoff: presence is then
+    /// posted once, from the first fresh fix of the flight (see timerTick).
+    @State private var pendingPresencePost = false
+
+    /// A fix older than this at START is stale — presence is deferred.
+    private static let presenceFixMaxAge: TimeInterval = 120
 
     init(simulated: Bool = false) {
         self.isSimulation = simulated
@@ -216,10 +230,22 @@ struct TimerView: View {
         }
         .onDisappear {
             // Invalidate timers to avoid leaks; the flight itself keeps
-            // running (elapsed time is recomputed from startDate on return)
+            // running (elapsed time is recomputed from startDate on return).
+            // A tab switch lands here — the tab's state stays alive, so the
+            // flight legitimately survives. The pushed-then-popped case is
+            // handled by the isPresented change below.
             backgroundTask?.invalidate()
             backgroundTask = nil
             vario.stop()
+        }
+        .onChange(of: isPresented) { _, presented in
+            // A pushed instance (Settings › Flight Timer, Flights toolbar)
+            // was popped: its state is about to be destroyed, but presence,
+            // the Live Activity and location updates would keep running with
+            // no owner. Make the abandonment explicit and release everything.
+            // Tab instances are unaffected (isPresented stays false there).
+            guard !presented, isFlying else { return }
+            abandonRunningFlight()
         }
         .alert("Save Error", isPresented: $showSaveError) {
             Button("OK", role: .cancel) { }
@@ -451,15 +477,27 @@ struct TimerView: View {
                 vario.ingest(verticalSpeed: sim.verticalSpeed)
             }
         } else {
+            // Deferred presence: no fresh GPS fix existed at takeoff — post
+            // once, from the first fix acquired DURING this flight.
+            if pendingPresencePost,
+               let location = locationService.lastKnownLocation,
+               let start = startDate,
+               location.timestamp >= start {
+                pendingPresencePost = false
+                postPresence(from: location.coordinate)
+            }
+
             // Capture a GPS track point every 5 s (mirrors the Watch cadence)
             if elapsedSeconds > 0 && elapsedSeconds % Int(GPSConstants.trackPointInterval) == 0 {
                 captureTrackPoint()
             }
         }
 
-        // Refresh the Live Activity (best-effort). The controller throttles
+        // Refresh the Live Activity (best-effort) — only when this view
+        // started it (simulated flights never do). The controller throttles
         // pushes to >=15 s — the visible timer ticks by itself on the Lock
         // Screen, so pushes only carry altitude / vario / spot changes.
+        guard ownsLiveActivity else { return }
         FlightActivityController.shared.update(
             elapsedSeconds: elapsedSeconds,
             altitude: liveActivityAltitude,
@@ -511,15 +549,16 @@ struct TimerView: View {
                 }
             }
 
-            // Best-effort live presence (Step C2): fire-and-forget, only
-            // when a GPS fix already exists (no fix -> no presence, silently).
+            // Best-effort live presence (Step C2): fire-and-forget.
+            // Posting needs a FRESH fix — with none (or a stale one) the
+            // post is deferred to the first fresh fix of this flight
+            // (handled in timerTick, once only, while still flying).
             // Simulated flights never post presence (guarded by this branch).
-            if let coordinate = locationService.lastKnownLocation?.coordinate {
-                CommunityService.shared.startPresence(
-                    latitude: coordinate.latitude,
-                    longitude: coordinate.longitude,
-                    spotName: manualSpotOverride ?? spotState.resolvedName ?? "Unknown spot"
-                )
+            if let location = locationService.lastKnownLocation,
+               Date().timeIntervalSince(location.timestamp) < Self.presenceFixMaxAge {
+                postPresence(from: location.coordinate)
+            } else {
+                pendingPresencePost = true
             }
         }
 
@@ -528,14 +567,43 @@ struct TimerView: View {
         }
 
         // Live Activity (best-effort, fail-soft — never affects the flight).
-        // Simulated flights start one too: it's the easiest way to test the
-        // Live Activity end-to-end; their spot name is flagged "(Simulation)".
-        FlightActivityController.shared.start(
-            wingName: selectedWing?.name ?? "No wing",
-            flightType: selectedFlightType.wrappedValue.rawValue,
-            spotName: liveActivitySpotName,
-            startDate: startDate ?? Date()
-        )
+        // Real flights only: FlightActivityController holds a single activity
+        // and its start() ends any existing one, so a simulated flight would
+        // clobber — and later kill — a real flight's Live Activity.
+        if !isSimulation {
+            FlightActivityController.shared.start(
+                wingName: selectedWing?.name ?? "No wing",
+                flightType: selectedFlightType.wrappedValue.rawValue,
+                spotName: liveActivitySpotName,
+                startDate: startDate ?? Date()
+            )
+            ownsLiveActivity = true
+        }
+    }
+
+    /// Posts the live presence heartbeat, mirroring the Watch path
+    /// (WatchConnectivityManager.handleFlightStarted): resolve the nearest
+    /// known spot (≤1.5 km) and post ITS name/coordinates/community key so
+    /// the presence spotKey matches the community_spots document — a key
+    /// built from raw GPS + a geocoded locality matches nothing and the
+    /// pilot never shows as flying. Raw coordinates + the resolved name are
+    /// only a fallback when no spot is near.
+    private func postPresence(from coordinate: CLLocationCoordinate2D) {
+        if let spot = dataController.nearestSpot(to: coordinate, within: 1500) {
+            CommunityService.shared.startPresence(
+                latitude: spot.latitude ?? coordinate.latitude,
+                longitude: spot.longitude ?? coordinate.longitude,
+                spotName: spot.name,
+                spotKey: spot.communitySpotKey
+                    ?? CommunitySpotKey.make(name: spot.name, latitude: spot.latitude, longitude: spot.longitude)
+            )
+        } else {
+            CommunityService.shared.startPresence(
+                latitude: coordinate.latitude,
+                longitude: coordinate.longitude,
+                spotName: manualSpotOverride ?? spotState.resolvedName ?? "Unknown spot"
+            )
+        }
     }
 
     private func stopFlight() {
@@ -550,8 +618,12 @@ struct TimerView: View {
         backgroundTask = nil
         vario.stop()
 
-        // End the Live Activity first (fail-soft, never blocks the save)
-        FlightActivityController.shared.end()
+        // End the Live Activity first (fail-soft, never blocks the save) —
+        // only when this view started it (simulated flights never do)
+        if ownsLiveActivity {
+            FlightActivityController.shared.end()
+            ownsLiveActivity = false
+        }
 
         if isSimulation {
             simulator?.stop()
@@ -608,6 +680,40 @@ struct TimerView: View {
         spotState = .searching
         manualSpotOverride = nil
         trackPoints = []
+        pendingPresencePost = false
+    }
+
+    /// Explicit cleanup when a pushed TimerView is popped mid-flight: the
+    /// flight state dies with the view (it is NOT saved), so everything the
+    /// view drove — presence, Live Activity, location updates, vario,
+    /// simulator — must be released here instead of leaking ownerless.
+    private func abandonRunningFlight() {
+        logWarning("TimerView dismissed mid-flight after \(elapsedSeconds)s — flight abandoned (not saved); stopping presence, Live Activity, location and vario", category: .flight)
+
+        backgroundTask?.invalidate()
+        backgroundTask = nil
+        vario.stop()
+
+        if ownsLiveActivity {
+            FlightActivityController.shared.end()
+            ownsLiveActivity = false
+        }
+
+        if isSimulation {
+            simulator?.stop()
+        } else {
+            locationService.stopUpdatingLocation()
+            // Best-effort: simulated flights never posted presence.
+            CommunityService.shared.endPresence()
+        }
+
+        isFlying = false
+        startDate = nil
+        elapsedSeconds = 0
+        spotState = .searching
+        manualSpotOverride = nil
+        trackPoints = []
+        pendingPresencePost = false
     }
 
     private func saveFlight(wing: Wing?, start: Date, end: Date, duration: Int,

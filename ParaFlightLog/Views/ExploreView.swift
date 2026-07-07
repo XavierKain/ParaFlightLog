@@ -237,6 +237,10 @@ struct ExploreView: View {
     // MARK: Loading
 
     private func load(force: Bool) async {
+        // Reentrancy guard: .task, .refreshable, Retry and the toolbar
+        // button can overlap — a load fired while one is already in flight
+        // would just duplicate the request and race the state updates.
+        guard !isLoading else { return }
         isLoading = true
         loadFailed = false
         do {

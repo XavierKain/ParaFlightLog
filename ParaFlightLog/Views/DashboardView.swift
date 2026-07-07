@@ -37,14 +37,20 @@ struct DashboardView: View {
         return (best.key, best.value, stats.countBySpot[best.key] ?? 0)
     }
 
-    // Spot whose current conditions the dashboard shows: the top spot when it
-    // has coordinates, otherwise the most recent flight's located spot.
+    // Spot whose current conditions the dashboard shows: the most-flown
+    // located Spot (by hours), resolved through the flights' actual spot
+    // relationship — a first-name-match lookup could pick the wrong Spot
+    // when two spots share a name.
     private var conditionsSpot: Spot? {
-        if let name = topSpot?.name,
-           let spot = spots.first(where: { $0.name == name && $0.latitude != nil && $0.longitude != nil }) {
-            return spot
+        var hoursBySpotID: [UUID: Double] = [:]
+        var spotByID: [UUID: Spot] = [:]
+        for flight in flights {
+            guard let spot = flight.spot, spot.latitude != nil, spot.longitude != nil else { continue }
+            spotByID[spot.id] = spot
+            hoursBySpotID[spot.id, default: 0] += Double(flight.durationSeconds) / 3600.0
         }
-        return flights.first(where: { $0.spot?.latitude != nil && $0.spot?.longitude != nil })?.spot
+        guard let best = hoursBySpotID.max(by: { $0.value < $1.value }) else { return nil }
+        return spotByID[best.key]
     }
 
     // Hours flown this calendar year

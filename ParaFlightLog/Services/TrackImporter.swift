@@ -83,9 +83,13 @@ enum TrackImporter {
 
         // Content sniffing on the first non-empty line
         // (prefix cut can split a multi-byte char: isoLatin1 always decodes)
-        let head = String(data: data.prefix(512), encoding: .utf8)
+        var head = String(data: data.prefix(512), encoding: .utf8)
             ?? String(data: data.prefix(512), encoding: .isoLatin1)
             ?? ""
+        // Strip a leading UTF-8 BOM: it would defeat every prefix check below.
+        if head.hasPrefix("\u{FEFF}") {
+            head.removeFirst()
+        }
         let firstLine = head
             .split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }
@@ -189,10 +193,17 @@ enum TrackImporter {
             }
 
             // Midnight rollover: the time-of-day decreasing means a new UTC day
-            // (60 s of tolerance so slightly out-of-order fixes don't trigger it)
+            // (60 s of tolerance so slightly out-of-order fixes don't trigger it).
+            // Only a jump back of more than 12 h is a genuine midnight crossing
+            // (e.g. 23:59 -> 00:00); a smaller backwards jump is a garbled fix —
+            // skip it instead of shifting the whole rest of the track by a day.
             let secondsOfDay = hours * 3600 + minutes * 60 + seconds
             if previousSeconds >= 0 && secondsOfDay + 60 < previousSeconds {
-                dayOffset += 86400
+                if previousSeconds - secondsOfDay > 43_200 {
+                    dayOffset += 86400
+                } else {
+                    continue
+                }
             }
             previousSeconds = secondsOfDay
 
@@ -397,16 +408,41 @@ enum TrackImporter {
         dataController.assignSpot(to: flight)
         dataController.saveContext()
 
-        // Best-effort weather-at-takeoff snapshot (fire-and-forget; skipped
-        // automatically when disabled or when the flight is > 90 days old).
-        WeatherService.shared.captureSnapshot(for: flight.id, dataController: dataController)
-
-        // Opt-in community share, same fire-and-forget pattern as every other
-        // flight save path — never affects the import result.
-        CommunityService.shared.shareFlightIfEnabled(flight, dataController: dataController)
+        // Best-effort post-save hooks (takeoff weather snapshot + opt-in
+        // community share), fire-and-forget like every other flight save
+        // path — but PACED through a serial chain so a batch import of many
+        // files trickles its Open-Meteo/Appwrite calls instead of bursting.
+        schedulePostSaveHooks(flightId: flight.id, dataController: dataController)
 
         logInfo("Track imported: \(flight.durationFormatted), \(parsed.points.count) GPS points, spot \(flight.spotName ?? "unresolved")", category: .dataImport)
         return flight
+    }
+
+    // MARK: - Post-save hook pacing
+
+    /// Tail of the serial chain spacing post-save hooks ~400 ms apart.
+    /// MainActor-confined: only touched from `schedulePostSaveHooks`.
+    @MainActor
+    private static var lastHookTask: Task<Void, Never>?
+
+    /// Enqueues the fire-and-forget post-save hooks (weather snapshot +
+    /// community share) for one flight BEHIND the previous flight's hooks,
+    /// with ~400 ms spacing, so a 100-file import doesn't hammer Open-Meteo
+    /// and Appwrite with 100 simultaneous requests. Single imports only pay
+    /// one 400 ms delay on best-effort enrichment — never on the save itself.
+    @MainActor
+    private static func schedulePostSaveHooks(flightId: UUID, dataController: DataController) {
+        let previous = lastHookTask
+        lastHookTask = Task { [weak dataController] in
+            await previous?.value
+            try? await Task.sleep(nanoseconds: 400_000_000) // 0.4 s
+            guard let dataController,
+                  let flight = dataController.findFlight(byId: flightId) else { return }
+            // Skipped automatically when disabled or when the flight is
+            // > 90 days old / not eligible for sharing.
+            WeatherService.shared.captureSnapshot(for: flightId, dataController: dataController)
+            CommunityService.shared.shareFlightIfEnabled(flight, dataController: dataController)
+        }
     }
 
     /// First stored flight whose start time is within ±60 s of `date`.

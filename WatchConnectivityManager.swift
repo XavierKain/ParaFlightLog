@@ -466,11 +466,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             return
         }
 
-        // Receiving a flight means it ENDED — clear any live presence
-        // heartbeat (best-effort, no-op when presence is off or signed out).
-        CommunityService.shared.endPresence()
-
-        // Deduplication: already saved = success
+        // Deduplication: already saved = success. Checked FIRST so a
+        // re-delivered duplicate never touches presence.
         if dataController.flightExists(id: dto.id) {
             logInfo("Flight \(dto.id) already saved - acknowledging duplicate", category: .flight)
             replyHandler?([
@@ -478,6 +475,15 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                 WatchSyncKeys.flightId: dto.id.uuidString
             ])
             return
+        }
+
+        // Receiving a FRESH flight means it just ENDED — clear any live
+        // presence heartbeat (best-effort, no-op when signed out). A stale
+        // outbox flight delivered hours later must NOT wipe the presence of
+        // a flight that may be airborne right now, so only flights that
+        // landed within the last 15 minutes end presence.
+        if Date().timeIntervalSince(dto.endDate) < 15 * 60 {
+            CommunityService.shared.endPresence()
         }
 
         // Save immediately, without waiting for any location fix
@@ -533,6 +539,18 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     /// "Record weather at takeoff" setting.
     private func captureTakeoffWeather(flightId: UUID) {
         guard let dataController = dataController else { return }
+        // Only snapshot when the takeoff coordinates are trustworthy: the
+        // flight carries a GPS track, whose first fix is the real takeoff
+        // point (a track is also the only way a Watch DTO provides
+        // coordinates). Without a track, the flight's coordinates were
+        // back-filled from the phone's CURRENT location at sync time —
+        // potentially hours late and kilometers away from the takeoff —
+        // and a snapshot there would record wrong data, not missing data.
+        guard let flight = dataController.findFlight(byId: flightId),
+              flight.gpsTrackData != nil else {
+            logDebug("Takeoff weather skipped for flight \(flightId): no GPS track, coordinates are sync-time only", category: .weather)
+            return
+        }
         WeatherService.shared.captureSnapshot(for: flightId, dataController: dataController)
     }
 }

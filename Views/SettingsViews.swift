@@ -40,6 +40,9 @@ struct SettingsView: View {
     @State private var pendingTrackImports: [PendingTrackImport] = []
     @State private var trackParseFailures: [String] = []
     @State private var showingTrackImportSheet = false
+    /// Import result handed back by TrackImportSheet, presented as an alert
+    /// from the sheet's onDismiss (same runloop as dismiss() gets swallowed).
+    @State private var pendingTrackResultMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -67,10 +70,25 @@ struct SettingsView: View {
             ) { result in
                 handleTrackFileSelection(result)
             }
-            .sheet(isPresented: $showingTrackImportSheet) {
+            .sheet(isPresented: $showingTrackImportSheet, onDismiss: {
+                // Release the parsed tracks (they can hold hours of GPS
+                // points) instead of retaining them until the next import.
+                pendingTrackImports = []
+                trackParseFailures = []
+                // Present the result alert only once the sheet is gone;
+                // setting it in the same runloop as dismiss() can swallow
+                // it. Same one-runloop-hop workaround as the sheet
+                // presentation in finishTrackFileSelection.
+                if let message = pendingTrackResultMessage {
+                    pendingTrackResultMessage = nil
+                    Task { @MainActor in
+                        importMessage = message
+                        showingImportResult = true
+                    }
+                }
+            }) {
                 TrackImportSheet(files: pendingTrackImports, parseFailures: trackParseFailures) { message in
-                    importMessage = message
-                    showingImportResult = true
+                    pendingTrackResultMessage = message
                 }
             }
             .disabled(isImporting)
@@ -488,9 +506,11 @@ struct SettingsView: View {
         return types
     }
 
-    /// Parses every picked IGC/GPX file (security-scoped access handled here),
-    /// then opens the confirmation sheet with the parsed previews. Files that
-    /// fail to parse are listed in the sheet and counted as skipped.
+    /// Reads and parses every picked IGC/GPX file off the main thread
+    /// (behind the same isImporting overlay as the backup import — IGC/GPX
+    /// files can hold hours of track points), then opens the confirmation
+    /// sheet with the parsed previews. Files that fail to parse are listed
+    /// in the sheet and counted as skipped.
     private func handleTrackFileSelection(_ result: Result<[URL], Error>) {
         switch result {
         case .failure(let error):
@@ -498,39 +518,62 @@ struct SettingsView: View {
             showingImportResult = true
 
         case .success(let urls):
-            var parsed: [PendingTrackImport] = []
-            var failures: [String] = []
+            isImporting = true
+            Task {
+                let outcome = await Task.detached(priority: .userInitiated) {
+                    Self.parseTrackFiles(at: urls)
+                }.value
+                isImporting = false
+                finishTrackFileSelection(parsed: outcome.parsed, failures: outcome.failures)
+            }
+        }
+    }
 
-            for url in urls {
-                let gotAccess = url.startAccessingSecurityScopedResource()
-                defer {
-                    if gotAccess {
-                        url.stopAccessingSecurityScopedResource()
-                    }
-                }
-                do {
-                    let data = try Data(contentsOf: url)
-                    let track = try TrackImporter.parse(data: data, filename: url.lastPathComponent)
-                    parsed.append(PendingTrackImport(filename: url.lastPathComponent, track: track))
-                } catch {
-                    logWarning("Track parse failed for \(url.lastPathComponent): \(error.localizedDescription)", category: .dataImport)
-                    failures.append("\(url.lastPathComponent): \(error.localizedDescription)")
+    /// Blocking read + parse of the picked track files (security-scoped
+    /// access handled here). Pure work: runs detached from the main actor.
+    private nonisolated static func parseTrackFiles(
+        at urls: [URL]
+    ) -> (parsed: [PendingTrackImport], failures: [String]) {
+        var parsed: [PendingTrackImport] = []
+        var failures: [String] = []
+
+        for url in urls {
+            let gotAccess = url.startAccessingSecurityScopedResource()
+            defer {
+                if gotAccess {
+                    url.stopAccessingSecurityScopedResource()
                 }
             }
+            do {
+                let data = try Data(contentsOf: url)
+                let track = try TrackImporter.parse(data: data, filename: url.lastPathComponent)
+                parsed.append(PendingTrackImport(filename: url.lastPathComponent, track: track))
+            } catch {
+                failures.append("\(url.lastPathComponent): \(error.localizedDescription)")
+            }
+        }
+        return (parsed, failures)
+    }
 
-            if parsed.isEmpty {
-                importMessage = failures.isEmpty
-                    ? "No files were selected."
-                    : "0 imported, \(failures.count) skipped (duplicates/errors).\n" + failures.joined(separator: "\n")
-                showingImportResult = true
-            } else {
-                pendingTrackImports = parsed.sorted { $0.track.startDate < $1.track.startDate }
-                trackParseFailures = failures
-                // One runloop hop: presenting a sheet in the same cycle the
-                // file picker dismisses can silently fail.
-                Task { @MainActor in
-                    showingTrackImportSheet = true
-                }
+    /// Back on the main actor: shows either the confirmation sheet or the
+    /// nothing-imported alert for the parse results.
+    private func finishTrackFileSelection(parsed: [PendingTrackImport], failures: [String]) {
+        for failure in failures {
+            logWarning("Track parse failed for \(failure)", category: .dataImport)
+        }
+
+        if parsed.isEmpty {
+            importMessage = failures.isEmpty
+                ? "No files were selected."
+                : "0 imported, \(failures.count) skipped (duplicates/errors).\n" + failures.joined(separator: "\n")
+            showingImportResult = true
+        } else {
+            pendingTrackImports = parsed.sorted { $0.track.startDate < $1.track.startDate }
+            trackParseFailures = failures
+            // One runloop hop: presenting a sheet in the same cycle the
+            // file picker dismisses can silently fail.
+            Task { @MainActor in
+                showingTrackImportSheet = true
             }
         }
     }
@@ -799,6 +842,10 @@ private struct CommunitySettingsSection: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .onChange(of: presenceEnabled) { _, newValue in
+                    guard newValue else { return }
+                    Task { await validatePresenceEnabled() }
+                }
 
                 if auth.state.isSignedIn {
                     Button {
@@ -877,6 +924,20 @@ private struct CommunitySettingsSection: View {
             showSignInHint = false
         } else {
             sharingEnabled = false
+            showSignInHint = true
+        }
+    }
+
+    /// Presence needs an account too (the heartbeat is written as the
+    /// signed-in user): same flip-back + hint pattern as the sharing toggle.
+    private func validatePresenceEnabled() async {
+        if auth.state == .unknown {
+            await auth.restoreSession()
+        }
+        if auth.state.isSignedIn {
+            showSignInHint = false
+        } else {
+            presenceEnabled = false
             showSignInHint = true
         }
     }

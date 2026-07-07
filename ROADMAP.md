@@ -36,6 +36,7 @@ Deferred (Step D v2+):
 - promote Explore to its own tab once usage justifies it (tab bar untouched in v1)
 - weather overlays on the Explore map
 - server-side aggregation (Appwrite function) when the community outgrows client-side queries
+- geohash-edge spot fragmentation/merge: the same site can split across a geohash-6 cell boundary (and a renamed spot mints a new key) → future: neighbor-cell lookup when resolving/aggregating spots + a key migration/merge path
 
 ### Parallel / opportunistic
 - **TestFlight from CI**: extend GitHub Actions with fastlane + signing secrets (or Xcode Cloud) so betas ship without the Mac. Needs: ASC API key as repo secrets, match-style signing. (M)

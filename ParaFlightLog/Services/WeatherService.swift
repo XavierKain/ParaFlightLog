@@ -200,8 +200,12 @@ final class WeatherService {
 
             do {
                 let snapshot = try await self.takeoffSnapshot(latitude: latitude, longitude: longitude, at: startDate)
-                // Re-fetch: the flight may have been deleted while the request ran.
-                guard let flight = dataController.findFlight(byId: flightId) else { return }
+                // Re-fetch: the flight may have been deleted while the request
+                // ran. Re-check takeoffWindSpeed too — two triggers can race
+                // past the initial guard (e.g. geocode + import paths), and
+                // the loser must not overwrite the winner's snapshot.
+                guard let flight = dataController.findFlight(byId: flightId),
+                      flight.takeoffWindSpeed == nil else { return }
                 flight.takeoffWindSpeed = snapshot.windSpeed
                 flight.takeoffWindGusts = snapshot.windGusts
                 flight.takeoffWindDirection = snapshot.windDirectionDeg
