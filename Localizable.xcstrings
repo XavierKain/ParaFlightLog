@@ -2327,9 +2327,6 @@
         }
       }
     },
-    "Current conditions" : {
-
-    },
     "Custom color" : {
 
     },
@@ -3707,6 +3704,9 @@
     "My Flights" : {
 
     },
+    "My Spots" : {
+
+    },
     "My Wings" : {
 
     },
@@ -4164,6 +4164,9 @@
     "Pick on the map" : {
 
     },
+    "Pilot" : {
+
+    },
     "Pilot name (public)" : {
 
     },
@@ -4293,10 +4296,10 @@
         }
       }
     },
-    "Recent flights unavailable." : {
+    "Recent flights here" : {
 
     },
-    "Recent shared flights" : {
+    "Recent flights unavailable." : {
 
     },
     "Recherche..." : {
@@ -4646,6 +4649,9 @@
 
     },
     "Share your flight history?" : {
+
+    },
+    "Shared flight" : {
 
     },
     "Sharing %lld / %lld…" : {
@@ -5221,6 +5227,9 @@
 
     },
     "This flight has no recorded track to replay." : {
+
+    },
+    "This is a shared flight summary. Community flights don't include the GPS track." : {
 
     },
     "This spot takes priority over automatic GPS detection" : {
@@ -5840,6 +5849,9 @@
 
     },
     "Your dashboard fills up as you log flights. Start with your Watch, or add a flight manually from the Flights tab." : {
+
+    },
+    "Your spots' weather, forecast & flyability" : {
 
     }
   },

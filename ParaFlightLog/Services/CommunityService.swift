@@ -831,7 +831,7 @@ final class CommunityService {
     /// mentions "rate_limit" (e.g. `general_rate_limit_exceeded`).
     private static func isRateLimited(_ error: Error) -> Bool {
         guard let appwriteError = error as? AppwriteError else { return false }
-        return appwriteError.code == 429 || appwriteError.type.contains("rate_limit")
+        return appwriteError.code == 429 || (appwriteError.type?.contains("rate_limit") ?? false)
     }
 
     /// Maps Appwrite errors to short English user-facing messages.
