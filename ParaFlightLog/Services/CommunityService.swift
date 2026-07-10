@@ -88,6 +88,19 @@ struct SharedFlightSummary: Identifiable {
     let flightType: String?
 }
 
+/// One community takeoff-wind observation used by the learned-flyability
+/// engine (Phase 2): a shared flight's wind AT TAKEOFF. Only rows that
+/// carried both a wind speed and a wind direction become observations.
+struct WindObservation {
+    /// km/h at takeoff.
+    let windSpeed: Double
+    /// Degrees, direction the wind comes FROM.
+    let windDirectionDeg: Double
+    let date: Date
+    /// Raw flight-type string as shared (maps onto `FlightType` when known).
+    let flightType: String?
+}
+
 // MARK: - Service
 
 @Observable @MainActor
@@ -110,6 +123,10 @@ final class CommunityService {
 
     /// Recent shared flights per spot key (Explore detail sheet), 15-minute TTL.
     private var recentFlightsCache: [String: (flights: [SharedFlightSummary], fetchedAt: Date)] = [:]
+
+    /// Community takeoff-wind observations per spot key (Phase 2 learning),
+    /// 15-minute TTL. Read by SpotIntelligenceService.
+    private var windObsCache: [String: (obs: [WindObservation], fetchedAt: Date)] = [:]
 
     /// Presence heartbeats expire 2 hours after takeoff.
     private static let presenceTTL: TimeInterval = 2 * 3600
@@ -187,6 +204,10 @@ final class CommunityService {
         let latitude: Double
         let longitude: Double
         let spotKey: String
+        // Weather at takeoff (Phase 2 learning) — best-effort, any may be nil.
+        let takeoffWindSpeed: Double?
+        let takeoffWindGusts: Double?
+        let takeoffWindDirection: Double?
     }
 
     /// Snapshots the shareable values of a flight, or nil when the flight
@@ -206,7 +227,10 @@ final class CommunityService {
             spotName: spot.name,
             latitude: latitude,
             longitude: longitude,
-            spotKey: spotKey
+            spotKey: spotKey,
+            takeoffWindSpeed: flight.takeoffWindSpeed,
+            takeoffWindGusts: flight.takeoffWindGusts,
+            takeoffWindDirection: flight.takeoffWindDirection
         )
     }
 
@@ -241,6 +265,17 @@ final class CommunityService {
         if let flightType = snapshot.flightType {
             document["flightType"] = String(flightType.prefix(32))
         }
+        // Takeoff wind (Phase 2 learning) — only written when present, so a
+        // flight without a weather snapshot never overwrites the column with 0.
+        if let windSpeed = snapshot.takeoffWindSpeed {
+            document["takeoffWindSpeed"] = windSpeed
+        }
+        if let windGusts = snapshot.takeoffWindGusts {
+            document["takeoffWindGusts"] = windGusts
+        }
+        if let windDirection = snapshot.takeoffWindDirection {
+            document["takeoffWindDirection"] = windDirection
+        }
 
         if !skipSpotUpsert {
             try await ensureCommunitySpot(
@@ -263,6 +298,7 @@ final class CommunityService {
 
         statsCache.removeValue(forKey: snapshot.spotKey)
         recentFlightsCache.removeValue(forKey: snapshot.spotKey)
+        windObsCache.removeValue(forKey: snapshot.spotKey)
         exploreCache = nil
         return snapshot.spotKey
     }
@@ -427,6 +463,7 @@ final class CommunityService {
 
             statsCache.removeAll()
             recentFlightsCache.removeAll()
+            windObsCache.removeAll()
             exploreCache = nil
             logInfo("Deleted \(deleted) shared flights for user \(userId)", category: .community)
         } catch {
@@ -751,6 +788,54 @@ final class CommunityService {
             return flights
         } catch {
             logInfo("Recent community flights unavailable for \(spotKey): \(error)", category: .community)
+            throw Self.mapError(error)
+        }
+    }
+
+    // MARK: - Wind observations (Phase 2 learning)
+
+    /// Community takeoff-wind observations at one spot, for the learned
+    /// flyability engine (SpotIntelligenceService). Reads `shared_flights`
+    /// rows (cursor-paginated, capped at ~500), keeping only those that
+    /// carry BOTH a takeoff wind speed and a takeoff wind direction. Cached
+    /// in memory for 15 minutes per spot key; fails soft via `mapError`.
+    func communityWindObservations(forSpotKey spotKey: String) async throws -> [WindObservation] {
+        if let entry = windObsCache[spotKey],
+           Date().timeIntervalSince(entry.fetchedAt) < Self.statsCacheTTL {
+            return entry.obs
+        }
+
+        do {
+            // Newest first, so the ~500 cap keeps the most recent flights when
+            // a very busy spot has more history than we aggregate on device.
+            let rows = try await listAllRows(
+                tableId: AppwriteConfig.sharedFlightsCollectionId,
+                queries: [
+                    Query.equal("spotKey", value: spotKey),
+                    Query.orderDesc("date"),
+                    Query.select(["takeoffWindSpeed", "takeoffWindDirection", "date", "flightType", "$id"])
+                ],
+                maxTotal: 500
+            )
+
+            let observations: [WindObservation] = rows.compactMap { row in
+                let data = row.data
+                // A row without both wind fields can't teach direction × force.
+                guard let speed = Self.doubleValue(data["takeoffWindSpeed"]),
+                      let direction = Self.doubleValue(data["takeoffWindDirection"]),
+                      let dateString = data["date"]?.value as? String,
+                      let date = Self.parseISODate(dateString) else { return nil }
+                return WindObservation(
+                    windSpeed: speed,
+                    windDirectionDeg: direction,
+                    date: date,
+                    flightType: data["flightType"]?.value as? String
+                )
+            }
+            windObsCache[spotKey] = (observations, Date())
+            return observations
+        } catch {
+            logInfo("Community wind observations unavailable for \(spotKey): \(error)", category: .community)
             throw Self.mapError(error)
         }
     }

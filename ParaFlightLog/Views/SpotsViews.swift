@@ -219,6 +219,18 @@ struct SpotDetailView: View {
                 )
             }
 
+            // Learned flyability window + live condition reports (Phase 2/3),
+            // only when the spot is located and a community key resolves.
+            // Prefer the key recorded when a flight here was shared; derive it
+            // from name + coordinates otherwise. Both sections fail soft
+            // (hide themselves) when the backend isn't configured.
+            if let lat = spot.latitude, let lon = spot.longitude,
+               let reportsKey = spot.communitySpotKey
+                   ?? CommunitySpotKey.make(name: spot.name, latitude: lat, longitude: lon) {
+                SpotLearnedWindowSection(spot: spot)
+                SpotReportsSection(spot: spot, spotKey: reportsKey, spotName: spot.name)
+            }
+
             // Community activity (Step C, only when the spot is located).
             // Prefer the key recorded when a flight here was shared; derive
             // it from name + coordinates otherwise.

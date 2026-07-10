@@ -21,6 +21,7 @@ struct DashboardView: View {
 
     @State private var stats = FlightStats()
     @State private var showingFlightDetail: Flight?
+    @State private var showingConditionReport = false
 
     // Most recently flown wing (flights are sorted newest first), with its
     // aggregate hours. "Most-used" would surface long-retired wings after a
@@ -250,6 +251,15 @@ struct DashboardView: View {
                                     Text("Conditions")
                                         .font(.headline)
                                     Spacer()
+                                    // Quick 2-tap condition report for the
+                                    // pilot's main located spot.
+                                    Button {
+                                        showingConditionReport = true
+                                    } label: {
+                                        Label("Report", systemImage: "megaphone.fill")
+                                            .font(.subheadline)
+                                            .labelStyle(.titleAndIcon)
+                                    }
                                 }
                                 NavigationLink {
                                     SpotDetailView(spot: spot)
@@ -283,6 +293,14 @@ struct DashboardView: View {
             }
             .sheet(item: $showingFlightDetail) { flight in
                 FlightDetailView(flight: flight)
+            }
+            .sheet(isPresented: $showingConditionReport) {
+                if let spot = conditionsSpot,
+                   let lat = spot.latitude, let lon = spot.longitude,
+                   let key = spot.communitySpotKey
+                       ?? CommunitySpotKey.make(name: spot.name, latitude: lat, longitude: lon) {
+                    ConditionReportSheet(spot: spot, spotKey: key, spotName: spot.name)
+                }
             }
         }
     }

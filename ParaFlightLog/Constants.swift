@@ -135,6 +135,16 @@ nonisolated enum UserDefaultsKeys {
 
     /// Public display name attached to shared flights (empty -> "A pilot").
     static let pilotDisplayName = "pilotDisplayName"
+
+    /// Appwrite push-target `$id` created via `account.createPushTarget`
+    /// (Phase 1 push). Present means this device is registered for pushes on
+    /// the current account; cleared on sign-out. Read/written by PushService.
+    static let pushTargetId = "pushTargetId"
+
+    /// The APNs device token (hex string) last registered as the push
+    /// target's identifier. Used to detect token changes and avoid redundant
+    /// `updatePushTarget` calls. Read/written by PushService.
+    static let pushDeviceToken = "pushDeviceToken"
 }
 
 // MARK: - Weather Configuration

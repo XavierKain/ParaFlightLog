@@ -1,0 +1,13 @@
+{
+  "name": "notify-fanout",
+  "version": "1.0.0",
+  "description": "SoarX push fan-out: on a new spot_reports row, push the report to every pilot subscribed to that spot (Appwrite Messaging).",
+  "type": "module",
+  "main": "index.js",
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "node-appwrite": "^25.2.0"
+  }
+}

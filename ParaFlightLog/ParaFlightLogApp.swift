@@ -8,9 +8,16 @@
 
 import SwiftUI
 import SwiftData
+import UIKit
+import UserNotifications
 
 @main
 struct ParaFlightLogApp: App {
+    // Bridges UIKit app-lifecycle hooks SwiftUI doesn't expose: the APNs
+    // device-token callbacks and the notification-center delegate (Phase 1
+    // push). Everything it does forwards to PushService / NotificationCenter.
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
     // Built asynchronously at launch so the ~1.2s ModelContainer creation no
     // longer blocks the first frame (was a black screen). Nil until ready.
     @State private var dataController: DataController?
@@ -37,6 +44,65 @@ struct ParaFlightLogApp: App {
                     }
             }
         }
+    }
+}
+
+// MARK: - App Delegate (push notifications)
+
+/// UIKit lifecycle bridge for Phase 1 push. Owns nothing beyond translating
+/// APNs / notification-center callbacks into PushService calls and a single
+/// `.spotDeepLink` NotificationCenter event the UI observes for routing.
+final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    func application(
+        _ application: UIApplication,
+        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        // Route foreground presentation and taps through this delegate.
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
+    // MARK: APNs device-token registration
+
+    func application(
+        _ application: UIApplication,
+        didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
+    ) {
+        PushService.shared.didRegisterForRemoteNotifications(deviceToken: deviceToken)
+    }
+
+    func application(
+        _ application: UIApplication,
+        didFailToRegisterForRemoteNotificationsWithError error: Error
+    ) {
+        PushService.shared.didFailToRegisterForRemoteNotifications(error: error)
+    }
+
+    // MARK: UNUserNotificationCenterDelegate
+
+    /// Foreground presentation: still show the banner/sound/badge so a report
+    /// alert isn't swallowed while the app is open.
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification
+    ) async -> UNNotificationPresentationOptions {
+        [.banner, .list, .sound, .badge]
+    }
+
+    /// Tap handling: forward a `spotKey` payload to the UI as a deep-link
+    /// event. Deliberately minimal — no navigation logic here (see
+    /// Notification.Name.spotDeepLink in PushService).
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        didReceive response: UNNotificationResponse
+    ) async {
+        let userInfo = response.notification.request.content.userInfo
+        guard let spotKey = userInfo["spotKey"] as? String, !spotKey.isEmpty else { return }
+        NotificationCenter.default.post(
+            name: .spotDeepLink,
+            object: nil,
+            userInfo: ["spotKey": spotKey]
+        )
     }
 }
 
@@ -144,6 +210,11 @@ private struct IOSRootView: View {
                     dataController.runSpotMigrationIfNeeded()
 
                     locationService.requestAuthorization()
+
+                    // Refresh this device's APNs token silently, but only if a
+                    // push target already exists (never prompts at launch —
+                    // authorization is requested lazily when the user opts in).
+                    PushService.shared.refreshAtLaunch()
 
                     // Keep WatchConnectivity setup off the first-paint path.
                     DispatchQueue.main.async {

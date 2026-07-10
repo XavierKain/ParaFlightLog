@@ -75,6 +75,9 @@ final class AuthService {
             let user = try await account.get()
             state = .signedIn(userId: user.id, email: user.email)
             logInfo("Restored session for user \(user.id)", category: .general)
+            // Refresh this device's push target under the restored session
+            // (no-op / no prompt unless push was already authorized).
+            PushService.shared.onSignedIn()
         } catch {
             // No active session (401) or server unreachable: treat as signed out
             state = .signedOut
@@ -93,6 +96,7 @@ final class AuthService {
             _ = try await account.createEmailPasswordSession(email: email, password: password)
             state = .signedIn(userId: user.id, email: user.email)
             logInfo("Signed up user \(user.id)", category: .general)
+            PushService.shared.onSignedIn()
         } catch {
             logWarning("Sign up failed: \(error)", category: .general)
             throw Self.mapError(error)
@@ -107,6 +111,7 @@ final class AuthService {
             let user = try await account.get()
             state = .signedIn(userId: user.id, email: user.email)
             logInfo("Signed in user \(user.id)", category: .general)
+            PushService.shared.onSignedIn()
         } catch {
             logWarning("Sign in failed: \(error)", category: .general)
             throw Self.mapError(error)
@@ -116,6 +121,9 @@ final class AuthService {
     /// Deletes the current session; always ends signed out locally
     @MainActor
     func signOut() async {
+        // Remove this device's push target while the session is still valid
+        // (deletePushTarget needs authentication).
+        await PushService.shared.onSignOut()
         do {
             _ = try await account.deleteSession(sessionId: "current")
         } catch {

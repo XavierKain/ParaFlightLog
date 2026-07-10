@@ -266,6 +266,29 @@ final class WeatherService {
         return .bad
     }
 
+    /// Learned-flyability entry point (Phase 2): obtains the spot's learned
+    /// flying window from `SpotIntelligenceService` and rates the given wind
+    /// against it, so a UI caller switches from the static `flyability` to the
+    /// learned rating with a single call. Falls back internally to the classic
+    /// thresholds when the spot has no learned/seeded/configured window.
+    /// The static `flyability` above is intentionally left untouched.
+    func flyabilityV2(
+        for spot: Spot,
+        windDirectionDeg: Double?,
+        windSpeed: Double?,
+        windGusts: Double?,
+        dataController: DataController
+    ) async -> Flyability {
+        let window = await SpotIntelligenceService.shared.learnedWindow(for: spot, dataController: dataController)
+        return SpotIntelligenceService.shared.flyabilityV2(
+            spot: spot,
+            windDirectionDeg: windDirectionDeg,
+            windSpeed: windSpeed,
+            windGusts: windGusts,
+            window: window
+        )
+    }
+
     /// Smallest angle between two bearings (0...180).
     private static func angularDistance(_ a: Double, _ b: Double) -> Double {
         let diff = abs(a - b).truncatingRemainder(dividingBy: 360)

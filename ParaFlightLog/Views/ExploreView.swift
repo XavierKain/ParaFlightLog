@@ -42,6 +42,18 @@ struct ExploreView: View {
     /// refresh, which would yank the map away from where the pilot panned.
     @State private var didFitCamera = false
 
+    /// Learned flyability of the CURRENT forecast per spot key, computed
+    /// lazily in the background for the busiest spots (bounded budget +
+    /// concurrency, 15-minute weather/window caches). Absent or `.unknown`
+    /// entries keep the activity colouring — the map never blocks on it.
+    @State private var flyability: [String: Flyability] = [:]
+    @State private var isColoring = false
+
+    /// Stay gentle on Open-Meteo (non-commercial): colour at most this many
+    /// spots per pass, a few requests at a time.
+    private static let flyabilityBudget = 24
+    private static let flyabilityConcurrency = 4
+
     var body: some View {
         content
             .navigationTitle("Explore")
@@ -118,6 +130,8 @@ struct ExploreView: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
 
+            legend
+
             switch mode {
             case .map:
                 mapView(spots)
@@ -127,13 +141,48 @@ struct ExploreView: View {
         }
     }
 
+    /// Tiny colour key: flyability dots (from the current forecast) plus the
+    /// activity fallback used when no forecast/window is available.
+    private var legend: some View {
+        HStack(spacing: 14) {
+            legendItem(.green, "Flyable")
+            legendItem(.orange, "Marginal")
+            legendItem(.red, "Too strong")
+            legendItem(.blue, "Activity")
+        }
+        .font(.caption2)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity)
+        .padding(.bottom, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Legend: green flyable, orange marginal, red too strong, blue activity.")
+    }
+
+    private func legendItem(_ color: Color, _ label: String) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+            Text(label)
+        }
+    }
+
+    /// Flyability colour for a spot when the current forecast rates it,
+    /// otherwise its activity colour (busyness of the last 30 days).
+    private func color(for spot: CommunitySpotSummary) -> Color {
+        if let rating = flyability[spot.spotKey], rating != .unknown {
+            return rating.displayColor
+        }
+        return spot.activityColor
+    }
+
     // MARK: Map
 
     private func mapView(_ spots: [CommunitySpotSummary]) -> some View {
         Map(position: $cameraPosition) {
             ForEach(spots) { spot in
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: spot.latitude, longitude: spot.longitude)) {
-                    CommunitySpotBadge(spot: spot)
+                    CommunitySpotBadge(spot: spot, tint: color(for: spot))
                         .onTapGesture {
                             selectedSpot = spot
                         }
@@ -204,7 +253,7 @@ struct ExploreView: View {
         HStack(spacing: 12) {
             Image(systemName: "mappin.circle.fill")
                 .font(.title3)
-                .foregroundStyle(spot.activityColor)
+                .foregroundStyle(color(for: spot))
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(spot.name)
@@ -251,6 +300,10 @@ struct ExploreView: View {
                 cameraPosition = .region(region)
                 didFitCamera = true
             }
+            // Colour the spots by the current forecast, in the background — a
+            // forced refresh recomputes, an initial load fills what it can.
+            if force { flyability = [:] }
+            Task { await computeFlyability(for: result) }
         } catch CommunityError.backendNotConfigured {
             backendUnavailable = true
         } catch {
@@ -259,6 +312,69 @@ struct ExploreView: View {
             loadFailed = spots == nil
         }
         isLoading = false
+    }
+
+    // MARK: Flyability colouring
+
+    /// Rates the busiest spots against the current forecast, a few requests at
+    /// a time, and stores the non-`.unknown` results. Reentrancy-guarded so
+    /// overlapping loads don't double the network traffic.
+    private func computeFlyability(for spots: [CommunitySpotSummary]) async {
+        guard !isColoring else { return }
+        isColoring = true
+        defer { isColoring = false }
+
+        let targets = Array(
+            spots.sorted {
+                if $0.pilotsFlyingNow != $1.pilotsFlyingNow {
+                    return $0.pilotsFlyingNow > $1.pilotsFlyingNow
+                }
+                return $0.flightsLast30Days > $1.flightsLast30Days
+            }
+            .prefix(Self.flyabilityBudget)
+        )
+        guard !targets.isEmpty else { return }
+
+        await withTaskGroup(of: (String, Flyability)?.self) { group in
+            var iterator = targets.makeIterator()
+            // Prime the pump with a bounded number of concurrent requests…
+            for _ in 0..<Self.flyabilityConcurrency {
+                guard let spot = iterator.next() else { break }
+                let key = spot.spotKey, lat = spot.latitude, lon = spot.longitude
+                group.addTask { await Self.computeOne(spotKey: key, latitude: lat, longitude: lon) }
+            }
+            // …then feed one more each time a request completes.
+            while let result = await group.next() {
+                if let (key, rating) = result, rating != .unknown {
+                    flyability[key] = rating
+                }
+                guard let spot = iterator.next() else { continue }
+                let key = spot.spotKey, lat = spot.latitude, lon = spot.longitude
+                group.addTask { await Self.computeOne(spotKey: key, latitude: lat, longitude: lon) }
+            }
+        }
+    }
+
+    /// One spot: current forecast × learned window → flyability. `.unknown`
+    /// when there's no learned window (community-only; no PGE fetch here);
+    /// nil when the weather request fails (keeps the activity colour).
+    private static func computeOne(spotKey: String, latitude: Double, longitude: Double) async -> (String, Flyability)? {
+        do {
+            let weather = try await WeatherService.shared.weather(latitude: latitude, longitude: longitude)
+            let window = await SpotIntelligenceService.shared.learnedWindow(
+                spotKey: spotKey, latitude: latitude, longitude: longitude
+            )
+            guard !window.isEmpty else { return (spotKey, .unknown) }
+            let rating = SpotIntelligenceService.shared.flyabilityV2(
+                windDirectionDeg: weather.windDirectionDeg,
+                windSpeed: weather.windSpeed,
+                windGusts: weather.windGusts,
+                window: window
+            )
+            return (spotKey, rating)
+        } catch {
+            return nil
+        }
     }
 }
 
@@ -269,6 +385,8 @@ struct ExploreView: View {
 /// green "🪂 N" badge sits on top while pilots are flying there right now.
 private struct CommunitySpotBadge: View {
     let spot: CommunitySpotSummary
+    /// Resolved colour: current-forecast flyability when known, else activity.
+    let tint: Color
 
     @State private var pulsing = false
 
@@ -296,14 +414,14 @@ private struct CommunitySpotBadge: View {
                         .foregroundStyle(.white)
                         .padding(.horizontal, 5)
                         .padding(.vertical, 1)
-                        .background(spot.activityColor, in: Capsule())
+                        .background(tint, in: Capsule())
                 }
             }
             .padding(.horizontal, 9)
             .padding(.vertical, 5)
             .background(.regularMaterial, in: Capsule())
             .overlay(
-                Capsule().strokeBorder(spot.activityColor.opacity(0.7), lineWidth: 1.5)
+                Capsule().strokeBorder(tint.opacity(0.7), lineWidth: 1.5)
             )
             .frame(maxWidth: 160)
         }
