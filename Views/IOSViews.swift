@@ -15,6 +15,7 @@
 
 import SwiftUI
 import SwiftData
+import Combine // NotificationCenter publisher for the .spotDeepLink observer
 
 // MARK: - LazyView
 
@@ -39,6 +40,10 @@ struct ContentView: View {
     /// Phone-only mode: the iPhone timer is the main flight tracker,
     /// so an extra "Timer" tab is shown.
     @AppStorage(UserDefaultsKeys.phoneOnlyMode) private var phoneOnlyMode = false
+
+    /// Local spot to open from a push-tap deep link (nil = no sheet).
+    @Environment(DataController.self) private var dataController
+    @State private var deepLinkSpot: Spot?
 
     // First-launch onboarding: presents the app and guides adding the first
     // wing. Shown once, and only for an empty logbook.
@@ -159,5 +164,41 @@ struct ContentView: View {
         .sheet(isPresented: $showingAddWingFromOnboarding) {
             AddWingView()
         }
+        // Push-tap deep link: switch to Home and open the matching local spot.
+        .onReceive(NotificationCenter.default.publisher(for: .spotDeepLink)) { note in
+            handleSpotDeepLink(note)
+        }
+        .sheet(item: $deepLinkSpot) { spot in
+            NavigationStack {
+                SpotDetailView(spot: spot)
+            }
+        }
+    }
+
+    /// Handles a `.spotDeepLink`: always switch to Home, and when a local Spot
+    /// matches the payload key (`communitySpotKey` or a freshly built one),
+    /// present it as a sheet. No match → just the Home tab (safe fallback).
+    private func handleSpotDeepLink(_ note: Notification) {
+        selectedTab = Tab.home
+        guard let spotKey = Self.spotKey(from: note.userInfo) else { return }
+        deepLinkSpot = dataController.fetchSpots().first { spot in
+            spot.communitySpotKey == spotKey
+                || CommunitySpotKey.make(
+                    name: spot.name,
+                    latitude: spot.latitude,
+                    longitude: spot.longitude
+                ) == spotKey
+        }
+    }
+
+    /// Extracts a non-empty spotKey, tolerating a nested "data" dict (some APNs
+    /// payloads nest custom keys under it) even though the current poster sends
+    /// it flat.
+    private static func spotKey(from userInfo: [AnyHashable: Any]?) -> String? {
+        guard let userInfo else { return nil }
+        if let key = userInfo["spotKey"] as? String, !key.isEmpty { return key }
+        if let data = userInfo["data"] as? [AnyHashable: Any],
+           let key = data["spotKey"] as? String, !key.isEmpty { return key }
+        return nil
     }
 }

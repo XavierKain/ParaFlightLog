@@ -828,6 +828,15 @@ private struct CommunitySettingsSection: View {
                     .foregroundStyle(.orange)
             }
 
+            // Pilot profile (Phase 4): name, bio, home spot, public stats.
+            if auth.state.isSignedIn {
+                NavigationLink {
+                    PilotProfileView(userId: nil)
+                } label: {
+                    Label("My Pilot Profile", systemImage: "person.text.rectangle")
+                }
+            }
+
             if sharingEnabled {
                 LabeledContent("Pilot name (public)") {
                     TextField("A pilot", text: $pilotDisplayName)

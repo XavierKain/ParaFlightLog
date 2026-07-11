@@ -17,6 +17,7 @@
 
 import SwiftUI
 import Foundation // cos/sin for the compass dial layout
+import Combine // 1-second timer for the submit-cooldown countdown
 
 // MARK: - ConditionReportSheet (the 2-tap flow)
 
@@ -42,8 +43,15 @@ struct ConditionReportSheet: View {
     @State private var errorMessage: String?
     @State private var didPrefillDirection = false
 
+    /// Remaining anti-spam cooldown for this spot (0 = free to post). Seeded on
+    /// appear and ticked down while the sheet is open.
+    @State private var cooldownRemaining: TimeInterval = 0
+    private let cooldownTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+
     private var isSignedIn: Bool { AuthService.shared.state.isSignedIn }
-    private var canSubmit: Bool { status != nil && windForce != nil && !isSubmitting }
+    private var canSubmit: Bool {
+        status != nil && windForce != nil && !isSubmitting && cooldownRemaining <= 0
+    }
 
     var body: some View {
         NavigationStack {
@@ -126,6 +134,14 @@ struct ConditionReportSheet: View {
                 Text("Note")
             }
 
+            if cooldownRemaining > 0 {
+                Section {
+                    Label(cooldownHint, systemImage: "clock")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             if let errorMessage {
                 Section {
                     Text(errorMessage)
@@ -134,7 +150,24 @@ struct ConditionReportSheet: View {
                 }
             }
         }
-        .task { await prefill() }
+        .task {
+            await prefill()
+            // Check the anti-spam cooldown when the sheet appears.
+            cooldownRemaining = ConditionReportService.shared.submitCooldownRemaining(forSpotKey: spotKey)
+        }
+        .onReceive(cooldownTimer) { _ in
+            guard cooldownRemaining > 0 else { return }
+            cooldownRemaining = ConditionReportService.shared.submitCooldownRemaining(forSpotKey: spotKey)
+        }
+    }
+
+    /// "post again in N min" hint shown while the spot is in cooldown.
+    private var cooldownHint: String {
+        let minutes = Int(ceil(cooldownRemaining / 60))
+        if minutes <= 1 {
+            return "You reported here recently — you can post again in under a minute."
+        }
+        return "You reported here recently — you can post again in \(minutes) min."
     }
 
     // MARK: Signed-out prompt
@@ -200,6 +233,8 @@ struct ConditionReportSheet: View {
             dismiss()
         } catch {
             errorMessage = (error as? LocalizedError)?.errorDescription ?? "Could not post your report."
+            // Sync the cooldown state (e.g. a just-started cooldown blocked this).
+            cooldownRemaining = ConditionReportService.shared.submitCooldownRemaining(forSpotKey: spotKey)
             UINotificationFeedbackGenerator().notificationOccurred(.error)
         }
         isSubmitting = false

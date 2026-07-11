@@ -498,6 +498,9 @@ private struct CommunitySpotSheet: View {
 
                 conditionsSection
                 communitySection
+                // Spot leaderboard (Phase 4). Fail-soft: hides itself when the
+                // social backend isn't configured.
+                SpotLeaderboardSection(spotKey: summary.spotKey, spotName: summary.name)
                 recentFlightsSection
 
                 if let mySpot {

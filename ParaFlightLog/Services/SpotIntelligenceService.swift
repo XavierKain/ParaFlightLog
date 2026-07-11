@@ -120,7 +120,11 @@ final class SpotIntelligenceService {
     /// simply gets an empty window (→ `.unknown`, activity colouring).
     func learnedWindow(spotKey: String, latitude: Double, longitude: Double) async -> LearnedWindow {
         await computeWindow(
-            cacheKey: spotKey,
+            // Namespace the Explore cache slot so this community-only window
+            // (no local flights, no seed — often empty) can never overwrite the
+            // richer detail-page window for the SAME spot key, which shares the
+            // 15-min cache. The two entry points must never collide.
+            cacheKey: "explore_" + spotKey,
             communityKey: spotKey,
             latitude: latitude,
             longitude: longitude,

@@ -34,6 +34,7 @@ enum ConditionReportError: LocalizedError {
     case notSignedIn
     case backendNotConfigured
     case rateLimited
+    case reportCooldown
     case network
     case unknown(String)
 
@@ -45,6 +46,8 @@ enum ConditionReportError: LocalizedError {
             return "Condition reports are not available yet. Please try again later."
         case .rateLimited:
             return "Too many requests. Please try again in a minute."
+        case .reportCooldown:
+            return "You already reported conditions here recently."
         case .network:
             return "Network error. Check your connection and try again."
         case .unknown(let message):
@@ -200,6 +203,16 @@ final class ConditionReportService {
     private var subscriptionCache: (keys: Set<String>, fetchedAt: Date)?
     private static let subscriptionCacheTTL: TimeInterval = 15 * 60
 
+    /// Client-side submit cooldown: after a successful report, further reports
+    /// for the SAME spot are blocked for this long. Guards against report (and
+    /// the downstream push fan-out) spam. Survives relaunch via UserDefaults.
+    private static let submitCooldown: TimeInterval = 10 * 60
+    private static let cooldownDefaultsKey = "conditionReportCooldownUntil"
+
+    /// In-memory mirror of the per-spot cooldown-until dates, lazily seeded
+    /// from UserDefaults so it survives an app relaunch.
+    private var cooldownCache: [String: Date]?
+
     private init() {}
 
     // MARK: - Submit a report
@@ -219,6 +232,13 @@ final class ConditionReportService {
     ) async throws {
         guard case .signedIn(let userId, _) = AuthService.shared.state else {
             throw ConditionReportError.notSignedIn
+        }
+
+        // Client-side cooldown: block a fresh report for a spot the pilot just
+        // reported on (in-memory + persisted), so a double-tap or an over-eager
+        // pilot can't spam the spot's followers with push notifications.
+        guard submitCooldownRemaining(forSpotKey: spotKey) <= 0 else {
+            throw ConditionReportError.reportCooldown
         }
 
         let now = Date()
@@ -261,11 +281,61 @@ final class ConditionReportService {
             )
             // Freshest data next read — the pilot expects to see their report.
             reportsCache.removeValue(forKey: spotKey)
+            // Start the anti-spam cooldown for this spot.
+            recordSubmitCooldown(forSpotKey: spotKey)
             logInfo("Condition report posted at \(spotKey) (\(status.rawValue))", category: .community)
         } catch {
             logInfo("Condition report failed for \(spotKey): \(Self.mapError(error).localizedDescription)", category: .community)
             throw Self.mapError(error)
         }
+    }
+
+    // MARK: - Submit cooldown
+
+    /// Remaining submit cooldown for a spot in seconds (0 when the pilot is
+    /// free to report). The UI checks this on the report sheet's appearance to
+    /// disable the Post button and show a countdown hint.
+    func submitCooldownRemaining(forSpotKey spotKey: String) -> TimeInterval {
+        guard let until = cooldowns()[spotKey] else { return 0 }
+        return max(0, until.timeIntervalSinceNow)
+    }
+
+    /// Marks a spot as just-reported, blocking further submits for
+    /// `submitCooldown`. Persisted so it survives an app relaunch.
+    private func recordSubmitCooldown(forSpotKey spotKey: String) {
+        var current = cooldowns()
+        current[spotKey] = Date().addingTimeInterval(Self.submitCooldown)
+        cooldownCache = current
+        Self.persistCooldowns(current)
+    }
+
+    /// The live cooldown map (expired entries pruned), lazily seeded from
+    /// UserDefaults on first access.
+    private func cooldowns() -> [String: Date] {
+        let now = Date()
+        let source = cooldownCache ?? Self.loadCooldowns()
+        let live = source.filter { $0.value > now }
+        cooldownCache = live
+        return live
+    }
+
+    /// Loads persisted cooldown-until dates, dropping any already expired.
+    private static func loadCooldowns() -> [String: Date] {
+        guard let raw = UserDefaults.standard.dictionary(forKey: cooldownDefaultsKey) as? [String: Double] else {
+            return [:]
+        }
+        let now = Date()
+        var result: [String: Date] = [:]
+        for (key, epoch) in raw {
+            let date = Date(timeIntervalSince1970: epoch)
+            if date > now { result[key] = date }
+        }
+        return result
+    }
+
+    private static func persistCooldowns(_ cooldowns: [String: Date]) {
+        let raw = cooldowns.mapValues { $0.timeIntervalSince1970 }
+        UserDefaults.standard.set(raw, forKey: cooldownDefaultsKey)
     }
 
     // MARK: - Recent reports
@@ -276,7 +346,10 @@ final class ConditionReportService {
         if !forceRefresh,
            let entry = reportsCache[spotKey],
            Date().timeIntervalSince(entry.fetchedAt) < Self.reportsCacheTTL {
-            return entry.reports
+            // A report can expire during the 5-minute cache window; drop any
+            // now-expired entry so it never lingers in the consensus banner.
+            let now = Date()
+            return entry.reports.filter { $0.expiresAt > now }
         }
 
         do {

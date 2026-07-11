@@ -126,6 +126,37 @@ struct DashboardView: View {
                             }
                             .buttonStyle(.plain)
 
+                            // Community Feed (Step E): latest flights from the
+                            // pilots you follow, pushed onto this stack.
+                            NavigationLink {
+                                CommunityFeedView()
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "person.2")
+                                        .font(.system(size: 30))
+                                        .foregroundStyle(.purple)
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("Community Feed")
+                                            .font(.headline)
+                                            .foregroundStyle(Color.primary)
+                                        Text("Latest flights from pilots you follow")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(12)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
+                            .buttonStyle(.plain)
+
                             // My Spots: reach the local spots list (each spot's
                             // weather, forecast & flyability) without going
                             // through Settings or Explore.

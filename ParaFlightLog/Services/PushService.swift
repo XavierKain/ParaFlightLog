@@ -117,11 +117,19 @@ final class PushService {
         do {
             _ = try await AppwriteService.shared.account.deletePushTarget(targetId: targetId)
             logInfo("Push target deleted on sign-out", category: .community)
+            storedTargetId = nil
         } catch {
-            logWarning("Push target delete on sign-out failed: \(error)", category: .community)
+            if Self.isTargetNotFound(error) {
+                // Already gone server-side (404): safe to forget it.
+                storedTargetId = nil
+                logInfo("Push target already absent on sign-out", category: .community)
+            } else {
+                // Transient failure (e.g. offline): KEEP the id so the next
+                // sign-in refreshes THIS target instead of creating a duplicate.
+                logWarning("Push target delete on sign-out failed, keeping id: \(error)", category: .community)
+            }
         }
-        // Clear the target regardless; the device token stays (device-level).
-        storedTargetId = nil
+        // The device token stays (device-level) regardless of the outcome.
     }
 
     // MARK: - Device-token callbacks (forwarded from the AppDelegate)
