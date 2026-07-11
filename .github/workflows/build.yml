@@ -60,8 +60,15 @@ jobs:
               CODE_SIGN_IDENTITY="" \
               2>&1
           }
+          # Keep the raw log: xcbeautify swallows crash details when the
+          # test host dies mid-run.
           if command -v xcbeautify >/dev/null 2>&1; then
-            run_tests | xcbeautify --renderer github-actions
+            run_tests | tee /tmp/raw-test.log | xcbeautify --renderer github-actions || {
+              echo "=== RAW TEST LOG TAIL (crash context) ==="
+              grep -n -i -B2 -A8 "fatal error\|crashed\|signal\|exited unexpectedly\|precondition\|Restarting" /tmp/raw-test.log | tail -120 || true
+              tail -80 /tmp/raw-test.log
+              exit 1
+            }
           else
             run_tests
           fi
