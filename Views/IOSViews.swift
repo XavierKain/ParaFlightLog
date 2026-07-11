@@ -42,7 +42,10 @@ struct ContentView: View {
     @AppStorage(UserDefaultsKeys.phoneOnlyMode) private var phoneOnlyMode = false
 
     /// Local spot to open from a push-tap deep link (nil = no sheet).
-    @Environment(DataController.self) private var dataController
+    /// Optional so an un-injected context (previews, or a `.spotDeepLink`
+    /// arriving before the root environment is wired) fails soft instead of
+    /// trapping with "No Observable object of type DataController found".
+    @Environment(DataController.self) private var dataController: DataController?
     @State private var deepLinkSpot: Spot?
 
     // First-launch onboarding: presents the app and guides adding the first
@@ -180,7 +183,8 @@ struct ContentView: View {
     /// present it as a sheet. No match → just the Home tab (safe fallback).
     private func handleSpotDeepLink(_ note: Notification) {
         selectedTab = Tab.home
-        guard let spotKey = Self.spotKey(from: note.userInfo) else { return }
+        guard let dataController,
+              let spotKey = Self.spotKey(from: note.userInfo) else { return }
         deepLinkSpot = dataController.fetchSpots().first { spot in
             spot.communitySpotKey == spotKey
                 || CommunitySpotKey.make(

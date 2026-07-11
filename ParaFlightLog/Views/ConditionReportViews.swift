@@ -23,7 +23,9 @@ import Combine // 1-second timer for the submit-cooldown countdown
 
 struct ConditionReportSheet: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(DataController.self) private var dataController
+    // Optional: a sheet doesn't always inherit a custom @Observable environment
+    // object, so read it fail-soft rather than trapping on a missing injection.
+    @Environment(DataController.self) private var dataController: DataController?
 
     /// The spot being reported on (optional — Explore/derived-key callers may
     /// not have a local Spot). Coordinates, when present, pre-fill the dial.
@@ -189,7 +191,7 @@ struct ConditionReportSheet: View {
         if wingSize.isEmpty,
            let idString = UserDefaults.standard.string(forKey: UserDefaultsKeys.lastUsedWingId),
            let id = UUID(uuidString: idString),
-           let size = dataController.findWing(byId: id)?.size,
+           let size = dataController?.findWing(byId: id)?.size,
            !size.isEmpty {
             wingSize = size
         }
