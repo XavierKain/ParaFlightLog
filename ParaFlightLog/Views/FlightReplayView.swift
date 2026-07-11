@@ -123,7 +123,6 @@ struct FlightReplayView: View {
 
     private let playbackSpeeds: [Double] = [1, 4, 10, 30]
     private let tickInterval: TimeInterval = 1.0 / 30.0
-    private let transitionDuration: TimeInterval = 1.0
     /// Comet-trail length in real flight-seconds (independent of playback speed).
     private let cometWindow: TimeInterval = 14
     /// Orbit rotation rate, degrees per real second (advances only while playing).
@@ -227,16 +226,15 @@ struct FlightReplayView: View {
                     .stroke(VarioPalette.color(run.meanVario), lineWidth: 3.5)
             }
         } else {
-            // Progressive track: faint unflown remainder…
-            let remainder = engine.remainderCoordinates(from: elapsed)
-            if remainder.count >= 2 {
-                MapPolyline(coordinates: remainder)
-                    .stroke(.white.opacity(0.18), lineWidth: 2)
-            }
-            // …flown part in the vario gradient…
+            // Progressive track: the whole route drawn faint (the unflown
+            // look), a precomputed static polyline so it costs nothing per
+            // frame…
+            MapPolyline(coordinates: engine.rawCoordinates)
+                .stroke(.white.opacity(0.18), lineWidth: 2)
+            // …the flown part painted over it in the vario gradient…
             ForEach(engine.flownRuns(upTo: elapsed)) { run in
                 MapPolyline(coordinates: run.coordinates)
-                    .stroke(VarioPalette.color(run.meanVario).opacity(0.55), lineWidth: 3)
+                    .stroke(VarioPalette.color(run.meanVario).opacity(0.7), lineWidth: 3.5)
             }
             // …and a brighter comet tail over the last few real seconds.
             ForEach(engine.trailSlices(endingAt: elapsed, window: cometWindow, sliceCount: 8)) { slice in
@@ -531,17 +529,21 @@ struct FlightReplayView: View {
     }
 
     /// Exponential ease of the live framing toward the target (slight center
-    /// lag reads as cinematic; heading follows the shortest arc).
+    /// lag reads as cinematic; heading follows the shortest arc). Distance and
+    /// pitch are *snapped* to the target within a mode, not eased: easing them
+    /// would feed our own intermediate values back through `onMapCameraChange`
+    /// and corrupt the captured chase framing. Cross-mode distance/pitch
+    /// changes are animated by `mix` during a transition instead (where capture
+    /// is suppressed).
     private func follow(_ c: CamState, toward t: CamState, dt: Double) -> CamState {
-        let kCenter = 1 - exp(-dt / 0.22)
+        let kCenter = 1 - exp(-dt / 0.18)
         let kHeading = 1 - exp(-dt / 0.30)
-        let kFraming = 1 - exp(-dt / 0.20)
         return CamState(
             center: CLLocationCoordinate2D(
                 latitude: c.center.latitude + (t.center.latitude - c.center.latitude) * kCenter,
                 longitude: c.center.longitude + (t.center.longitude - c.center.longitude) * kCenter),
-            distance: c.distance + (t.distance - c.distance) * kFraming,
-            pitch: c.pitch + (t.pitch - c.pitch) * kFraming,
+            distance: t.distance,
+            pitch: t.pitch,
             heading: ReplayEngine.lerpAngle(from: c.heading, to: t.heading, factor: kHeading)
         )
     }
