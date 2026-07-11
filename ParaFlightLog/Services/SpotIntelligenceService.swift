@@ -75,7 +75,7 @@ final class SpotIntelligenceService {
     private var cache: [String: (window: LearnedWindow, at: Date)] = [:]
 
     /// One takeoff observation (plain values — safe across suspension points).
-    private struct Observation {
+    private struct WindSample {
         let dir: Double
         let speed: Double
         let date: Date
@@ -95,11 +95,11 @@ final class SpotIntelligenceService {
         // LOCAL observations: this spot's flights that carry a takeoff snapshot.
         // Fetched through the DataController (never a stale relationship).
         let spotId = spot.id
-        let localObs: [Observation] = dataController.fetchFlights().compactMap { flight in
+        let localObs: [WindSample] = dataController.fetchFlights().compactMap { flight in
             guard flight.spot?.id == spotId,
                   let dir = flight.takeoffWindDirection,
                   let speed = flight.takeoffWindSpeed else { return nil }
-            return Observation(dir: dir, speed: speed, date: flight.startDate)
+            return WindSample(dir: dir, speed: speed, date: flight.startDate)
         }
 
         return await computeWindow(
@@ -136,7 +136,7 @@ final class SpotIntelligenceService {
         communityKey: String?,
         latitude: Double?,
         longitude: Double?,
-        localObs: [Observation],
+        localObs: [WindSample],
         configuredDirections: [String],
         allowSeed: Bool
     ) async -> LearnedWindow {
@@ -152,7 +152,7 @@ final class SpotIntelligenceService {
         if let communityKey,
            let community = try? await CommunityService.shared.communityWindObservations(forSpotKey: communityKey) {
             for entry in community {
-                let obs = Observation(dir: entry.windDirectionDeg, speed: entry.windSpeed, date: entry.date)
+                let obs = WindSample(dir: entry.windDirectionDeg, speed: entry.windSpeed, date: entry.date)
                 if !localSignatures.contains(Self.signature(obs)) {
                     observations.append(obs)
                 }
@@ -187,7 +187,7 @@ final class SpotIntelligenceService {
 
     /// Buckets observations into 8 compass sectors (count each) and derives a
     /// p10–p90 speed range. `.learned` source; empty when there are none.
-    private static func buildLearnedWindow(from observations: [Observation]) -> LearnedWindow {
+    private static func buildLearnedWindow(from observations: [WindSample]) -> LearnedWindow {
         guard !observations.isEmpty else {
             return LearnedWindow(sectors: [:], speedRange: nil, totalFlights: 0, source: .learned)
         }
@@ -235,7 +235,7 @@ final class SpotIntelligenceService {
 
     /// Coarse observation signature (hour + rounded dir/speed) for the local↔
     /// community de-duplication. Two rows of the SAME flight share it.
-    private static func signature(_ obs: Observation) -> String {
+    private static func signature(_ obs: WindSample) -> String {
         let hourBucket = Int(obs.date.timeIntervalSince1970 / 3600)
         return "\(hourBucket)|\(Int(obs.dir.rounded()))|\(Int(obs.speed.rounded()))"
     }
