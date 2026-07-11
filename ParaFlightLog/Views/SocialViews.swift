@@ -38,7 +38,7 @@ private func socialDurationText(_ seconds: Int) -> String {
 }
 
 /// Flight-type capsule badge, matching the Explore SharedFlightRow style.
-private struct FlightTypeBadge: View {
+private struct SocialFlightTypeBadge: View {
     let type: FlightType
 
     var body: some View {
@@ -148,7 +148,7 @@ private struct FeedItemCard: View {
                     Spacer()
 
                     if let type = item.flightType.flatMap(FlightType.init(rawValue:)) {
-                        FlightTypeBadge(type: type)
+                        SocialFlightTypeBadge(type: type)
                     }
                 }
             }
@@ -162,7 +162,7 @@ private struct FeedItemCard: View {
                     .lineLimit(1)
                 Spacer()
                 if !showPilot, let type = item.flightType.flatMap(FlightType.init(rawValue:)) {
-                    FlightTypeBadge(type: type)
+                    SocialFlightTypeBadge(type: type)
                 }
             }
 
