@@ -37,6 +37,10 @@ struct ExploreView: View {
 
     @State private var selectedSpot: CommunitySpotSummary?
 
+    /// nil = "All types". Filters both Map and List by CommunitySpotSummary
+    /// type. Untyped spots show only under "All", hidden under a specific type.
+    @State private var typeFilter: FlightType?
+
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     /// The camera is fitted to the spots once, on first load — not on every
     /// refresh, which would yank the map away from where the pilot panned.
@@ -59,6 +63,11 @@ struct ExploreView: View {
             .navigationTitle("Explore")
             .background(Color(.systemGroupedBackground))
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    if let spots, !spots.isEmpty {
+                        typeFilterMenu
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         Task { await load(force: true) }
@@ -76,6 +85,36 @@ struct ExploreView: View {
                 CommunitySpotSheet(summary: spot)
                     .presentationDetents([.medium, .large])
             }
+    }
+
+    /// Toolbar type filter: "All types" + every FlightType. Shows a filled
+    /// funnel while a specific type is active.
+    private var typeFilterMenu: some View {
+        Menu {
+            Picker("Spot type", selection: $typeFilter) {
+                Label("All types", systemImage: "square.grid.2x2")
+                    .tag(FlightType?.none)
+                ForEach(FlightType.allCases) { type in
+                    Label(type.rawValue, systemImage: type.symbolName)
+                        .tag(FlightType?.some(type))
+                }
+            }
+        } label: {
+            Label(
+                typeFilter?.rawValue ?? "All types",
+                systemImage: typeFilter == nil
+                    ? "line.3.horizontal.decrease.circle"
+                    : "line.3.horizontal.decrease.circle.fill"
+            )
+        }
+        .accessibilityLabel("Filter by spot type")
+    }
+
+    /// Keeps only the spots matching the active type filter. "All types"
+    /// (nil) shows everything; a specific type hides untyped/other-typed spots.
+    private func filtered(_ spots: [CommunitySpotSummary]) -> [CommunitySpotSummary] {
+        guard let typeFilter else { return spots }
+        return spots.filter { $0.spotType.flatMap(FlightType.init(rawValue:)) == typeFilter }
     }
 
     // MARK: States
@@ -132,13 +171,31 @@ struct ExploreView: View {
 
             legend
 
-            switch mode {
-            case .map:
-                mapView(spots)
-            case .list:
-                listView(spots)
+            let shown = filtered(spots)
+            if shown.isEmpty {
+                filteredEmptyState
+            } else {
+                switch mode {
+                case .map:
+                    mapView(shown)
+                case .list:
+                    listView(shown)
+                }
             }
         }
+    }
+
+    /// Shown when the active type filter leaves no spots.
+    private var filteredEmptyState: some View {
+        ContentUnavailableView {
+            Label("No spots of this type", systemImage: "line.3.horizontal.decrease.circle")
+        } description: {
+            Text("No community spots match \(typeFilter?.rawValue ?? "this type"). Try “All types”.")
+        } actions: {
+            Button("Show all types") { typeFilter = nil }
+                .buttonStyle(.bordered)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     /// Tiny colour key: flyability dots (from the current forecast) plus the
@@ -265,6 +322,14 @@ struct ExploreView: View {
             }
 
             Spacer()
+
+            // Tiny type symbol when this community spot carries a type.
+            if let type = spot.spotType.flatMap(FlightType.init(rawValue:)) {
+                Image(systemName: type.symbolName)
+                    .font(.caption)
+                    .foregroundStyle(.indigo)
+                    .accessibilityLabel(type.rawValue)
+            }
 
             Image(systemName: "chevron.right")
                 .font(.caption)

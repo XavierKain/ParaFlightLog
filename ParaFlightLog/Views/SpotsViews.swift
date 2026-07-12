@@ -25,8 +25,20 @@ struct SpotsManagementView: View {
     @State private var newSpotName = ""
     @State private var newSpotCity = ""
 
+    /// nil = "All types". Filters the list by each spot's EFFECTIVE type
+    /// (pinned `spotTypeEnum`, else derived `dominantFlightType`).
+    @State private var typeFilter: FlightType?
+
     private var sortedSpots: [Spot] {
         DataController.popularityOrder(spots)
+    }
+
+    /// The popularity-sorted spots kept for the active type filter. "All types"
+    /// shows everything; a specific type keeps only spots whose effective type
+    /// matches (untyped spots are hidden under a specific filter).
+    private var filteredSpots: [Spot] {
+        guard let typeFilter else { return sortedSpots }
+        return sortedSpots.filter { $0.effectiveFlightType == typeFilter }
     }
 
     var body: some View {
@@ -37,9 +49,15 @@ struct SpotsManagementView: View {
                     systemImage: "mappin.slash",
                     description: Text("Spots are created automatically from your flights' locations. You can also add one manually.")
                 )
+            } else if filteredSpots.isEmpty {
+                ContentUnavailableView(
+                    "No Spots of This Type",
+                    systemImage: "line.3.horizontal.decrease.circle",
+                    description: Text("No spots match the selected type. Pick a different type or “All types”.")
+                )
             } else {
                 Section {
-                    ForEach(sortedSpots) { spot in
+                    ForEach(filteredSpots) { spot in
                         NavigationLink {
                             SpotDetailView(spot: spot)
                         } label: {
@@ -49,6 +67,11 @@ struct SpotsManagementView: View {
                 } footer: {
                     Text("Tap a spot to rename it, set its city and coordinates, or move flights to another spot (e.g. split a city into its real launches).")
                 }
+            }
+        }
+        .safeAreaInset(edge: .top) {
+            if !spots.isEmpty {
+                SpotTypeFilterBar(selection: $typeFilter)
             }
         }
         .navigationTitle("Spots")
@@ -106,11 +129,98 @@ private struct SpotEntityRow: View {
 
             Spacer()
 
+            // Effective type badge (pinned, else derived). `pinned` is subtly
+            // solid; the auto-derived one is outlined.
+            if let type = spot.effectiveFlightType {
+                SpotTypeBadge(type: type, pinned: spot.spotTypeEnum != nil)
+            }
+
             Text("^[\(spot.flights?.count ?? 0) flight](inflect: true)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 2)
+    }
+}
+
+// MARK: - SpotTypeBadge (effective-type chip on a spot row)
+
+/// Small type badge: solid indigo when the type is PINNED, outlined when it's
+/// the AUTO-derived dominant type.
+private struct SpotTypeBadge: View {
+    let type: FlightType
+    let pinned: Bool
+
+    var body: some View {
+        Label(type.rawValue, systemImage: type.symbolName)
+            .labelStyle(.titleAndIcon)
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(pinned ? .white : .indigo)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background {
+                if pinned {
+                    Capsule().fill(Color.indigo)
+                } else {
+                    Capsule().strokeBorder(Color.indigo.opacity(0.5), lineWidth: 1)
+                }
+            }
+    }
+}
+
+// MARK: - SpotTypeFilterBar (horizontal type-filter chips)
+
+/// Horizontally scrolling filter chips pinned above the spots list:
+/// "All types" + every FlightType (with symbol). Binds to an optional
+/// selection (nil = All types).
+private struct SpotTypeFilterBar: View {
+    @Binding var selection: FlightType?
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(
+                    title: "All types",
+                    systemImage: "square.grid.2x2",
+                    isSelected: selection == nil
+                ) {
+                    selection = nil
+                }
+
+                ForEach(FlightType.allCases) { type in
+                    FilterChip(
+                        title: type.rawValue,
+                        systemImage: type.symbolName,
+                        isSelected: selection == type
+                    ) {
+                        selection = (selection == type) ? nil : type
+                    }
+                }
+            }
+            .padding(.horizontal)
+            .padding(.vertical, 8)
+        }
+        .background(.bar)
+    }
+
+    private struct FilterChip: View {
+        let title: String
+        let systemImage: String
+        let isSelected: Bool
+        let action: () -> Void
+
+        var body: some View {
+            Button(action: action) {
+                Label(title, systemImage: systemImage)
+                    .font(.subheadline.weight(isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? .white : .primary)
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 7)
+                    .background(isSelected ? Color.blue : Color(.tertiarySystemFill),
+                               in: Capsule())
+            }
+            .buttonStyle(.plain)
+        }
     }
 }
 
@@ -124,6 +234,9 @@ struct SpotDetailView: View {
     @State private var editedName: String = ""
     @State private var editedCity: String = ""
     @State private var editedDirections: Set<String> = []
+    /// The PINNED spot type (nil = none pinned, falls back to the derived
+    /// dominant type shown with an "(auto)" hint).
+    @State private var editedSpotType: FlightType?
     @State private var showingMapPicker = false
 
     // Reassignment state
@@ -180,6 +293,8 @@ struct SpotDetailView: View {
                         }
                     }
                 }
+
+                spotTypePicker
             }
 
             // Launch directions (feed the flyability hints below)
@@ -309,6 +424,7 @@ struct SpotDetailView: View {
             editedName = spot.name
             editedCity = spot.city ?? ""
             editedDirections = Set(spot.windDirections)
+            editedSpotType = spot.spotTypeEnum
         }
         .onDisappear {
             commitEdits()
@@ -371,6 +487,34 @@ struct SpotDetailView: View {
 
     private var splitConfirmTitle: String {
         "Split \"\(spot.name)\" into \(splitClusterSizes.count) spots?"
+    }
+
+    // MARK: - Spot type picker
+
+    /// "Spot type" row: None + every FlightType (with symbol). When nothing is
+    /// pinned (editedSpotType == nil) the "None" option displays the derived
+    /// `dominantFlightType` with a subtle "(auto)" hint; picking a value pins it.
+    @ViewBuilder
+    private var spotTypePicker: some View {
+        Picker(selection: $editedSpotType) {
+            Text(autoTypeLabel).tag(FlightType?.none)
+            ForEach(FlightType.allCases) { type in
+                Label(type.rawValue, systemImage: type.symbolName)
+                    .tag(FlightType?.some(type))
+            }
+        } label: {
+            Label("Spot type", systemImage: "paperplane")
+        }
+        .pickerStyle(.menu)
+    }
+
+    /// Label shown for the "None" (unpinned) option: the derived dominant
+    /// type with an "(auto)" hint when one exists, otherwise plain "None".
+    private var autoTypeLabel: String {
+        if let derived = spot.dominantFlightType {
+            return "\(derived.rawValue) (auto)"
+        }
+        return "None"
     }
 
     // MARK: - Split by GPS
@@ -473,6 +617,11 @@ struct SpotDetailView: View {
         let directions = sortedDirections
         if directions != spot.windDirections {
             spot.windDirections = directions
+            dataController.saveContext()
+        }
+        // Pinned spot type: persist only when it actually changed.
+        if editedSpotType?.rawValue != spot.spotType {
+            spot.spotType = editedSpotType?.rawValue
             dataController.saveContext()
         }
         let name = editedName.trimmingCharacters(in: .whitespacesAndNewlines)

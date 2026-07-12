@@ -22,6 +22,7 @@ struct DashboardView: View {
     @State private var stats = FlightStats()
     @State private var showingFlightDetail: Flight?
     @State private var showingConditionReport = false
+    @State private var showingNearbySpots = false
 
     // Most recently flown wing (flights are sorted newest first), with its
     // aggregate hours. "Most-used" would surface long-retired wings after a
@@ -73,6 +74,41 @@ struct DashboardView: View {
                 } else {
                     ScrollView {
                         VStack(spacing: 20) {
+                            // Report conditions: the fastest way to the "how does
+                            // it fly right now?" flow — spots near me, or drop a
+                            // new one. Kept at the very top so it's never buried
+                            // in the conditions card lower down.
+                            Button {
+                                showingNearbySpots = true
+                            } label: {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "wind")
+                                        .font(.system(size: 26))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 46, height: 46)
+                                        .background(.teal, in: RoundedRectangle(cornerRadius: 11))
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text("Report conditions")
+                                            .font(.headline)
+                                            .foregroundStyle(Color.primary)
+                                        Text("Spots near you — see how it flies, or add a new one")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+
+                                    Spacer()
+
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundStyle(.tertiary)
+                                }
+                                .padding(12)
+                                .background(Color(.secondarySystemGroupedBackground))
+                                .clipShape(RoundedRectangle(cornerRadius: 14))
+                            }
+                            .buttonStyle(.plain)
+
                             // Global stats
                             HStack(spacing: 12) {
                                 DashboardStatCard(
@@ -324,6 +360,9 @@ struct DashboardView: View {
             }
             .sheet(item: $showingFlightDetail) { flight in
                 FlightDetailView(flight: flight)
+            }
+            .sheet(isPresented: $showingNearbySpots) {
+                NearbySpotsView()
             }
             .sheet(isPresented: $showingConditionReport) {
                 if let spot = conditionsSpot,

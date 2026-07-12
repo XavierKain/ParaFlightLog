@@ -29,6 +29,10 @@ struct SettingsView: View {
     // Reactive so changes made on the Watch (pushed back via WCSession) show live here.
     @AppStorage(UserDefaultsKeys.watchAutoWaterLock) private var watchAutoWaterLock = false
     @AppStorage(UserDefaultsKeys.watchAllowSessionDismiss) private var watchAllowSessionDismiss = true
+    // Smart notification defaults. Auto-follow ON, forecast alerts OFF — the
+    // defaults must mirror SpotAutoFollowService.isEnabled / ForecastAlertService.isEnabled.
+    @AppStorage(SpotAutoFollowService.enabledKey) private var autoFollowFlownSpots = true
+    @AppStorage(ForecastAlertService.enabledKey) private var forecastAlertsEnabled = false
 
     @State private var showingImportResult = false
     @State private var importMessage = ""
@@ -53,6 +57,7 @@ struct SettingsView: View {
                 dataSection
                 accountSection
                 CommunitySettingsSection(flights: flights)
+                notificationsSection
                 comingSoonSection
                 developerSection
                 aboutSection
@@ -273,6 +278,8 @@ struct SettingsView: View {
             } label: {
                 Label("Manage Spots", systemImage: "mappin.and.ellipse")
             }
+
+            BackfillWeatherRow()
         } header: {
             Text("Data")
         } footer: {
@@ -324,6 +331,32 @@ struct SettingsView: View {
             } label: {
                 Label("Account & Cloud Backup", systemImage: "person.icloud")
             }
+        }
+    }
+
+    private var notificationsSection: some View {
+        Section {
+            Toggle(isOn: $autoFollowFlownSpots) {
+                Text("Auto-follow spots I fly")
+            }
+            .onChange(of: autoFollowFlownSpots) { _, newValue in
+                // Turning it on: pick up any flown spots not yet followed.
+                // Additions-only — turning it off never unfollows anything.
+                guard newValue else { return }
+                Task { await SpotAutoFollowService.shared.reconcile(dataController: dataController) }
+            }
+
+            Toggle(isOn: $forecastAlertsEnabled) {
+                Text("Alert me on flyable days")
+            }
+            .onChange(of: forecastAlertsEnabled) { _, _ in
+                // Reschedule immediately: on -> prompt + schedule, off -> clear.
+                Task { await ForecastAlertService.shared.refreshAlerts(dataController: dataController) }
+            }
+        } header: {
+            Text("Notifications")
+        } footer: {
+            Text("Auto-follow spots I fly subscribes you to condition reports at the spots you log, so nearby pilots' updates reach you. Alert me on flyable days schedules a local morning notification when tomorrow's forecast looks good at a spot you follow.")
         }
     }
 
@@ -994,6 +1027,40 @@ private struct CommunitySettingsSection: View {
             showingResult = true
             isWorking = false
         }
+    }
+}
+
+// MARK: - BackfillWeatherRow (historical takeoff-weather backfill)
+
+/// Data-section row that runs / reports the historical takeoff-weather
+/// backfill. Reads the shared @Observable service directly so its progress
+/// ("123/276") and completed state stay live. Runs once automatically at
+/// launch; this row lets the pilot re-run it or watch it finish.
+private struct BackfillWeatherRow: View {
+    @Environment(DataController.self) private var dataController
+
+    private var service: WeatherBackfillService { .shared }
+
+    var body: some View {
+        Button {
+            Task { await service.backfillMissingTakeoffWeather(dataController: dataController) }
+        } label: {
+            HStack {
+                Label("Backfill flight weather", systemImage: "cloud.sun")
+                Spacer()
+                if service.isRunning {
+                    Text("\(service.progressDone)/\(service.progressTotal)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    ProgressView()
+                } else if service.hasCompletedPass {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                }
+            }
+        }
+        .disabled(service.isRunning)
     }
 }
 

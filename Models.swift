@@ -126,6 +126,12 @@ final class Spot {
     /// then. Optional keeps the field CloudKit-compatible.
     var communitySpotKey: String?
 
+    /// The kind of flying this launch is known for, PINNED by the pilot.
+    /// Raw value of a `FlightType` (e.g. "Soaring"). Optional/nil by default
+    /// keeps the field CloudKit-compatible; when nil the UI falls back to the
+    /// derived `dominantFlightType` (shown with an "(auto)" hint).
+    var spotType: String?
+
     // Inverse of Flight.spot. Optional for CloudKit compatibility.
     @Relationship(deleteRule: .nullify, inverse: \Flight.spot)
     var flights: [Flight]?
@@ -142,6 +148,37 @@ final class Spot {
         self.latitude = latitude
         self.longitude = longitude
         self.createdAt = createdAt
+    }
+
+    /// Typed accessor bridging the raw `spotType` string storage — the type
+    /// the pilot PINNED for this launch (nil when none is pinned).
+    var spotTypeEnum: FlightType? {
+        get { spotType.flatMap { FlightType(rawValue: $0) } }
+        set { spotType = newValue?.rawValue }
+    }
+
+    /// The flight type flown most often at this spot, or nil when no flight
+    /// here carries a type. This is the AUTO/derived spot type used when the
+    /// pilot hasn't pinned one via `spotType`. Ties are broken deterministically
+    /// by `FlightType.allCases` order.
+    var dominantFlightType: FlightType? {
+        guard let flights, !flights.isEmpty else { return nil }
+        var counts: [FlightType: Int] = [:]
+        for flight in flights {
+            if let type = flight.flightTypeEnum {
+                counts[type, default: 0] += 1
+            }
+        }
+        guard !counts.isEmpty else { return nil }
+        return FlightType.allCases
+            .filter { counts[$0] != nil }
+            .max { (counts[$0] ?? 0) < (counts[$1] ?? 0) }
+    }
+
+    /// The type shown for this spot: the pinned `spotTypeEnum` if set,
+    /// otherwise the derived `dominantFlightType`. nil when neither exists.
+    var effectiveFlightType: FlightType? {
+        spotTypeEnum ?? dominantFlightType
     }
 }
 

@@ -78,8 +78,6 @@ enum Flyability {
 enum WeatherError: LocalizedError {
     case invalidURL
     case invalidResponse
-    /// The requested date is beyond the forecast API's 92-day past window.
-    case tooOld
 
     var errorDescription: String? {
         switch self {
@@ -87,8 +85,6 @@ enum WeatherError: LocalizedError {
             return "Could not build the weather request."
         case .invalidResponse:
             return "The weather service returned an invalid response."
-        case .tooOld:
-            return "This flight is older than 90 days — no weather archive available."
         }
     }
 }
@@ -108,8 +104,10 @@ final class WeatherService {
     private var cache: [String: CacheEntry] = [:]
     private static let cacheTTL: TimeInterval = 15 * 60
 
-    /// The forecast endpoint serves up to 92 past days; beyond that a
-    /// snapshot would need the (different) archive API — out of scope.
+    /// The forecast endpoint serves up to 92 past days; older snapshots fall
+    /// back to the Open-Meteo ARCHIVE (ERA5) API, which covers decades back
+    /// but lags real time by ~5 days — safe here since we only reach for it
+    /// beyond 90 days.
     private static let maxSnapshotAge: TimeInterval = 90 * 24 * 3600
 
     private init() {}
@@ -140,21 +138,31 @@ final class WeatherService {
 
     // MARK: - Takeoff snapshot
 
-    /// Wind/temperature at a given past (or current) instant: fetches the
-    /// forecast with enough `past_days` to cover the date and returns the
-    /// hourly entry nearest to it. Throws `.tooOld` beyond 90 days.
+    /// Wind/temperature at a given past (or current) instant, returning the
+    /// hourly entry nearest to it. Dates within the last 90 days come from the
+    /// forecast endpoint's `past_days` window; older dates fall back to the
+    /// Open-Meteo archive (ERA5) API so historical/imported flights can still
+    /// be back-filled. Never `.tooOld` — the archive covers decades back.
     func takeoffSnapshot(latitude: Double, longitude: Double, at date: Date) async throws -> TakeoffWeather {
         let age = Date().timeIntervalSince(date)
-        guard age <= Self.maxSnapshotAge else {
-            throw WeatherError.tooOld
+
+        let response: OpenMeteoResponse
+        if age <= Self.maxSnapshotAge {
+            // +1 day guards timezone/midnight edges; clamped to the API maximum.
+            let pastDays = min(max(Int(age / 86400) + 1, 1), 92)
+            response = try await fetchForecast(latitude: latitude, longitude: longitude, pastDays: pastDays, forecastDays: 1)
+        } else {
+            response = try await fetchArchive(latitude: latitude, longitude: longitude, at: date)
         }
 
-        // +1 day guards timezone/midnight edges; clamped to the API maximum.
-        let pastDays = min(max(Int(age / 86400) + 1, 1), 92)
-        let response = try await fetchForecast(latitude: latitude, longitude: longitude, pastDays: pastDays, forecastDays: 1)
+        return try Self.nearestHour(in: response, to: date)
+    }
 
+    /// Picks the hourly entry closest to `date` from a decoded Open-Meteo
+    /// response (shared by the forecast and archive snapshot paths).
+    private static func nearestHour(in response: OpenMeteoResponse, to date: Date) throws -> TakeoffWeather {
         let offsetSeconds = response.utcOffsetSeconds ?? 0
-        let hourFormatter = Self.makeFormatter(format: "yyyy-MM-dd'T'HH:mm", offsetSeconds: offsetSeconds)
+        let hourFormatter = makeFormatter(format: "yyyy-MM-dd'T'HH:mm", offsetSeconds: offsetSeconds)
 
         guard let hourly = response.hourly, let times = hourly.time, !times.isEmpty else {
             throw WeatherError.invalidResponse
@@ -175,10 +183,10 @@ final class WeatherService {
         }
 
         return TakeoffWeather(
-            windSpeed: Self.value(hourly.windSpeed10m, at: index),
-            windGusts: Self.value(hourly.windGusts10m, at: index),
-            windDirectionDeg: Self.value(hourly.windDirection10m, at: index),
-            temperature: Self.value(hourly.temperature2m, at: index)
+            windSpeed: value(hourly.windSpeed10m, at: index),
+            windGusts: value(hourly.windGusts10m, at: index),
+            windDirectionDeg: value(hourly.windDirection10m, at: index),
+            temperature: value(hourly.temperature2m, at: index)
         )
     }
 
@@ -212,8 +220,6 @@ final class WeatherService {
                 flight.takeoffTemperature = snapshot.temperature
                 dataController.saveContext()
                 logInfo("Takeoff weather recorded for flight \(flightId)", category: .weather)
-            } catch WeatherError.tooOld {
-                logDebug("Flight \(flightId) is older than 90 days — no weather snapshot", category: .weather)
             } catch {
                 logInfo("Weather snapshot skipped for flight \(flightId): \(error.localizedDescription)", category: .weather)
             }
@@ -332,6 +338,53 @@ final class WeatherService {
             return try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
         } catch {
             logWarning("Open-Meteo decoding failed: \(error.localizedDescription)", category: .weather)
+            throw WeatherError.invalidResponse
+        }
+    }
+
+    /// GET https://archive-api.open-meteo.com/v1/archive for a single past
+    /// instant older than the forecast window. Requests a ±1-day date range
+    /// (the spot's timezone is resolved server-side via `timezone=auto`, so a
+    /// wide window guarantees the nearest-hour search has the target covered)
+    /// and decodes into the SAME `OpenMeteoResponse` shape as the forecast —
+    /// the archive payload carries the identical hourly parallel-array layout.
+    private func fetchArchive(latitude: Double, longitude: Double, at date: Date) async throws -> OpenMeteoResponse {
+        // Date-only bounds in UTC; the ±1-day pad absorbs the unknown local
+        // offset so the target hour is always inside the returned range.
+        let dayFormatter = DateFormatter()
+        dayFormatter.locale = Locale(identifier: "en_US_POSIX")
+        dayFormatter.timeZone = TimeZone(identifier: "UTC")
+        dayFormatter.dateFormat = "yyyy-MM-dd"
+        let startDate = dayFormatter.string(from: date.addingTimeInterval(-86400))
+        let endDate = dayFormatter.string(from: date.addingTimeInterval(86400))
+
+        var components = URLComponents(string: "https://archive-api.open-meteo.com/v1/archive")
+        components?.queryItems = [
+            URLQueryItem(name: "latitude", value: String(format: "%.4f", latitude)),
+            URLQueryItem(name: "longitude", value: String(format: "%.4f", longitude)),
+            URLQueryItem(name: "start_date", value: startDate),
+            URLQueryItem(name: "end_date", value: endDate),
+            URLQueryItem(name: "hourly", value: "wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m"),
+            URLQueryItem(name: "timezone", value: "auto"),
+            URLQueryItem(name: "wind_speed_unit", value: "kmh")
+        ]
+
+        guard let url = components?.url else {
+            throw WeatherError.invalidURL
+        }
+
+        var request = URLRequest(url: url)
+        request.timeoutInterval = WeatherConstants.networkTimeout
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let httpResponse = response as? HTTPURLResponse, httpResponse.statusCode == 200 else {
+            throw WeatherError.invalidResponse
+        }
+
+        do {
+            return try JSONDecoder().decode(OpenMeteoResponse.self, from: data)
+        } catch {
+            logWarning("Open-Meteo archive decoding failed: \(error.localizedDescription)", category: .weather)
             throw WeatherError.invalidResponse
         }
     }

@@ -216,6 +216,22 @@ private struct IOSRootView: View {
                     // authorization is requested lazily when the user opts in).
                     PushService.shared.refreshAtLaunch()
 
+                    // Smart notification defaults + historical weather backfill.
+                    // Deferred, best-effort, off the first-paint path:
+                    //  1. auto-follow the community spots the pilot flies,
+                    //  2. back-fill takeoff weather on flights that predate the
+                    //     weather feature (this is what un-blanks learned
+                    //     flyability), auto-run only until one full pass done,
+                    //  3. schedule "flyable tomorrow" local alerts for followed
+                    //     spots — after the backfill so learned windows are fresh.
+                    Task { @MainActor in
+                        await SpotAutoFollowService.shared.reconcile(dataController: dataController)
+                        if !WeatherBackfillService.shared.hasCompletedPass {
+                            await WeatherBackfillService.shared.backfillMissingTakeoffWeather(dataController: dataController)
+                        }
+                        await ForecastAlertService.shared.refreshAlerts(dataController: dataController)
+                    }
+
                     // Keep WatchConnectivity setup off the first-paint path.
                     DispatchQueue.main.async {
                         watchManager.activateSession()

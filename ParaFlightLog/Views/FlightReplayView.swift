@@ -12,17 +12,31 @@
 //  camera toward a per-mode target. Every frame is an O(1) engine lookup, not
 //  per-tick spline math.
 //
-//  Camera
-//  ------
-//  Four modes — Chase, Orbit, Top-down, Overview — expressed as a single
-//  target `CamState` (center / distance / pitch / heading). A unified per-tick
-//  driver eases the live camera toward that target, so mode switches animate
-//  with an ease-in-out over ~1s and following stays silky. On open it holds a
-//  2s whole-track overview, then dives to the start and autoplays in Chase.
+//  Camera — the orbit rig (Wingman "hybrid" model)
+//  -----------------------------------------------
+//  Wingman's replay camera offers three behaviours (automatic / hybrid / free).
+//  The heart of the good ones is a *rig* that orbits the moving pilot: the user
+//  adjusts three rig parameters and they PERSIST while the camera keeps
+//  tracking. We model that directly:
+//
+//      rig = (distance, pitch, headingOffset)          // depth / height / yaw
+//      camera = rig applied to the live pilot anchor:
+//          center   = pilot position
+//          distance = rig.distance                     ← pinch
+//          pitch    = rig.pitch                        ← two-finger vertical drag
+//          heading  = trackHeading + rig.headingOffset ← rotate
+//
+//  Gestures are read from the Map itself (interaction modes = `.all`). A
+//  `.simultaneousGesture` touch-sentinel tells us when a finger is down: while
+//  it is, we NEVER drive the camera (no fighting / juddering). When the user
+//  lets go we let the map settle, snapshot its framing, decompose it back into
+//  the rig, and resume driving from exactly where they left off. The four modes
+//  — Chase, Orbit, Top-down, Overview — are just different ways of applying (or
+//  ignoring) the rig each frame.
 //
 //  Preserved fix history (see inline notes): programmatic-camera capture
 //  suppression, clamped dt, timer gated so it sleeps when fully idle,
-//  pause-doesn't-exit-the-current-camera.
+//  pause-doesn't-exit-the-current-camera, whole-track overview fly-in.
 //
 //  Target: iOS only
 //
@@ -71,6 +85,22 @@ nonisolated struct CamState {
     var heading: Double
 }
 
+/// The user-controlled orbit rig. Persisted across frames and modes so the
+/// pilot keeps the framing they dialled in while the camera tracks the flight.
+///   • `distance`      — depth (pinch)
+///   • `pitch`         — height / look-down angle (two-finger vertical drag)
+///   • `headingOffset` — yaw *relative to the flight direction* (rotate)
+nonisolated struct CameraRig {
+    var distance: Double
+    var pitch: Double
+    var headingOffset: Double
+
+    static let `default` = CameraRig(distance: 900, pitch: 62, headingOffset: 0)
+
+    static func clampDistance(_ d: Double) -> Double { min(max(d, 150), 12000) }
+    static func clampPitch(_ p: Double) -> Double { min(max(p, 0), 80) }
+}
+
 /// An in-flight ease-in-out between two framings (mode switch, snap, dive-in).
 private struct CameraTransition {
     let from: CamState
@@ -105,17 +135,22 @@ struct FlightReplayView: View {
     /// lets it sleep again once the camera has settled (no wasted wakeups).
     @State private var cameraAnimating = false
 
-    /// User-chosen chase framing, captured from pinch-zoom / two-finger tilt
-    /// and reused across ticks so the pilot keeps their framing.
-    @State private var userDistance: Double = 900
-    @State private var userPitch: Double = 62
+    /// The user's orbit framing — captured from map gestures and re-applied to
+    /// the moving pilot every tick.
+    @State private var rig: CameraRig = .default
 
-    /// Last framing the map reported — the true starting point for the next
-    /// transition (the user may have panned freely in overview / while paused).
+    /// Last framing the map reported (updated continuously). The snapshot we
+    /// decompose into the rig when a gesture ends, and the seamless start point
+    /// for the resumed follow.
     @State private var lastObserved: CamState?
-    /// Set whenever *we* move the camera, so the transition's intermediate
-    /// frames aren't captured as the pilot's framing.
-    @State private var lastProgrammaticCameraChange = Date()
+
+    /// True while the user has a finger on the map. While set we never drive the
+    /// camera — the map owns it — so there is zero fighting between our follow
+    /// loop and the live pinch / tilt / rotate.
+    @State private var userInteracting = false
+    /// Pending "gesture settled" capture, so we read the *final* framing after
+    /// pan deceleration rather than mid-fling.
+    @State private var captureWork: DispatchWorkItem?
 
     // Timer
     @State private var lastTickDate: Date?
@@ -127,6 +162,9 @@ struct FlightReplayView: View {
     private let cometWindow: TimeInterval = 14
     /// Orbit rotation rate, degrees per real second (advances only while playing).
     private let orbitRate: Double = 10
+    /// After a gesture ends, wait this long for the map to settle before we
+    /// snapshot its framing into the rig and resume driving.
+    private let settleDelay: TimeInterval = 0.28
 
     private static let clockFormatter: DateFormatter = {
         let f = DateFormatter()
@@ -166,40 +204,34 @@ struct FlightReplayView: View {
 
     // MARK: - Content
 
-    /// Interaction: overview & paused-idle are fully free; the active modes keep
-    /// zoom (and pitch for chase/orbit) so the pilot can adjust framing.
-    private var interactionModes: MapInteractionModes {
-        if mode == .overview { return .all }
-        if !isPlaying && !cameraAnimating && transition == nil { return .all }
-        switch mode {
-        case .chase, .orbit: return [.zoom, .pitch]
-        case .topDown: return [.zoom]
-        case .overview: return .all
-        }
-    }
-
     private var replayContent: some View {
         let current = engine.interpolate(at: elapsed)
 
         return ZStack {
-            Map(position: $cameraPosition, interactionModes: interactionModes) {
+            // Full gesture set enabled in every mode: pinch = depth, two-finger
+            // vertical drag = pitch, rotate = heading offset. We arbitrate with
+            // the map (not against it) via `userInteracting`.
+            Map(position: $cameraPosition, interactionModes: .all) {
                 mapContent(current: current)
             }
             .mapStyle(.hybrid(elevation: .realistic))
             .onMapCameraChange(frequency: .continuous) { context in
+                // Just track what the map is showing. The rig is captured only
+                // when a gesture *ends* (below), never from our own programmatic
+                // writes — so following can't corrupt the saved framing.
                 lastObserved = CamState(center: context.camera.centerCoordinate,
                                         distance: context.camera.distance,
                                         pitch: context.camera.pitch,
                                         heading: context.camera.heading)
-                // Capture the pilot's chase framing only — never during a
-                // programmatic transition (its eased intermediate distances up
-                // to overview scale would corrupt the saved framing), and only
-                // in Chase (Orbit/Top drive pitch/heading themselves).
-                guard mode == .chase, transition == nil,
-                      Date().timeIntervalSince(lastProgrammaticCameraChange) >= 0.5 else { return }
-                userDistance = min(max(context.camera.distance, 200), 8000)
-                userPitch = min(max(context.camera.pitch, 0), 80)
             }
+            // Touch-sentinel: a zero-distance drag that recognises *alongside*
+            // the map's own gestures. It never steals the touch — it only tells
+            // us a finger is down, which is enough to stop driving the camera.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in beginUserInteraction() }
+                    .onEnded { _ in endUserInteraction() }
+            )
             .ignoresSafeArea()
 
             VStack {
@@ -217,29 +249,27 @@ struct FlightReplayView: View {
         .onDisappear { stopTimer() }
     }
 
+    /// Render mode (feedback #2 — no overlapping traces):
+    ///   • Overview  → the whole flight as a vario-gradient track (readable from
+    ///     high up, the one place the full colour story belongs).
+    ///   • Following → a single faint context line for the whole route + a
+    ///     bright comet tail over the recent seconds. Nothing else, so no two
+    ///     layers ever fight for the same pixels.
     @MapContentBuilder
     private func mapContent(current: ReplaySample) -> some MapContent {
         if mode == .overview {
-            // Whole flight, vario-colored — readable from high up.
             ForEach(engine.varioRuns) { run in
                 MapPolyline(coordinates: run.coordinates)
                     .stroke(VarioPalette.color(run.meanVario), lineWidth: 3.5)
             }
         } else {
-            // Progressive track: the whole route drawn faint (the unflown
-            // look), a precomputed static polyline so it costs nothing per
-            // frame…
+            // Faint full route — thin, single, high-transparency context line.
             MapPolyline(coordinates: engine.rawCoordinates)
-                .stroke(.white.opacity(0.18), lineWidth: 2)
-            // …the flown part painted over it in the vario gradient…
-            ForEach(engine.flownRuns(upTo: elapsed)) { run in
-                MapPolyline(coordinates: run.coordinates)
-                    .stroke(VarioPalette.color(run.meanVario).opacity(0.7), lineWidth: 3.5)
-            }
-            // …and a brighter comet tail over the last few real seconds.
+                .stroke(.white.opacity(0.16), lineWidth: 1.5)
+            // Bright comet tail over the last few real seconds, faded by age.
             ForEach(engine.trailSlices(endingAt: elapsed, window: cometWindow, sliceCount: 8)) { slice in
                 MapPolyline(coordinates: slice.coordinates)
-                    .stroke(VarioPalette.color(slice.meanVario).opacity(0.15 + 0.85 * slice.ageFactor),
+                    .stroke(VarioPalette.color(slice.meanVario).opacity(0.2 + 0.8 * slice.ageFactor),
                             lineWidth: 4.5)
             }
         }
@@ -294,26 +324,29 @@ struct FlightReplayView: View {
 
     // MARK: - HUD (top)
 
+    /// One compact line that never wraps on a 393 pt iPhone (feedback #1):
+    /// three fixed-width, monospaced chips — altitude, vario, time — plus Done.
+    /// Speed lives in the bottom bar, not up here. Fixed widths +
+    /// `minimumScaleFactor` keep a 4-digit altitude and a negative vario on a
+    /// single line.
     private func hud(for sample: ReplaySample) -> some View {
-        HStack(alignment: .top) {
-            HStack(spacing: 14) {
-                hudItem(icon: "mountain.2.fill", value: sample.altitude.map { "\(Int($0)) m" } ?? "—")
-                hudItem(icon: "speedometer", value: sample.speed.map { "\(Int($0 * 3.6)) km/h" } ?? "—")
-                varioHudItem(sample.verticalSpeed)
-                hudItem(icon: "clock",
-                        value: Self.clockFormatter.string(from: engine.trackStart.addingTimeInterval(sample.time)))
-            }
-            .padding(.horizontal, 14)
-            .padding(.vertical, 10)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        HStack(spacing: 8) {
+            hudChip(icon: "mountain.2.fill",
+                    text: sample.altitude.map { "\(Int($0)) m" } ?? "—",
+                    width: 76)
+            varioChip(sample.verticalSpeed)
+            hudChip(icon: "clock",
+                    text: Self.clockFormatter.string(from: engine.trackStart.addingTimeInterval(sample.time)),
+                    width: 88)
 
-            Spacer()
+            Spacer(minLength: 6)
 
             Button { dismiss() } label: {
                 Text("Done")
                     .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
+                    .lineLimit(1)
+                    .padding(.horizontal, 12)
+                    .frame(height: 34)
                     .background(.ultraThinMaterial, in: Capsule())
             }
             .buttonStyle(.plain)
@@ -323,23 +356,30 @@ struct FlightReplayView: View {
         .padding(.top, 8)
     }
 
-    private func hudItem(icon: String, value: String) -> some View {
+    private func hudChip(icon: String, text: String, width: CGFloat) -> some View {
         HStack(spacing: 4) {
-            Image(systemName: icon).font(.caption).foregroundStyle(.secondary)
-            Text(value).font(.subheadline.monospacedDigit()).fontWeight(.semibold)
+            Image(systemName: icon).font(.caption2).foregroundStyle(.secondary)
+            Text(text)
+                .font(.footnote.monospacedDigit()).fontWeight(.semibold)
+                .lineLimit(1).minimumScaleFactor(0.6)
         }
+        .frame(width: width, height: 34)
+        .background(.ultraThinMaterial, in: Capsule())
     }
 
-    private func varioHudItem(_ verticalSpeed: Double?) -> some View {
-        HStack(spacing: 4) {
-            Image(systemName: (verticalSpeed ?? 0) >= 0 ? "arrow.up.right" : "arrow.down.right")
-                .font(.caption.weight(.bold))
-                .foregroundStyle(VarioPalette.color(verticalSpeed ?? 0))
+    private func varioChip(_ verticalSpeed: Double?) -> some View {
+        let v = verticalSpeed ?? 0
+        return HStack(spacing: 3) {
+            Image(systemName: v >= 0 ? "arrow.up" : "arrow.down")
+                .font(.caption2.weight(.bold))
             Text(verticalSpeed.map { String(format: "%+.1f", $0) } ?? "—")
-                .font(.subheadline.monospacedDigit())
-                .fontWeight(.semibold)
-                .foregroundStyle(VarioPalette.color(verticalSpeed ?? 0))
+                .font(.footnote.monospacedDigit()).fontWeight(.semibold)
+                .lineLimit(1).minimumScaleFactor(0.6)
         }
+        .foregroundStyle(VarioPalette.color(v))
+        .frame(width: 56, height: 34)
+        .background(.ultraThinMaterial, in: Capsule())
+        .accessibilityLabel("Vario \(verticalSpeed.map { String(format: "%+.1f meters per second", $0) } ?? "unknown")")
     }
 
     // MARK: - Controls (bottom)
@@ -473,36 +513,104 @@ struct FlightReplayView: View {
         }
     }
 
+    // MARK: - User camera gestures (the rig)
+
+    /// A finger went down on the map. Hand the camera to the user: cancel any
+    /// pending settle, drop any in-flight programmatic transition, and stop
+    /// driving until they let go.
+    private func beginUserInteraction() {
+        hasUserInteracted = true
+        captureWork?.cancel()
+        captureWork = nil
+        transition = nil
+        if !userInteracting { userInteracting = true }
+    }
+
+    /// The finger lifted. The map may still be decelerating, so wait a beat,
+    /// then snapshot its final framing into the rig and resume driving from
+    /// exactly there. Overview is free-pan and owns no rig.
+    private func endUserInteraction() {
+        guard mode != .overview else { userInteracting = false; return }
+        captureWork?.cancel()
+        let work = DispatchWorkItem {
+            captureRigFromMap()
+            userInteracting = false
+            cameraAnimating = true          // wake the tick so follow eases in
+            captureWork = nil
+        }
+        captureWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + settleDelay, execute: work)
+    }
+
+    /// Decompose the map's current framing back into rig parameters. Heading is
+    /// stored *relative to the flight direction* so the offset persists as the
+    /// pilot turns (the drone-rig behaviour). Each mode keeps only the rig
+    /// parameters it actually honours, so a tilt in Top-down (say) doesn't stick.
+    private func captureRigFromMap() {
+        guard let o = lastObserved else { return }
+        let trackHeading = engine.interpolate(at: elapsed).heading
+        switch mode {
+        case .chase:
+            rig.distance = CameraRig.clampDistance(o.distance)
+            rig.pitch = CameraRig.clampPitch(o.pitch)
+            rig.headingOffset = ReplayEngine.angleDelta(trackHeading, o.heading)
+        case .orbit:
+            rig.distance = CameraRig.clampDistance(o.distance)
+            rig.pitch = CameraRig.clampPitch(o.pitch)
+            orbitAngle = o.heading          // keep spinning from where they left it
+        case .topDown:
+            rig.distance = CameraRig.clampDistance(o.distance)
+        case .overview:
+            break
+        }
+        cam = o                             // seamless: follow eases on from here
+    }
+
     // MARK: - Camera driver
 
     /// Starts an eased transition from the current on-screen framing to a mode.
     private func beginTransition(to newMode: CameraMode, duration: TimeInterval = 1.0) {
         let from = lastObserved ?? cam
         cam = from
-        if newMode == .orbit { orbitAngle = from.heading }   // start aligned, then rotate
+        if newMode == .orbit {                          // start aligned to the rig
+            orbitAngle = engine.interpolate(at: elapsed).heading + rig.headingOffset
+        }
         mode = newMode
         transition = CameraTransition(from: from, start: Date(), duration: duration)
-        lastProgrammaticCameraChange = Date()
-        cameraAnimating = true                                // wakes the timer
+        cameraAnimating = true                          // wakes the timer
     }
 
-    /// The framing the camera wants *right now* for the current pilot sample.
+    /// The framing the camera wants *right now* — the rig applied to the live
+    /// pilot anchor. Each mode is just a different application of the rig.
     private func cameraTarget(_ s: ReplaySample) -> CamState {
         switch mode {
         case .chase:
-            return CamState(center: s.coordinate, distance: userDistance, pitch: userPitch, heading: s.heading)
+            return CamState(center: s.coordinate,
+                            distance: rig.distance,
+                            pitch: rig.pitch,
+                            heading: (s.heading + rig.headingOffset).truncatingRemainder(dividingBy: 360))
         case .orbit:
-            return CamState(center: s.coordinate, distance: max(userDistance, 700) * 1.1, pitch: 58, heading: orbitAngle)
+            return CamState(center: s.coordinate,
+                            distance: max(rig.distance, 600),
+                            pitch: min(max(rig.pitch, 35), 75),
+                            heading: orbitAngle)
         case .topDown:
-            return CamState(center: s.coordinate, distance: max(userDistance, 600) * 1.25, pitch: 0, heading: s.heading)
+            return CamState(center: s.coordinate,
+                            distance: max(rig.distance, 500),
+                            pitch: 0,
+                            heading: s.heading)
         case .overview:
-            return CamState(center: engine.centerCoordinate, distance: engine.overviewDistance, pitch: 0, heading: 0)
+            return CamState(center: engine.centerCoordinate,
+                            distance: engine.overviewDistance,
+                            pitch: 0, heading: 0)
         }
     }
 
-    /// One camera step: run an active transition, hand control to the user in
-    /// overview, otherwise ease the live camera toward the follow target.
+    /// One camera step: while the user is touching, do nothing (they own it);
+    /// otherwise run an active transition, hand control to the user in overview,
+    /// or ease the live camera toward the follow target.
     private func stepCamera(dt: Double, now: Date) {
+        if userInteracting { return }               // never fight a live gesture
         let target = cameraTarget(engine.interpolate(at: elapsed))
         if let tr = transition {
             let p = tr.duration > 0 ? min(now.timeIntervalSince(tr.start) / tr.duration, 1) : 1
@@ -528,22 +636,21 @@ struct FlightReplayView: View {
         }
     }
 
-    /// Exponential ease of the live framing toward the target (slight center
-    /// lag reads as cinematic; heading follows the shortest arc). Distance and
-    /// pitch are *snapped* to the target within a mode, not eased: easing them
-    /// would feed our own intermediate values back through `onMapCameraChange`
-    /// and corrupt the captured chase framing. Cross-mode distance/pitch
-    /// changes are animated by `mix` during a transition instead (where capture
-    /// is suppressed).
+    /// Exponential ease of the live framing toward the target. Center lags
+    /// slightly (reads as cinematic); heading follows the shortest arc; distance
+    /// and pitch ease too. Because the rig is captured only on gesture-end (not
+    /// from `onMapCameraChange`), easing these can no longer feed back and
+    /// corrupt the saved framing.
     private func follow(_ c: CamState, toward t: CamState, dt: Double) -> CamState {
         let kCenter = 1 - exp(-dt / 0.18)
         let kHeading = 1 - exp(-dt / 0.30)
+        let kZoom = 1 - exp(-dt / 0.25)
         return CamState(
             center: CLLocationCoordinate2D(
                 latitude: c.center.latitude + (t.center.latitude - c.center.latitude) * kCenter,
                 longitude: c.center.longitude + (t.center.longitude - c.center.longitude) * kCenter),
-            distance: t.distance,
-            pitch: t.pitch,
+            distance: c.distance + (t.distance - c.distance) * kZoom,
+            pitch: c.pitch + (t.pitch - c.pitch) * kZoom,
             heading: ReplayEngine.lerpAngle(from: c.heading, to: t.heading, factor: kHeading)
         )
     }
@@ -612,15 +719,15 @@ struct FlightReplayView: View {
                 cameraAnimating = true          // let the camera settle at the end
             }
             elapsed = next
-            if mode == .orbit {
+            if mode == .orbit && !userInteracting {
                 orbitAngle = (orbitAngle + orbitRate * dt).truncatingRemainder(dividingBy: 360)
             }
         }
 
         if !isScrubbing { stepCamera(dt: dt, now: now) }
 
-        // Let the tick sleep once we're paused and fully settled.
-        if !isPlaying && transition == nil && cameraConverged() {
+        // Let the tick sleep once we're paused, settled, and not mid-gesture.
+        if !isPlaying && !userInteracting && transition == nil && cameraConverged() {
             if cameraAnimating { cameraAnimating = false }
         }
     }

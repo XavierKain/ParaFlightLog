@@ -73,6 +73,9 @@ struct CommunitySpotSummary: Identifiable {
     let longitude: Double
     var flightsLast30Days: Int
     var pilotsFlyingNow: Int
+    /// Effective type of this community spot (raw `FlightType` value), or nil
+    /// when the spot has no type yet. Written by the sharer's `ensureCommunitySpot`.
+    var spotType: String?
 
     var id: String { spotKey }
 }
@@ -204,6 +207,9 @@ final class CommunityService {
         let latitude: Double
         let longitude: Double
         let spotKey: String
+        /// Effective spot type (pinned `spotType`, else derived
+        /// `dominantFlightType`) as a raw `FlightType` value — nil when none.
+        let spotType: String?
         // Weather at takeoff (Phase 2 learning) — best-effort, any may be nil.
         let takeoffWindSpeed: Double?
         let takeoffWindGusts: Double?
@@ -228,6 +234,7 @@ final class CommunityService {
             latitude: latitude,
             longitude: longitude,
             spotKey: spotKey,
+            spotType: spot.spotType ?? spot.dominantFlightType?.rawValue,
             takeoffWindSpeed: flight.takeoffWindSpeed,
             takeoffWindGusts: flight.takeoffWindGusts,
             takeoffWindDirection: flight.takeoffWindDirection
@@ -283,6 +290,7 @@ final class CommunityService {
                 name: snapshot.spotName,
                 latitude: snapshot.latitude,
                 longitude: snapshot.longitude,
+                spotType: snapshot.spotType,
                 userId: userId
             )
         }
@@ -306,20 +314,27 @@ final class CommunityService {
     /// Creates the shared community spot document if it doesn't exist yet
     /// (document ID = spot key). An "already exists" conflict is a success —
     /// another pilot seeded the spot first.
-    private func ensureCommunitySpot(key: String, name: String, latitude: Double, longitude: Double, userId: String) async throws {
+    private func ensureCommunitySpot(key: String, name: String, latitude: Double, longitude: Double, spotType: String? = nil, userId: String) async throws {
         guard !ensuredSpotKeys.contains(key) else { return }
+
+        var data: [String: Any] = [
+            "name": String(name.prefix(128)),
+            "latitude": Self.round2(latitude),
+            "longitude": Self.round2(longitude),
+            "createdBy": userId
+        ]
+        // Optional `spotType` column (nil-safe): only written when a type is
+        // known, so an untyped spot never sets the column at all.
+        if let spotType {
+            data["spotType"] = String(spotType.prefix(20))
+        }
 
         do {
             _ = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
                 tableId: AppwriteConfig.communitySpotsCollectionId,
                 rowId: key,
-                data: [
-                    "name": String(name.prefix(128)),
-                    "latitude": Self.round2(latitude),
-                    "longitude": Self.round2(longitude),
-                    "createdBy": userId
-                ],
+                data: data,
                 permissions: Self.sharedDocumentPermissions(userId: userId)
             )
             logInfo("Community spot created: \(key)", category: .community)
@@ -690,6 +705,7 @@ final class CommunityService {
                     guard let latitude = Self.doubleValue(data["latitude"]),
                           let longitude = Self.doubleValue(data["longitude"]) else { continue }
                     let name = (data["name"]?.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? row.id
+                    let spotType = (data["spotType"]?.value as? String).flatMap { $0.isEmpty ? nil : $0 }
                     indexByKey[row.id] = summaries.count
                     summaries.append(CommunitySpotSummary(
                         spotKey: row.id,
@@ -697,7 +713,8 @@ final class CommunityService {
                         latitude: latitude,
                         longitude: longitude,
                         flightsLast30Days: 0,
-                        pilotsFlyingNow: 0
+                        pilotsFlyingNow: 0,
+                        spotType: spotType
                     ))
                 }
                 guard page.rows.count == 100, let last = page.rows.last else { break }

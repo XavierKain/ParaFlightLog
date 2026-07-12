@@ -24,6 +24,7 @@
 
 import Foundation
 import SwiftUI // ReportStatus/WindForce carry a display Color
+import CoreLocation // distance-sorting local spots for the "near me" view
 import CryptoKit // deterministic subscription document IDs
 import Appwrite // re-exports JSONCodable (AnyCodable), Query, ID, Permission, Role
 
@@ -370,6 +371,29 @@ final class ConditionReportService {
             logInfo("Recent reports unavailable for \(spotKey): \(error)", category: .community)
             throw Self.mapError(error)
         }
+    }
+
+    // MARK: - Nearby spots (local, "report near me")
+
+    /// Local spots sorted by great-circle distance from `origin`, nearest first
+    /// and capped at `limit`. Spots without coordinates are dropped. Pure and
+    /// read-only (no network) so the "spots near me" view stays thin — uses the
+    /// same `CLLocation.distance` metric as `DataController.nearestSpot`.
+    func nearbySpots(
+        from origin: CLLocationCoordinate2D,
+        spots: [Spot],
+        limit: Int = 15
+    ) -> [(spot: Spot, distanceMeters: Double)] {
+        let target = CLLocation(latitude: origin.latitude, longitude: origin.longitude)
+        return spots
+            .compactMap { spot -> (spot: Spot, distanceMeters: Double)? in
+                guard let lat = spot.latitude, let lon = spot.longitude else { return nil }
+                let distance = target.distance(from: CLLocation(latitude: lat, longitude: lon))
+                return (spot, distance)
+            }
+            .sorted { $0.distanceMeters < $1.distanceMeters }
+            .prefix(limit)
+            .map { $0 }
     }
 
     // MARK: - Subscriptions (follow a spot)
