@@ -413,6 +413,7 @@ struct SpotReportsSection: View {
 
 private struct ConsensusBanner: View {
     let consensus: ReportConsensus
+    @AppStorage(WindUnit.storageKey) private var windUnit: WindUnit = .kmh
 
     var body: some View {
         let report = consensus.latest
@@ -441,7 +442,7 @@ private struct ConsensusBanner: View {
             conditions.append(WeatherService.degreesToCompass(direction))
         }
         if let force = report.windForce {
-            conditions.append(force.label.lowercased())
+            conditions.append("\(force.label.lowercased()) \(force.rangeHint(in: windUnit))")
         }
         if !conditions.isEmpty {
             parts.append(conditions.joined(separator: " "))
@@ -463,6 +464,7 @@ private struct ConsensusBanner: View {
 
 private struct ReportRow: View {
     let report: SpotReport
+    @AppStorage(WindUnit.storageKey) private var windUnit: WindUnit = .kmh
 
     var body: some View {
         HStack(spacing: 10) {
@@ -514,7 +516,7 @@ private struct ReportRow: View {
             parts.append(WeatherService.degreesToCompass(direction))
         }
         if let force = report.windForce {
-            parts.append(force.label.lowercased())
+            parts.append("\(force.label.lowercased()) \(force.rangeHint(in: windUnit))")
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
@@ -569,13 +571,14 @@ private struct StatusChip: View {
 private struct ForceChip: View {
     let force: WindForce
     let isSelected: Bool
+    @AppStorage(WindUnit.storageKey) private var windUnit: WindUnit = .kmh
 
     var body: some View {
         VStack(spacing: 2) {
             Text(force.label)
                 .font(.caption.weight(.medium))
                 .foregroundStyle(isSelected ? .white : .primary)
-            Text("\(force.kmhHint) km/h")
+            Text(force.rangeHint(in: windUnit))
                 .font(.caption2)
                 .foregroundStyle(isSelected ? Color.white.opacity(0.85) : .secondary)
         }

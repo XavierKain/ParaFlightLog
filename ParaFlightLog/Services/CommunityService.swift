@@ -63,15 +63,51 @@ struct SpotCommunityStats {
 
 // MARK: - Explore models (Step D, client-side v1)
 
+/// Time window for the Explore activity decoration (shared-flight counts and
+/// busyness colouring). Presence ("flying now") is always live, independent
+/// of this. `.allTime` applies no date filter at all — see the undercount
+/// note in `exploreSpots`.
+enum ExplorePeriod: Equatable, Hashable {
+    /// Rolling last 24 hours.
+    case day
+    /// Rolling last 30 days (the historical default).
+    case month
+    /// Rolling last 365 days.
+    case year
+    /// No date filter.
+    case allTime
+    /// Explicit inclusive [start, end] range.
+    case custom(start: Date, end: Date)
+
+    /// Inclusive lower bound for the activity query, or nil for `.allTime`
+    /// (which applies no date filter). Rolling windows are measured from `now`.
+    func startDate(now: Date = Date()) -> Date? {
+        switch self {
+        case .day:     return now.addingTimeInterval(-24 * 3600)
+        case .month:   return now.addingTimeInterval(-30 * 24 * 3600)
+        case .year:    return now.addingTimeInterval(-365 * 24 * 3600)
+        case .allTime: return nil
+        case .custom(let start, _): return start
+        }
+    }
+
+    /// Inclusive upper bound — only `.custom` has one; nil means "up to now".
+    var endDate: Date? {
+        if case .custom(_, let end) = self { return end }
+        return nil
+    }
+}
+
 /// One community spot on the Explore map/list: identity + coordinates from
-/// `community_spots`, decorated with recent activity (shared flights in the
-/// last 30 days) and live presence, both aggregated on device.
+/// `community_spots`, decorated with recent activity (shared flights within
+/// the selected `ExplorePeriod`) and live presence, both aggregated on device.
 struct CommunitySpotSummary: Identifiable {
     let spotKey: String
     let name: String
     let latitude: Double
     let longitude: Double
-    var flightsLast30Days: Int
+    /// Shared-flight count within the Explore period this summary was built for.
+    var flightsInPeriod: Int
     var pilotsFlyingNow: Int
     /// Effective type of this community spot (raw `FlightType` value), or nil
     /// when the spot has no type yet. Written by the sharer's `ensureCommunitySpot`.
@@ -120,9 +156,10 @@ final class CommunityService {
     private var statsCache: [String: (stats: SpotCommunityStats, fetchedAt: Date)] = [:]
     private static let statsCacheTTL: TimeInterval = 15 * 60
 
-    /// Explore screen cache (all community spots + activity), 15-minute TTL.
-    /// Single entry: the whole screen is built from one aggregate fetch.
-    private var exploreCache: (spots: [CommunitySpotSummary], fetchedAt: Date)?
+    /// Explore screen cache (all community spots + activity), 15-minute TTL,
+    /// keyed by `ExplorePeriod` so switching windows is snappy and each window
+    /// keeps its own decorated spots. Presence is re-read on every fetch.
+    private var exploreCache: [ExplorePeriod: (spots: [CommunitySpotSummary], fetchedAt: Date)] = [:]
 
     /// Recent shared flights per spot key (Explore detail sheet), 15-minute TTL.
     private var recentFlightsCache: [String: (flights: [SharedFlightSummary], fetchedAt: Date)] = [:]
@@ -307,7 +344,7 @@ final class CommunityService {
         statsCache.removeValue(forKey: snapshot.spotKey)
         recentFlightsCache.removeValue(forKey: snapshot.spotKey)
         windObsCache.removeValue(forKey: snapshot.spotKey)
-        exploreCache = nil
+        exploreCache.removeAll()
         return snapshot.spotKey
     }
 
@@ -479,7 +516,7 @@ final class CommunityService {
             statsCache.removeAll()
             recentFlightsCache.removeAll()
             windObsCache.removeAll()
-            exploreCache = nil
+            exploreCache.removeAll()
             logInfo("Deleted \(deleted) shared flights for user \(userId)", category: .community)
         } catch {
             logWarning("Unshare-all failed: \(error)", category: .community)
@@ -671,14 +708,17 @@ final class CommunityService {
 
     /// All community spots with recent activity for the Explore screen:
     /// lists `community_spots` (paginated, ~500 cap), then a paginated query
-    /// on `shared_flights` (last 30 days, ~1000 cap) and one on `presence`
-    /// (non-expired, ~1000 cap), both grouped by spot key on device. The spots list is authoritative —
-    /// the two activity queries are decoration and fail soft to zero counts.
-    /// Cached in memory for 15 minutes (single entry); `forceRefresh` is the
-    /// pull-to-refresh bypass.
-    func exploreSpots(forceRefresh: Bool = false) async throws -> [CommunitySpotSummary] {
+    /// on `shared_flights` (restricted to `period`, ~1000 cap) and one on
+    /// `presence` (non-expired, ~1000 cap), both grouped by spot key on device.
+    /// The spots list is authoritative — the two activity queries are
+    /// decoration and fail soft to zero counts. Cached in memory for 15
+    /// minutes PER period (switching windows is instant once loaded);
+    /// `forceRefresh` is the pull-to-refresh bypass.
+    /// - Parameter period: activity window for the flight counts. Presence
+    ///   ("flying now") is always live and independent of it.
+    func exploreSpots(period: ExplorePeriod = .month, forceRefresh: Bool = false) async throws -> [CommunitySpotSummary] {
         if !forceRefresh,
-           let cache = exploreCache,
+           let cache = exploreCache[period],
            Date().timeIntervalSince(cache.fetchedAt) < Self.statsCacheTTL {
             return cache.spots
         }
@@ -712,7 +752,7 @@ final class CommunityService {
                         name: name,
                         latitude: latitude,
                         longitude: longitude,
-                        flightsLast30Days: 0,
+                        flightsInPeriod: 0,
                         pilotsFlyingNow: 0,
                         spotType: spotType
                     ))
@@ -725,22 +765,30 @@ final class CommunityService {
             throw Self.mapError(error)
         }
 
-        // 2. Shared flights in the last 30 days, grouped by spot key.
+        // 2. Shared flights within the selected period, grouped by spot key.
         //    Query.select keeps the payload tiny ("$id" kept explicitly —
         //    cursor pagination and row decoding both need it).
+        //    `.allTime` applies NO date filter, so on a very busy global
+        //    dataset the ~1000-row cap in `listAllRows` can be hit and the
+        //    per-spot counts would then UNDERCOUNT. Acceptable for this v1
+        //    client-side decoration; a server-side aggregate removes the cap.
         do {
-            let since = Self.isoString(from: Date().addingTimeInterval(-30 * 24 * 3600))
+            let now = Date()
+            var flightQueries: [String] = [Query.select(["spotKey", "$id"])]
+            if let start = period.startDate(now: now) {
+                flightQueries.append(Query.greaterThan("date", value: Self.isoString(from: start)))
+            }
+            if let end = period.endDate {
+                flightQueries.append(Query.lessThanEqual(attribute: "date", value: Self.isoString(from: end)))
+            }
             let flightRows = try await listAllRows(
                 tableId: AppwriteConfig.sharedFlightsCollectionId,
-                queries: [
-                    Query.greaterThan("date", value: since),
-                    Query.select(["spotKey", "$id"])
-                ]
+                queries: flightQueries
             )
             for row in flightRows {
                 guard let key = row.data["spotKey"]?.value as? String,
                       let index = indexByKey[key] else { continue }
-                summaries[index].flightsLast30Days += 1
+                summaries[index].flightsInPeriod += 1
             }
         } catch {
             logInfo("Explore flight counts unavailable: \(error)", category: .community)
@@ -765,7 +813,7 @@ final class CommunityService {
         }
 
         summaries.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
-        exploreCache = (summaries, Date())
+        exploreCache[period] = (summaries, Date())
         logInfo("Explore loaded \(summaries.count) community spots", category: .community)
         return summaries
     }

@@ -64,7 +64,7 @@ struct SpotLearnedWindowSection: View {
 
     private func windowRow(_ window: SpotIntelligenceService.LearnedWindow) -> some View {
         HStack(alignment: .center, spacing: 16) {
-            WindRose(sectors: window.sectors)
+            WindRose(sectors: window.sectors, observedSectors: window.observedSectors)
                 .frame(width: 108, height: 108)
                 .accessibilityLabel(roseAccessibilityText(window))
 
@@ -145,9 +145,13 @@ struct SpotLearnedWindowSection: View {
 // MARK: - WindRose
 
 /// Compact 8-point wind rose: each 45° wedge is tinted by its sector's
-/// relative support (flight count / PGE rating). North is up.
+/// relative support (flight count / PGE rating). North is up. Sectors that were
+/// observed but fell below the significance threshold (so they don't drive
+/// flyability) are drawn very faintly, so the pilot still sees the raw data.
 private struct WindRose: View {
     let sectors: [String: Int]
+    /// Raw observed counts (pre-threshold); sub-threshold sectors render dimmed.
+    var observedSectors: [String: Int] = [:]
 
     private var maxCount: Int {
         max(sectors.values.max() ?? 1, 1)
@@ -173,8 +177,13 @@ private struct WindRose: View {
 
                 let color: Color
                 if count > 0 {
+                    // Significant sector: drives flyability, full-strength tint.
                     let intensity = Double(count) / Double(maxCount)
                     color = Color.accentColor.opacity(0.28 + 0.62 * intensity)
+                } else if (observedSectors[point] ?? 0) > 0 {
+                    // Observed but sub-threshold: shown very faintly so the raw
+                    // data is visible, but it does NOT drive flyability.
+                    color = Color.accentColor.opacity(0.10)
                 } else {
                     color = Color.gray.opacity(0.12)
                 }

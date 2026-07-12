@@ -3,9 +3,10 @@
 //  ParaFlightLog
 //
 //  "Explore" screen (roadmap Step D v1): community spots on a map or list,
-//  decorated with recent activity (shared flights, last 30 days) and live
-//  presence, plus a detail sheet with community stats, current conditions
-//  and the spot's recent shared flights.
+//  decorated with recent activity (shared flights within a selectable time
+//  window — today / 30 days / 1 year / all time / custom) and live presence,
+//  plus a detail sheet with community stats, current conditions and the
+//  spot's recent shared flights.
 //
 //  Pushed from the Home dashboard (card + toolbar globe) — it assumes it
 //  lives inside a NavigationStack and is NOT a tab (tab promotion is a
@@ -41,6 +42,15 @@ struct ExploreView: View {
     /// type. Untyped spots show only under "All", hidden under a specific type.
     @State private var typeFilter: FlightType?
 
+    /// Activity window for the shared-flight counts/colouring (presence is
+    /// always live). Defaults to the historical 30-day window.
+    @State private var period: ExplorePeriod = .month
+    /// Presented by the "Custom…" menu entry; two DatePickers seed a
+    /// `.custom` period on Apply.
+    @State private var showingCustomSheet = false
+    @State private var customStart = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+    @State private var customEnd = Date()
+
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
     /// The camera is fitted to the spots once, on first load — not on every
     /// refresh, which would yank the map away from where the pilot panned.
@@ -68,6 +78,11 @@ struct ExploreView: View {
                         typeFilterMenu
                     }
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    if let spots, !spots.isEmpty {
+                        periodMenu
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         Task { await load(force: true) }
@@ -81,9 +96,18 @@ struct ExploreView: View {
             .task {
                 await load(force: false)
             }
+            // Switching windows re-reads (cache is keyed per period, so an
+            // already-loaded window returns instantly). Reuses the same
+            // reentrancy-guarded loader as .task/refresh/retry.
+            .onChange(of: period) { _, _ in
+                Task { await load(force: false) }
+            }
             .sheet(item: $selectedSpot) { spot in
                 CommunitySpotSheet(summary: spot)
                     .presentationDetents([.medium, .large])
+            }
+            .sheet(isPresented: $showingCustomSheet) {
+                customRangeSheet
             }
     }
 
@@ -108,6 +132,62 @@ struct ExploreView: View {
             )
         }
         .accessibilityLabel("Filter by spot type")
+    }
+
+    /// Toolbar activity-window selector. The current window's short label is
+    /// the menu title (also the "selected period" chip). "Custom…" opens a
+    /// two-DatePicker sheet.
+    private var periodMenu: some View {
+        Menu {
+            Picker("Activity period", selection: $period) {
+                Text("Today").tag(ExplorePeriod.day)
+                Text("30 days").tag(ExplorePeriod.month)
+                Text("1 year").tag(ExplorePeriod.year)
+                Text("All time").tag(ExplorePeriod.allTime)
+            }
+            Divider()
+            Button {
+                // Seed the pickers from the active custom range, if any.
+                if case .custom(let start, let end) = period {
+                    customStart = start
+                    customEnd = end
+                }
+                showingCustomSheet = true
+            } label: {
+                Label("Custom…", systemImage: "calendar")
+            }
+        } label: {
+            Label(period.menuLabel, systemImage: "clock.arrow.circlepath")
+        }
+        .accessibilityLabel("Activity period: \(period.menuLabel)")
+    }
+
+    /// Two-date range picker for a `.custom` window. End is normalised to the
+    /// end of its day on Apply so the whole day is included.
+    private var customRangeSheet: some View {
+        NavigationStack {
+            Form {
+                DatePicker("From", selection: $customStart, in: ...customEnd, displayedComponents: .date)
+                DatePicker("To", selection: $customEnd, in: customStart..., displayedComponents: .date)
+            }
+            .navigationTitle("Custom range")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") { showingCustomSheet = false }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Apply") {
+                        let calendar = Calendar.current
+                        let start = calendar.startOfDay(for: customStart)
+                        let end = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: customEnd) ?? customEnd
+                        period = .custom(start: start, end: end)
+                        showingCustomSheet = false
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     /// Keeps only the spots matching the active type filter. "All types"
@@ -239,7 +319,7 @@ struct ExploreView: View {
         Map(position: $cameraPosition) {
             ForEach(spots) { spot in
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: spot.latitude, longitude: spot.longitude)) {
-                    CommunitySpotBadge(spot: spot, tint: color(for: spot))
+                    CommunitySpotBadge(spot: spot, tint: color(for: spot), periodPhrase: period.activityPhrase)
                         .onTapGesture {
                             selectedSpot = spot
                         }
@@ -293,14 +373,14 @@ struct ExploreView: View {
         }
     }
 
-    /// Live spots first, then the busiest of the last 30 days, then A→Z.
+    /// Live spots first, then the busiest within the selected window, then A→Z.
     private static func listOrder(_ spots: [CommunitySpotSummary]) -> [CommunitySpotSummary] {
         spots.sorted {
             if $0.pilotsFlyingNow != $1.pilotsFlyingNow {
                 return $0.pilotsFlyingNow > $1.pilotsFlyingNow
             }
-            if $0.flightsLast30Days != $1.flightsLast30Days {
-                return $0.flightsLast30Days > $1.flightsLast30Days
+            if $0.flightsInPeriod != $1.flightsInPeriod {
+                return $0.flightsInPeriod > $1.flightsInPeriod
             }
             return $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending
         }
@@ -339,7 +419,7 @@ struct ExploreView: View {
     }
 
     private func activityText(_ spot: CommunitySpotSummary) -> Text {
-        let base = Text("^[\(spot.flightsLast30Days) flight](inflect: true) in the last 30 days")
+        let base = Text("^[\(spot.flightsInPeriod) flight](inflect: true) \(period.activityPhrase)")
         guard spot.pilotsFlyingNow > 0 else { return base }
         // Interpolating styled Text runs (iOS 26 replaces the deprecated Text `+`).
         let live = Text(" · 🪂 \(spot.pilotsFlyingNow) flying now")
@@ -358,7 +438,7 @@ struct ExploreView: View {
         isLoading = true
         loadFailed = false
         do {
-            let result = try await CommunityService.shared.exploreSpots(forceRefresh: force)
+            let result = try await CommunityService.shared.exploreSpots(period: period, forceRefresh: force)
             spots = result
             backendUnavailable = false
             if !didFitCamera, let region = Self.fitRegion(result) {
@@ -394,7 +474,7 @@ struct ExploreView: View {
                 if $0.pilotsFlyingNow != $1.pilotsFlyingNow {
                     return $0.pilotsFlyingNow > $1.pilotsFlyingNow
                 }
-                return $0.flightsLast30Days > $1.flightsLast30Days
+                return $0.flightsInPeriod > $1.flightsInPeriod
             }
             .prefix(Self.flyabilityBudget)
         )
@@ -445,13 +525,15 @@ struct ExploreView: View {
 
 // MARK: - CommunitySpotBadge (map annotation)
 
-/// Capsule with the spot name and its 30-day activity, tinted by how busy
-/// the spot is (gray: none, blue: 1–9 flights, orange: 10+). A pulsing
-/// green "🪂 N" badge sits on top while pilots are flying there right now.
+/// Capsule with the spot name and its activity in the selected window, tinted
+/// by how busy the spot is (gray: none, blue: 1–9 flights, orange: 10+). A
+/// pulsing green "🪂 N" badge sits on top while pilots are flying there now.
 private struct CommunitySpotBadge: View {
     let spot: CommunitySpotSummary
     /// Resolved colour: current-forecast flyability when known, else activity.
     let tint: Color
+    /// Activity-window phrase for the accessibility label (e.g. "in the last 30 days").
+    let periodPhrase: String
 
     @State private var pulsing = false
 
@@ -473,8 +555,8 @@ private struct CommunitySpotBadge: View {
                 Text(spot.name)
                     .font(.caption.weight(.semibold))
                     .lineLimit(1)
-                if spot.flightsLast30Days > 0 {
-                    Text("\(spot.flightsLast30Days)")
+                if spot.flightsInPeriod > 0 {
+                    Text("\(spot.flightsInPeriod)")
                         .font(.caption2.weight(.bold))
                         .foregroundStyle(.white)
                         .padding(.horizontal, 5)
@@ -495,7 +577,7 @@ private struct CommunitySpotBadge: View {
     }
 
     private var accessibilityText: String {
-        var text = "\(spot.name), \(spot.flightsLast30Days) flights in the last 30 days"
+        var text = "\(spot.name), \(spot.flightsInPeriod) flights \(periodPhrase)"
         if spot.pilotsFlyingNow > 0 {
             text += ", \(spot.pilotsFlyingNow) flying now"
         }
@@ -504,12 +586,38 @@ private struct CommunitySpotBadge: View {
 }
 
 private extension CommunitySpotSummary {
-    /// Visual hierarchy of the last 30 days: gray (quiet), blue, orange (busy).
+    /// Visual hierarchy of the selected window: gray (quiet), blue, orange (busy).
     var activityColor: Color {
-        switch flightsLast30Days {
+        switch flightsInPeriod {
         case 0: return .gray
         case 1...9: return .blue
         default: return .orange
+        }
+    }
+}
+
+private extension ExplorePeriod {
+    /// Short label for the toolbar menu title / selected-period chip.
+    var menuLabel: String {
+        switch self {
+        case .day:     return "Today"
+        case .month:   return "30 days"
+        case .year:    return "1 year"
+        case .allTime: return "All time"
+        case .custom:  return "Custom"
+        }
+    }
+
+    /// Trailing phrase for activity counts, e.g. "12 flights <phrase>".
+    var activityPhrase: String {
+        switch self {
+        case .day:     return "in the last 24 hours"
+        case .month:   return "in the last 30 days"
+        case .year:    return "in the last year"
+        case .allTime: return "all time"
+        case .custom(let start, let end):
+            let style = Date.FormatStyle.dateTime.month(.abbreviated).day()
+            return "\(start.formatted(style))–\(end.formatted(style))"
         }
     }
 }

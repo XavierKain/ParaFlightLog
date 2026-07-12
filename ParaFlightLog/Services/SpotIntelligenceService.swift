@@ -40,8 +40,10 @@ final class SpotIntelligenceService {
         }
 
         /// Compass point ("N"…"NW") → supporting weight. For `.learned` this
-        /// is a flight COUNT; for `.seeded` it is the PGE rating (1 or 2);
-        /// for `.configured` it is 1 per selected direction.
+        /// is a flight COUNT — but ONLY the sectors that passed the significance
+        /// threshold (so outliers don't drive flyability); for `.seeded` it is
+        /// the PGE rating (1 or 2); for `.configured` it is 1 per selected
+        /// direction.
         var sectors: [String: Int]
         /// 10th–90th percentile of observed wind speed (km/h). Nil for a
         /// seeded/configured window with no observed speeds behind it.
@@ -49,6 +51,11 @@ final class SpotIntelligenceService {
         /// Number of real observations behind the window (0 for seeded/configured).
         var totalFlights: Int
         var source: Source
+        /// Every observed sector's RAW count before the significance threshold,
+        /// for display only. The wind rose renders sub-threshold sectors dimmed
+        /// so the pilot still sees the raw data even though it doesn't drive
+        /// flyability. Empty for seeded/configured windows.
+        var observedSectors: [String: Int] = [:]
 
         /// Empty windows carry no direction information at all.
         var isEmpty: Bool { sectors.isEmpty }
@@ -166,7 +173,10 @@ final class SpotIntelligenceService {
         let learned = Self.buildLearnedWindow(from: observations)
 
         let result: LearnedWindow
-        if learned.totalFlights >= Self.minLearnedFlights {
+        // `!learned.isEmpty`: with enough flights but NO sector clearing the
+        // significance threshold (scattered/outlier data), treat the spot as
+        // unlearned and fall through to the seed/configured chain.
+        if learned.totalFlights >= Self.minLearnedFlights && !learned.isEmpty {
             result = learned
         } else if allowSeed,
                   let seeded = await seededWindow(
@@ -189,20 +199,40 @@ final class SpotIntelligenceService {
 
     // MARK: - Window building
 
-    /// Buckets observations into 8 compass sectors (count each) and derives a
-    /// p10–p90 speed range. `.learned` source; empty when there are none.
+    /// Buckets observations into 8 compass sectors and keeps only the ones that
+    /// pass a significance threshold — a sector is `.learned` only when it holds
+    /// at least `max(2, ~20% of the observations)`. Sub-threshold sectors are
+    /// dropped from the window (a wrong geocode, one anomalous flight, or rounded
+    /// bad data would otherwise inject a false flying direction) but retained in
+    /// `observedSectors` so the rose can still show them, dimmed. A p10–p90 speed
+    /// range comes from ALL observations. `.learned` source; `sectors` is empty
+    /// (→ the caller falls back as if unlearned) when nothing passes.
     private static func buildLearnedWindow(from observations: [WindSample]) -> LearnedWindow {
         guard !observations.isEmpty else {
             return LearnedWindow(sectors: [:], speedRange: nil, totalFlights: 0, source: .learned)
         }
-        var sectors: [String: Int] = [:]
+        // Raw per-sector observation counts (kept for display).
+        var observed: [String: Int] = [:]
         for obs in observations {
             let point = WeatherService.degreesToCompass(obs.dir)
-            sectors[point, default: 0] += 1
+            observed[point, default: 0] += 1
         }
+        // Significance threshold: a real share of the flights, and never a lone
+        // observation. 20% keeps the dominant one or two sectors of a spot while
+        // dropping the long tail of one-off wrong readings.
+        let total = observations.count
+        let threshold = max(2, Int((0.20 * Double(total)).rounded(.up)))
+        let sectors = observed.filter { $0.value >= threshold }
+
         let speeds = observations.map(\.speed).sorted()
         let range = percentileRange(sortedSpeeds: speeds, low: 0.10, high: 0.90)
-        return LearnedWindow(sectors: sectors, speedRange: range, totalFlights: observations.count, source: .learned)
+        return LearnedWindow(
+            sectors: sectors,
+            speedRange: range,
+            totalFlights: total,
+            source: .learned,
+            observedSectors: observed
+        )
     }
 
     /// A window from a spot's manually configured launch directions (weight 1

@@ -191,7 +191,7 @@ enum BackupError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unrecognizedFormat:
-            return "This is not a recognized ParaFlightLog backup: expected a .paraflightlog folder bundle (backup.json or wings.csv/flights.csv) or a single-file cloud backup (.paraflightlogx)."
+            return "This is not a recognized ParaFlightLog backup: expected a .paraflightlog folder bundle (backup.json or wings.csv/flights.csv) or a single-file cloud backup (.paraflightlogz / .paraflightlogx)."
         case .invalidManifest(let detail):
             return "The backup file is damaged: \(detail)"
         case .exportFailed(let detail):
@@ -203,6 +203,42 @@ enum BackupError: LocalizedError {
 // MARK: - BackupManager
 
 enum BackupManager {
+
+    // MARK: - Compressed cloud format
+
+    /// Magic prefix marking a compressed single-file cloud backup: the JSON is
+    /// zlib-compressed then base64-encoded, and this ASCII header is prepended
+    /// so import can detect the format from content alone (extension-agnostic).
+    static let compressedCloudMagic = "PFLZ1:"
+
+    /// File extension for the compressed cloud backup.
+    static let compressedCloudExtension = "paraflightlogz"
+
+    /// Compresses `json` to the `PFLZ1:` base64 payload string.
+    /// zlib (raw DEFLATE) via `NSData.compressed(using:)`, which round-trips
+    /// cleanly with `NSData.decompressed(using:)` on device.
+    nonisolated static func compressCloudPayload(_ json: Data) throws -> String {
+        let compressed = try (json as NSData).compressed(using: .zlib) as Data
+        return compressedCloudMagic + compressed.base64EncodedString()
+    }
+
+    /// Inverse of `compressCloudPayload`: strips the magic, base64-decodes and
+    /// inflates back to the original JSON bytes. Throws `invalidManifest` when
+    /// the payload is not a well-formed compressed backup.
+    nonisolated static func decompressCloudPayload(_ payload: String) throws -> Data {
+        guard payload.hasPrefix(compressedCloudMagic) else {
+            throw BackupError.invalidManifest("Not a compressed cloud backup.")
+        }
+        let base64 = String(payload.dropFirst(compressedCloudMagic.count))
+        guard let compressed = Data(base64Encoded: base64) else {
+            throw BackupError.invalidManifest("Corrupt compressed backup (base64).")
+        }
+        do {
+            return try (compressed as NSData).decompressed(using: .zlib) as Data
+        } catch {
+            throw BackupError.invalidManifest("Corrupt compressed backup (inflate).")
+        }
+    }
 
     // MARK: - Export (format v2)
 
@@ -294,10 +330,16 @@ enum BackupManager {
                 encoder.outputFormatting = [.sortedKeys]
                 let data = try encoder.encode(file)
 
+                // Compress (zlib) + base64 + magic header. Track-heavy JSON
+                // compresses ~8–12x, keeping the cloud payload well under the
+                // database column limit. The uncompressed path still imports
+                // (old cloud backups / other tools) — see parseSingleFile.
+                let payload = try compressCloudPayload(data)
+
                 let fileURL = FileManager.default.temporaryDirectory
-                    .appendingPathComponent("ParaFlightLog-backup.paraflightlogx")
+                    .appendingPathComponent("ParaFlightLog-backup.\(compressedCloudExtension)")
                 try? FileManager.default.removeItem(at: fileURL)
-                try data.write(to: fileURL, options: .atomic)
+                try Data(payload.utf8).write(to: fileURL, options: .atomic)
 
                 DispatchQueue.main.async {
                     completion(.success(fileURL))
@@ -485,14 +527,25 @@ enum BackupManager {
     /// Parses a single-file cloud backup: v2 manifest JSON + inline base64 images.
     /// Pure file/parse helper: `nonisolated`, runs on the import utility queue.
     private nonisolated static func parseSingleFile(fileURL: URL) throws -> ParsedBackup {
-        let fileData = try Data(contentsOf: fileURL)
+        let rawData = try Data(contentsOf: fileURL)
+
+        // Detect the compressed cloud format (`PFLZ1:` magic) from content, so
+        // the extension (.paraflightlogz / .paraflightlogx) doesn't matter.
+        // Fall back to plain JSON for legacy/uncompressed single-file backups.
+        let jsonData: Data
+        if rawData.starts(with: Array(compressedCloudMagic.utf8)),
+           let payload = String(data: rawData, encoding: .utf8) {
+            jsonData = try decompressCloudPayload(payload)
+        } else {
+            jsonData = rawData
+        }
 
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
 
         let file: CloudBackupFile
         do {
-            file = try decoder.decode(CloudBackupFile.self, from: fileData)
+            file = try decoder.decode(CloudBackupFile.self, from: jsonData)
         } catch {
             throw BackupError.invalidManifest(error.localizedDescription)
         }

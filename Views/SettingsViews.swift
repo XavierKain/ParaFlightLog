@@ -33,6 +33,8 @@ struct SettingsView: View {
     // defaults must mirror SpotAutoFollowService.isEnabled / ForecastAlertService.isEnabled.
     @AppStorage(SpotAutoFollowService.enabledKey) private var autoFollowFlownSpots = true
     @AppStorage(ForecastAlertService.enabledKey) private var forecastAlertsEnabled = false
+    // Wind-strength unit used across condition reports (km/h default).
+    @AppStorage(WindUnit.storageKey) private var windUnit: WindUnit = .kmh
 
     @State private var showingImportResult = false
     @State private var importMessage = ""
@@ -143,10 +145,18 @@ struct SettingsView: View {
             Toggle(isOn: $autoWeatherSnapshot) {
                 Text("Record weather at takeoff")
             }
+
+            Picker(selection: $windUnit) {
+                ForEach(WindUnit.allCases) { unit in
+                    Text(unit.label).tag(unit)
+                }
+            } label: {
+                Text("Wind unit")
+            }
         } header: {
             Text("Tracking")
         } footer: {
-            Text("Use iPhone as tracker adds a Timer tab so you can track flights without an Apple Watch. The vario plays climb beeps and sink alerts while a flight is running. Record weather at takeoff saves wind and temperature (Open-Meteo) with each new flight.")
+            Text("Use iPhone as tracker adds a Timer tab so you can track flights without an Apple Watch. The vario plays climb beeps and sink alerts while a flight is running. Record weather at takeoff saves wind and temperature (Open-Meteo) with each new flight. Wind unit sets whether condition reports show wind strength in km/h or knots.")
         }
     }
 

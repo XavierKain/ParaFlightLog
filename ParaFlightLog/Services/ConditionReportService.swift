@@ -104,8 +104,62 @@ enum ReportStatus: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// Unit a pilot reads wind strength in. Persisted as a local @AppStorage
+/// preference (Constants.swift is owned elsewhere, so the key lives here).
+/// Default is km/h.
+enum WindUnit: String, CaseIterable, Identifiable, Sendable {
+    case kmh
+    case knots
+
+    var id: String { rawValue }
+
+    /// Local UserDefaults / @AppStorage key for the wind-unit preference.
+    static let storageKey = "windUnitPreference"
+
+    /// km/h → 1 kt = 1.852 km/h.
+    static let kmhPerKnot = 1.852
+
+    /// Picker row label.
+    var label: String {
+        switch self {
+        case .kmh: return "km/h"
+        case .knots: return "knots"
+        }
+    }
+
+    /// Compact suffix used in range hints ("20–33 km/h" / "11–18 kt").
+    var shortLabel: String {
+        switch self {
+        case .kmh: return "km/h"
+        case .knots: return "kt"
+        }
+    }
+
+    /// The preference as currently stored (default km/h). Views prefer an
+    /// @AppStorage binding; this static reader is for non-View contexts.
+    static var current: WindUnit {
+        WindUnit(rawValue: UserDefaults.standard.string(forKey: storageKey) ?? "") ?? .kmh
+    }
+
+    /// Converts a knots value into this unit, rounded to a whole number.
+    func fromKnots(_ knots: Int) -> Int {
+        switch self {
+        case .knots: return knots
+        case .kmh: return Int((Double(knots) * Self.kmhPerKnot).rounded())
+        }
+    }
+}
+
 /// Rough wind strength reported alongside the status. Raw values are the
-/// exact strings stored in `spot_reports.windForce`.
+/// exact strings stored in `spot_reports.windForce` (unchanged — only the
+/// labels/hints are recalibrated for free flight, in KNOTS).
+///
+/// Free-flight scale (paraglider / parakite), knots reference:
+///   calm     < 5 kt   — hard to soar
+///   light    5–11 kt
+///   moderate 11–18 kt — sweet spot
+///   strong   18–30 kt — flyable for parakite / experienced
+///   tooMuch  > 30 kt
 enum WindForce: String, CaseIterable, Identifiable, Sendable {
     case calm
     case light
@@ -126,14 +180,30 @@ enum WindForce: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
-    /// Rough km/h hint shown under the label (indicative, not authoritative).
-    var kmhHint: String {
+    /// The band's knots range as (lower, upper); nil bounds are open-ended.
+    var knotsRange: (lower: Int?, upper: Int?) {
         switch self {
-        case .calm: return "0–5"
-        case .light: return "5–15"
-        case .moderate: return "15–25"
-        case .strong: return "25–35"
-        case .tooMuch: return "35+"
+        case .calm: return (nil, 5)
+        case .light: return (5, 11)
+        case .moderate: return (11, 18)
+        case .strong: return (18, 30)
+        case .tooMuch: return (30, nil)
+        }
+    }
+
+    /// Range hint rendered in the chosen unit, e.g. "11–18 kt" or "20–33 km/h".
+    func rangeHint(in unit: WindUnit) -> String {
+        let (lower, upper) = knotsRange
+        let suffix = unit.shortLabel
+        switch (lower, upper) {
+        case let (nil, upper?):
+            return "< \(unit.fromKnots(upper)) \(suffix)"
+        case let (lower?, nil):
+            return "> \(unit.fromKnots(lower)) \(suffix)"
+        case let (lower?, upper?):
+            return "\(unit.fromKnots(lower))–\(unit.fromKnots(upper)) \(suffix)"
+        case (nil, nil):
+            return ""
         }
     }
 }

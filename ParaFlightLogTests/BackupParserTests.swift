@@ -315,7 +315,7 @@ private nonisolated func utcDate(_ year: Int, _ month: Int, _ day: Int,
         #expect(metadata["flightsCount"] as? Int == 1)
     }
 
-    @Test func cloudExportWritesSingleDecodableFile() async throws {
+    @Test func cloudExportWritesSingleCompressedFile() async throws {
         let (wing, flight) = makeSampleData()
         let fileURL: URL = try await withCheckedThrowingContinuation { continuation in
             BackupManager.exportCloudBackup(wings: [wing], flights: [flight]) { @Sendable result in
@@ -324,15 +324,22 @@ private nonisolated func utcDate(_ year: Int, _ month: Int, _ day: Int,
         }
         defer { try? FileManager.default.removeItem(at: fileURL) }
 
-        #expect(fileURL.lastPathComponent == "ParaFlightLog-backup.paraflightlogx")
+        // Cloud backups are now a compressed single file (.paraflightlogz):
+        // zlib + base64 with a PFLZ1: magic header.
+        #expect(fileURL.lastPathComponent == "ParaFlightLog-backup.paraflightlogz")
         var isDirectory: ObjCBool = false
         let exists = FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDirectory)
         #expect(exists)
         #expect(isDirectory.boolValue == false)
 
+        let payload = try String(contentsOf: fileURL, encoding: .utf8)
+        #expect(payload.hasPrefix("PFLZ1:"))
+
+        // Inflate back to the manifest JSON and decode it.
+        let jsonData = try BackupManager.decompressCloudPayload(payload)
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        let file = try decoder.decode(CloudBackupFile.self, from: Data(contentsOf: fileURL))
+        let file = try decoder.decode(CloudBackupFile.self, from: jsonData)
         #expect(file.manifest.wings.count == 1)
         #expect(file.manifest.flights.count == 1)
         #expect(file.manifest.flights[0].gpsTrack?.count == 2)

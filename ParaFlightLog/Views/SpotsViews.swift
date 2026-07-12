@@ -49,29 +49,33 @@ struct SpotsManagementView: View {
                     systemImage: "mappin.slash",
                     description: Text("Spots are created automatically from your flights' locations. You can also add one manually.")
                 )
-            } else if filteredSpots.isEmpty {
-                ContentUnavailableView(
-                    "No Spots of This Type",
-                    systemImage: "line.3.horizontal.decrease.circle",
-                    description: Text("No spots match the selected type. Pick a different type or “All types”.")
-                )
             } else {
-                Section {
-                    ForEach(filteredSpots) { spot in
-                        NavigationLink {
-                            SpotDetailView(spot: spot)
-                        } label: {
-                            SpotEntityRow(spot: spot)
-                        }
-                    }
-                } footer: {
-                    Text("Tap a spot to rename it, set its city and coordinates, or move flights to another spot (e.g. split a city into its real launches).")
-                }
-            }
-        }
-        .safeAreaInset(edge: .top) {
-            if !spots.isEmpty {
+                // Filter chips as the FIRST list row (not a safeAreaInset) so
+                // they scroll with the content instead of sitting over — and
+                // greying out — the navigation title.
                 SpotTypeFilterBar(selection: $typeFilter)
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
+
+                if filteredSpots.isEmpty {
+                    ContentUnavailableView(
+                        "No Spots of This Type",
+                        systemImage: "line.3.horizontal.decrease.circle",
+                        description: Text("No spots match the selected type. Pick a different type or “All types”.")
+                    )
+                } else {
+                    Section {
+                        ForEach(filteredSpots) { spot in
+                            NavigationLink {
+                                SpotDetailView(spot: spot)
+                            } label: {
+                                SpotEntityRow(spot: spot)
+                            }
+                        }
+                    } footer: {
+                        Text("Tap a spot to rename it, set its city and coordinates, or move flights to another spot (e.g. split a city into its real launches).")
+                    }
+                }
             }
         }
         .navigationTitle("Spots")
@@ -145,26 +149,26 @@ private struct SpotEntityRow: View {
 
 // MARK: - SpotTypeBadge (effective-type chip on a spot row)
 
-/// Small type badge: solid indigo when the type is PINNED, outlined when it's
-/// the AUTO-derived dominant type.
+/// Small type badge, icon only: solid indigo when the type is PINNED, outlined
+/// when it's the AUTO-derived dominant type. The type name is only carried as
+/// an accessibility label (the text used to wrap onto a second line on the row).
 private struct SpotTypeBadge: View {
     let type: FlightType
     let pinned: Bool
 
     var body: some View {
-        Label(type.rawValue, systemImage: type.symbolName)
-            .labelStyle(.titleAndIcon)
+        Image(systemName: type.symbolName)
             .font(.caption2.weight(.medium))
             .foregroundStyle(pinned ? .white : .indigo)
-            .padding(.horizontal, 7)
-            .padding(.vertical, 3)
+            .frame(width: 24, height: 24)
             .background {
                 if pinned {
-                    Capsule().fill(Color.indigo)
+                    Circle().fill(Color.indigo)
                 } else {
-                    Capsule().strokeBorder(Color.indigo.opacity(0.5), lineWidth: 1)
+                    Circle().strokeBorder(Color.indigo.opacity(0.5), lineWidth: 1)
                 }
             }
+            .accessibilityLabel(type.rawValue)
     }
 }
 
@@ -200,7 +204,6 @@ private struct SpotTypeFilterBar: View {
             .padding(.horizontal)
             .padding(.vertical, 8)
         }
-        .background(.bar)
     }
 
     private struct FilterChip: View {
@@ -548,7 +551,13 @@ struct SpotDetailView: View {
             didDelete = true
             dismiss()
         } else {
-            splitInfoMessage = "Created \(result.createdNames.joined(separator: ", ")) (\(result.movedFlights) flights moved). \(result.keptWithoutLocation) flights without GPS stayed here."
+            // Plain String (shown via Text(splitInfoMessage ?? "")), so `^[inflect]`
+            // wouldn't apply — use explicit singular/plural.
+            let moved = result.movedFlights
+            let kept = result.keptWithoutLocation
+            let movedText = "\(moved) \(moved == 1 ? "flight" : "flights") moved"
+            let keptText = "\(kept) \(kept == 1 ? "flight" : "flights") without GPS stayed here"
+            splitInfoMessage = "Created \(result.createdNames.joined(separator: ", ")) (\(movedText)). \(keptText)."
         }
     }
 
