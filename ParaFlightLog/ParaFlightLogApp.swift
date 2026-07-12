@@ -53,12 +53,25 @@ struct ParaFlightLogApp: App {
 /// APNs / notification-center callbacks into PushService calls and a single
 /// `.spotDeepLink` NotificationCenter event the UI observes for routing.
 final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
+    /// Assign the notification-center delegate as EARLY as possible. On a cold
+    /// start from a push tap, iOS calls `didReceive` right after launch — the
+    /// delegate must already be set (Apple: "no later than the end of
+    /// application(_:didFinishLaunchingWithOptions:)"). Doing it in
+    /// `willFinishLaunching` is the safest slot and guarantees a launch tap is
+    /// captured (then buffered by PushService for the not-yet-attached UI).
+    func application(
+        _ application: UIApplication,
+        willFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
+    ) -> Bool {
+        UNUserNotificationCenter.current().delegate = self
+        return true
+    }
+
     func application(
         _ application: UIApplication,
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
-        // Route foreground presentation and taps through this delegate.
-        UNUserNotificationCenter.current().delegate = self
+        // Delegate is wired in willFinishLaunching (above); nothing else needed.
         return true
     }
 
@@ -81,28 +94,48 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
     // MARK: UNUserNotificationCenterDelegate
 
     /// Foreground presentation: still show the banner/sound/badge so a report
-    /// alert isn't swallowed while the app is open.
+    /// alert isn't swallowed while the app is open, and record it in the
+    /// in-app notification center (unread — the pilot hasn't opened it yet).
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound, .badge]
+        let content = notification.request.content
+        await NotificationInboxService.shared.record(
+            title: content.title,
+            body: content.body,
+            spotKey: PushService.spotKey(from: content.userInfo),
+            reportId: PushService.value(forKey: "reportId", in: content.userInfo),
+            kindRaw: PushService.value(forKey: "kind", in: content.userInfo),
+            date: notification.date,
+            markRead: false
+        )
+        return [.banner, .list, .sound, .badge]
     }
 
-    /// Tap handling: forward a `spotKey` payload to the UI as a deep-link
-    /// event. Deliberately minimal — no navigation logic here (see
-    /// Notification.Name.spotDeepLink in PushService).
+    /// Tap handling: record the push in the notification center (read — the
+    /// pilot engaged with it) and route its `spotKey` to the UI. The tolerant
+    /// extraction + cold-start buffering lives in PushService; no navigation
+    /// logic here (see Notification.Name.spotDeepLink).
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        let userInfo = response.notification.request.content.userInfo
-        guard let spotKey = userInfo["spotKey"] as? String, !spotKey.isEmpty else { return }
-        NotificationCenter.default.post(
-            name: .spotDeepLink,
-            object: nil,
-            userInfo: ["spotKey": spotKey]
+        let content = response.notification.request.content
+        // Extract Sendable values HERE (nonisolated static helpers) so the
+        // non-Sendable userInfo dictionary never crosses onto the main actor.
+        let spotKey = PushService.spotKey(from: content.userInfo)
+        let rawShape = PushService.payloadShapeDescription(content.userInfo)
+        await NotificationInboxService.shared.record(
+            title: content.title,
+            body: content.body,
+            spotKey: spotKey,
+            reportId: PushService.value(forKey: "reportId", in: content.userInfo),
+            kindRaw: PushService.value(forKey: "kind", in: content.userInfo),
+            date: response.notification.date,
+            markRead: true
         )
+        await PushService.shared.deliverDeepLink(spotKey: spotKey, rawShape: rawShape)
     }
 }
 

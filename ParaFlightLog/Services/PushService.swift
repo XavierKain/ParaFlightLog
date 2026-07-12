@@ -67,6 +67,80 @@ final class PushService {
 
     private init() {}
 
+    // MARK: - Deep-link buffering (cold start)
+
+    /// spotKey captured from a push tap that hasn't been consumed by the UI
+    /// yet. On a COLD START the tap (`didReceive`) fires before SwiftUI attaches
+    /// its `.spotDeepLink` observer, so the posted event is lost — the UI reads
+    /// (and clears) this buffer in its `.task`/`.onAppear` instead. Warm taps go
+    /// through the posted event and clear the buffer via `consumePendingDeepLink`.
+    var pendingDeepLink: String?
+
+    /// One-time guard so the raw delivered payload keys are logged exactly once
+    /// per launch — enough to diagnose a future APNs shape change on device.
+    private var didLogPayloadShape = false
+
+    /// Handles a push tap: logs the raw payload shape once (for on-device
+    /// diagnosis of any future APNs shape change), then — when a spotKey
+    /// resolved — buffers it for cold start AND posts `.spotDeepLink` for a
+    /// warm, already-attached UI. Both paths are idempotent; the UI clears the
+    /// buffer once it presents. Takes pre-extracted Sendable values so the
+    /// non-Sendable `userInfo` never crosses onto the main actor.
+    func deliverDeepLink(spotKey: String?, rawShape: String) {
+        if !didLogPayloadShape {
+            didLogPayloadShape = true
+            logInfo("Push payload shape \(rawShape)", category: .community)
+        }
+        guard let spotKey else { return }
+        pendingDeepLink = spotKey
+        NotificationCenter.default.post(
+            name: .spotDeepLink,
+            object: nil,
+            userInfo: ["spotKey": spotKey]
+        )
+    }
+
+    /// Returns and clears the buffered cold-start deep link.
+    func consumePendingDeepLink() -> String? {
+        defer { pendingDeepLink = nil }
+        return pendingDeepLink
+    }
+
+    /// Tolerantly extracts a non-empty `spotKey` from a delivered APNs
+    /// `userInfo`, reading every plausible location:
+    ///   - root `userInfo["spotKey"]` (flat custom key),
+    ///   - `userInfo["data"]["spotKey"]` (custom data nested at the root),
+    ///   - `userInfo["aps"]["data"]["spotKey"]` — where Appwrite Messaging
+    ///     actually delivers `createPush` data (`payload['aps']['data']`).
+    /// Nonisolated + pure so the AppDelegate can call it off any actor.
+    nonisolated static func spotKey(from userInfo: [AnyHashable: Any]) -> String? {
+        value(forKey: "spotKey", in: userInfo)
+    }
+
+    /// Same tolerant lookup as `spotKey(from:)` for an arbitrary string key
+    /// (e.g. `reportId`, `kind`) across root / `data` / `aps.data`.
+    nonisolated static func value(forKey key: String, in userInfo: [AnyHashable: Any]) -> String? {
+        if let value = userInfo[key] as? String, !value.isEmpty { return value }
+        if let data = userInfo["data"] as? [AnyHashable: Any],
+           let value = data[key] as? String, !value.isEmpty { return value }
+        if let aps = userInfo["aps"] as? [AnyHashable: Any],
+           let data = aps["data"] as? [AnyHashable: Any],
+           let value = data[key] as? String, !value.isEmpty { return value }
+        return nil
+    }
+
+    /// One-line description of a delivered payload's key layout, for the
+    /// one-time on-device diagnostic log — never contains values, only keys.
+    nonisolated static func payloadShapeDescription(_ userInfo: [AnyHashable: Any]) -> String {
+        let rootKeys = userInfo.keys.map { "\($0)" }.sorted().joined(separator: ",")
+        var apsDataKeys = "-"
+        if let aps = userInfo["aps"] as? [AnyHashable: Any],
+           let data = aps["data"] as? [AnyHashable: Any] {
+            apsDataKeys = data.keys.map { "\($0)" }.sorted().joined(separator: ",")
+        }
+        return "root:[\(rootKeys)] aps.data:[\(apsDataKeys)]"
+    }
+
     // MARK: - Persisted lifecycle state
 
     /// Appwrite push-target `$id` for this device on the current account.

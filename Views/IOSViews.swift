@@ -167,9 +167,22 @@ struct ContentView: View {
         .sheet(isPresented: $showingAddWingFromOnboarding) {
             AddWingView()
         }
-        // Push-tap deep link: switch to Home and open the matching local spot.
+        // Push-tap deep link (WARM): the observer is attached, so route the
+        // posted event straight to the matching local spot.
         .onReceive(NotificationCenter.default.publisher(for: .spotDeepLink)) { note in
-            handleSpotDeepLink(note)
+            selectedTab = Tab.home
+            if let key = PushService.spotKey(from: note.userInfo ?? [:]) {
+                presentSpot(forKey: key)
+            }
+        }
+        // Push-tap deep link (COLD START): `didReceive` fired before this view
+        // attached its observer, so the event was lost. Drain the buffer
+        // PushService stashed it in, once, as the UI comes on screen.
+        .task {
+            if let key = PushService.shared.consumePendingDeepLink() {
+                selectedTab = Tab.home
+                presentSpot(forKey: key)
+            }
         }
         .sheet(item: $deepLinkSpot) { spot in
             NavigationStack {
@@ -178,13 +191,12 @@ struct ContentView: View {
         }
     }
 
-    /// Handles a `.spotDeepLink`: always switch to Home, and when a local Spot
-    /// matches the payload key (`communitySpotKey` or a freshly built one),
-    /// present it as a sheet. No match → just the Home tab (safe fallback).
-    private func handleSpotDeepLink(_ note: Notification) {
-        selectedTab = Tab.home
-        guard let dataController,
-              let spotKey = Self.spotKey(from: note.userInfo) else { return }
+    /// Resolves a community `spotKey` to a local Spot and presents it as a
+    /// sheet. Clears any buffered cold-start link so a later `.task` on a re-
+    /// created view can't replay it. No local match → no sheet (safe fallback).
+    private func presentSpot(forKey spotKey: String) {
+        _ = PushService.shared.consumePendingDeepLink()
+        guard let dataController else { return }
         deepLinkSpot = dataController.fetchSpots().first { spot in
             spot.communitySpotKey == spotKey
                 || CommunitySpotKey.make(
@@ -193,16 +205,5 @@ struct ContentView: View {
                     longitude: spot.longitude
                 ) == spotKey
         }
-    }
-
-    /// Extracts a non-empty spotKey, tolerating a nested "data" dict (some APNs
-    /// payloads nest custom keys under it) even though the current poster sends
-    /// it flat.
-    private static func spotKey(from userInfo: [AnyHashable: Any]?) -> String? {
-        guard let userInfo else { return nil }
-        if let key = userInfo["spotKey"] as? String, !key.isEmpty { return key }
-        if let data = userInfo["data"] as? [AnyHashable: Any],
-           let key = data["spotKey"] as? String, !key.isEmpty { return key }
-        return nil
     }
 }

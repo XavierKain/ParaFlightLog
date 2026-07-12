@@ -23,6 +23,10 @@ struct DashboardView: View {
     @State private var showingFlightDetail: Flight?
     @State private var showingConditionReport = false
     @State private var showingNearbySpots = false
+    @State private var showingNotificationCenter = false
+
+    /// Observed singleton — the bell badge tracks the unread count live.
+    private var inbox: NotificationInboxService { NotificationInboxService.shared }
 
     // Most recently flown wing (flights are sorted newest first), with its
     // aggregate hours. "Most-used" would surface long-retired wings after a
@@ -343,6 +347,31 @@ struct DashboardView: View {
             .navigationTitle("Home")
             .background(Color(.systemGroupedBackground))
             .toolbar {
+                // Notification center: unread count badges the bell.
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showingNotificationCenter = true
+                    } label: {
+                        Image(systemName: "bell")
+                            .overlay(alignment: .topTrailing) {
+                                if inbox.unreadCount > 0 {
+                                    Text(inbox.unreadCount > 99 ? "99+" : "\(inbox.unreadCount)")
+                                        .font(.system(size: 11, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .padding(.horizontal, 4)
+                                        .padding(.vertical, 1)
+                                        .background(.red, in: Capsule())
+                                        .offset(x: 10, y: -8)
+                                        .fixedSize()
+                                }
+                            }
+                    }
+                    .accessibilityLabel(
+                        inbox.unreadCount > 0
+                            ? "Notifications, \(inbox.unreadCount) unread"
+                            : "Notifications"
+                    )
+                }
                 // Same destination as the Explore card — also reachable from
                 // the empty-logbook welcome state.
                 ToolbarItem(placement: .primaryAction) {
@@ -358,11 +387,19 @@ struct DashboardView: View {
             .task(id: flights.statsChangeToken) {
                 stats = dataController.computeStats(from: flights)
             }
+            // Recover reports whose push was never delivered/tapped (best-effort).
+            .task {
+                await inbox.syncMissed(dataController: dataController)
+            }
             .sheet(item: $showingFlightDetail) { flight in
                 FlightDetailView(flight: flight)
             }
             .sheet(isPresented: $showingNearbySpots) {
                 NearbySpotsView()
+            }
+            .sheet(isPresented: $showingNotificationCenter) {
+                NotificationCenterView()
+                    .environment(dataController)
             }
             .sheet(isPresented: $showingConditionReport) {
                 if let spot = conditionsSpot,
