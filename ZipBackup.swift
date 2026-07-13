@@ -209,7 +209,8 @@ enum BackupManager {
     /// Magic prefix marking a compressed single-file cloud backup: the JSON is
     /// zlib-compressed then base64-encoded, and this ASCII header is prepended
     /// so import can detect the format from content alone (extension-agnostic).
-    static let compressedCloudMagic = "PFLZ1:"
+    /// `nonisolated` so the off-main encode/decode paths can reference it.
+    nonisolated static let compressedCloudMagic = "PFLZ1:"
 
     /// File extension for the compressed cloud backup.
     static let compressedCloudExtension = "paraflightlogz"

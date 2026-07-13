@@ -101,7 +101,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
         let content = notification.request.content
-        await NotificationInboxService.shared.record(
+        NotificationInboxService.shared.record(
             title: content.title,
             body: content.body,
             spotKey: PushService.spotKey(from: content.userInfo),
@@ -126,7 +126,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
         // non-Sendable userInfo dictionary never crosses onto the main actor.
         let spotKey = PushService.spotKey(from: content.userInfo)
         let rawShape = PushService.payloadShapeDescription(content.userInfo)
-        await NotificationInboxService.shared.record(
+        NotificationInboxService.shared.record(
             title: content.title,
             body: content.body,
             spotKey: spotKey,
@@ -135,7 +135,7 @@ final class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCent
             date: response.notification.date,
             markRead: true
         )
-        await PushService.shared.deliverDeepLink(spotKey: spotKey, rawShape: rawShape)
+        PushService.shared.deliverDeepLink(spotKey: spotKey, rawShape: rawShape)
     }
 }
 
