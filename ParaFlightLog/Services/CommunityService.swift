@@ -377,6 +377,17 @@ final class CommunityService {
             logInfo("Community spot created: \(key)", category: .community)
         } catch {
             guard Self.isAlreadyExists(error) else { throw error }
+            // The spot already exists. Best-effort type backfill: spots created
+            // before the `spotType` column stay untyped forever otherwise (only
+            // the row creator's update succeeds; anyone else's silently fails).
+            if let spotType {
+                _ = try? await tablesDB.updateRow(
+                    databaseId: AppwriteConfig.databaseId,
+                    tableId: AppwriteConfig.communitySpotsCollectionId,
+                    rowId: key,
+                    data: ["spotType": String(spotType.prefix(20))]
+                )
+            }
         }
         ensuredSpotKeys.insert(key)
     }
@@ -774,7 +785,7 @@ final class CommunityService {
         //    client-side decoration; a server-side aggregate removes the cap.
         do {
             let now = Date()
-            var flightQueries: [String] = [Query.select(["spotKey", "$id"])]
+            var flightQueries: [String] = [Query.select(["spotKey", "flightType", "$id"])]
             if let start = period.startDate(now: now) {
                 flightQueries.append(Query.greaterThan("date", value: Self.isoString(from: start)))
             }
@@ -785,10 +796,25 @@ final class CommunityService {
                 tableId: AppwriteConfig.sharedFlightsCollectionId,
                 queries: flightQueries
             )
+            // Count flight types per spot along the way: many community spots
+            // predate the `spotType` column and would otherwise stay untyped
+            // forever (the row is only written on creation), breaking the
+            // Explore type filter.
+            var typeCounts: [String: [String: Int]] = [:]
             for row in flightRows {
                 guard let key = row.data["spotKey"]?.value as? String,
                       let index = indexByKey[key] else { continue }
                 summaries[index].flightsInPeriod += 1
+                if let flightType = row.data["flightType"]?.value as? String, !flightType.isEmpty {
+                    typeCounts[key, default: [:]][flightType, default: 0] += 1
+                }
+            }
+            // Untyped spots take the dominant shared flight type as fallback.
+            for (key, counts) in typeCounts {
+                guard let index = indexByKey[key],
+                      summaries[index].spotType == nil,
+                      let dominant = counts.max(by: { $0.value < $1.value })?.key else { continue }
+                summaries[index].spotType = dominant
             }
         } catch {
             logInfo("Explore flight counts unavailable: \(error)", category: .community)

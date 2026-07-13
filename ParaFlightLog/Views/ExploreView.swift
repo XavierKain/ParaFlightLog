@@ -30,6 +30,10 @@ struct ExploreView: View {
 
     @State private var mode: Mode = .map
 
+    /// The pilot's own spots — their effective types back-fill community
+    /// spots that carry no type yet (see `filtered`).
+    @Query private var localSpots: [Spot]
+
     /// nil until the first successful load; kept (stale) on refresh failures.
     @State private var spots: [CommunitySpotSummary]?
     @State private var isLoading = false
@@ -43,8 +47,8 @@ struct ExploreView: View {
     @State private var typeFilter: FlightType?
 
     /// Activity window for the shared-flight counts/colouring (presence is
-    /// always live). Defaults to the historical 30-day window.
-    @State private var period: ExplorePeriod = .month
+    /// always live). Defaults to all time.
+    @State private var period: ExplorePeriod = .allTime
     /// Presented by the "Custom…" menu entry; two DatePickers seed a
     /// `.custom` period on Apply.
     @State private var showingCustomSheet = false
@@ -191,10 +195,29 @@ struct ExploreView: View {
     }
 
     /// Keeps only the spots matching the active type filter. "All types"
-    /// (nil) shows everything; a specific type hides untyped/other-typed spots.
+    /// (nil) shows everything. A community spot without a type falls back to
+    /// the matching LOCAL spot's effective type (many community rows predate
+    /// the spotType column), so known spots don't vanish under a type filter.
     private func filtered(_ spots: [CommunitySpotSummary]) -> [CommunitySpotSummary] {
         guard let typeFilter else { return spots }
-        return spots.filter { $0.spotType.flatMap(FlightType.init(rawValue:)) == typeFilter }
+        let localTypes = localTypeByKey
+        return spots.filter { spot in
+            let type = spot.spotType.flatMap(FlightType.init(rawValue:))
+                ?? localTypes[spot.spotKey]
+            return type == typeFilter
+        }
+    }
+
+    /// Effective type of the pilot's own spots, keyed by community spot key.
+    private var localTypeByKey: [String: FlightType] {
+        var result: [String: FlightType] = [:]
+        for spot in localSpots {
+            guard let type = spot.effectiveFlightType,
+                  let key = spot.communitySpotKey
+                      ?? CommunitySpotKey.make(name: spot.name, latitude: spot.latitude, longitude: spot.longitude) else { continue }
+            result[key] = type
+        }
+        return result
     }
 
     // MARK: States
@@ -943,7 +966,7 @@ private struct CommunitySpotSheet: View {
 
     private func loadFlights() async {
         do {
-            flights = try await CommunityService.shared.recentFlights(forSpotKey: summary.spotKey)
+            flights = try await CommunityService.shared.recentFlights(forSpotKey: summary.spotKey, limit: 100)
         } catch {
             flightsFailed = flights == nil
         }
@@ -953,7 +976,8 @@ private struct CommunitySpotSheet: View {
 // MARK: - SharedFlightRow
 
 /// One shared flight: pilot name, relative date + duration, flight-type badge.
-private struct SharedFlightRow: View {
+/// Internal — also used by the local spot page's Community section.
+struct SharedFlightRow: View {
     let flight: SharedFlightSummary
 
     var body: some View {

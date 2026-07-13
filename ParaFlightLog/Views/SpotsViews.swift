@@ -114,9 +114,18 @@ private struct SpotEntityRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: spot.latitude != nil ? "mappin.circle.fill" : "mappin.slash.circle")
-                .font(.title3)
-                .foregroundStyle(spot.latitude != nil ? .red : .orange)
+            // Leading icon = the spot's EFFECTIVE type (pinned solid, derived
+            // outlined) — more informative than the old uniform red pin. An
+            // untyped spot falls back to a neutral pin (crossed out when it
+            // has no coordinates yet).
+            if let type = spot.effectiveFlightType {
+                SpotTypeIcon(type: type, pinned: spot.spotTypeEnum != nil)
+            } else {
+                Image(systemName: spot.latitude != nil ? "mappin.circle" : "mappin.slash.circle")
+                    .font(.title3)
+                    .foregroundStyle(spot.latitude != nil ? .secondary : .orange)
+                    .frame(width: 32, height: 32)
+            }
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(spot.name)
@@ -133,12 +142,6 @@ private struct SpotEntityRow: View {
 
             Spacer()
 
-            // Effective type badge (pinned, else derived). `pinned` is subtly
-            // solid; the auto-derived one is outlined.
-            if let type = spot.effectiveFlightType {
-                SpotTypeBadge(type: type, pinned: spot.spotTypeEnum != nil)
-            }
-
             Text("^[\(spot.flights?.count ?? 0) flight](inflect: true)")
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -147,25 +150,25 @@ private struct SpotEntityRow: View {
     }
 }
 
-// MARK: - SpotTypeBadge (effective-type chip on a spot row)
+// MARK: - SpotTypeIcon (effective-type leading icon on a spot row)
 
-/// Small type badge, icon only: solid indigo when the type is PINNED, outlined
-/// when it's the AUTO-derived dominant type. The type name is only carried as
-/// an accessibility label (the text used to wrap onto a second line on the row).
-private struct SpotTypeBadge: View {
+/// Type icon in an indigo circle: solid when the type is PINNED, outlined
+/// when it's the AUTO-derived dominant type. The type name is carried as an
+/// accessibility label.
+private struct SpotTypeIcon: View {
     let type: FlightType
     let pinned: Bool
 
     var body: some View {
         Image(systemName: type.symbolName)
-            .font(.caption2.weight(.medium))
+            .font(.footnote.weight(.medium))
             .foregroundStyle(pinned ? .white : .indigo)
-            .frame(width: 24, height: 24)
+            .frame(width: 32, height: 32)
             .background {
                 if pinned {
                     Circle().fill(Color.indigo)
                 } else {
-                    Circle().strokeBorder(Color.indigo.opacity(0.5), lineWidth: 1)
+                    Circle().strokeBorder(Color.indigo.opacity(0.5), lineWidth: 1.2)
                 }
             }
             .accessibilityLabel(type.rawValue)
@@ -266,6 +269,17 @@ struct SpotDetailView: View {
 
     var body: some View {
         List(selection: $selection) {
+            // Live condition reports FIRST — "how is it right now" is what a
+            // pilot opens the spot page for. Prefer the key recorded when a
+            // flight here was shared; derive it from name + coordinates
+            // otherwise. Fails soft (hides itself) when the backend isn't
+            // configured.
+            if let lat = spot.latitude, let lon = spot.longitude,
+               let reportsKey = spot.communitySpotKey
+                   ?? CommunitySpotKey.make(name: spot.name, latitude: lat, longitude: lon) {
+                SpotReportsSection(spot: spot, spotKey: reportsKey, spotName: spot.name)
+            }
+
             // Identity
             Section("Spot") {
                 LabeledContent("Name") {
@@ -337,16 +351,10 @@ struct SpotDetailView: View {
                 )
             }
 
-            // Learned flyability window + live condition reports (Phase 2/3),
-            // only when the spot is located and a community key resolves.
-            // Prefer the key recorded when a flight here was shared; derive it
-            // from name + coordinates otherwise. Both sections fail soft
-            // (hide themselves) when the backend isn't configured.
-            if let lat = spot.latitude, let lon = spot.longitude,
-               let reportsKey = spot.communitySpotKey
-                   ?? CommunitySpotKey.make(name: spot.name, latitude: lat, longitude: lon) {
+            // Learned flyability window (Phase 2), only when the spot is
+            // located. The live reports section moved to the top of the page.
+            if spot.latitude != nil, spot.longitude != nil {
                 SpotLearnedWindowSection(spot: spot)
-                SpotReportsSection(spot: spot, spotKey: reportsKey, spotName: spot.name)
             }
 
             // Community activity (Step C, only when the spot is located).
@@ -355,7 +363,7 @@ struct SpotDetailView: View {
             if let lat = spot.latitude, let lon = spot.longitude,
                let communityKey = spot.communitySpotKey
                    ?? CommunitySpotKey.make(name: spot.name, latitude: lat, longitude: lon) {
-                SpotCommunitySection(spotKey: communityKey)
+                SpotCommunitySection(spotKey: communityKey, spotName: spot.name)
             }
 
             // Flights, selectable for reassignment
@@ -928,12 +936,15 @@ private struct SpotWeatherSection: View {
 
 // MARK: - SpotCommunitySection (community activity at this spot, Step C)
 
-/// Community stats for one spot, loaded from CommunityService (same
-/// header-attached .task pattern as SpotWeatherSection). When the backend
-/// isn't configured (CommunityError.backendNotConfigured) the whole section
-/// disappears silently — community is optional infrastructure.
+/// Community stats + ALL-TIME shared flights for one spot, loaded from
+/// CommunityService (same header-attached .task pattern as
+/// SpotWeatherSection). Every shared flight row opens the full shared-flight
+/// detail. When the backend isn't configured
+/// (CommunityError.backendNotConfigured) the whole section disappears
+/// silently — community is optional infrastructure.
 private struct SpotCommunitySection: View {
     let spotKey: String
+    let spotName: String
 
     private enum LoadState {
         case loading
@@ -944,6 +955,9 @@ private struct SpotCommunitySection: View {
     }
 
     @State private var state: LoadState = .loading
+    /// All-time shared flights at this spot (newest first), nil while loading.
+    @State private var sharedFlights: [SharedFlightSummary]?
+    @State private var selectedFlight: SharedFlightSummary?
 
     var body: some View {
         switch state {
@@ -980,19 +994,26 @@ private struct SpotCommunitySection: View {
                 }
             case .loaded(let stats):
                 statsRows(stats)
+                flightRows
             case .hidden:
                 EmptyView()
             }
         } header: {
             Text("Community")
                 // On the header (a plain view), NOT on the Section: modifiers on
-                // a Section inside a List can break its section rendering.
+                // a Section inside a List can break its section rendering. The
+                // sheet lives here too — the header never leaves the hierarchy,
+                // unlike the loading/loaded rows.
                 .task {
                     await load()
                 }
+                .sheet(item: $selectedFlight) { flight in
+                    SharedFlightDetailView(flight: flight, spotName: spotName)
+                        .presentationDetents([.medium])
+                }
         } footer: {
             if case .loaded = state {
-                Text("From pilots who share their flights in Settings › Community.")
+                Text("All shared flights at this spot, from pilots who share their flights in Settings › Community.")
             }
         }
     }
@@ -1007,13 +1028,7 @@ private struct SpotCommunitySection: View {
                 .foregroundStyle(.green)
         }
 
-        if stats.flightsThisMonth == 0 && stats.hoursThisYear == 0 {
-            if stats.pilotsFlyingNow == 0 {
-                Text("No shared flights at this spot yet.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-        } else {
+        if stats.flightsThisMonth > 0 || stats.hoursThisYear > 0 {
             Text("^[\(stats.flightsThisMonth) flight](inflect: true) by ^[\(stats.pilotsThisMonth) pilot](inflect: true) this month")
                 .font(.subheadline)
 
@@ -1038,6 +1053,35 @@ private struct SpotCommunitySection: View {
         }
     }
 
+    /// The spot's shared flights (all time, newest first). Every row opens
+    /// the shared-flight detail sheet — same interaction as Explore.
+    @ViewBuilder
+    private var flightRows: some View {
+        if let sharedFlights {
+            if sharedFlights.isEmpty {
+                Text("No shared flights at this spot yet.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(sharedFlights) { flight in
+                    Button {
+                        selectedFlight = flight
+                    } label: {
+                        SharedFlightRow(flight: flight)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        } else {
+            HStack(spacing: 10) {
+                ProgressView()
+                Text("Loading shared flights…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     /// "12 h" above 10 hours, "3.5 h" below.
     private func hoursText(_ hours: Double) -> String {
         hours >= 10 ? "\(Int(hours.rounded())) h" : String(format: "%.1f h", hours)
@@ -1051,11 +1095,15 @@ private struct SpotCommunitySection: View {
             state = .loaded(try await CommunityService.shared.communityStats(forSpotKey: spotKey))
         } catch CommunityError.backendNotConfigured {
             state = .hidden
+            return
         } catch {
             // Keep the last stats on a refresh failure; the service's
             // 15-minute cache makes them recent anyway.
             if case .loaded = state { } else { state = .failed }
         }
+        // Shared flights load after the stats; a failure just leaves the
+        // loading row (retry re-runs both).
+        sharedFlights = (try? await CommunityService.shared.recentFlights(forSpotKey: spotKey, limit: 100)) ?? sharedFlights
     }
 }
 

@@ -155,16 +155,18 @@ enum WindUnit: String, CaseIterable, Identifiable, Sendable {
 /// labels/hints are recalibrated for free flight, in KNOTS).
 ///
 /// Free-flight scale (paraglider / parakite), knots reference:
-///   calm     < 5 kt   — hard to soar
-///   light    5–11 kt
-///   moderate 11–18 kt — sweet spot
-///   strong   18–30 kt — flyable for parakite / experienced
-///   tooMuch  > 30 kt
+///   calm       < 5 kt   — hard to soar
+///   light      5–11 kt
+///   moderate   11–18 kt — sweet spot
+///   strong     18–25 kt — flyable for parakite / experienced
+///   veryStrong 25–30 kt
+///   tooMuch    > 30 kt
 enum WindForce: String, CaseIterable, Identifiable, Sendable {
     case calm
     case light
     case moderate
     case strong
+    case veryStrong
     case tooMuch
 
     var id: String { rawValue }
@@ -176,6 +178,7 @@ enum WindForce: String, CaseIterable, Identifiable, Sendable {
         case .light: return "Light"
         case .moderate: return "Moderate"
         case .strong: return "Strong"
+        case .veryStrong: return "Very strong"
         case .tooMuch: return "Too much"
         }
     }
@@ -186,7 +189,8 @@ enum WindForce: String, CaseIterable, Identifiable, Sendable {
         case .calm: return (nil, 5)
         case .light: return (5, 11)
         case .moderate: return (11, 18)
-        case .strong: return (18, 30)
+        case .strong: return (18, 25)
+        case .veryStrong: return (25, 30)
         case .tooMuch: return (30, nil)
         }
     }
@@ -332,7 +336,7 @@ final class ConditionReportService {
             data["windDirectionDeg"] = normalized
         }
         if let wingSize = wingSize?.trimmingCharacters(in: .whitespacesAndNewlines), !wingSize.isEmpty {
-            data["wingSize"] = String(wingSize.prefix(16))
+            data["wingSize"] = String(wingSize.prefix(48))
         }
         if let note = note?.trimmingCharacters(in: .whitespacesAndNewlines), !note.isEmpty {
             data["note"] = String(note.prefix(280))

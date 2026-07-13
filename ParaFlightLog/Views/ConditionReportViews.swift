@@ -45,12 +45,20 @@ struct ConditionReportSheet: View {
     @State private var errorMessage: String?
     @State private var didPrefillDirection = false
 
+    // Inline sign-in state (shown when the pilot isn't signed in yet, so a
+    // report never requires a detour through Settings › Account).
+    @State private var signInEmail = ""
+    @State private var signInPassword = ""
+    @State private var signInError: String?
+    @State private var isSigningIn = false
+
     /// Remaining anti-spam cooldown for this spot (0 = free to post). Seeded on
     /// appear and ticked down while the sheet is open.
     @State private var cooldownRemaining: TimeInterval = 0
     private let cooldownTimer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    private var isSignedIn: Bool { AuthService.shared.state.isSignedIn }
+    private var authState: AuthState { AuthService.shared.state }
+    private var isSignedIn: Bool { authState.isSignedIn }
     private var canSubmit: Bool {
         status != nil && windForce != nil && !isSubmitting && cooldownRemaining <= 0
     }
@@ -58,10 +66,21 @@ struct ConditionReportSheet: View {
     var body: some View {
         NavigationStack {
             Group {
-                if isSignedIn {
+                switch authState {
+                case .unknown:
+                    // The session hasn't been restored yet — never flash the
+                    // sign-in form at an already-signed-in pilot.
+                    ProgressView("Checking your account…")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .task {
+                            if AuthService.shared.state == .unknown {
+                                await AuthService.shared.restoreSession()
+                            }
+                        }
+                case .signedOut:
+                    signInForm
+                case .signedIn:
                     form
-                } else {
-                    signedOutPrompt
                 }
             }
             .navigationTitle("Report conditions")
@@ -120,12 +139,11 @@ struct ConditionReportSheet: View {
                      : "Tap the point the wind comes from.")
             }
 
-            // Wing size — pre-filled from the default wing.
+            // Wing — pre-filled from the wing last flown at this spot.
             Section {
-                TextField("Wing size (e.g. 22)", text: $wingSize)
-                    .textInputAutocapitalization(.characters)
+                TextField("Wing (e.g. Moustache M1 23)", text: $wingSize)
             } header: {
-                Text("Wing size")
+                Text("Wing")
             }
 
             // Optional note.
@@ -172,28 +190,82 @@ struct ConditionReportSheet: View {
         return "You reported here recently — you can post again in \(minutes) min."
     }
 
-    // MARK: Signed-out prompt
+    // MARK: Inline sign-in (signed out)
 
-    private var signedOutPrompt: some View {
-        ContentUnavailableView {
-            Label("Sign in to report", systemImage: "person.crop.circle.badge.questionmark")
-        } description: {
-            Text("Condition reports are tied to your pilot account. Sign in from Settings › Account to share how it flies right now.")
+    /// Compact sign-in / sign-up form so a signed-out pilot can report without
+    /// leaving this sheet (same Appwrite flow as Settings › Account).
+    private var signInForm: some View {
+        Form {
+            Section {
+                TextField("Email", text: $signInEmail)
+                    .keyboardType(.emailAddress)
+                    .textContentType(.emailAddress)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                SecureField("Password", text: $signInPassword)
+                    .textContentType(.password)
+            } header: {
+                Text("Sign in to report")
+            } footer: {
+                Text("Condition reports are tied to your pilot account. Passwords must be at least 8 characters.")
+            }
+
+            Section {
+                Button {
+                    Task { await signIn(creatingAccount: false) }
+                } label: {
+                    HStack {
+                        Text("Sign In")
+                        if isSigningIn {
+                            Spacer()
+                            ProgressView()
+                        }
+                    }
+                }
+                Button("Create Account") {
+                    Task { await signIn(creatingAccount: true) }
+                }
+            } footer: {
+                if let signInError {
+                    Text(signInError)
+                        .foregroundStyle(.red)
+                }
+            }
+            .disabled(isSigningIn || !isSignInFormValid)
         }
+    }
+
+    private var isSignInFormValid: Bool {
+        signInEmail.contains("@") && signInPassword.count >= 8
+    }
+
+    private func signIn(creatingAccount: Bool) async {
+        signInError = nil
+        isSigningIn = true
+        do {
+            if creatingAccount {
+                try await AuthService.shared.signUp(email: signInEmail, password: signInPassword)
+            } else {
+                try await AuthService.shared.signIn(email: signInEmail, password: signInPassword)
+            }
+            signInPassword = ""
+        } catch {
+            signInError = (error as? LocalizedError)?.errorDescription ?? "Could not sign in."
+        }
+        isSigningIn = false
     }
 
     // MARK: Actions
 
-    /// Best-effort pre-fill: wing size from the default wing, wind direction
-    /// from the spot's current forecast. Never blocks the form.
+    /// Best-effort pre-fill: wing from the last flight AT THIS SPOT (model +
+    /// size, e.g. "Moustache M1 23"), wind direction from the spot's current
+    /// forecast. Never blocks the form.
     private func prefill() async {
-        // Wing size from the last-used wing (same source as AddFlightView).
-        if wingSize.isEmpty,
-           let idString = UserDefaults.standard.string(forKey: UserDefaultsKeys.lastUsedWingId),
-           let id = UUID(uuidString: idString),
-           let size = dataController?.findWing(byId: id)?.size,
-           !size.isEmpty {
-            wingSize = size
+        if wingSize.isEmpty, let wing = lastWingUsedHere() {
+            let size = (wing.size ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            wingSize = size.isEmpty || wing.name.localizedCaseInsensitiveContains(size)
+                ? wing.name
+                : "\(wing.name) \(size)"
         }
 
         // Wind direction from the spot's current Open-Meteo forecast.
@@ -210,6 +282,25 @@ struct ConditionReportSheet: View {
         } catch {
             // No forecast: the pilot picks the direction manually.
         }
+    }
+
+    /// The wing flown most recently at this spot, falling back to the
+    /// last-used wing (same source as AddFlightView) when the spot is unknown
+    /// or has no flights with a wing yet.
+    private func lastWingUsedHere() -> Wing? {
+        if let flights = spot?.flights {
+            let lastWithWing = flights
+                .filter { $0.wing != nil }
+                .max { $0.startDate < $1.startDate }
+            if let wing = lastWithWing?.wing {
+                return wing
+            }
+        }
+        if let idString = UserDefaults.standard.string(forKey: UserDefaultsKeys.lastUsedWingId),
+           let id = UUID(uuidString: idString) {
+            return dataController?.findWing(byId: id)
+        }
+        return nil
     }
 
     private func submit() async {
@@ -321,24 +412,22 @@ struct SpotReportsSection: View {
                 Text("Crowd-sourced reports from pilots, valid for 3 hours.")
             }
         }
-        .sheet(isPresented: $showingReportSheet, onDismiss: { Task { await load(forceRefresh: true) } }) {
-            ConditionReportSheet(spot: spot, spotKey: spotKey, spotName: spotName)
-        }
     }
 
     // MARK: Rows
 
     @ViewBuilder
     private func loadedRows(_ reports: [SpotReport]) -> some View {
-        if let consensus = reports.consensus {
-            ConsensusBanner(consensus: consensus)
-            ForEach(reports) { report in
-                ReportRow(report: report)
-            }
-        } else {
+        if reports.isEmpty {
             Text("No reports yet — be the first to say how it flies.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        } else {
+            // One row per report (the freshest first drives the section) —
+            // no separate consensus banner, it duplicated the first report.
+            ForEach(reports) { report in
+                ReportRow(report: report)
+            }
         }
     }
 
@@ -347,6 +436,11 @@ struct SpotReportsSection: View {
             showingReportSheet = true
         } label: {
             Label("Report conditions", systemImage: "megaphone.fill")
+        }
+        // On the row (a plain view), NOT on the Section: a sheet attached to
+        // a Section inside a List dismisses itself on first presentation.
+        .sheet(isPresented: $showingReportSheet, onDismiss: { Task { await load(forceRefresh: true) } }) {
+            ConditionReportSheet(spot: spot, spotKey: spotKey, spotName: spotName)
         }
     }
 
@@ -406,57 +500,6 @@ struct SpotReportsSection: View {
             logWarning("Follow toggle failed for \(spotKey): \(error.localizedDescription)", category: .community)
         }
         isTogglingFollow = false
-    }
-}
-
-// MARK: - Consensus banner
-
-private struct ConsensusBanner: View {
-    let consensus: ReportConsensus
-    @AppStorage(WindUnit.storageKey) private var windUnit: WindUnit = .kmh
-
-    var body: some View {
-        let report = consensus.latest
-        HStack(spacing: 10) {
-            Text(report.status.emoji)
-                .font(.title2)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(headline)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(report.status.color)
-                Text(subline)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-        }
-        .padding(.vertical, 2)
-    }
-
-    /// "Flying now — SW moderate" style headline.
-    private var headline: String {
-        let report = consensus.latest
-        var parts: [String] = [report.status.label]
-        var conditions: [String] = []
-        if let direction = report.windDirectionDeg {
-            conditions.append(WeatherService.degreesToCompass(direction))
-        }
-        if let force = report.windForce {
-            conditions.append("\(force.label.lowercased()) \(force.rangeHint(in: windUnit))")
-        }
-        if !conditions.isEmpty {
-            parts.append(conditions.joined(separator: " "))
-        }
-        return parts.joined(separator: " — ")
-    }
-
-    /// "12 min ago · 3 reports" style subline (plain String → manual plural).
-    private var subline: String {
-        let relative = consensus.latest.createdAt
-            .formatted(.relative(presentation: .numeric, unitsStyle: .abbreviated))
-        let count = consensus.concurringCount
-        let reports = "\(count) report\(count == 1 ? "" : "s")"
-        return "\(relative) · \(reports)"
     }
 }
 

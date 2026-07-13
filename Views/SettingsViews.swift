@@ -259,7 +259,7 @@ struct SettingsView: View {
                         .foregroundStyle(.green)
                         .font(.caption)
                 } else {
-                    Label("Off", systemImage: "icloud.slash")
+                    Label("Coming soon", systemImage: "icloud.slash")
                         .foregroundStyle(.secondary)
                         .font(.caption)
                 }
@@ -296,7 +296,7 @@ struct SettingsView: View {
             if dataController.isCloudSyncActive {
                 Text("Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights.")
             } else {
-                Text("Enable iCloud in Settings to sync across devices. Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights.")
+                Text("iCloud sync is coming in a future version — use Account & Cloud Backup below to save your logbook in the cloud meanwhile. Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights.")
             }
         }
     }
@@ -878,6 +878,13 @@ private struct CommunitySettingsSection: View {
                 } label: {
                     Label("My Pilot Profile", systemImage: "person.text.rectangle")
                 }
+            }
+
+            // Word-of-mouth invite: shares a short message via the system
+            // share sheet (Messages, WhatsApp, Instagram DM, …).
+            // TODO: append the public TestFlight / App Store link once it exists.
+            ShareLink(item: "I log my flights with SoarX — paragliding & parakite logbook with Apple Watch tracking, 3D replay and live spot conditions from other pilots. Come fly with me!") {
+                Label("Invite a friend", systemImage: "person.badge.plus")
             }
 
             if sharingEnabled {

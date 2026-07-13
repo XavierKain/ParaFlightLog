@@ -162,33 +162,51 @@ private func prewarmKeyboard() {
 }
 
 /// Shown for the ~1s while the SwiftData store opens, instead of a black screen.
-/// App icon + name + an animated loading bar.
+/// Same sky gradient as the onboarding, the app icon gently floating, the app
+/// name and a subtle indeterminate bar — designed to read as a splash screen,
+/// not an error state.
 private struct LaunchLoadingView: View {
+    @State private var floating = false
     @State private var barProgress: CGFloat = 0
 
     var body: some View {
         ZStack {
-            Color(.systemBackground).ignoresSafeArea()
+            // Sky-like backdrop (matches OnboardingView).
+            LinearGradient(
+                colors: [Color.blue.opacity(0.25), Color.cyan.opacity(0.10), Color(.systemBackground)],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
-            VStack(spacing: 20) {
+            VStack(spacing: 16) {
                 Spacer()
 
-                // Real app icon (falls back to a symbol if not loadable)
-                if let icon = UIImage(named: "AppIcon") {
-                    Image(uiImage: icon)
-                        .resizable()
-                        .scaledToFit()
-                        .frame(width: 96, height: 96)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
-                        .shadow(color: .black.opacity(0.18), radius: 10, y: 4)
-                } else {
-                    Image(systemName: "paperplane.circle.fill")
-                        .font(.system(size: 72))
-                        .foregroundStyle(.tint)
+                // Real app icon (falls back to a symbol if not loadable),
+                // drifting slowly like a wing on a light breeze.
+                Group {
+                    if let icon = UIImage(named: "AppIcon") {
+                        Image(uiImage: icon)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 104, height: 104)
+                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                            .shadow(color: .black.opacity(0.15), radius: 14, y: 8)
+                    } else {
+                        Image(systemName: "wind")
+                            .font(.system(size: 64, weight: .medium))
+                            .foregroundStyle(.blue)
+                    }
                 }
+                .offset(y: floating ? -6 : 6)
+                .animation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true), value: floating)
 
                 Text("SoarX")
-                    .font(.title2.weight(.semibold))
+                    .font(.largeTitle.bold())
+
+                Text("Your flights, your spots, your sky.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
 
                 Spacer()
 
@@ -198,17 +216,18 @@ private struct LaunchLoadingView: View {
                         Capsule()
                             .fill(Color.primary.opacity(0.08))
                         Capsule()
-                            .fill(Color.accentColor)
+                            .fill(Color.blue.gradient)
                             .frame(width: geo.size.width * 0.35)
                             .offset(x: barProgress * geo.size.width)
                     }
                 }
-                .frame(width: 180, height: 5)
+                .frame(width: 160, height: 4)
                 .clipShape(Capsule())
-                .padding(.bottom, 60)
+                .padding(.bottom, 70)
             }
         }
         .onAppear {
+            floating = true
             withAnimation(.easeInOut(duration: 0.9).repeatForever(autoreverses: true)) {
                 barProgress = 0.65
             }
@@ -243,6 +262,12 @@ private struct IOSRootView: View {
                     dataController.runSpotMigrationIfNeeded()
 
                     locationService.requestAuthorization()
+
+                    // Restore the Appwrite session NOW, not lazily on the first
+                    // Account/Community screen: every auth-gated feature (report
+                    // sheet, kudos, follows) reads AuthService.state and treated
+                    // the never-restored `.unknown` as signed out.
+                    Task { await AuthService.shared.restoreSession() }
 
                     // Refresh this device's APNs token silently, but only if a
                     // push target already exists (never prompts at launch —

@@ -44,6 +44,7 @@ const WIND_FORCE_TEXT = {
   light: 'light',
   moderate: 'moderate',
   strong: 'strong',
+  veryStrong: 'very strong',
   tooMuch: 'too much wind',
 };
 
