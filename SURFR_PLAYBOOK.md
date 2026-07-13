@@ -90,3 +90,57 @@ Surfr **prouve le modèle** ET on a déjà ~la moitié du squelette (spots, snap
 7. Plus tard : thermique/multi-modèles, stations réelles, compétitions.
 
 *Décisions en attente de Xavier :* (a) la métrique-signature soaring/air-surf ; (b) abo vs one-time pour la trace privée ; (c) feu vert sur la brique push (choix Appwrite Messaging vs autre).
+
+---
+
+## 8. Analyse visuelle — captures d'écran (2026-07-13)
+
+*6 captures fournies par Xavier : profil pilote (Marc Remmerde), page spot Balneario (records, infos, forecast), stats de spot (Activity / Temp / Wind), reviews. Ce que les écrans révèlent au-delà de l'analyse produit du §1-7.*
+
+### 8.1 La page spot Surfr, décomposée (l'écran le plus riche)
+
+Ordre vertical chez Surfr : **nom + pays + distance + note ⭐ + "Suggest edit" → 4 records du spot → Spot Information (fiche structurée) → Live Wind → Wind Forecast (tableau horaire) → photos → Competitions → Leaderboard → Spot Statistics (5 onglets) → Sessions → Reviews.** Tout est sur UNE page scrollable — aucune navigation profonde. C'est la philosophie qu'on vient d'adopter (Conditions now en premier) ; à pousser jusqu'au bout.
+
+### 8.2 Les bonnes idées à reprendre, priorisées
+
+**A. Climatologie mensuelle du spot (onglets Wind/Temp/Activity) — LA meilleure idée des captures.**
+Barres empilées par mois avec bandes de vent (<10 / 10-20 / 20-25 / 25-35 / 35+ kn), température jour/nuit, mois le plus actif. Répond à « quand venir à ce spot ? » = planification de trip, très fort pour un sport de voyage. **Notre atout : Open-Meteo expose gratuitement l'archive ERA5 (Historical Weather API)** → on peut calculer la climatologie de n'importe quel spot sans données utilisateur, puis la CROISER avec la fenêtre apprise du spot (« en mai, 62 % des jours dans ta fenêtre N/NE 10-18 km/h ») — un « % de jours volables par mois » qu'aucun concurrent parapente n'a. Effort **M**, données 100 % dispo.
+
+**B. Records du spot + records perso (4 tuiles : highest jump / max airtime / max distance / max speed).**
+Transposition directe : **plus long vol / plus longue session soaring / max heures dans une journée / record d'airtime au spot**, depuis `shared_flights` (agrégat déjà côté client). Sur le profil : les mêmes en PR personnels. Chaque record est un hook de compétition douce et alimente la future métrique-signature. Effort **S-M**.
+
+**C. Tableau de prévision horaire compact** (heures × knots/gusts/direction/°C/météo, cellules colorées par force, chips de jours avec min/max, lever/coucher du soleil).
+Bien plus dense et lisible que notre liste 7 jours. Open-Meteo renvoie déjà l'horaire + sunrise/sunset. La ligne **« ideal »** (verrouillée chez Surfr) = chez nous la fenêtre apprise → **une ligne « volable ✓/✗ » calculée par heure**, notre différenciateur affiché au cœur du forecast. Effort **M**.
+
+**D. Reviews de spot** (résumé 4.6 + histogramme d'étoiles + avis texte + « crowd rate »).
+Enrichissement communautaire complémentaire de nos reports temps réel : le report dit « ça vole maintenant », la review dit « ce spot vaut le détour / attention aux locaux / décollage technique ». Table Appwrite `spot_reviews` (1/user/spot, étoiles + texte + tags). Effort **M**.
+
+**E. Fiche spot structurée + « Suggest edit »** (Disciplines, Facilities, Water, Crowd, Favours).
+Version parapente : **orientation décollage (on l'a), altitude déco/atterro, difficulté (école→expert), dangers (câbles, rotors, espace aérien), accès (marche, navette), atterrissage officiel**. Le « Suggest edit » wiki-style évite le goulot d'étranglement d'un seul mainteneur. Effort **M**.
+
+**F. Photos de spot** (galerie UGC « 16 images », +13 verrouillées derrière Plus).
+Bucket Appwrite + upload à la création du report/vol. Les 3 premières gratuites, le reste en Plus = leur placement paywall le plus malin (contenu créé par les users, monétisé par la plateforme). Effort **M**.
+
+**G. Profil pilote « héro »** (photo de couverture, drapeau, badge PRO, 801 sessions / 248 followers / 215 following, records).
+Notre PublicProfileView est fonctionnel mais austère. Ajouter : photo/bannière, drapeau pays, compteurs en tête, records perso, et le **badge de rang dans la carte de vol** (« 1st in Ouddorp — Weekend Boosting ») qui transforme chaque vol partagé en mini-compétition. Effort **S-M** (hors compétitions).
+
+**H. Trace GPS colorée par vitesse** sur la carte de session (dégradé vert→jaune→rouge).
+Immédiatement lisible, très partageable. À appliquer à nos cartes de vol + replay (on a la vitesse par point). Effort **S** pour les vols locaux.
+
+### 8.3 Leçons de placement paywall (confirmées visuellement)
+
+Surfr verrouille : modèles météo haute précision (ICON-EU 7km vs GFS gratuit), la ligne « ideal/kite » du forecast, les photos au-delà de 3, l'historique long. **Jamais** le tracking, le social, les stats de base. → Confirme notre plan §5 : la ligne « volable » basique gratuite, le multi-modèles + climatologie profonde + % jours volables en Plus.
+
+### 8.4 Ce qu'on ne copie PAS (pour l'instant)
+
+- **Competitions in-app** (11 au spot, badges 1st) : gros système (inscriptions, périodes, anti-triche). Le leaderboard par spot qu'on a déjà couvre 80 % de la valeur. Plus tard.
+- **Live Wind** : même Surfr affiche « coming soon ». Nos reports manuels + (plus tard) Pioupiou/FFVL font mieux.
+- **Tides/Waves** : sans objet en parapente (remplacer par thermique/plafond à terme).
+
+### 8.5 Séquence suggérée pour ces items visuels
+
+1. **B. Records spot + perso** (S-M, réutilise les agrégats existants, effet immédiat).
+2. **C. Forecast horaire + ligne « volable » + sunrise/sunset** (M, cœur météo).
+3. **A. Climatologie mensuelle ERA5 × fenêtre apprise** (M, le différenciateur trip-planning).
+4. **G. Profil héro + H. trace colorée** (S-M, polish social/média).
+5. **D. Reviews + E. fiche structurée + F. photos** (M chacun, enrichissement long terme).
