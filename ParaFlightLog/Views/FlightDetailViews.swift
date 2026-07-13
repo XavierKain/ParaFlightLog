@@ -58,6 +58,49 @@ struct FlightDetailView: View {
         )
     }
 
+    /// One speed-coloured chunk of the GPS track.
+    private struct TrackSegment {
+        let coordinates: [CLLocationCoordinate2D]
+        let color: Color
+    }
+
+    /// Splits the track into ~120 chunks coloured by their average ground
+    /// speed (green = slow … red = fast, scaled between the track's 5th and
+    /// 95th speed percentiles so outliers don't flatten the gradient).
+    /// Returns nil when too few points carry a speed — the caller then draws
+    /// the classic single blue line.
+    private static func speedSegments(_ track: [GPSTrackPoint], maxSegments: Int = 120) -> [TrackSegment]? {
+        let speeds = track.compactMap(\.speed)
+        guard track.count >= 4, speeds.count >= track.count / 2 else { return nil }
+
+        let sorted = speeds.sorted()
+        let low = sorted[Int(Double(sorted.count - 1) * 0.05)]
+        let high = sorted[Int(Double(sorted.count - 1) * 0.95)]
+        let span = max(high - low, 0.1)
+
+        let chunkSize = max(2, track.count / maxSegments)
+        var segments: [TrackSegment] = []
+        var start = 0
+        while start < track.count - 1 {
+            // Overlap by one point so consecutive segments join seamlessly.
+            let end = min(start + chunkSize, track.count - 1)
+            let chunk = Array(track[start...end])
+            let chunkSpeeds = chunk.compactMap(\.speed)
+            let average = chunkSpeeds.isEmpty
+                ? low
+                : chunkSpeeds.reduce(0, +) / Double(chunkSpeeds.count)
+            let t = min(max((average - low) / span, 0), 1)
+            // Hue 0.33 (green) → 0.0 (red).
+            let color = Color(hue: 0.33 * (1 - t), saturation: 0.85, brightness: 0.9)
+            segments.append(TrackSegment(
+                coordinates: chunk.map { CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude) },
+                color: color
+            ))
+            start = end
+        }
+        return segments.isEmpty ? nil : segments
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -65,12 +108,21 @@ struct FlightDetailView: View {
                     // Map with the GPS track, or a simple marker
                     if flight.gpsTrack != nil || (flight.latitude != nil && flight.longitude != nil) {
                         Map(initialPosition: .region(mapRegion)) {
-                            // Show the GPS track when available
+                            // Show the GPS track when available, coloured by
+                            // ground speed (green → yellow → red). Falls back
+                            // to a single blue line when no speeds were logged.
                             if let track = flight.gpsTrack, track.count >= 2 {
-                                MapPolyline(coordinates: track.map {
-                                    CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
-                                })
-                                .stroke(.blue, lineWidth: 3)
+                                if let segments = Self.speedSegments(track) {
+                                    ForEach(Array(segments.enumerated()), id: \.offset) { _, segment in
+                                        MapPolyline(coordinates: segment.coordinates)
+                                            .stroke(segment.color, lineWidth: 3)
+                                    }
+                                } else {
+                                    MapPolyline(coordinates: track.map {
+                                        CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+                                    })
+                                    .stroke(.blue, lineWidth: 3)
+                                }
 
                                 // Takeoff marker (green)
                                 if let first = track.first {

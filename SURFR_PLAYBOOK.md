@@ -139,8 +139,8 @@ Surfr verrouille : modèles météo haute précision (ICON-EU 7km vs GFS gratuit
 
 ### 8.5 Séquence suggérée pour ces items visuels
 
-1. **B. Records spot + perso** (S-M, réutilise les agrégats existants, effet immédiat).
-2. **C. Forecast horaire + ligne « volable » + sunrise/sunset** (M, cœur météo).
-3. **A. Climatologie mensuelle ERA5 × fenêtre apprise** (M, le différenciateur trip-planning).
-4. **G. Profil héro + H. trace colorée** (S-M, polish social/média).
-5. **D. Reviews + E. fiche structurée + F. photos** (M chacun, enrichissement long terme).
+1. ✅ **B. Records spot + perso** — fait 2026-07-13 : tuiles « My records here » sur la page spot (plus long vol, airtime total, alt max, vitesse max), records sur le profil public, ligne « 🏆 Spot record » dans le sheet Explore.
+2. ✅ **C. Forecast horaire + ligne « volable » + sunrise/sunset** — fait 2026-07-13 : bandeau 48 h scrollable dans la section Weather, cellules teintées par flyability vs orientations du déco, unité kt/km/h respectée, lever/coucher du soleil.
+3. ✅ **A. Climatologie mensuelle ERA5** — fait 2026-07-13 : `ClimatologyService` (3 ans ERA5, cache disque 30 j) + section « Best months to fly » (barres empilées par bande de vent + % de jours volables selon les orientations). Reste à brancher la fenêtre APPRISE (utilise les orientations configurées pour l'instant).
+4. ✅ **G. Profil héro + H. trace colorée** — fait 2026-07-13 : bandeau dégradé + compteurs Flights/Followers/Following + tuiles records sur le profil ; trace GPS colorée par vitesse (vert→rouge, percentiles 5-95) dans le détail de vol.
+5. **D. Reviews + E. fiche structurée + F. photos** (M chacun, enrichissement long terme) — à faire.

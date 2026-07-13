@@ -904,6 +904,19 @@ private struct CommunitySpotSheet: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 } else {
+                    // Spot record: the longest shared flight here.
+                    if let record = flights.max(by: { $0.durationSeconds < $1.durationSeconds }) {
+                        HStack(spacing: 8) {
+                            Text("🏆")
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text("Spot record — \(recordDurationText(record.durationSeconds))")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("\(record.pilotName) · \(record.date, format: .dateTime.day().month().year())")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
                     ForEach(flights) { flight in
                         Button {
                             selectedFlight = flight
@@ -941,6 +954,16 @@ private struct CommunitySpotSheet: View {
     /// "12 h" above 10 hours, "3.5 h" below (same as the spot community section).
     private func hoursText(_ hours: Double) -> String {
         hours >= 10 ? "\(Int(hours.rounded())) h" : String(format: "%.1f h", hours)
+    }
+
+    /// "1h05" / "45 min" for the spot-record row.
+    private func recordDurationText(_ seconds: Int) -> String {
+        let hours = seconds / 3600
+        let minutes = (seconds % 3600) / 60
+        if hours > 0 {
+            return minutes > 0 ? "\(hours)h\(String(format: "%02d", minutes))" : "\(hours)h"
+        }
+        return "\(minutes) min"
     }
 
     // MARK: Loading

@@ -514,7 +514,7 @@ private struct PublicProfileView: View {
                 VStack(spacing: 10) {
                     Image(systemName: "person.circle.fill")
                         .font(.system(size: 56))
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(.white, .blue)
                     Text(profile?.pilotName ?? "Pilot")
                         .font(.title3.weight(.semibold))
                     if let bio = profile?.bio, !bio.isEmpty {
@@ -529,6 +529,7 @@ private struct PublicProfileView: View {
                             .foregroundStyle(.secondary)
                     }
                     HStack(spacing: 28) {
+                        countBlock(recentFlights.count, "Flights")
                         countBlock(followerCount, "Followers")
                         countBlock(followingCount, "Following")
                     }
@@ -539,9 +540,34 @@ private struct PublicProfileView: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
+                .padding(.vertical, 16)
+                // Hero backdrop: same sky gradient family as onboarding/launch.
+                .background(
+                    LinearGradient(
+                        colors: [Color.blue.opacity(0.30), Color.cyan.opacity(0.12), Color.clear],
+                        startPoint: .top, endPoint: .bottom
+                    ),
+                    in: RoundedRectangle(cornerRadius: 16)
+                )
             }
             .listRowBackground(Color.clear)
+            .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
+
+            // Records from the pilot's shared flights (best-effort — limited
+            // to the recent-flights window the profile already loads).
+            if let records = pilotRecords {
+                Section {
+                    HStack(spacing: 10) {
+                        recordTile(records.longestText, "Longest flight", "clock.fill")
+                        recordTile(records.hoursText, "Airtime", "sum")
+                        recordTile("\(records.spotCount)", "Spots", "mappin.and.ellipse")
+                    }
+                    .listRowBackground(Color.clear)
+                    .listRowInsets(EdgeInsets(top: 0, leading: 8, bottom: 0, trailing: 8))
+                } header: {
+                    Text("Records")
+                }
+            }
 
             Section("Recent flights") {
                 if recentFlights.isEmpty {
@@ -565,6 +591,45 @@ private struct PublicProfileView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    // MARK: Records
+
+    private struct PilotRecords {
+        let longestText: String
+        let hoursText: String
+        let spotCount: Int
+    }
+
+    /// Aggregates of the loaded shared flights; nil while there are none.
+    private var pilotRecords: PilotRecords? {
+        guard !recentFlights.isEmpty else { return nil }
+        let longest = recentFlights.map(\.durationSeconds).max() ?? 0
+        let total = recentFlights.reduce(0) { $0 + $1.durationSeconds }
+        let hours = Double(total) / 3600
+        return PilotRecords(
+            longestText: socialDurationText(longest),
+            hoursText: hours >= 10 ? "\(Int(hours.rounded())) h" : String(format: "%.1f h", hours),
+            spotCount: Set(recentFlights.map(\.spotName)).count
+        )
+    }
+
+    private func recordTile(_ value: String, _ label: String, _ symbol: String) -> some View {
+        VStack(spacing: 4) {
+            Image(systemName: symbol)
+                .font(.caption)
+                .foregroundStyle(.blue)
+            Text(value)
+                .font(.headline.weight(.bold).monospacedDigit())
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var followButton: some View {

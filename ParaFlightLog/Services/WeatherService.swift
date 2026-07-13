@@ -56,6 +56,8 @@ struct DayForecast: Identifiable {
     let windDirectionDominantDeg: Double?
     let precipProbabilityMax: Double?
     let tempMax: Double?
+    let sunrise: Date?
+    let sunset: Date?
 }
 
 /// Weather at a flight's takeoff time (hourly entry nearest the start date).
@@ -312,7 +314,7 @@ final class WeatherService {
             URLQueryItem(name: "longitude", value: String(format: "%.4f", longitude)),
             URLQueryItem(name: "current", value: "wind_speed_10m,wind_gusts_10m,wind_direction_10m,temperature_2m,precipitation,cloud_cover"),
             URLQueryItem(name: "hourly", value: "wind_speed_10m,wind_gusts_10m,wind_direction_10m,precipitation_probability,temperature_2m"),
-            URLQueryItem(name: "daily", value: "wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_probability_max,temperature_2m_max"),
+            URLQueryItem(name: "daily", value: "wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_probability_max,temperature_2m_max,sunrise,sunset"),
             URLQueryItem(name: "timezone", value: "auto"),
             URLQueryItem(name: "forecast_days", value: String(forecastDays)),
             URLQueryItem(name: "wind_speed_unit", value: "kmh")
@@ -426,7 +428,9 @@ final class WeatherService {
                     windGustsMax: value(d.windGusts10mMax, at: index),
                     windDirectionDominantDeg: value(d.windDirection10mDominant, at: index),
                     precipProbabilityMax: value(d.precipitationProbabilityMax, at: index),
-                    tempMax: value(d.temperature2mMax, at: index)
+                    tempMax: value(d.temperature2mMax, at: index),
+                    sunrise: stringValue(d.sunrise, at: index).flatMap { hourFormatter.date(from: $0) },
+                    sunset: stringValue(d.sunset, at: index).flatMap { hourFormatter.date(from: $0) }
                 ))
                 if daily.count >= 7 { break }
             }
@@ -451,6 +455,12 @@ final class WeatherService {
     /// Safe parallel-array access: Open-Meteo pads shorter arrays with nulls,
     /// but a missing or short array must never crash the mapping.
     private static func value(_ array: [Double?]?, at index: Int) -> Double? {
+        guard let array, index < array.count else { return nil }
+        return array[index]
+    }
+
+    /// Same tolerant access for string arrays (sunrise/sunset ISO times).
+    private static func stringValue(_ array: [String?]?, at index: Int) -> String? {
         guard let array, index < array.count else { return nil }
         return array[index]
     }
@@ -530,6 +540,8 @@ private nonisolated struct OpenMeteoResponse: Decodable {
         let windDirection10mDominant: [Double?]?
         let precipitationProbabilityMax: [Double?]?
         let temperature2mMax: [Double?]?
+        let sunrise: [String?]?
+        let sunset: [String?]?
 
         enum CodingKeys: String, CodingKey {
             case time
@@ -538,6 +550,7 @@ private nonisolated struct OpenMeteoResponse: Decodable {
             case windDirection10mDominant = "wind_direction_10m_dominant"
             case precipitationProbabilityMax = "precipitation_probability_max"
             case temperature2mMax = "temperature_2m_max"
+            case sunrise, sunset
         }
     }
 }

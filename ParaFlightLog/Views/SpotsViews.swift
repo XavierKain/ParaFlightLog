@@ -280,6 +280,9 @@ struct SpotDetailView: View {
                 SpotReportsSection(spot: spot, spotKey: reportsKey, spotName: spot.name)
             }
 
+            // My records at this spot (hides itself without flights).
+            SpotRecordsSection(spot: spot)
+
             // Identity
             Section("Spot") {
                 LabeledContent("Name") {
@@ -348,6 +351,13 @@ struct SpotDetailView: View {
                     latitude: lat,
                     longitude: lon,
                     windDirections: sortedDirections
+                )
+
+                // "Best months to fly" — ERA5 monthly climatology.
+                SpotClimatologySection(
+                    latitude: lat,
+                    longitude: lon,
+                    directions: sortedDirections
                 )
             }
 
@@ -761,6 +771,12 @@ private struct SpotWeatherSection: View {
         Section {
             if let weather {
                 currentRow(weather)
+
+                // Next 48 h, one compact cell per hour tinted by flyability.
+                if !weather.hourly.isEmpty {
+                    HourlyForecastStrip(hours: weather.hourly, directions: windDirections)
+                }
+
                 ForEach(weather.daily) { day in
                     dailyRow(day)
                 }
@@ -815,7 +831,8 @@ private struct SpotWeatherSection: View {
 
     // MARK: Rows
 
-    /// Big current wind speed + gusts, direction arrow + compass, temperature.
+    /// Big current wind speed + gusts, direction arrow + compass, temperature,
+    /// and today's sunrise/sunset under the wind block.
     private func currentRow(_ weather: SpotWeather) -> some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 2) {
@@ -829,6 +846,11 @@ private struct SpotWeatherSection: View {
                 }
                 if let gusts = weather.windGusts {
                     Text("Gusts \(Int(gusts.rounded())) km/h")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                if let today = weather.daily.first, let sunrise = today.sunrise, let sunset = today.sunset {
+                    Text("☀️ \(sunrise, format: .dateTime.hour().minute()) – \(sunset, format: .dateTime.hour().minute())")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
