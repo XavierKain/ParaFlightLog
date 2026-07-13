@@ -725,10 +725,17 @@ private struct CommunitySpotSheet: View {
             .task { await loadStats() }
             .task { await loadWeather() }
             .task { await loadFlights() }
-            .sheet(item: $selectedFlight) { flight in
-                SharedFlightDetailView(flight: flight, spotName: summary.name)
-                    .presentationDetents([.medium])
-            }
+        }
+        // Presented from the NavigationStack's ROOT, not from inside it. A sheet
+        // attached within the stack is presented by the stack's hosting
+        // controller, which is transiently "detached" while this whole view is
+        // itself a detent sheet — iOS logs "Presenting … from detached
+        // NavigationStackHostingController … will become a hard exception" and
+        // may fail to present. Hoisting the modifier outside the stack presents
+        // it from the stable sheet root instead.
+        .sheet(item: $selectedFlight) { flight in
+            SharedFlightDetailView(flight: flight, spotName: summary.name)
+                .presentationDetents([.medium])
         }
     }
 

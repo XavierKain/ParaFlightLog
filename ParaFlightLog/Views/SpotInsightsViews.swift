@@ -138,7 +138,11 @@ struct HourlyForecastStrip: View {
         Text(date, format: .dateTime.weekday(.abbreviated))
             .font(.caption2.weight(.bold))
             .foregroundStyle(.secondary)
-            .frame(maxHeight: .infinity)
+            // No maxHeight:.infinity — inside a horizontal ScrollView the height
+            // is content-driven, so stretching this label makes the strip's
+            // height ambiguous and it collapses to 0 on the first layout pass
+            // (the "1206×0 image slot" / CAMetalLayer 0×0 spam). Top alignment
+            // (the HStack's) already seats it against the taller cells.
             .padding(.horizontal, 2)
     }
 
