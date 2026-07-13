@@ -123,7 +123,7 @@ private struct SpotEntityRow: View {
             } else {
                 Image(systemName: spot.latitude != nil ? "mappin.circle" : "mappin.slash.circle")
                     .font(.title3)
-                    .foregroundStyle(spot.latitude != nil ? .secondary : .orange)
+                    .foregroundStyle(spot.latitude != nil ? Color.secondary : Color.orange)
                     .frame(width: 32, height: 32)
             }
 
