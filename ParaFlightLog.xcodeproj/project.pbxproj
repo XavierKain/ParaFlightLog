@@ -19,6 +19,7 @@
 		2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */; };
 		257C68F32ECB7651005F3773 /* ParaFlightLogWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2589C4572F02D8E000EF6911 /* Appwrite in Frameworks */ = {isa = PBXBuildFile; productRef = 2589C4562F02D8E000EF6911 /* Appwrite */; };
+		AB0000702F110000000C0070 /* MapboxMaps in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000712F110000000C0071 /* MapboxMaps */; };
 		25C979902EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		25C979922EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		25C979932EDBB5DA009233B8 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798E2EDBB5DA009233B8 /* Models.swift */; };
@@ -199,6 +200,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				2589C4572F02D8E000EF6911 /* Appwrite in Frameworks */,
+				AB0000702F110000000C0070 /* MapboxMaps in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -479,6 +481,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				2589C4552F02D81B00EF6911 /* XCRemoteSwiftPackageReference "sdk-for-apple" */,
+				AB0000722F110000000C0072 /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 257C68D62ECB7559005F3773 /* Products */;
@@ -1201,6 +1204,14 @@
 				minimumVersion = 13.5.0;
 			};
 		};
+		AB0000722F110000000C0072 /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mapbox/mapbox-maps-ios.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 11.8.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -1208,6 +1219,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 2589C4552F02D81B00EF6911 /* XCRemoteSwiftPackageReference "sdk-for-apple" */;
 			productName = Appwrite;
+		};
+		AB0000712F110000000C0071 /* MapboxMaps */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AB0000722F110000000C0072 /* XCRemoteSwiftPackageReference "mapbox-maps-ios" */;
+			productName = MapboxMaps;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};
