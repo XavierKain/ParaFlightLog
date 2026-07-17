@@ -918,7 +918,8 @@ final class CommunityService {
     /// from start; alt/speed use -1000 as "absent"), then the same
     /// zlib+base64 "PFLZ1:" envelope as the cloud backup. Nil when the track
     /// is too short or the payload can't be built — sharing then just omits it.
-    private static func encodeTrackPayload(_ track: [GPSTrackPoint]) -> String? {
+    /// Internal (not private) so the round-trip is unit-tested.
+    static func encodeTrackPayload(_ track: [GPSTrackPoint]) -> String? {
         guard track.count >= 2, let start = track.first?.timestamp else { return nil }
 
         let stride = max(1, Int((Double(track.count) / Double(sharedTrackMaxPoints)).rounded(.up)))
@@ -953,7 +954,8 @@ final class CommunityService {
 
     /// Inverse of `encodeTrackPayload`. Nil on any decoding problem —
     /// the flight detail then just shows the summary without a track.
-    private static func decodeTrackPayload(_ payload: String) -> [GPSTrackPoint]? {
+    /// Internal (not private) so the round-trip is unit-tested.
+    static func decodeTrackPayload(_ payload: String) -> [GPSTrackPoint]? {
         guard let json = try? BackupManager.decompressCloudPayload(payload),
               let envelope = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
               let startEpoch = envelope["start"] as? Double,
