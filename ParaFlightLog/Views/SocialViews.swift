@@ -201,6 +201,15 @@ struct CommunityFeedView: View {
         content
             .navigationTitle("Community Feed")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    NavigationLink {
+                        FindPilotsView()
+                    } label: {
+                        Label("Find pilots", systemImage: "person.badge.plus")
+                    }
+                }
+            }
             .task { await load(force: false) }
     }
 
@@ -265,6 +274,91 @@ struct CommunityFeedView: View {
         } catch {
             // Keep any stale list on a refresh failure; otherwise fail soft.
             if case .loaded = phase {} else { phase = .failed }
+        }
+    }
+}
+
+// MARK: - FindPilotsView
+
+/// Search for pilots by name (prefix match on public profiles) and open
+/// their profile to follow them. The invite ShareLink covers friends who
+/// aren't on SoarX yet.
+struct FindPilotsView: View {
+    @State private var query = ""
+    @State private var results: [PilotProfile] = []
+    @State private var isSearching = false
+    @State private var didSearch = false
+
+    var body: some View {
+        List {
+            if results.isEmpty {
+                Section {
+                    if isSearching {
+                        HStack(spacing: 10) {
+                            ProgressView()
+                            Text("Searching…")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    } else if didSearch && !query.isEmpty {
+                        Text("No pilot found with that name.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    } else {
+                        Text("Type a pilot name to find them — then follow them from their profile.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else {
+                Section {
+                    ForEach(results) { pilot in
+                        NavigationLink {
+                            PilotProfileView(userId: pilot.userId)
+                        } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: "person.circle.fill")
+                                    .font(.title3)
+                                    .foregroundStyle(.blue)
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(pilot.pilotName)
+                                        .font(.subheadline.weight(.medium))
+                                    if let home = pilot.homeSpotName, !home.isEmpty {
+                                        Label(home, systemImage: "house")
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Section {
+                ShareLink(item: "I log my flights with SoarX — paragliding & parakite logbook with Apple Watch tracking, 3D replay and live spot conditions from other pilots. Come fly with me!") {
+                    Label("Invite a friend to SoarX", systemImage: "person.badge.plus")
+                }
+            } footer: {
+                Text("Not on SoarX yet? Send them an invite by message, WhatsApp or anything else.")
+            }
+        }
+        .navigationTitle("Find Pilots")
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $query, prompt: "Pilot name")
+        .task(id: query) {
+            // Debounce: wait for a typing pause before hitting the backend.
+            guard !query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                results = []
+                didSearch = false
+                return
+            }
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            isSearching = true
+            defer { isSearching = false }
+            results = (try? await SocialService.shared.searchPilots(matching: query)) ?? []
+            didSearch = true
         }
     }
 }

@@ -136,6 +136,11 @@ nonisolated enum UserDefaultsKeys {
     /// Public display name attached to shared flights (empty -> "A pilot").
     static let pilotDisplayName = "pilotDisplayName"
 
+    /// Include the (downsampled, compressed) GPS track with shared flights so
+    /// other pilots can see the full line and replay it in 3D. Default TRUE
+    /// while sharing is on — read/written via `CommunityService.isTrackSharingEnabled`.
+    static let communityShareTracks = "communityShareTracks"
+
     /// Appwrite push-target `$id` created via `account.createPushTarget`
     /// (Phase 1 push). Present means this device is registered for pushes on
     /// the current account; cleared on sign-out. Read/written by PushService.

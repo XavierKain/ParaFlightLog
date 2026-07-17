@@ -152,6 +152,10 @@ struct FlightReplayView: View {
     /// pan deceleration rather than mid-fling.
     @State private var captureWork: DispatchWorkItem?
 
+    /// One-time camera-gesture hint (pinch / tilt / rotate), dismissed on the
+    /// first map touch or after a few seconds.
+    @State private var showGestureHint = true
+
     // Timer
     @State private var lastTickDate: Date?
     @State private var playbackTimer: AnyCancellable?
@@ -175,7 +179,13 @@ struct FlightReplayView: View {
     // MARK: Init
 
     init(flight: Flight) {
-        let engine = ReplayEngine(points: flight.gpsTrack ?? [])
+        self.init(points: flight.gpsTrack ?? [])
+    }
+
+    /// Replay from raw track points — used for community-shared flights,
+    /// which have no local Flight model.
+    init(points: [GPSTrackPoint]) {
+        let engine = ReplayEngine(points: points)
         self.engine = engine
         self.hasTrack = engine.rawCoordinates.count >= 2
 
@@ -237,6 +247,23 @@ struct FlightReplayView: View {
             VStack {
                 hud(for: current)
                 Spacer()
+
+                // One-time gesture hint: the camera is fully free (pinch =
+                // zoom, two-finger vertical drag = tilt 3D, two-finger rotate
+                // = heading) but nothing hinted at it. Fades out on first
+                // touch or after a few seconds.
+                if showGestureHint {
+                    Label("Pinch to zoom · two-finger drag to tilt in 3D · rotate to orbit",
+                          systemImage: "hand.draw")
+                        .font(.caption)
+                        .foregroundStyle(.white.opacity(0.9))
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 7)
+                        .background(.black.opacity(0.45), in: Capsule())
+                        .padding(.bottom, 6)
+                        .transition(.opacity)
+                }
+
                 controls
             }
         }
@@ -245,7 +272,16 @@ struct FlightReplayView: View {
         .sensoryFeedback(.selection, trigger: speedIndex)
         .onChange(of: isPlaying) { _, _ in syncTimer() }
         .onChange(of: cameraAnimating) { _, _ in syncTimer() }
-        .onAppear { scheduleOpeningFlyIn() }
+        .onChange(of: userInteracting) { _, interacting in
+            // First touch on the map: the pilot found the gestures.
+            if interacting { withAnimation(.easeOut(duration: 0.4)) { showGestureHint = false } }
+        }
+        .onAppear {
+            scheduleOpeningFlyIn()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
+                withAnimation(.easeOut(duration: 0.8)) { showGestureHint = false }
+            }
+        }
         .onDisappear { stopTimer() }
     }
 

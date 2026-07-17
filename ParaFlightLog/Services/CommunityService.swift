@@ -120,11 +120,33 @@ struct CommunitySpotSummary: Identifiable {
 struct SharedFlightSummary: Identifiable {
     /// Appwrite row ID (the shared flight's UUID, lowercased).
     let id: String
+    /// The sharing pilot's user ID (links to their public profile).
+    let userId: String
     let pilotName: String
     let date: Date
     let durationSeconds: Int
     /// Raw flight-type string as shared (maps onto `FlightType` when known).
     let flightType: String?
+}
+
+/// The FULL detail of one shared flight (Explore → flight detail): summary
+/// fields plus the shared stats and — when the sharer opted in — the
+/// downsampled GPS track, ready for the map and the 3D replay.
+struct SharedFlightDetail {
+    let id: String
+    let userId: String
+    let pilotName: String
+    let spotName: String
+    let date: Date
+    let durationSeconds: Int
+    let flightType: String?
+    let maxAltitude: Double?
+    /// m/s (same unit as the local Flight model).
+    let maxSpeed: Double?
+    /// Meters.
+    let totalDistance: Double?
+    /// Decoded shared track (nil when the sharer didn't include it).
+    let track: [GPSTrackPoint]?
 }
 
 /// One community takeoff-wind observation used by the learned-flyability
@@ -185,6 +207,13 @@ final class CommunityService {
     var isPresenceEnabled: Bool {
         get { UserDefaults.standard.bool(forKey: UserDefaultsKeys.presenceEnabled) }
         set { UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.presenceEnabled) }
+    }
+
+    /// Include the (downsampled, compressed) GPS track with shared flights.
+    /// Default TRUE while it has never been set — sharing itself is the opt-in.
+    var isTrackSharingEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: UserDefaultsKeys.communityShareTracks) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.communityShareTracks) }
     }
 
     /// Public display name attached to shared flights. Empty -> "A pilot".
@@ -251,11 +280,20 @@ final class CommunityService {
         let takeoffWindSpeed: Double?
         let takeoffWindGusts: Double?
         let takeoffWindDirection: Double?
+        // Shared flight stats (nil when never recorded).
+        let maxAltitude: Double?
+        let maxSpeed: Double?
+        let totalDistance: Double?
+        /// Compressed track payload ("PFLZ1:" + base64(zlib(JSON))), already
+        /// encoded at snapshot time; nil when track sharing is off / no track.
+        let trackPayload: String?
     }
 
     /// Snapshots the shareable values of a flight, or nil when the flight
     /// is not eligible (no spot, or spot without coordinates / key).
-    private static func makeSnapshot(of flight: Flight) -> FlightShareSnapshot? {
+    /// `includeTrack` also encodes the compressed GPS-track payload (driven
+    /// by `isTrackSharingEnabled` at both call sites).
+    private static func makeSnapshot(of flight: Flight, includeTrack: Bool) -> FlightShareSnapshot? {
         guard let spot = flight.spot,
               let latitude = spot.latitude,
               let longitude = spot.longitude,
@@ -274,7 +312,11 @@ final class CommunityService {
             spotType: spot.spotType ?? spot.dominantFlightType?.rawValue,
             takeoffWindSpeed: flight.takeoffWindSpeed,
             takeoffWindGusts: flight.takeoffWindGusts,
-            takeoffWindDirection: flight.takeoffWindDirection
+            takeoffWindDirection: flight.takeoffWindDirection,
+            maxAltitude: flight.maxAltitude,
+            maxSpeed: flight.maxSpeed,
+            totalDistance: flight.totalDistance,
+            trackPayload: includeTrack ? flight.gpsTrack.flatMap(Self.encodeTrackPayload) : nil
         )
     }
 
@@ -287,7 +329,7 @@ final class CommunityService {
     private func share(flight: Flight, userId: String) async throws -> String? {
         // Snapshot everything BEFORE the awaits: SwiftData models must not
         // be trusted across suspension points.
-        guard let snapshot = Self.makeSnapshot(of: flight) else { return nil }
+        guard let snapshot = Self.makeSnapshot(of: flight, includeTrack: isTrackSharingEnabled) else { return nil }
         return try await share(snapshot: snapshot, userId: userId)
     }
 
@@ -319,6 +361,19 @@ final class CommunityService {
         }
         if let windDirection = snapshot.takeoffWindDirection {
             document["takeoffWindDirection"] = windDirection
+        }
+        // Shared stats + optional compressed track (columns added 2026-07-17).
+        if let maxAltitude = snapshot.maxAltitude {
+            document["maxAltitude"] = maxAltitude
+        }
+        if let maxSpeed = snapshot.maxSpeed {
+            document["maxSpeed"] = maxSpeed
+        }
+        if let totalDistance = snapshot.totalDistance {
+            document["totalDistance"] = totalDistance
+        }
+        if let trackPayload = snapshot.trackPayload {
+            document["track"] = trackPayload
         }
 
         if !skipSpotUpsert {
@@ -411,7 +466,10 @@ final class CommunityService {
         // Snapshot ALL eligible flights up front, as plain values: the loop
         // below suspends on every iteration and must never dereference a
         // SwiftData model that could have been deleted/faulted meanwhile.
-        let snapshots = flights.compactMap(Self.makeSnapshot(of:))
+        // Tracks are included too (the pilot asked for a full backfill);
+        // the payloads are downsampled + compressed so the steady pace holds.
+        let includeTracks = isTrackSharingEnabled
+        let snapshots = flights.compactMap { Self.makeSnapshot(of: $0, includeTrack: includeTracks) }
         guard !snapshots.isEmpty else { return 0 }
 
         // Spots upserted during THIS run: the per-flight spot upsert is the
@@ -503,6 +561,7 @@ final class CommunityService {
                     tableId: AppwriteConfig.sharedFlightsCollectionId,
                     queries: [
                         Query.equal("userId", value: userId),
+                        Query.select(["userId", "$id"]),
                         Query.limit(100)
                     ]
                 )
@@ -653,7 +712,10 @@ final class CommunityService {
                 queries: [
                     Query.equal("spotKey", value: spotKey),
                     Query.greaterThanEqual("date", value: Self.isoString(from: startOfYear)),
-                    Query.orderDesc("date")
+                    Query.orderDesc("date"),
+                    // Explicit select: never pull the large `track` column
+                    // into the on-device stats aggregation.
+                    Query.select(["userId", "pilotName", "date", "durationSeconds", "$id"])
                 ]
             )
 
@@ -844,6 +906,121 @@ final class CommunityService {
         return summaries
     }
 
+    // MARK: - Shared track encoding
+
+    /// Longest shared track after downsampling (~35 KB compressed+base64,
+    /// well under the 200 000-char `track` column).
+    private static let sharedTrackMaxPoints = 1200
+
+    /// Encodes a GPS track into the compressed `track` column payload:
+    /// uniform downsample to ≤1200 points, compact JSON
+    /// `{"v":1,"start":epoch,"pts":[[dt,lat,lon,alt,speed],…]}` (dt seconds
+    /// from start; alt/speed use -1000 as "absent"), then the same
+    /// zlib+base64 "PFLZ1:" envelope as the cloud backup. Nil when the track
+    /// is too short or the payload can't be built — sharing then just omits it.
+    private static func encodeTrackPayload(_ track: [GPSTrackPoint]) -> String? {
+        guard track.count >= 2, let start = track.first?.timestamp else { return nil }
+
+        let stride = max(1, Int((Double(track.count) / Double(sharedTrackMaxPoints)).rounded(.up)))
+        var kept = Swift.stride(from: 0, to: track.count, by: stride).map { track[$0] }
+        // Always keep the landing point so the shared line reaches the ground.
+        if let last = track.last, kept.last?.id != last.id {
+            kept.append(last)
+        }
+
+        let points: [[Double]] = kept.map { point in
+            [
+                (point.timestamp.timeIntervalSince(start)).rounded(),
+                (point.latitude * 100000).rounded() / 100000,
+                (point.longitude * 100000).rounded() / 100000,
+                point.altitude.map { ($0 * 10).rounded() / 10 } ?? -1000,
+                point.speed.map { ($0 * 10).rounded() / 10 } ?? -1000
+            ]
+        }
+
+        let envelope: [String: Any] = [
+            "v": 1,
+            "start": start.timeIntervalSince1970,
+            "pts": points
+        ]
+        guard let json = try? JSONSerialization.data(withJSONObject: envelope),
+              let payload = try? BackupManager.compressCloudPayload(json),
+              payload.count <= 190_000 else {
+            return nil
+        }
+        return payload
+    }
+
+    /// Inverse of `encodeTrackPayload`. Nil on any decoding problem —
+    /// the flight detail then just shows the summary without a track.
+    private static func decodeTrackPayload(_ payload: String) -> [GPSTrackPoint]? {
+        guard let json = try? BackupManager.decompressCloudPayload(payload),
+              let envelope = try? JSONSerialization.jsonObject(with: json) as? [String: Any],
+              let startEpoch = envelope["start"] as? Double,
+              let rawPoints = envelope["pts"] as? [[Any]] else {
+            return nil
+        }
+        let start = Date(timeIntervalSince1970: startEpoch)
+        let points: [GPSTrackPoint] = rawPoints.compactMap { values in
+            guard values.count >= 5,
+                  let dt = Self.anyDouble(values[0]),
+                  let latitude = Self.anyDouble(values[1]),
+                  let longitude = Self.anyDouble(values[2]),
+                  let altitude = Self.anyDouble(values[3]),
+                  let speed = Self.anyDouble(values[4]) else { return nil }
+            return GPSTrackPoint(
+                timestamp: start.addingTimeInterval(dt),
+                latitude: latitude,
+                longitude: longitude,
+                altitude: altitude <= -999 ? nil : altitude,
+                speed: speed <= -999 ? nil : speed
+            )
+        }
+        return points.count >= 2 ? points : nil
+    }
+
+    /// Tolerant Double from a JSONSerialization value (NSNumber / Int / Double).
+    private static func anyDouble(_ value: Any) -> Double? {
+        if let number = value as? NSNumber { return number.doubleValue }
+        if let double = value as? Double { return double }
+        if let int = value as? Int { return Double(int) }
+        return nil
+    }
+
+    // MARK: - Shared flight detail
+
+    /// The full detail of one shared flight (row ID = flight UUID), including
+    /// the decoded GPS track when the sharer included one. Not cached — it is
+    /// fetched once when the pilot opens the flight.
+    func sharedFlightDetail(rowId: String) async throws -> SharedFlightDetail {
+        do {
+            let row = try await tablesDB.getRow(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.sharedFlightsCollectionId,
+                rowId: rowId
+            )
+            let data = row.data
+            let date = (data["date"]?.value as? String).flatMap(Self.parseISODate) ?? Date()
+            let pilotName = (data["pilotName"]?.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "A pilot"
+            return SharedFlightDetail(
+                id: row.id,
+                userId: data["userId"]?.value as? String ?? "",
+                pilotName: pilotName,
+                spotName: (data["spotName"]?.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "Spot",
+                date: date,
+                durationSeconds: Self.intValue(data["durationSeconds"]),
+                flightType: data["flightType"]?.value as? String,
+                maxAltitude: Self.doubleValue(data["maxAltitude"]),
+                maxSpeed: Self.doubleValue(data["maxSpeed"]),
+                totalDistance: Self.doubleValue(data["totalDistance"]),
+                track: (data["track"]?.value as? String).flatMap(Self.decodeTrackPayload)
+            )
+        } catch {
+            logInfo("Shared flight detail unavailable for \(rowId): \(error)", category: .community)
+            throw Self.mapError(error)
+        }
+    }
+
     /// Most recent shared flights at one community spot (Explore detail
     /// sheet), newest first. Cached in memory for 15 minutes per spot key.
     func recentFlights(forSpotKey spotKey: String, limit: Int = 20) async throws -> [SharedFlightSummary] {
@@ -859,6 +1036,9 @@ final class CommunityService {
                 queries: [
                     Query.equal("spotKey", value: spotKey),
                     Query.orderDesc("date"),
+                    // Explicit select: never pull the large `track` column
+                    // into a list — the flight detail fetches it on demand.
+                    Query.select(["userId", "pilotName", "date", "durationSeconds", "flightType", "$id"]),
                     Query.limit(max(1, min(limit, 100)))
                 ]
             )
@@ -869,6 +1049,7 @@ final class CommunityService {
                 let pilotName = (data["pilotName"]?.value as? String).flatMap { $0.isEmpty ? nil : $0 } ?? "A pilot"
                 return SharedFlightSummary(
                     id: row.id,
+                    userId: data["userId"]?.value as? String ?? "",
                     pilotName: pilotName,
                     date: date,
                     durationSeconds: Self.intValue(data["durationSeconds"]),

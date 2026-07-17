@@ -666,6 +666,12 @@ private struct CommunitySpotSheet: View {
     @State private var flightsFailed = false
     @State private var selectedFlight: SharedFlightSummary?
 
+    /// Launch directions LEARNED from the community's shared flights at this
+    /// spot (a community spot carries no configured directions). They drive
+    /// the hourly-strip flyability tint and the climatology's flyable share —
+    /// same information as the pilot's own spot page.
+    @State private var learnedDirections: [String] = []
+
     /// Live presence: prefer the fresh per-spot stats over the (possibly
     /// 15-minute-old) Explore summary once they arrive.
     private var pilotsFlyingNow: Int {
@@ -692,7 +698,20 @@ private struct CommunitySpotSheet: View {
                     }
                 }
 
+                // Live condition reports + "Report conditions" — the SAME
+                // section as the local spot page (works without a local Spot).
+                SpotReportsSection(spot: mySpot, spotKey: summary.spotKey, spotName: summary.name)
+
                 conditionsSection
+
+                // "Best months to fly" — same ERA5 climatology as the local
+                // spot page; the flyable share uses the LEARNED directions.
+                SpotClimatologySection(
+                    latitude: summary.latitude,
+                    longitude: summary.longitude,
+                    directions: learnedDirections
+                )
+
                 communitySection
                 // Spot leaderboard (Phase 4). Fail-soft: hides itself when the
                 // social backend isn't configured.
@@ -720,11 +739,12 @@ private struct CommunitySpotSheet: View {
                     }
                 }
             }
-            // Three independent tasks so stats, weather and the flight feed
-            // load in parallel and fail independently.
+            // Independent tasks so stats, weather, the flight feed and the
+            // learned window load in parallel and fail independently.
             .task { await loadStats() }
             .task { await loadWeather() }
             .task { await loadFlights() }
+            .task { await loadLearnedDirections() }
         }
         // Presented from the NavigationStack's ROOT, not from inside it. A sheet
         // attached within the stack is presented by the stack's hosting
@@ -735,7 +755,7 @@ private struct CommunitySpotSheet: View {
         // it from the stable sheet root instead.
         .sheet(item: $selectedFlight) { flight in
             SharedFlightDetailView(flight: flight, spotName: summary.name)
-                .presentationDetents([.medium])
+                .presentationDetents([.medium, .large])
         }
     }
 
@@ -745,8 +765,14 @@ private struct CommunitySpotSheet: View {
         Section {
             if let weather {
                 currentConditionsRow(weather)
-                // Coming days. No flyability rating: community spots carry no
-                // launch orientations, so these are raw forecast rows only.
+
+                // Next 48 h — same strip as the local spot page. The
+                // flyability tint uses the directions LEARNED from shared
+                // flights here (gray cells until the spot has learned data).
+                if !weather.hourly.isEmpty {
+                    HourlyForecastStrip(hours: weather.hourly, directions: learnedDirections)
+                }
+
                 ForEach(weather.daily) { day in
                     forecastRow(day)
                 }
@@ -1000,6 +1026,16 @@ private struct CommunitySpotSheet: View {
         } catch {
             flightsFailed = flights == nil
         }
+    }
+
+    /// Learned flying window → compass directions (busiest sectors), used by
+    /// the hourly strip and the climatology. Fail-soft: stays empty.
+    private func loadLearnedDirections() async {
+        let window = await SpotIntelligenceService.shared.learnedWindow(
+            spotKey: summary.spotKey, latitude: summary.latitude, longitude: summary.longitude
+        )
+        guard !window.isEmpty else { return }
+        learnedDirections = WeatherService.compassPoints.filter { window.sectors[$0] != nil }
     }
 }
 

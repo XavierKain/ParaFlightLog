@@ -19,6 +19,7 @@ struct FlightDetailView: View {
     let flight: Flight
 
     @State private var showingEditSheet = false
+    @State private var showingTrimSheet = false
     @State private var showingReplay = false
     @State private var exportedFile: ExportedTrackFile?
     @State private var exportErrorMessage: String?
@@ -395,6 +396,12 @@ struct FlightDetailView: View {
                             } label: {
                                 Label("IGC", systemImage: "doc.text")
                             }
+                            Divider()
+                            Button {
+                                showingTrimSheet = true
+                            } label: {
+                                Label("Trim flight…", systemImage: "scissors")
+                            }
                         } label: {
                             Label("Export", systemImage: "square.and.arrow.up")
                         }
@@ -409,6 +416,9 @@ struct FlightDetailView: View {
             }
             .sheet(isPresented: $showingEditSheet) {
                 EditFlightView(flight: flight)
+            }
+            .sheet(isPresented: $showingTrimSheet) {
+                TrimFlightView(flight: flight)
             }
             .fullScreenCover(isPresented: $showingReplay) {
                 FlightReplayView(flight: flight)

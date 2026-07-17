@@ -116,6 +116,13 @@ final class SocialService {
     private static let profilesTableId = "profiles_v20"
     private static let followsTableId = "follows_v20"
     private static let kudosTableId = "flight_kudos_v20"
+
+    /// Columns a FeedItem needs from `shared_flights` — used as an explicit
+    /// Query.select so the large `track` column is never pulled into lists.
+    private static let feedItemColumns = [
+        "userId", "pilotName", "spotName", "spotKey", "date",
+        "durationSeconds", "flightType", "$id"
+    ]
     private var sharedFlightsTableId: String { AppwriteConfig.sharedFlightsCollectionId }
 
     /// Appwrite `Query.equal` with a value array performs an IN match. Servers
@@ -170,6 +177,28 @@ final class SocialService {
             // A missing row means "no profile yet" — not an error for the UI.
             if Self.isNotFound(error) { return nil }
             logInfo("Profile unavailable for \(userId): \(error)", category: .community)
+            throw Self.mapError(error)
+        }
+    }
+
+    /// Public profiles whose pilot name starts with `query` (Appwrite
+    /// `startsWith`, capped at 20, backed by the `idx_pilotName` index).
+    /// An empty query returns [].
+    func searchPilots(matching query: String) async throws -> [PilotProfile] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        do {
+            let page = try await tablesDB.listRows(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: Self.profilesTableId,
+                queries: [
+                    Query.startsWith("pilotName", value: trimmed),
+                    Query.limit(20)
+                ]
+            )
+            return page.rows.map(Self.parseProfile)
+        } catch {
+            logInfo("Pilot search unavailable: \(error)", category: .community)
             throw Self.mapError(error)
         }
     }
@@ -367,6 +396,9 @@ final class SocialService {
                     queries: [
                         Query.equal("userId", value: chunk),
                         Query.orderDesc("date"),
+                        // Explicit select: the rows now carry a large `track`
+                        // column that a feed must never download.
+                        Query.select(Self.feedItemColumns),
                         Query.limit(max(1, min(limit, 100)))
                     ]
                 )
@@ -396,6 +428,8 @@ final class SocialService {
                 queries: [
                     Query.equal("userId", value: userId),
                     Query.orderDesc("date"),
+                    // Explicit select: never download the large `track` column.
+                    Query.select(Self.feedItemColumns),
                     Query.limit(max(1, min(limit, 100)))
                 ]
             )

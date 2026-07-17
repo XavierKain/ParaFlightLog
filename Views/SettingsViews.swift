@@ -828,6 +828,7 @@ private struct CommunitySettingsSection: View {
     @AppStorage(UserDefaultsKeys.communitySharingEnabled) private var sharingEnabled = false
     @AppStorage(UserDefaultsKeys.presenceEnabled) private var presenceEnabled = false
     @AppStorage(UserDefaultsKeys.pilotDisplayName) private var pilotDisplayName = ""
+    @AppStorage(UserDefaultsKeys.communityShareTracks) private var shareTracks = true
 
     /// Shown after trying to enable sharing while signed out.
     @State private var showSignInHint = false
@@ -880,11 +881,13 @@ private struct CommunitySettingsSection: View {
                 }
             }
 
-            // Word-of-mouth invite: shares a short message via the system
-            // share sheet (Messages, WhatsApp, Instagram DM, …).
+            // Find pilots already on SoarX (search by name → follow), plus
+            // the word-of-mouth invite for friends who aren't yet.
             // TODO: append the public TestFlight / App Store link once it exists.
-            ShareLink(item: "I log my flights with SoarX — paragliding & parakite logbook with Apple Watch tracking, 3D replay and live spot conditions from other pilots. Come fly with me!") {
-                Label("Invite a friend", systemImage: "person.badge.plus")
+            NavigationLink {
+                FindPilotsView()
+            } label: {
+                Label("Find pilots & invite friends", systemImage: "person.badge.plus")
             }
 
             if sharingEnabled {
@@ -905,6 +908,15 @@ private struct CommunitySettingsSection: View {
                 .onChange(of: presenceEnabled) { _, newValue in
                     guard newValue else { return }
                     Task { await validatePresenceEnabled() }
+                }
+
+                Toggle(isOn: $shareTracks) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Share GPS tracks")
+                        Text("Other pilots can see your flight line and replay it in 3D (simplified track). Forgot to stop a flight? Trim it from the flight page before it's shared.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                 }
 
                 if auth.state.isSignedIn {

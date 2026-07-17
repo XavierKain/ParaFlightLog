@@ -1031,7 +1031,7 @@ private struct SpotCommunitySection: View {
                 }
                 .sheet(item: $selectedFlight) { flight in
                     SharedFlightDetailView(flight: flight, spotName: spotName)
-                        .presentationDetents([.medium])
+                        .presentationDetents([.medium, .large])
                 }
         } footer: {
             if case .loaded = state {
