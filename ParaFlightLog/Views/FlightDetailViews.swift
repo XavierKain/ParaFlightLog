@@ -421,7 +421,7 @@ struct FlightDetailView: View {
                 TrimFlightView(flight: flight)
             }
             .fullScreenCover(isPresented: $showingReplay) {
-                FlightReplayView(flight: flight)
+                ReplayLauncherView(points: flight.gpsTrack ?? [])
             }
             .sheet(item: $exportedFile) { file in
                 TrackShareSheet(url: file.url)

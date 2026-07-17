@@ -126,7 +126,7 @@ struct SharedFlightDetailView: View {
             .task { await loadDetail() }
             .fullScreenCover(isPresented: $showingReplay) {
                 if let track {
-                    FlightReplayView(points: track)
+                    ReplayLauncherView(points: track)
                 }
             }
         }

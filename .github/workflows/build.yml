@@ -23,6 +23,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Lets SPM download the Mapbox SDK binaries once the package is added
+      # to the project (see MAPBOX_SETUP.md). No-op while the secret is unset.
+      - name: Configure Mapbox SDK download token (if set)
+        env:
+          MAPBOX_DOWNLOAD_TOKEN: ${{ secrets.MAPBOX_DOWNLOAD_TOKEN }}
+        run: |
+          if [ -n "$MAPBOX_DOWNLOAD_TOKEN" ]; then
+            printf 'machine api.mapbox.com\n  login mapbox\n  password %s\n' "$MAPBOX_DOWNLOAD_TOKEN" > ~/.netrc
+            chmod 600 ~/.netrc
+            echo "Mapbox .netrc configured"
+          else
+            echo "MAPBOX_DOWNLOAD_TOKEN not set - skipping"
+          fi
+
       - name: Show Xcode version
         run: xcodebuild -version
 
