@@ -34,7 +34,7 @@ nonisolated enum WatchLogCategory: String {
 nonisolated final class WatchLogger {
     static let shared = WatchLogger()
 
-    private let subsystem = Bundle.main.bundleIdentifier ?? "com.xavierkain.SoarX.watchkitapp"
+    private let subsystem = Bundle.main.bundleIdentifier ?? "com.xavierkain.Soarx.watchkitapp"
 
     // Cache des loggers par catégorie pour éviter de les recréer
     private var loggers: [WatchLogCategory: Logger] = [:]

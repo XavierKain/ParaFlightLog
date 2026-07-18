@@ -42,7 +42,7 @@ extension Notification.Name {
     /// APNs payload into an in-app NotificationCenter event — no navigation
     /// logic lives here, so the UI agents own the routing without a
     /// cross-file dependency on this service.
-    static let spotDeepLink = Notification.Name("com.xavierkain.SoarX.spotDeepLink")
+    static let spotDeepLink = Notification.Name("com.xavierkain.Soarx.spotDeepLink")
 }
 
 // MARK: - Service

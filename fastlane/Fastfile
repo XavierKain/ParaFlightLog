@@ -23,10 +23,10 @@ XCODEPROJ = "ParaFlightLog.xcodeproj"
 SCHEME    = "ParaFlightLog"
 
 # Cibles distribuées (chacune a besoin d'un profil App Store).
-APP_ID          = "com.xavierkain.SoarX"
-WIDGET_ID       = "com.xavierkain.SoarX.FlightWidget"
-WATCH_ID        = "com.xavierkain.SoarX.watchkitapp"
-WATCH_WIDGET_ID = "com.xavierkain.SoarX.watchkitapp.SoarXWidgetExtension"
+APP_ID          = "com.xavierkain.Soarx"
+WIDGET_ID       = "com.xavierkain.Soarx.FlightWidget"
+WATCH_ID        = "com.xavierkain.Soarx.watchkitapp"
+WATCH_WIDGET_ID = "com.xavierkain.Soarx.watchkitapp.SoarxWidgetExtension"
 ALL_IDS = [APP_ID, WIDGET_ID, WATCH_ID, WATCH_WIDGET_ID].freeze
 
 # ── Clé API App Store Connect (le .p8 vient d'un env base64) ─────────────
