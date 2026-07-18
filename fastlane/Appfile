@@ -1,4 +1,4 @@
-app_identifier("com.xavierkain.SoarX")
+app_identifier("com.xavierkain.ParaFlightLog2")
 team_id("S96H22CQ8W")
 
 # App Store Connect
@@ -7,5 +7,5 @@ itc_team_id("S96H22CQ8W")
 
 # For platform-specific configuration
 for_platform :ios do
-  app_identifier("com.xavierkain.SoarX")
+  app_identifier("com.xavierkain.ParaFlightLog2")
 end
