@@ -1,6 +1,6 @@
 # ParaFlightLog v20 — Setup & Testing Guide
 
-v20 is a simplified, hardened rebuild of the app around its core: **track flights from the Apple Watch, browse them with clean stats on the iPhone, never lose data**. English-only UI. It installs **side by side** with your current app (new bundle id `com.xavierkain.Soarx`, display name "ParaFlightLog 2"), so your production data is never at risk while testing.
+v20 is a simplified, hardened rebuild of the app around its core: **track flights from the Apple Watch, browse them with clean stats on the iPhone, never lose data**. English-only UI. It installs **side by side** with your current app (new bundle id `com.xavierkain.SoarX`, display name "ParaFlightLog 2"), so your production data is never at risk while testing.
 
 ## What changed (summary)
 
@@ -32,7 +32,7 @@ v20 is a simplified, hardened rebuild of the app around its core: **track flight
 ### 1. Xcode
 1. Open the project on your Mac, select the **ParaFlightLog** iOS target → Signing & Capabilities.
 2. Signing is unchanged (team S96H22CQ8W, automatic). The new bundle ids will register on first build.
-3. **iCloud**: the entitlements file (`ParaFlightLog/ParaFlightLog.entitlements`) already declares CloudKit with container `iCloud.com.xavierkain.Soarx`. In Signing & Capabilities, Xcode should pick it up; if the container is missing, add the iCloud capability once so Xcode creates the container on the developer portal.
+3. **iCloud**: the entitlements file (`ParaFlightLog/ParaFlightLog.entitlements`) already declares CloudKit with container `iCloud.com.xavierkain.SoarX`. In Signing & Capabilities, Xcode should pick it up; if the container is missing, add the iCloud capability once so Xcode creates the container on the developer portal.
    - Until the capability/container exists, the app logs a warning and runs on the local store (`DataController.isCloudSyncActive == false`) — everything else works.
 4. Build & run. The Watch app pairs with the new iOS app automatically (companion bundle id updated).
 

@@ -41,7 +41,7 @@ nonisolated final class AppLogger: @unchecked Sendable {
 
     // Logger cache, guarded by `queue` for both reads and writes.
     private var loggers: [LogCategory: Logger] = [:]
-    private let queue = DispatchQueue(label: "com.xavierkain.Soarx.logger")
+    private let queue = DispatchQueue(label: "com.xavierkain.SoarX.logger")
 
     /// Developer mode: when false, only warning/error/critical logs are emitted.
     var isDeveloperModeEnabled: Bool {

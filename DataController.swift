@@ -39,7 +39,7 @@ final class DataController {
 
     /// Master switch for iCloud/CloudKit sync.
     ///
-    /// Currently OFF: the CloudKit container `iCloud.com.xavierkain.Soarx`
+    /// Currently OFF: the CloudKit container `iCloud.com.xavierkain.SoarX`
     /// has not been created on the Apple developer portal yet, so `.automatic`
     /// succeeds locally but then spams "Bad Container" errors while trying to
     /// sync in the background. iCloud sync is a deferred feature (see README),

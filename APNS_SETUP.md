@@ -8,7 +8,7 @@ just don't deliver pushes.
 
 - Project: `69524ce30037813a6abb` (region **fra**, `https://fra.cloud.appwrite.io/v1`)
 - Database: `69524e510015a312526b`
-- Bundle ID: `com.xavierkain.Soarx`
+- Bundle ID: `com.xavierkain.SoarX`
 - Apple Team ID: `S96H22CQ8W`
 
 ---
@@ -43,7 +43,7 @@ just don't deliver pushes.
 3. **Download** the `.p8` file (you can only download it once) and note:
    - **Key ID** (10 characters, shown on the key page),
    - **Team ID**: `S96H22CQ8W`.
-4. Confirm the App ID `com.xavierkain.Soarx` has the **Push
+4. Confirm the App ID `com.xavierkain.SoarX` has the **Push
    Notifications** capability enabled (Identifiers → your app ID).
 
 One APNs auth key works for **both** sandbox (development) and production.
@@ -54,7 +54,7 @@ Appwrite Console → **Messaging** → **Providers** → **Add provider** → **
 (APNs)**:
 
 - **Name**: `SoarX APNs`
-- **App bundle ID**: `com.xavierkain.Soarx`
+- **App bundle ID**: `com.xavierkain.SoarX`
 - **Team ID**: `S96H22CQ8W`
 - **Key ID**: the 10-char key ID from Step 1
 - **Auth key (.p8)**: paste the *full contents* of the downloaded `.p8`
