@@ -12,7 +12,7 @@ import Foundation
 
 nonisolated enum AppConstants {
     /// Bundle identifier used for OSLog
-    static let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.xavierkain.ParaFlightLog2"
+    static let bundleIdentifier = Bundle.main.bundleIdentifier ?? "com.xavierkain.SoarX"
 
     /// Application name
     static let appName = "ParaFlightLog"

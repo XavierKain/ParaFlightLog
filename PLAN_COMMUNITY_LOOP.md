@@ -11,7 +11,7 @@ Boucle cible : `carte → qui vole → conditions (apprises + reportées) → al
 **Architecture** : APNs via **Appwrite Messaging** + une **Appwrite Function** de fan-out.
 - **Client iOS** : `PushService` — demande d'autorisation UNUserNotificationCenter, enregistrement APNs, envoi du device token à Appwrite (`account.createPushTarget`), gestion du tap sur notification (deep link spot/vol). Enregistré au sign-in, rafraîchi au launch, supprimé au sign-out.
 - **Serveur** : Function Node.js `notify-fanout`, déclenchée par événement de création de document sur `spot_reports` (et plus tard `shared_flights`/presence) : lit les abonnés du spot (`spot_subscriptions`) + les followers de l'auteur (phase 4), déduplique, envoie via Messaging (`messaging.createPush` ciblé par userIds/targets).
-- **Étape manuelle Xavier (5 min, documentée)** : créer une clé APNs (.p8) dans le portail Apple Developer et la coller dans Appwrite Console → Messaging → Provider APNs (team ID, key ID, bundle ID `com.xavierkain.ParaFlightLog2`, sandbox pour dev). Sans ça, tout est en place et fail-soft.
+- **Étape manuelle Xavier (5 min, documentée)** : créer une clé APNs (.p8) dans le portail Apple Developer et la coller dans Appwrite Console → Messaging → Provider APNs (team ID, key ID, bundle ID `com.xavierkain.SoarX`, sandbox pour dev). Sans ça, tout est en place et fail-soft.
 - **Tables** : `spot_subscriptions` (docID = `userId_spotKeyHash`, champs userId, spotKey, spotName, notifyReports, notifyPresence, createdAt).
 
 ## Phase 2 — Flyability apprise (le cœur de la vision)
