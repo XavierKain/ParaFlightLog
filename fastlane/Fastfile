@@ -4,20 +4,24 @@
 #   • `beta`     — sur TON Mac. Signature AUTOMATIQUE (Xcode/ton trousseau).
 #                  Le plus fiable pour un 1er upload. Il te faut juste la
 #                  clé API App Store Connect (voir TESTFLIGHT_SETUP.md).
-#   • `beta_ci`  — sur GitHub Actions (runner macOS, 1 clic). Signature via
-#                  `match` (certificats chiffrés dans la branche match-certs).
+#   • `beta_ci`  — sur GitHub Actions (runner macOS, 1 clic). Signature
+#                  AUTOMATIQUE via la clé API (pas de match).
 #                  Appelée par .github/workflows/testflight.yml.
 #
-# Secrets / env attendus (voir TESTFLIGHT_SETUP.md — identiques à CodexBar) :
+# Secrets / env attendus (voir TESTFLIGHT_SETUP.md) — les 4 mêmes pour les
+# deux lanes :
 #   ASC_KEY_ID         — ID de la clé API App Store Connect
 #   ASC_ISSUER_ID      — Issuer ID (App Store Connect > Users > Integrations)
 #   ASC_KEY_P8_BASE64  — contenu du .p8 encodé en base64
 #   APPLE_TEAM_ID      — S96H22CQ8W
-#   MATCH_PASSWORD     — (beta_ci uniquement) passphrase des certificats match
-#   MATCH_GIT_URL      — (beta_ci) URL du repo qui héberge la branche match-certs
-#   GITHUB_TOKEN       — (beta_ci) fourni par Actions, pour pousser match-certs
 
 default_platform(:ios)
+
+# Force UTF-8 : sinon xcpretty plante sur "invalid byte sequence in US-ASCII"
+# (accents dans la sortie xcodebuild), le pipe `set -o pipefail` échoue et
+# l'archive est tuée. Un shell macOS sans LANG/LC_ALL UTF-8 déclenche ça.
+ENV["LANG"]   ||= "en_US.UTF-8"
+ENV["LC_ALL"] ||= "en_US.UTF-8"
 
 XCODEPROJ = "ParaFlightLog.xcodeproj"
 SCHEME    = "ParaFlightLog"
@@ -103,8 +107,11 @@ platform :ios do
     UI.success("✅ Envoyé sur TestFlight — dispo dans l'app TestFlight d'ici ~10-30 min.")
   end
 
-  # ── CI (GitHub Actions) : signature via match ──────────────────────────
-  desc "Build signé + upload TestFlight depuis GitHub Actions (match)"
+  # ── CI (GitHub Actions) : signature AUTOMATIQUE via clé API ─────────────
+  # Pas de match : la clé API App Store Connect + `-allowProvisioningUpdates`
+  # laissent Xcode gérer certificat de distribution (cloud-managed) et profils
+  # des 4 cibles sur le runner macOS. Aucun MATCH_PASSWORD ni repo de certs.
+  desc "Build signé + upload TestFlight depuis GitHub Actions (signature auto)"
   lane :beta_ci do
     setup_ci
     api_key = asc_api_key
@@ -115,24 +122,11 @@ platform :ios do
       xcodeproj: XCODEPROJ
     )
 
-    match(
-      type: "appstore",
-      app_identifier: ALL_IDS,
-      api_key: api_key,
-      readonly: false,
-      storage_mode: "git",
-      git_url: ENV.fetch("MATCH_GIT_URL"),
-      git_branch: "match-certs",
-      git_basic_authorization: Base64.strict_encode64("x-access-token:#{ENV.fetch('GITHUB_TOKEN')}")
-    )
-
     build_app(
       project: XCODEPROJ,
       scheme: SCHEME,
       export_method: "app-store",
-      export_options: {
-        provisioningProfiles: ALL_IDS.map { |id| [id, "match AppStore #{id}"] }.to_h
-      }
+      xcargs: "-allowProvisioningUpdates"
     )
 
     upload_to_testflight(

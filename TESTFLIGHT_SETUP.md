@@ -42,33 +42,28 @@ Changelog optionnel : `bundle exec fastlane beta changelog:"Replay 3D Mapbox, et
 
 ## Option B — En 1 clic sur GitHub (CI, répétable)
 
-Runner macOS + signature via **match** (mêmes certificats chiffrés que
-CodexBar). Une fois les secrets posés, chaque upload = 1 clic.
+Runner macOS + **signature automatique** via la clé API App Store Connect
+(`-allowProvisioningUpdates` : Xcode gère certificat de distribution
+cloud-managed + profils). **Pas de match, pas de MATCH_PASSWORD, pas de repo
+de certificats.** Une fois les secrets posés, chaque upload = 1 clic.
 
-### Secrets à ajouter au repo SoarX (une seule fois)
+### Secrets à ajouter au repo (une seule fois)
 
 Repo `XavierKain/ParaFlightLog` → **Settings → Secrets and variables →
-Actions → New repository secret**. Ce sont **exactement les mêmes valeurs**
-que sur le repo CodexBar — recopie-les :
+Actions → New repository secret**. Seulement **4 secrets** :
 
 | Secret | Valeur |
 |--------|--------|
-| `ASC_KEY_ID` | ID de la clé API App Store Connect |
-| `ASC_ISSUER_ID` | Issuer ID |
-| `ASC_KEY_P8_BASE64` | le `.p8` encodé base64 (`base64 -i AuthKey_XXXX.p8`) |
+| `ASC_KEY_ID` | `73PNP8Z93X` |
+| `ASC_ISSUER_ID` | `0cf39ed9-c1a9-43b7-8d10-e8bcdae31bdf` |
+| `ASC_KEY_P8_BASE64` | le `.p8` encodé base64 (`base64 -i ~/.appstoreconnect/AuthKey_73PNP8Z93X.p8 \| pbcopy`) |
 | `APPLE_TEAM_ID` | `S96H22CQ8W` |
-| `MATCH_PASSWORD` | la passphrase match que tu utilises déjà |
-
-> Astuce : sur le repo CodexBar → Settings → Secrets, tu as déjà ces 5
-> entrées. GitHub ne ré-affiche pas leur valeur, mais tu les as notées
-> quelque part lors du setup CodexBar — recolle-les ici à l'identique.
 
 ### Déclencher
 
-Onglet **Actions → TestFlight → Run workflow → branche v20 → Run**.
-
-Au **premier run**, match va créer une branche `match-certs` dans le repo
-(certificats App Store chiffrés) et générer les profils des 4 cibles.
+Onglet **Actions → TestFlight → Run workflow → branche v20 → Run**. Le
+collaborateur n'a besoin que d'un accès write au repo — ni Mac, ni credentials
+en main : les secrets vivent dans GitHub.
 
 ---
 
@@ -83,11 +78,10 @@ le pattern CodexBar mais non exécuté. Points à surveiller au premier upload :
    profil manquant, l'ID exact est dans le message → corrige-le dans
    `ALL_IDS` (fastlane/Fastfile). L'option A (Mac, signature auto) contourne
    ce point : elle n'a pas besoin de cette liste.
-2. **Certificat de distribution (option B)** — si tu as déjà atteint la
-   limite Apple de certificats de distribution, match échouera à en créer un
-   nouveau. Solution : dans le workflow, match réutilise le certificat s'il
-   est dans la branche `match-certs` ; sinon révoque un vieux certificat
-   inutilisé sur developer.apple.com.
+2. **Certificat de distribution (option B)** — la signature auto utilise un
+   certificat de distribution *cloud-managed* Apple, sans occuper de slot
+   classique. Si jamais Apple refuse (limite de certificats atteinte), révoque
+   un vieux certificat inutilisé sur developer.apple.com puis relance.
 3. **`aps-environment`** — l'entitlement de l'app est `development`. Pour que
    les push marchent en TestFlight, il faudra le passer à `production`
    (Xcode le gère si tu utilises la signature automatique ; à vérifier sur
