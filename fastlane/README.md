@@ -15,57 +15,21 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 ## iOS
 
-### ios build
-
-```sh
-[bundle exec] fastlane ios build
-```
-
-Build the app without uploading (for testing)
-
 ### ios beta
 
 ```sh
 [bundle exec] fastlane ios beta
 ```
 
-Deploy to TestFlight
+Build signé + upload TestFlight depuis ton Mac (signature auto)
 
-Usage: fastlane beta [build_number:XX] [changelog:'Notes']
-
-### ios release
+### ios beta_ci
 
 ```sh
-[bundle exec] fastlane ios release
+[bundle exec] fastlane ios beta_ci
 ```
 
-Submit to the App Store for review
-
-Usage: fastlane release [submit:true]
-
-### ios download_metadata
-
-```sh
-[bundle exec] fastlane ios download_metadata
-```
-
-Download current metadata from App Store Connect
-
-### ios upload_metadata
-
-```sh
-[bundle exec] fastlane ios upload_metadata
-```
-
-Upload metadata without submitting a build
-
-### ios bump
-
-```sh
-[bundle exec] fastlane ios bump
-```
-
-Increment version number (major, minor, patch)
+Build signé + upload TestFlight depuis GitHub Actions (match)
 
 ### ios version_info
 
@@ -73,7 +37,7 @@ Increment version number (major, minor, patch)
 [bundle exec] fastlane ios version_info
 ```
 
-Display current version information
+Infos version courante
 
 ----
 
