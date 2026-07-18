@@ -4,11 +4,12 @@ Deux façons d'uploader une nouvelle version. Les deux utilisent la **même
 clé API App Store Connect** que ton projet CodexBar (même compte Apple) —
 tu n'as rien de nouveau à créer côté Apple.
 
-- **App** : SoarX — bundle ID `com.xavierkain.SoarX`, Team `S96H22CQ8W`
+- **App** : SoarX (nom affiché) — bundle ID `com.xavierkain.ParaFlightLog2`, Team `S96H22CQ8W`
 - **Prérequis Apple (une seule fois)** : l'app doit exister dans App Store
-  Connect. Si ce n'est pas déjà fait :
+  Connect **pour le bundle ID `com.xavierkain.ParaFlightLog2`**. Si une app
+  existe déjà pour cet ID, elle est réutilisée (rien à faire). Sinon :
   <https://appstoreconnect.apple.com> → Apps → + → Nouvelle app → iOS,
-  nom « SoarX », bundle ID `com.xavierkain.SoarX`, SKU `soarx`.
+  nom « SoarX », bundle ID `com.xavierkain.ParaFlightLog2`, SKU `paraflightlog2`.
   (fastlane te le rappellera avec ce message s'il manque.)
 
 ---
@@ -77,7 +78,7 @@ Je n'ai pas de Mac ni tes identifiants Apple, donc le code est écrit d'après
 le pattern CodexBar mais non exécuté. Points à surveiller au premier upload :
 
 1. **Bundle IDs des cibles** — le Fastfile suppose ces 4 identifiants :
-   `com.xavierkain.SoarX`, `.FlightWidget`, `.watchkitapp`,
+   `com.xavierkain.ParaFlightLog2`, `.FlightWidget`, `.watchkitapp`,
    `.watchkitapp.ParaFlightLogWidgetExtension`. Si l'archive se plaint d'un
    profil manquant, l'ID exact est dans le message → corrige-le dans
    `ALL_IDS` (fastlane/Fastfile). L'option A (Mac, signature auto) contourne

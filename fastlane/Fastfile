@@ -23,10 +23,12 @@ XCODEPROJ = "ParaFlightLog.xcodeproj"
 SCHEME    = "ParaFlightLog"
 
 # Cibles distribuées (chacune a besoin d'un profil App Store).
-APP_ID          = "com.xavierkain.SoarX"
-WIDGET_ID       = "com.xavierkain.SoarX.FlightWidget"
-WATCH_ID        = "com.xavierkain.SoarX.watchkitapp"
-WATCH_WIDGET_ID = "com.xavierkain.SoarX.watchkitapp.SoarXWidgetExtension"
+# Bundle ids = famille com.xavierkain.ParaFlightLog2 (celle de l'app déjà
+# installée + registered avec Push/HealthKit). Le NOM affiché reste "SoarX".
+APP_ID          = "com.xavierkain.ParaFlightLog2"
+WIDGET_ID       = "com.xavierkain.ParaFlightLog2.FlightWidget"
+WATCH_ID        = "com.xavierkain.ParaFlightLog2.watchkitapp"
+WATCH_WIDGET_ID = "com.xavierkain.ParaFlightLog2.watchkitapp.ParaFlightLogWidgetExtension"
 ALL_IDS = [APP_ID, WIDGET_ID, WATCH_ID, WATCH_WIDGET_ID].freeze
 
 # ── Clé API App Store Connect (le .p8 vient d'un env base64) ─────────────
@@ -62,7 +64,8 @@ def ensure_app_record_exists(api_key)
     L'app n'existe pas encore dans App Store Connect (l'API Apple ne permet pas
     de la créer automatiquement). À faire UNE fois :
       1. https://appstoreconnect.apple.com > Apps > + > Nouvelle app
-      2. Plateforme iOS, nom "SoarX", bundle ID #{APP_ID}, SKU "soarx"
+      2. Plateforme iOS, nom "SoarX", bundle ID #{APP_ID}, SKU "paraflightlog2"
+         (si l'app existe déjà pour cet ID, rien à créer — elle sera réutilisée)
     Puis relance.
   MSG
 rescue => e
