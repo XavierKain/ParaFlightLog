@@ -1,0 +1,40 @@
+name: TestFlight
+
+# Build signé + upload TestFlight, 100% dans le cloud (1 clic).
+# À déclencher à la main : onglet Actions → TestFlight → Run workflow.
+# Prérequis : les secrets listés dans TESTFLIGHT_SETUP.md (identiques à
+# ceux du repo CodexBar — même compte Apple).
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write # match pousse les certificats chiffrés sur la branche match-certs
+
+concurrency:
+  group: testflight
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build + upload TestFlight
+    runs-on: macos-26
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+          bundler-cache: true
+
+      - name: Build + upload TestFlight
+        run: bundle exec fastlane beta_ci
+        env:
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+          MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+          MATCH_GIT_URL: https://github.com/${{ github.repository }}.git
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
