@@ -442,6 +442,8 @@ enum TrackImporter {
             // > 90 days old / not eligible for sharing.
             WeatherService.shared.captureSnapshot(for: flightId, dataController: dataController)
             CommunityService.shared.shareFlightIfEnabled(flight, dataController: dataController)
+            // Imported hours count toward the wing's trim schedule too.
+            dataController.refreshTrimReminders()
         }
     }
 

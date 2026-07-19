@@ -21,9 +21,27 @@ struct WingDetailView: View {
     @State private var showingEditWing = false
     @State private var selectedFlight: Flight?
     @State private var showingFullScreenPhoto = false
+    @State private var showingLogService = false
 
     var flights: [Flight] {
         allFlights.filter { $0.wing?.id == wing.id }
+    }
+
+    /// Maintenance snapshot built from the @Query-driven flight list (not
+    /// wing.flights) so the section refreshes when flights change.
+    private var maintenanceSnapshot: WingMaintenanceSnapshot {
+        WingMaintenanceSnapshot(
+            previousHours: wing.previousHours,
+            purchaseDate: wing.purchaseDate,
+            lastTrimDate: wing.lastTrimDate,
+            serviceLog: wing.serviceLog,
+            smallTrimIntervalHours: wing.smallTrimIntervalHours,
+            fullTrimIntervalHours: wing.fullTrimIntervalHours,
+            fullTrimIntervalMonths: wing.fullTrimIntervalMonths,
+            flights: flights.map {
+                MaintenanceFlight(date: $0.startDate, hours: Double($0.durationSeconds) / 3600.0)
+            }
+        )
     }
 
     var body: some View {
@@ -104,6 +122,74 @@ struct WingDetailView: View {
                 }
             }
 
+            Section("Maintenance") {
+                let snapshot = maintenanceSnapshot
+                let states = WingMaintenance.dueStates(in: snapshot)
+                let total = WingMaintenance.totalHours(snapshot)
+
+                // Total hours including the pre-app history
+                HStack {
+                    Text("Total hours")
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text("\(dataController.formatHours(total)) total")
+                            .foregroundStyle(.blue)
+                        if let previous = wing.previousHours, previous > 0 {
+                            Text("incl. \(dataController.formatHours(previous)) before the app")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+
+                if let small = states.small {
+                    TrimDueRow(title: "Small trim", state: small)
+                }
+                if let full = states.full {
+                    TrimDueRow(title: "Full trim", state: full)
+                }
+                if states.small == nil && states.full == nil {
+                    Text("No trim schedule set — add the intervals in Edit.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                Button {
+                    showingLogService = true
+                } label: {
+                    Label("Log Service…", systemImage: "wrench.and.screwdriver")
+                }
+            }
+
+            let serviceLog = wing.serviceLog.sorted { $0.date > $1.date }
+            if !serviceLog.isEmpty {
+                Section("Service Log") {
+                    ForEach(serviceLog) { event in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Text(event.type.label)
+                                Spacer()
+                                Text(event.date, style: .date)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let hours = event.hoursAtService {
+                                Text("at \(dataController.formatHours(hours)) total")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let note = event.note, !note.isEmpty {
+                                Text(note)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                    .onDelete { offsets in
+                        deleteServiceEvents(at: offsets, from: serviceLog)
+                    }
+                }
+            }
+
             if !flights.isEmpty {
                 Section("Flight History") {
                     ForEach(flights.sorted { $0.startDate > $1.startDate }) { flight in
@@ -130,6 +216,9 @@ struct WingDetailView: View {
         .sheet(isPresented: $showingEditWing) {
             EditWingView(wing: wing)
         }
+        .sheet(isPresented: $showingLogService) {
+            LogServiceView(wing: wing, totalHours: WingMaintenance.totalHours(maintenanceSnapshot))
+        }
         .sheet(item: $selectedFlight) { flight in
             EditFlightView(flight: flight)
                 .onAppear {
@@ -152,6 +241,149 @@ struct WingDetailView: View {
                 FullScreenPhotoView(image: uiImage, wingName: wing.name)
             }
         }
+    }
+
+    /// Removes the swiped events from the wing's service log. `displayed` is
+    /// the date-sorted array the ForEach renders, so the offsets match it.
+    private func deleteServiceEvents(at offsets: IndexSet, from displayed: [WingServiceEvent]) {
+        let removedIds = Set(offsets.map { displayed[$0].id })
+        wing.setServiceLog(wing.serviceLog.filter { !removedIds.contains($0.id) })
+        dataController.saveContext()
+        dataController.refreshTrimReminders()
+    }
+}
+
+// MARK: - TrimDueRow + TrimStatusBadge
+
+/// One maintenance deadline row: title, remaining hours / due date detail,
+/// and a colored status badge.
+struct TrimDueRow: View {
+    let title: String
+    let state: TrimDueState
+    @Environment(DataController.self) private var dataController
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                Text(detailText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            TrimStatusBadge(status: state.status)
+        }
+    }
+
+    /// e.g. "8h left or until 12 Mar 2027", "overdue by 3h", "was due 1 Jan 2026"
+    private var detailText: String {
+        var parts: [String] = []
+        if let hours = state.hoursRemaining {
+            parts.append(hours > 0
+                ? "\(dataController.formatHours(hours)) left"
+                : "overdue by \(dataController.formatHours(-hours))")
+        }
+        if let dueDate = state.dueDate {
+            let dateText = dueDate.formatted(date: .abbreviated, time: .omitted)
+            parts.append(dueDate > Date() ? "until \(dateText)" : "was due \(dateText)")
+        }
+        return parts.joined(separator: " or ")
+    }
+}
+
+/// Colored capsule: green OK / orange Due soon / red Overdue
+struct TrimStatusBadge: View {
+    let status: TrimStatus
+
+    var body: some View {
+        Text(label)
+            .font(.caption)
+            .fontWeight(.semibold)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(color.opacity(0.15))
+            .foregroundStyle(color)
+            .clipShape(Capsule())
+    }
+
+    private var label: String {
+        switch status {
+        case .ok: return "OK"
+        case .dueSoon: return "Due soon"
+        case .overdue: return "Overdue"
+        }
+    }
+
+    private var color: Color {
+        switch status {
+        case .ok: return .green
+        case .dueSoon: return .orange
+        case .overdue: return .red
+        }
+    }
+}
+
+// MARK: - LogServiceView (Log a service event)
+
+/// Sheet recording one service event (type, date, note) into the wing's
+/// maintenance log. The wing's current total hours are stamped on the event
+/// so the trim counters reset by hours, not only by date.
+struct LogServiceView: View {
+    @Environment(\.dismiss) private var dismiss
+    @Environment(DataController.self) private var dataController
+
+    let wing: Wing
+    /// Total hours on the wing right now (previousHours + logged flights)
+    let totalHours: Double
+
+    @State private var type: WingServiceType = .fullTrim
+    @State private var date: Date = Date()
+    @State private var note: String = ""
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Picker("Type", selection: $type) {
+                        ForEach(WingServiceType.allCases, id: \.self) { type in
+                            Text(type.label).tag(type)
+                        }
+                    }
+                    DatePicker("Date", selection: $date, displayedComponents: .date)
+                    TextField("Note (optional)", text: $note, axis: .vertical)
+                } footer: {
+                    Text("Recorded at \(dataController.formatHours(totalHours)) total on this wing.")
+                }
+            }
+            .navigationTitle("Log Service")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        saveEvent()
+                    }
+                }
+            }
+        }
+    }
+
+    private func saveEvent() {
+        let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
+        wing.addServiceEvent(WingServiceEvent(
+            date: date,
+            type: type,
+            note: trimmedNote.isEmpty ? nil : trimmedNote,
+            hoursAtService: totalHours
+        ))
+        dataController.saveContext()
+        dataController.refreshTrimReminders()
+        dismiss()
     }
 }
 

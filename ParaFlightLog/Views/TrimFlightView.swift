@@ -200,6 +200,8 @@ struct TrimFlightView: View {
         // Idempotent upsert (row ID = flight UUID): the community copy —
         // including the shared track — is replaced by the trimmed one.
         CommunityService.shared.shareFlightIfEnabled(flight, dataController: dataController)
+        // Trimming can change the flight duration — refresh the trim reminders.
+        dataController.refreshTrimReminders()
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         dismiss()
     }

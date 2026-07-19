@@ -333,6 +333,8 @@ final class DataController {
             // Opt-in community share. Fire-and-forget: never affects the
             // save/ACK path (same pattern as the weather snapshot).
             CommunityService.shared.shareFlightIfEnabled(flight, dataController: self)
+            // The wing's hour counters moved — refresh the trim reminders.
+            refreshTrimReminders()
         }
         return saved
     }
@@ -367,6 +369,8 @@ final class DataController {
         logInfo("Flight saved: \(flight.durationFormatted) at \(flight.spotName ?? "Unknown")", category: .flight)
         // Opt-in community share. Fire-and-forget: never affects the save path.
         CommunityService.shared.shareFlightIfEnabled(flight, dataController: self)
+        // The wing's hour counters moved — refresh the trim reminders.
+        refreshTrimReminders()
         return flight
     }
 
@@ -814,6 +818,17 @@ final class DataController {
         let h = Int(hours)
         let m = Int((hours - Double(h)) * 60)
         return m > 0 ? "\(h)h\(String(format: "%02d", m))" : "\(h)h"
+    }
+
+    // MARK: - Trim reminders
+
+    /// Fire-and-forget refresh of the local trim reminders after something
+    /// changed a wing's hour counters (flight saved, service logged, wing
+    /// edited). Fail-soft: never affects the save path (same spirit as the
+    /// community share).
+    func refreshTrimReminders() {
+        let wings = fetchWings()
+        Task { await WingMaintenance.scheduleTrimReminders(wings: wings) }
     }
 
     // MARK: - Context Management

@@ -52,7 +52,15 @@ private nonisolated func utcDate(_ year: Int, _ month: Int, _ day: Int,
             id: wingId, name: "Moustache M1", brand: "Flare", size: "18",
             type: "Soaring", color: "Red", isArchived: false,
             createdAt: utcDate(2025, 1, 1, 12, 0, 0), displayOrder: 1,
-            photoFilename: nil
+            photoFilename: nil,
+            previousHours: 45, purchaseDate: utcDate(2024, 12, 1),
+            purchasedUsed: true, lastTrimDate: utcDate(2024, 11, 1),
+            serviceLog: [WingServiceEvent(
+                date: utcDate(2026, 6, 1), type: .fullTrim,
+                note: "Factory trim", hoursAtService: 50
+            )],
+            smallTrimIntervalHours: nil, fullTrimIntervalHours: 200,
+            fullTrimIntervalMonths: 24
         )
         let point = GPSTrackPoint(
             timestamp: utcDate(2026, 7, 4, 10, 0, 0),
@@ -96,6 +104,12 @@ private nonisolated func utcDate(_ year: Int, _ month: Int, _ day: Int,
         #expect(decoded.wings[0].id == manifest.wings[0].id)
         #expect(decoded.wings[0].brand == "Flare")
         #expect(decoded.wings[0].createdAt == utcDate(2025, 1, 1, 12, 0, 0))
+        #expect(decoded.wings[0].previousHours == 45)
+        #expect(decoded.wings[0].purchasedUsed == true)
+        #expect(decoded.wings[0].fullTrimIntervalMonths == 24)
+        let serviceEvent = try #require(decoded.wings[0].serviceLog?.first)
+        #expect(serviceEvent.type == .fullTrim)
+        #expect(serviceEvent.hoursAtService == 50)
 
         let flight = try #require(decoded.flights.first)
         #expect(flight.startDate == utcDate(2026, 7, 4, 10, 0, 0))
@@ -157,6 +171,11 @@ private nonisolated func utcDate(_ year: Int, _ month: Int, _ day: Int,
         #expect(manifest.spots == nil)
         #expect(manifest.wings[0].brand == nil)
         #expect(manifest.wings[0].isArchived == true)
+        // Maintenance fields are additive too: absent in old files -> nil
+        #expect(manifest.wings[0].previousHours == nil)
+        #expect(manifest.wings[0].purchasedUsed == nil)
+        #expect(manifest.wings[0].serviceLog == nil)
+        #expect(manifest.wings[0].smallTrimIntervalHours == nil)
         let flight = try #require(manifest.flights.first)
         #expect(flight.spotId == nil)
         #expect(flight.takeoffWindSpeed == nil)

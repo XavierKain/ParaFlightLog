@@ -46,6 +46,15 @@ nonisolated struct BackupWing: Codable {
     let displayOrder: Int
     /// Filename inside images/ (e.g. "<wingId>.jpg"), nil when the wing has no photo
     let photoFilename: String?
+    /// Additive v2 fields (maintenance/trim tracking): nil in older backups.
+    let previousHours: Double?
+    let purchaseDate: Date?
+    let purchasedUsed: Bool?
+    let lastTrimDate: Date?
+    let serviceLog: [WingServiceEvent]?
+    let smallTrimIntervalHours: Double?
+    let fullTrimIntervalHours: Double?
+    let fullTrimIntervalMonths: Int?
 }
 
 /// Flight snapshot in backup.json (all fields, including the full GPS track)
@@ -386,6 +395,7 @@ enum BackupManager {
             .sorted { $0.createdAt < $1.createdAt }
             .map { wing in
                 let photoFilename = wing.photoData != nil ? "\(wing.id.uuidString).jpg" : nil
+                let serviceLog = wing.serviceLog
                 let snapshot = BackupWing(
                     id: wing.id,
                     name: wing.name,
@@ -396,7 +406,15 @@ enum BackupManager {
                     isArchived: wing.isArchived,
                     createdAt: wing.createdAt,
                     displayOrder: wing.displayOrder,
-                    photoFilename: photoFilename
+                    photoFilename: photoFilename,
+                    previousHours: wing.previousHours,
+                    purchaseDate: wing.purchaseDate,
+                    purchasedUsed: wing.purchasedUsed,
+                    lastTrimDate: wing.lastTrimDate,
+                    serviceLog: serviceLog.isEmpty ? nil : serviceLog,
+                    smallTrimIntervalHours: wing.smallTrimIntervalHours,
+                    fullTrimIntervalHours: wing.fullTrimIntervalHours,
+                    fullTrimIntervalMonths: wing.fullTrimIntervalMonths
                 )
                 return (snapshot, wing.photoData)
             }
@@ -672,7 +690,16 @@ enum BackupManager {
                 isArchived: isArchived,
                 createdAt: createdAt,
                 displayOrder: displayOrder,
-                photoFilename: photoFilename
+                photoFilename: photoFilename,
+                // v1 CSV never carried maintenance data
+                previousHours: nil,
+                purchaseDate: nil,
+                purchasedUsed: nil,
+                lastTrimDate: nil,
+                serviceLog: nil,
+                smallTrimIntervalHours: nil,
+                fullTrimIntervalHours: nil,
+                fullTrimIntervalMonths: nil
             ))
         }
 
@@ -836,6 +863,17 @@ enum BackupManager {
                 createdAt: backupWing.createdAt,
                 displayOrder: backupWing.displayOrder
             )
+            // Additive maintenance fields (nil in older backups)
+            wing.previousHours = backupWing.previousHours
+            wing.purchaseDate = backupWing.purchaseDate
+            wing.purchasedUsed = backupWing.purchasedUsed ?? false
+            wing.lastTrimDate = backupWing.lastTrimDate
+            if let serviceLog = backupWing.serviceLog, !serviceLog.isEmpty {
+                wing.setServiceLog(serviceLog)
+            }
+            wing.smallTrimIntervalHours = backupWing.smallTrimIntervalHours
+            wing.fullTrimIntervalHours = backupWing.fullTrimIntervalHours
+            wing.fullTrimIntervalMonths = backupWing.fullTrimIntervalMonths
             modelContext.insert(wing)
             wingsById[backupWing.id] = wing
             summary.wingsImported += 1

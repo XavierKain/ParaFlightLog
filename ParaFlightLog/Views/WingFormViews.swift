@@ -158,6 +158,15 @@ struct AddWingView: View {
                     displayOrder: maxDisplayOrder + 1
                 )
 
+                // Pre-fill the manufacturer-recommended trim intervals when
+                // the model matches a known schedule (e.g. Flare "Bandit" /
+                // "Moustache", case-insensitive substring).
+                if let defaults = WingMaintenance.defaults(matching: "\(manufacturerName ?? "") \(libraryWing.model)") {
+                    wing.smallTrimIntervalHours = defaults.smallTrimIntervalHours
+                    wing.fullTrimIntervalHours = defaults.fullTrimIntervalHours
+                    wing.fullTrimIntervalMonths = defaults.fullTrimIntervalMonths
+                }
+
                 modelContext.insert(wing)
 
                 do {
@@ -301,12 +310,105 @@ struct WingFormView: View {
     }
 }
 
+// MARK: - WingMaintenanceFormSections (History + Maintenance schedule)
+
+/// "History" (previous hours, purchase date, bought used, last trim) and
+/// "Maintenance Schedule" (trim intervals) form sections shared by
+/// CustomAddWingView and EditWingView. Every field is optional: numeric
+/// fields stay empty strings when unset, dates are gated behind toggles.
+struct WingMaintenanceFormSections: View {
+    @Binding var previousHours: String
+    @Binding var hasPurchaseDate: Bool
+    @Binding var purchaseDate: Date
+    @Binding var purchasedUsed: Bool
+    @Binding var hasLastTrimDate: Bool
+    @Binding var lastTrimDate: Date
+    @Binding var smallTrimIntervalHours: String
+    @Binding var fullTrimIntervalHours: String
+    @Binding var fullTrimIntervalMonths: String
+
+    /// Keeps only digits and the decimal separator (same rule as the size field)
+    static func filteredDecimal(_ value: String) -> String {
+        value.filter { $0.isNumber || $0 == "." || $0 == "," }
+    }
+
+    /// Parses a decimal text field, tolerant to the "," separator. nil when empty/invalid.
+    static func parseDouble(_ value: String) -> Double? {
+        Double(value.replacingOccurrences(of: ",", with: "."))
+    }
+
+    /// Renders an optional decimal value back into a text field ("" when nil,
+    /// no trailing ".0" for whole numbers).
+    static func decimalText(_ value: Double?) -> String {
+        guard let value else { return "" }
+        return value.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(value)) : String(value)
+    }
+
+    var body: some View {
+        Group {
+            Section {
+                decimalRow("Hours before the app", text: $previousHours, unit: "h")
+
+                Toggle("Purchase date", isOn: $hasPurchaseDate.animation())
+                if hasPurchaseDate {
+                    DatePicker("Purchased on", selection: $purchaseDate, displayedComponents: .date)
+                }
+
+                Toggle("Bought used", isOn: $purchasedUsed.animation())
+                if purchasedUsed {
+                    Toggle("Known last trim date", isOn: $hasLastTrimDate.animation())
+                    if hasLastTrimDate {
+                        DatePicker("Last trimmed on", selection: $lastTrimDate, displayedComponents: .date)
+                    }
+                }
+            } header: {
+                Text("History")
+            } footer: {
+                Text("Hours already flown before using the app count toward the wing's total and its trim schedule.")
+            }
+
+            Section {
+                decimalRow("Small trim every", text: $smallTrimIntervalHours, unit: "h")
+                decimalRow("Full trim every", text: $fullTrimIntervalHours, unit: "h")
+                decimalRow("Full trim every", text: $fullTrimIntervalMonths, unit: "months", integerOnly: true)
+            } header: {
+                Text("Maintenance Schedule")
+            } footer: {
+                Text("Leave a field empty when the manufacturer doesn't specify it. When both an hour and a month interval are set, the first one reached wins.")
+            }
+        }
+    }
+
+    /// A labeled numeric row with a trailing text field and unit suffix
+    private func decimalRow(_ label: String, text: Binding<String>, unit: String, integerOnly: Bool = false) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            TextField("—", text: text)
+                .keyboardType(integerOnly ? .numberPad : .decimalPad)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: 80)
+                .onChange(of: text.wrappedValue) { _, newValue in
+                    let filtered = integerOnly
+                        ? newValue.filter(\.isNumber)
+                        : Self.filteredDecimal(newValue)
+                    if filtered != newValue {
+                        text.wrappedValue = filtered
+                    }
+                }
+            Text(unit)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
 // MARK: - CustomAddWingView (Manual form)
 
 /// Manual wing creation form
 struct CustomAddWingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
 
     @State private var name: String = ""
@@ -318,6 +420,17 @@ struct CustomAddWingView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
     @State private var showSaveError: Bool = false
+
+    // History + maintenance schedule (all optional, see WingMaintenanceFormSections)
+    @State private var previousHours: String = ""
+    @State private var hasPurchaseDate: Bool = false
+    @State private var purchaseDate: Date = Date()
+    @State private var purchasedUsed: Bool = false
+    @State private var hasLastTrimDate: Bool = false
+    @State private var lastTrimDate: Date = Date()
+    @State private var smallTrimIntervalHours: String = ""
+    @State private var fullTrimIntervalHours: String = ""
+    @State private var fullTrimIntervalMonths: String = ""
 
     var body: some View {
         NavigationStack {
@@ -331,6 +444,18 @@ struct CustomAddWingView: View {
                     customColor: $customColor,
                     selectedPhoto: $selectedPhoto,
                     photoData: $photoData
+                )
+
+                WingMaintenanceFormSections(
+                    previousHours: $previousHours,
+                    hasPurchaseDate: $hasPurchaseDate,
+                    purchaseDate: $purchaseDate,
+                    purchasedUsed: $purchasedUsed,
+                    hasLastTrimDate: $hasLastTrimDate,
+                    lastTrimDate: $lastTrimDate,
+                    smallTrimIntervalHours: $smallTrimIntervalHours,
+                    fullTrimIntervalHours: $fullTrimIntervalHours,
+                    fullTrimIntervalMonths: $fullTrimIntervalMonths
                 )
             }
             .navigationTitle("Custom Wing")
@@ -375,6 +500,7 @@ struct CustomAddWingView: View {
             photoData: photoData,
             displayOrder: maxDisplayOrder + 1
         )
+        applyMaintenanceFields(to: wing)
 
         modelContext.insert(wing)
 
@@ -382,6 +508,7 @@ struct CustomAddWingView: View {
             do {
                 try modelContext.save()
                 watchManager.sendWingsToWatch()
+                dataController.refreshTrimReminders()
                 dismiss()
             } catch {
                 // Remove the failed insert from the context: tapping "Add"
@@ -393,6 +520,16 @@ struct CustomAddWingView: View {
             }
         }
     }
+
+    private func applyMaintenanceFields(to wing: Wing) {
+        wing.previousHours = WingMaintenanceFormSections.parseDouble(previousHours)
+        wing.purchaseDate = hasPurchaseDate ? purchaseDate : nil
+        wing.purchasedUsed = purchasedUsed
+        wing.lastTrimDate = (purchasedUsed && hasLastTrimDate) ? lastTrimDate : nil
+        wing.smallTrimIntervalHours = WingMaintenanceFormSections.parseDouble(smallTrimIntervalHours)
+        wing.fullTrimIntervalHours = WingMaintenanceFormSections.parseDouble(fullTrimIntervalHours)
+        wing.fullTrimIntervalMonths = Int(fullTrimIntervalMonths)
+    }
 }
 
 // MARK: - EditWingView (Edit a wing)
@@ -400,6 +537,7 @@ struct CustomAddWingView: View {
 struct EditWingView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(DataController.self) private var dataController
     @Environment(WatchConnectivityManager.self) private var watchManager
 
     let wing: Wing
@@ -413,6 +551,17 @@ struct EditWingView: View {
     @State private var selectedPhoto: PhotosPickerItem?
     @State private var photoData: Data?
     @State private var showSaveError: Bool = false
+
+    // History + maintenance schedule (all optional, see WingMaintenanceFormSections)
+    @State private var previousHours: String
+    @State private var hasPurchaseDate: Bool
+    @State private var purchaseDate: Date
+    @State private var purchasedUsed: Bool
+    @State private var hasLastTrimDate: Bool
+    @State private var lastTrimDate: Date
+    @State private var smallTrimIntervalHours: String
+    @State private var fullTrimIntervalHours: String
+    @State private var fullTrimIntervalMonths: String
 
     init(wing: Wing) {
         self.wing = wing
@@ -430,6 +579,16 @@ struct EditWingView: View {
             _customColor = State(initialValue: existingColor)
         }
         _photoData = State(initialValue: wing.photoData)
+
+        _previousHours = State(initialValue: WingMaintenanceFormSections.decimalText(wing.previousHours))
+        _hasPurchaseDate = State(initialValue: wing.purchaseDate != nil)
+        _purchaseDate = State(initialValue: wing.purchaseDate ?? Date())
+        _purchasedUsed = State(initialValue: wing.purchasedUsed)
+        _hasLastTrimDate = State(initialValue: wing.lastTrimDate != nil)
+        _lastTrimDate = State(initialValue: wing.lastTrimDate ?? Date())
+        _smallTrimIntervalHours = State(initialValue: WingMaintenanceFormSections.decimalText(wing.smallTrimIntervalHours))
+        _fullTrimIntervalHours = State(initialValue: WingMaintenanceFormSections.decimalText(wing.fullTrimIntervalHours))
+        _fullTrimIntervalMonths = State(initialValue: wing.fullTrimIntervalMonths.map(String.init) ?? "")
     }
 
     var body: some View {
@@ -445,6 +604,18 @@ struct EditWingView: View {
                     selectedPhoto: $selectedPhoto,
                     photoData: $photoData,
                     allowsPhotoRemoval: true
+                )
+
+                WingMaintenanceFormSections(
+                    previousHours: $previousHours,
+                    hasPurchaseDate: $hasPurchaseDate,
+                    purchaseDate: $purchaseDate,
+                    purchasedUsed: $purchasedUsed,
+                    hasLastTrimDate: $hasLastTrimDate,
+                    lastTrimDate: $lastTrimDate,
+                    smallTrimIntervalHours: $smallTrimIntervalHours,
+                    fullTrimIntervalHours: $fullTrimIntervalHours,
+                    fullTrimIntervalMonths: $fullTrimIntervalMonths
                 )
             }
             .navigationTitle("Edit Wing")
@@ -482,6 +653,14 @@ struct EditWingView: View {
         wing.color = finalColor.isEmpty ? nil : finalColor
         wing.photoData = photoData
 
+        wing.previousHours = WingMaintenanceFormSections.parseDouble(previousHours)
+        wing.purchaseDate = hasPurchaseDate ? purchaseDate : nil
+        wing.purchasedUsed = purchasedUsed
+        wing.lastTrimDate = (purchasedUsed && hasLastTrimDate) ? lastTrimDate : nil
+        wing.smallTrimIntervalHours = WingMaintenanceFormSections.parseDouble(smallTrimIntervalHours)
+        wing.fullTrimIntervalHours = WingMaintenanceFormSections.parseDouble(fullTrimIntervalHours)
+        wing.fullTrimIntervalMonths = Int(fullTrimIntervalMonths)
+
         // Invalidate the image cache in case the photo changed
         ImageCacheManager.shared.invalidate(key: wing.id.uuidString)
 
@@ -489,6 +668,7 @@ struct EditWingView: View {
             do {
                 try modelContext.save()
                 watchManager.sendWingsToWatch()
+                dataController.refreshTrimReminders()
                 dismiss()
             } catch {
                 logError("Failed to save wing changes: \(error.localizedDescription)", category: .dataController)

@@ -164,6 +164,12 @@ struct WingRow: View {
 
     private let thumbnailSize = CGSize(width: 60, height: 60)
 
+    /// Worst trim status across the wing's deadlines; nil (no schedule set)
+    /// or .ok hide the hint entirely.
+    private var maintenanceStatus: TrimStatus? {
+        WingMaintenance.worstStatus(in: wing.maintenanceSnapshot)
+    }
+
     var body: some View {
         HStack(spacing: 12) {
             // Wing photo with cache, or default icon
@@ -183,9 +189,18 @@ struct WingRow: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
             VStack(alignment: .leading, spacing: 4) {
-                // Title: model name
-                Text(wing.name)
-                    .font(.headline)
+                // Title: model name + discreet maintenance hint when a trim
+                // deadline is close (orange) or missed (red)
+                HStack(spacing: 6) {
+                    Text(wing.name)
+                        .font(.headline)
+
+                    if let status = maintenanceStatus, status != .ok {
+                        Image(systemName: "wrench.and.screwdriver")
+                            .font(.caption2)
+                            .foregroundStyle(status == .overdue ? Color.red : Color.orange)
+                    }
+                }
 
                 // Subtitle: size • brand • type
                 HStack(spacing: 6) {

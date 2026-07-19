@@ -27,6 +27,18 @@ final class Wing {
     var createdAt: Date = Date()
     var displayOrder: Int = 0      // Custom display order (0 = first)
 
+    // Maintenance / trim tracking. All optional or with an inline default so
+    // the additions stay CloudKit-compatible (lightweight migration), like
+    // every other stored attribute of this model.
+    var previousHours: Double?          // Hours flown BEFORE this app (used wing / paper logbook)
+    var purchaseDate: Date?
+    var purchasedUsed: Bool = false     // Bought second-hand
+    var lastTrimDate: Date?             // Last known trim (mainly for used wings)
+    var serviceLogData: Data?           // JSON-encoded [WingServiceEvent]
+    var smallTrimIntervalHours: Double? // e.g. 10 h (Flare Bandit break-in trim)
+    var fullTrimIntervalHours: Double?  // e.g. 200 h
+    var fullTrimIntervalMonths: Int?    // e.g. 24 ("200 h or 2 years, whichever first")
+
     // Inverse relationship: all flights flown with this wing.
     // Must stay optional for CloudKit compatibility.
     @Relationship(deleteRule: .cascade, inverse: \Flight.wing)
@@ -43,6 +55,32 @@ final class Wing {
         self.isArchived = isArchived
         self.createdAt = createdAt
         self.displayOrder = displayOrder
+    }
+
+    /// Decodes the service log (empty when the wing was never serviced).
+    /// Same pattern as Flight.gpsTrack.
+    var serviceLog: [WingServiceEvent] {
+        guard let data = serviceLogData else { return [] }
+        do {
+            return try JSONDecoder().decode([WingServiceEvent].self, from: data)
+        } catch {
+            logError("Failed to decode wing service log: \(error.localizedDescription)", category: .dataController)
+            return []
+        }
+    }
+
+    /// Encodes and stores the service log. Same pattern as Flight.setGPSTrack.
+    func setServiceLog(_ events: [WingServiceEvent]) {
+        do {
+            serviceLogData = try JSONEncoder().encode(events)
+        } catch {
+            logError("Failed to encode wing service log: \(error.localizedDescription)", category: .dataController)
+        }
+    }
+
+    /// Appends one service event to the log
+    func addServiceEvent(_ event: WingServiceEvent) {
+        setServiceLog(serviceLog + [event])
     }
 
     /// Converts to a DTO with a small PNG thumbnail (max 72x72) for the Watch.
@@ -97,6 +135,39 @@ final class Wing {
 
         return WingDTO(id: dto.id, name: dto.name, size: dto.size, type: dto.type, color: dto.color, photoData: thumbnailData, displayOrder: dto.displayOrder)
     }
+}
+
+// MARK: - WingServiceEvent
+
+/// The kind of wing service recorded in a wing's maintenance log.
+/// `smallTrim` resets the small-trim hour counter; `fullTrim` resets both
+/// counters (a full trim includes the small one); `check` resets nothing.
+nonisolated enum WingServiceType: String, Codable, Sendable, CaseIterable {
+    case check
+    case smallTrim
+    case fullTrim
+
+    /// English display label for the UI
+    var label: String {
+        switch self {
+        case .check: return "Check"
+        case .smallTrim: return "Small trim"
+        case .fullTrim: return "Full trim"
+        }
+    }
+}
+
+/// One entry of a wing's maintenance log, stored JSON-encoded in
+/// `Wing.serviceLogData` (same pattern as Flight.gpsTrackData).
+/// Pure value type: `nonisolated` so it can be encoded/decoded off the main actor.
+nonisolated struct WingServiceEvent: Codable, Identifiable, Sendable {
+    var id: UUID = UUID()
+    var date: Date
+    var type: WingServiceType
+    var note: String?
+    /// The wing's total hours (previousHours + logged flights) when the
+    /// service happened — lets the trim counters reset by hours, not only date.
+    var hoursAtService: Double?
 }
 
 // MARK: - Spot

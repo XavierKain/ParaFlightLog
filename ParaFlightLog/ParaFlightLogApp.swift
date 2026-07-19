@@ -288,6 +288,11 @@ private struct IOSRootView: View {
                             await WeatherBackfillService.shared.backfillMissingTakeoffWeather(dataController: dataController)
                         }
                         await ForecastAlertService.shared.refreshAlerts(dataController: dataController)
+                        // Reschedule the wing trim reminders (deadlines may
+                        // have moved while the app was closed). Fail-soft;
+                        // prompts only when a reminder actually needs
+                        // scheduling.
+                        await WingMaintenance.scheduleTrimReminders(wings: dataController.fetchWings())
                     }
 
                     // Keep WatchConnectivity setup off the first-paint path.
