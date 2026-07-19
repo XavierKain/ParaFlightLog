@@ -172,19 +172,29 @@ nonisolated enum WingMaintenance {
         }
 
         guard hoursRemaining != nil || dueDate != nil else { return nil }
-        let status = status(hoursRemaining: hoursRemaining, dueDate: dueDate, now: now, calendar: calendar)
+        // The break-in small trim takes minutes on the ground — no point
+        // warning ahead. It only ever reports OK or, once reached, overdue.
+        // The full trim means shipping the wing off, so its "due soon"
+        // pre-warning (5 h / 1 month) is worth it.
+        let warnAhead = type != .smallTrim
+        let status = status(hoursRemaining: hoursRemaining, dueDate: dueDate,
+                            warnAhead: warnAhead, now: now, calendar: calendar)
         return TrimDueState(status: status, hoursRemaining: hoursRemaining, dueDate: dueDate)
     }
 
     /// Combines an hour-based and a date-based deadline: first reached wins.
+    /// `warnAhead` enables the "due soon" pre-warning (only ok/overdue when
+    /// false — used by the break-in trim, which needs no anticipation).
     static func status(
         hoursRemaining: Double?,
         dueDate: Date?,
+        warnAhead: Bool = true,
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> TrimStatus {
         if let hoursRemaining, hoursRemaining <= 0 { return .overdue }
         if let dueDate, dueDate <= now { return .overdue }
+        guard warnAhead else { return .ok }
         if let hoursRemaining, hoursRemaining < dueSoonHoursThreshold { return .dueSoon }
         if let dueDate,
            let soon = calendar.date(byAdding: .month, value: dueSoonMonthsThreshold, to: now),

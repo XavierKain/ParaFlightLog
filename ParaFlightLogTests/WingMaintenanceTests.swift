@@ -178,13 +178,24 @@ import Testing
         #expect(WingMaintenance.dueState(for: .fullTrim, in: snapshot, now: now, calendar: calendar) == nil)
     }
 
-    @Test func smallTrimDueStateReportsRemainingHours() {
+    @Test func smallTrimHasNoDueSoonPreWarning() {
+        // 3 h left on a 10 h break-in trim: no anticipation needed (it's a
+        // 5-minute job on the ground), so it stays OK until actually reached.
         let snapshot = WingMaintenanceSnapshot(
             smallTrimIntervalHours: 10,
             flights: [MaintenanceFlight(date: daysAgo(1), hours: 7)]
         )
         let state = WingMaintenance.dueState(for: .smallTrim, in: snapshot, now: now, calendar: calendar)
-        #expect(state == TrimDueState(status: .dueSoon, hoursRemaining: 3, dueDate: nil))
+        #expect(state == TrimDueState(status: .ok, hoursRemaining: 3, dueDate: nil))
+    }
+
+    @Test func smallTrimBecomesOverdueOnlyWhenReached() {
+        let snapshot = WingMaintenanceSnapshot(
+            smallTrimIntervalHours: 10,
+            flights: [MaintenanceFlight(date: daysAgo(1), hours: 10)]
+        )
+        let state = WingMaintenance.dueState(for: .smallTrim, in: snapshot, now: now, calendar: calendar)
+        #expect(state?.status == .overdue)
     }
 
     @Test func fullTrimHoursOrMonthsFirstReachedWins() {
