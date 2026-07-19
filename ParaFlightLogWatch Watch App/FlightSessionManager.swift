@@ -118,6 +118,16 @@ final class FlightSessionManager {
         activeSession = session
     }
 
+    /// Resumes a recovered session after a crash: keeps the existing session
+    /// (start date, stats, track) and just restarts the periodic save. The
+    /// caller re-seeds the location service and restarts the workout.
+    func resumeSession() {
+        guard activeSession != nil else { return }
+        saveSession()
+        startPeriodicSave()
+        watchLogInfo("Flight session resumed after recovery", category: .session)
+    }
+
     /// Ends the session cleanly (flight saved)
     func endSession() {
         stopPeriodicSave()

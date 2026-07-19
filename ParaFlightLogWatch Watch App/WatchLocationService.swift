@@ -22,6 +22,14 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     private var gForceBuffer: [Double] = []  // Buffer pour moyenne mobile
     private let gForceBufferSize = 3  // Fenêtre de 3 échantillons pour filtrage
 
+    // Throttle des mutations de `currentGForce` (@Observable) : muter à 10 Hz
+    // force SwiftUI à réévaluer l'écran de vol 10×/s pendant des heures — le
+    // profil type d'une terminaison watchdog CPU_RESOURCE sur les vols longs.
+    // On échantillonne toujours à 10 Hz (fidélité de maxGForce), mais l'UI
+    // n'est rafraîchie qu'à ≤3 Hz et seulement si la valeur a bougé.
+    private var lastGForceUIUpdate: Date = .distantPast
+    private let gForceUIUpdateInterval: TimeInterval = 0.35
+
     private var locationManager: CLLocationManager {
         if let manager = _locationManager {
             return manager
@@ -153,6 +161,35 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         } else {
             startMotionUpdates()
         }
+    }
+
+    /// Reprend le tracking d'un vol récupéré après un crash : re-seed l'état
+    /// (stats + trace GPS + spot verrouillé) depuis la session persistée, puis
+    /// redémarre les capteurs — le vol continue comme s'il n'avait jamais été
+    /// interrompu (une seule session au lieu de deux).
+    func resumeFlightTracking(from session: FlightSession) {
+        isTracking = true
+        startAltitude = session.startAltitude
+        maxAltitude = session.maxAltitude
+        currentAltitude = session.currentAltitude
+        totalDistance = session.totalDistance
+        maxSpeed = session.maxSpeed
+        currentGForce = 1.0
+        maxGForce = session.maxGForce
+        previousLocation = nil
+        gForceBuffer = []
+        lockedSpotName = session.spotName
+        if let spot = session.spotName {
+            currentSpotName = spot
+        }
+
+        gpsQueue.sync {
+            gpsTrackPoints = session.gpsTrackPoints
+            lastTrackPointTime = session.gpsTrackPoints.last?.timestamp
+        }
+
+        startMotionUpdates()
+        watchLogInfo("Flight tracking resumed (\(session.gpsTrackPoints.count) GPS points restored)", category: .location)
     }
 
     /// Arrête le tracking et retourne l'altitude finale
@@ -304,11 +341,19 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
             // Calculer la moyenne mobile
             let averageGForce = self.gForceBuffer.reduce(0.0, +) / Double(self.gForceBuffer.count)
-            self.currentGForce = averageGForce
 
-            // Mettre à jour le max
+            // Mettre à jour le max à pleine cadence (10 Hz)
             if averageGForce > self.maxGForce {
                 self.maxGForce = averageGForce
+            }
+
+            // Ne muter la valeur observée par l'UI qu'à cadence réduite et si
+            // elle a réellement changé (voir lastGForceUIUpdate ci-dessus).
+            let now = Date()
+            if now.timeIntervalSince(self.lastGForceUIUpdate) >= self.gForceUIUpdateInterval,
+               abs(averageGForce - self.currentGForce) >= 0.02 {
+                self.lastGForceUIUpdate = now
+                self.currentGForce = averageGForce
             }
         }
     }

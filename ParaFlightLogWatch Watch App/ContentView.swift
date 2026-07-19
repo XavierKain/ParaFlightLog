@@ -73,15 +73,48 @@ struct ContentView: View {
             checkForRecoverableSession()
         }
         .alert("Flight recovered", isPresented: $showingRecoveryAlert) {
-            Button("Save") {
+            Button("Continue flight") {
+                continueRecoveredFlight()
+            }
+            Button("Save & stop") {
                 saveRecoveredFlight()
             }
             Button("Discard", role: .destructive) {
                 sessionManager.discardSession()
             }
         } message: {
-            Text("A flight of \(WatchFormatters.duration(recoveredDuration)) was interrupted. Do you want to save it?")
+            Text("A flight of \(WatchFormatters.duration(recoveredDuration)) was interrupted. Continue it (keeps ONE session) or save it as it was?")
         }
+    }
+
+    /// Continues a crash-recovered flight as the SAME session: re-seeds the
+    /// tracking state from the persisted session, restarts sensors/workout and
+    /// re-opens the live flight screen. One physical flight = one saved flight.
+    private func continueRecoveredFlight() {
+        guard let session = sessionManager.activeSession else { return }
+
+        // Rebuild the wing from the persisted session (the wings list may not
+        // be synced yet right after a relaunch).
+        let wing = WingDTO(id: session.wingId, name: session.wingName, size: session.wingSize)
+        WatchImageCache.shared.preloadImageSync(for: wing)
+
+        flightStartDate = session.startDate
+        isFlying = true
+
+        sessionManager.resumeSession()
+
+        Task.detached(priority: .high) { [workoutManager] in
+            await workoutManager.startWorkoutSession()
+        }
+
+        activeFlightWing = wing
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) { [self] in
+            locationService.startUpdatingLocation()
+            locationService.resumeFlightTracking(from: session)
+        }
+
+        watchLogInfo("Recovered flight continued as the same session", category: .flight)
     }
 
     /// Checks whether there is a flight session to recover after a crash

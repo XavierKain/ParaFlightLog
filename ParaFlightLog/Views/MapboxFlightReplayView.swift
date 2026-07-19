@@ -51,6 +51,14 @@ struct MapboxFlightReplayView: View {
     @State private var follow = false
     @State private var didFlyIn = false
 
+    /// Style handle captured on load, to drive the progressive line reveal
+    /// (line-trim-offset) from the playback tick.
+    @State private var styleMap: MapboxMap?
+
+    /// Precomputed (seconds-from-start, distance-fraction) pairs so the
+    /// time-based playback can reveal the DISTANCE-based line. Built once.
+    private let timeToDistance: [(time: Double, fraction: Double)]
+
     private let playbackSpeeds: [Double] = [1, 4, 10, 30]
     private let tickInterval: TimeInterval = 1.0 / 30.0
     private let followPitch: CGFloat = 62
@@ -72,6 +80,25 @@ struct MapboxFlightReplayView: View {
         self.engine = engine
         self.points = points
         self.hasTrack = engine.rawCoordinates.count >= 2
+
+        // Cumulative distance fraction per point, paired with its time offset.
+        var pairs: [(time: Double, fraction: Double)] = []
+        if let start = points.first?.timestamp, points.count >= 2 {
+            var cumulative: [Double] = [0]
+            var total: Double = 0
+            for index in 1..<points.count {
+                let a = CLLocation(latitude: points[index - 1].latitude, longitude: points[index - 1].longitude)
+                let b = CLLocation(latitude: points[index].latitude, longitude: points[index].longitude)
+                total += b.distance(from: a)
+                cumulative.append(total)
+            }
+            if total > 0 {
+                pairs = points.enumerated().map { index, point in
+                    (point.timestamp.timeIntervalSince(start), cumulative[index] / total)
+                }
+            }
+        }
+        self.timeToDistance = pairs
 
         _viewport = State(initialValue: .overview(
             geometry: LineString(engine.rawCoordinates),
@@ -120,6 +147,7 @@ struct MapboxFlightReplayView: View {
                 }
                 .mapStyle(.standardSatellite)
                 .onStyleLoaded { _ in
+                    styleMap = proxy.map
                     configureStyle(proxy.map)
                 }
                 .onChange(of: viewport.isIdle) { _, idle in
@@ -176,6 +204,33 @@ struct MapboxFlightReplayView: View {
             source.data = .geometry(Geometry.lineString(LineString(engine.rawCoordinates)))
             try map.addSource(source)
 
+            // EXPERIMENTAL elevated-line expression, shared by both layers so
+            // the gray context and the colored reveal sit at the SAME altitude.
+            // Remove the two lineElevationReference/lineZOffset blocks to fall
+            // back to ground-projected lines.
+            let altitudeExpression = engine.hasAltitude
+                ? Self.progressExpression(stops: altitudeStops())
+                : nil
+
+            // 1. Context layer: the WHOLE flight as a faint gray line — in
+            //    soaring you criss-cross the same ridge dozens of times; a
+            //    fully-colored track becomes unreadable. The context only
+            //    hints at where the flight goes.
+            var context = LineLayer(id: "pfl-track-context", source: "pfl-track")
+            context.lineWidth = .constant(2.5)
+            context.lineCap = .constant(.round)
+            context.lineJoin = .constant(.round)
+            context.lineColor = .constant(StyleColor(UIColor.white.withAlphaComponent(0.28)))
+            context.lineEmissiveStrength = .constant(1)
+            if let altitudeExpression {
+                context.lineElevationReference = .constant(.sea)
+                context.lineZOffset = .expression(altitudeExpression)
+            }
+            try map.addLayer(context)
+
+            // 2. Reveal layer: vario-colored, revealed progressively as the
+            //    replay passes (line-trim-offset hides the not-yet-flown part;
+            //    updated every tick from the playback clock).
             var layer = LineLayer(id: "pfl-track-line", source: "pfl-track")
             layer.lineWidth = .constant(4)
             layer.lineCap = .constant(.round)
@@ -186,16 +241,47 @@ struct MapboxFlightReplayView: View {
             } else {
                 layer.lineColor = .constant(StyleColor(.systemBlue))
             }
-            // EXPERIMENTAL: elevate the line to its true GPS altitude (MSL).
-            // Remove these two lines to fall back to a ground-projected line.
-            if engine.hasAltitude, let altitude = Self.progressExpression(stops: altitudeStops()) {
+            layer.lineTrimOffset = .constant([0.0, 1.0]) // nothing revealed yet
+            if let altitudeExpression {
                 layer.lineElevationReference = .constant(.sea)
-                layer.lineZOffset = .expression(altitude)
+                layer.lineZOffset = .expression(altitudeExpression)
             }
             try map.addLayer(layer)
+
+            // Reveal up to the current playback position (scrub/resume case).
+            updateTrackReveal(map: map)
         } catch {
             logWarning("Mapbox replay style setup failed: \(error)", category: .general)
         }
+    }
+
+    /// Distance fraction flown at the current playback time (piecewise-linear
+    /// over the precomputed pairs).
+    private func distanceFraction(at time: TimeInterval) -> Double {
+        guard let first = timeToDistance.first else { return 0 }
+        if time <= first.time { return first.fraction }
+        for index in 1..<timeToDistance.count {
+            let b = timeToDistance[index]
+            if time <= b.time {
+                let a = timeToDistance[index - 1]
+                let span = b.time - a.time
+                let t = span > 0 ? (time - a.time) / span : 1
+                return a.fraction + (b.fraction - a.fraction) * t
+            }
+        }
+        return 1
+    }
+
+    /// Pushes the current reveal fraction into the colored layer:
+    /// line-trim-offset [flown, 1] keeps 0…flown visible and hides the rest.
+    private func updateTrackReveal(map: MapboxMap?) {
+        guard let map else { return }
+        let flown = min(max(distanceFraction(at: elapsed), 0), 1)
+        try? map.setLayerProperty(
+            for: "pfl-track-line",
+            property: "line-trim-offset",
+            value: [flown, 1.0]
+        )
     }
 
     /// Per-track stops along line-progress (distance fraction 0…1), sampled
@@ -366,16 +452,19 @@ struct MapboxFlightReplayView: View {
             .background(.ultraThinMaterial, in: Circle())
     }
 
+    /// Compact pilot marker: a small vario-colored dot with a white ring and
+    /// a paraglider glyph — precise on the line, not a big blob.
     private func pilotBadge(_ sample: ReplaySample) -> some View {
         ZStack {
-            Circle().fill(.black.opacity(0.35)).frame(width: 44, height: 44)
             Circle()
-                .stroke(VarioPalette.color(sample.verticalSpeed ?? 0), lineWidth: 3)
-                .frame(width: 44, height: 44)
+                .fill(VarioPalette.color(sample.verticalSpeed ?? 0))
+                .frame(width: 22, height: 22)
+                .overlay(Circle().strokeBorder(.white, lineWidth: 2))
+                .shadow(color: .black.opacity(0.45), radius: 3, y: 1)
             Image(systemName: "parachute.fill")
-                .font(.title3)
+                .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.5), radius: 2)
+                .shadow(color: .black.opacity(0.4), radius: 1)
         }
     }
 
@@ -389,6 +478,7 @@ struct MapboxFlightReplayView: View {
                 onScrub: { fraction in
                     isScrubbing = true
                     elapsed = fraction * engine.totalDuration
+                    updateTrackReveal(map: styleMap)
                 },
                 onScrubEnd: { isScrubbing = false }
             )
@@ -484,6 +574,7 @@ struct MapboxFlightReplayView: View {
         if elapsed >= engine.totalDuration {
             isPlaying = false
         }
+        updateTrackReveal(map: styleMap)
         if follow {
             viewport = followViewport(for: engine.interpolate(at: elapsed))
         }
