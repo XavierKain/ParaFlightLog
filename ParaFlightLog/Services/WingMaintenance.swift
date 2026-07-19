@@ -366,7 +366,7 @@ extension WingMaintenance {
         }
 
         for request in requests {
-            center.add(request)
+            try? await center.add(request)
         }
         logInfo("Scheduled \(requests.count) trim reminder(s)", category: .dataController)
     }
