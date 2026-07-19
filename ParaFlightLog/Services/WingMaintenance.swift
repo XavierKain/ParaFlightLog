@@ -149,6 +149,13 @@ nonisolated enum WingMaintenance {
 
         switch type {
         case .smallTrim:
+            // The small trim is a ONE-TIME break-in job (e.g. FLARE Bandit:
+            // remove the B-line trim loop after ~10 flight hours). Once a
+            // smallTrim event is logged the deadline is gone for good — it
+            // does NOT recur every N hours.
+            if snapshot.serviceLog.contains(where: { $0.type == .smallTrim }) {
+                return nil
+            }
             if let interval = snapshot.smallTrimIntervalHours {
                 hoursRemaining = interval - hoursSinceService(.smallTrim, in: snapshot)
             }

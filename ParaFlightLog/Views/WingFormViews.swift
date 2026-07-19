@@ -368,7 +368,7 @@ struct WingMaintenanceFormSections: View {
             }
 
             Section {
-                decimalRow("Small trim every", text: $smallTrimIntervalHours, unit: "h")
+                decimalRow("Break-in trim after", text: $smallTrimIntervalHours, unit: "h")
                 decimalRow("Full trim every", text: $fullTrimIntervalHours, unit: "h")
                 decimalRow("Full trim every", text: $fullTrimIntervalMonths, unit: "months", integerOnly: true)
             } header: {

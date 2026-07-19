@@ -51,13 +51,13 @@ struct MapboxFlightReplayView: View {
     @State private var follow = false
     @State private var didFlyIn = false
 
-    /// Style handle captured on load, to drive the progressive line reveal
-    /// (line-trim-offset) from the playback tick.
+    /// Style handle captured on load, to drive the live overlays (pilot
+    /// symbol + fading comet) from the playback tick.
     @State private var styleMap: MapboxMap?
 
-    /// Precomputed (seconds-from-start, distance-fraction) pairs so the
-    /// time-based playback can reveal the DISTANCE-based line. Built once.
-    private let timeToDistance: [(time: Double, fraction: Double)]
+    /// Tick counter: the pilot symbol moves every tick, the comet geometry /
+    /// gradient (heavier) refreshes every 3rd tick (~10 Hz).
+    @State private var overlayTick = 0
 
     private let playbackSpeeds: [Double] = [1, 4, 10, 30]
     private let tickInterval: TimeInterval = 1.0 / 30.0
@@ -80,25 +80,6 @@ struct MapboxFlightReplayView: View {
         self.engine = engine
         self.points = points
         self.hasTrack = engine.rawCoordinates.count >= 2
-
-        // Cumulative distance fraction per point, paired with its time offset.
-        var pairs: [(time: Double, fraction: Double)] = []
-        if let start = points.first?.timestamp, points.count >= 2 {
-            var cumulative: [Double] = [0]
-            var total: Double = 0
-            for index in 1..<points.count {
-                let a = CLLocation(latitude: points[index - 1].latitude, longitude: points[index - 1].longitude)
-                let b = CLLocation(latitude: points[index].latitude, longitude: points[index].longitude)
-                total += b.distance(from: a)
-                cumulative.append(total)
-            }
-            if total > 0 {
-                pairs = points.enumerated().map { index, point in
-                    (point.timestamp.timeIntervalSince(start), cumulative[index] / total)
-                }
-            }
-        }
-        self.timeToDistance = pairs
 
         _viewport = State(initialValue: .overview(
             geometry: LineString(engine.rawCoordinates),
@@ -139,11 +120,6 @@ struct MapboxFlightReplayView: View {
                         .allowOverlap(true)
                     }
 
-                    // The pilot.
-                    MapViewAnnotation(coordinate: current.coordinate) {
-                        pilotBadge(current)
-                    }
-                    .allowOverlap(true)
                 }
                 .mapStyle(.standardSatellite)
                 .onStyleLoaded { _ in
@@ -228,60 +204,138 @@ struct MapboxFlightReplayView: View {
             }
             try map.addLayer(context)
 
-            // 2. Reveal layer: vario-colored, revealed progressively as the
-            //    replay passes (line-trim-offset hides the not-yet-flown part;
-            //    updated every tick from the playback clock).
-            var layer = LineLayer(id: "pfl-track-line", source: "pfl-track")
-            layer.lineWidth = .constant(4)
-            layer.lineCap = .constant(.round)
-            layer.lineJoin = .constant(.round)
-            layer.lineEmissiveStrength = .constant(1)
-            if let gradient = Self.progressExpression(stops: varioColorStops()) {
-                layer.lineGradient = .expression(gradient)
-            } else {
-                layer.lineColor = .constant(StyleColor(.systemBlue))
-            }
-            layer.lineTrimOffset = .constant([0.0, 1.0]) // nothing revealed yet
-            if let altitudeExpression {
-                layer.lineElevationReference = .constant(.sea)
-                layer.lineZOffset = .expression(altitudeExpression)
-            }
-            try map.addLayer(layer)
+            // 2. Comet layer: only the LAST ~30 s of flight, vario-colored and
+            //    fading out toward its tail — after hours of laps the screen
+            //    stays readable (geometry + gradient refreshed from the tick).
+            var comet = GeoJSONSource(id: "pfl-comet-src")
+            comet.lineMetrics = true
+            comet.data = .geometry(Geometry.lineString(LineString([])))
+            try map.addSource(comet)
 
-            // Reveal up to the current playback position (scrub/resume case).
-            updateTrackReveal(map: map)
+            var cometLayer = LineLayer(id: "pfl-comet", source: "pfl-comet-src")
+            cometLayer.lineWidth = .constant(4.5)
+            cometLayer.lineCap = .constant(.round)
+            cometLayer.lineJoin = .constant(.round)
+            cometLayer.lineEmissiveStrength = .constant(1)
+            if engine.hasAltitude {
+                cometLayer.lineElevationReference = .constant(.sea)
+            }
+            try map.addLayer(cometLayer)
+
+            // 3. Pilot symbol: a real 3D layer (symbol-z-offset at the GPS
+            //    altitude) so the marker rides ON the elevated line instead of
+            //    sitting on the ground under it like a view annotation would.
+            try map.addImage(Self.pilotIcon(color: .systemGreen), id: "pfl-pilot-climb")
+            try map.addImage(Self.pilotIcon(color: .systemRed), id: "pfl-pilot-sink")
+            try map.addImage(Self.pilotIcon(color: .systemBlue), id: "pfl-pilot-level")
+
+            var pilotSource = GeoJSONSource(id: "pfl-pilot-src")
+            pilotSource.data = .geometry(Geometry.point(Point(engine.rawCoordinates[0])))
+            try map.addSource(pilotSource)
+
+            var pilot = SymbolLayer(id: "pfl-pilot", source: "pfl-pilot-src")
+            pilot.iconImage = .constant(.name("pfl-pilot-level"))
+            pilot.iconAllowOverlap = .constant(true)
+            pilot.iconIgnorePlacement = .constant(true)
+            if engine.hasAltitude {
+                pilot.symbolElevationReference = .constant(.sea)
+                pilot.symbolZOffset = .constant(0)
+            }
+            try map.addLayer(pilot)
+
+            // Seed the overlays at the current playback position.
+            updateLiveOverlays(map: map, force: true)
         } catch {
             logWarning("Mapbox replay style setup failed: \(error)", category: .general)
         }
     }
 
-    /// Distance fraction flown at the current playback time (piecewise-linear
-    /// over the precomputed pairs).
-    private func distanceFraction(at time: TimeInterval) -> Double {
-        guard let first = timeToDistance.first else { return 0 }
-        if time <= first.time { return first.fraction }
-        for index in 1..<timeToDistance.count {
-            let b = timeToDistance[index]
-            if time <= b.time {
-                let a = timeToDistance[index - 1]
-                let span = b.time - a.time
-                let t = span > 0 ? (time - a.time) / span : 1
-                return a.fraction + (b.fraction - a.fraction) * t
-            }
-        }
-        return 1
-    }
+    /// Real flight-seconds of trail kept behind the pilot.
+    private let cometWindow: TimeInterval = 30
 
-    /// Pushes the current reveal fraction into the colored layer:
-    /// line-trim-offset [flown, 1] keeps 0…flown visible and hides the rest.
-    private func updateTrackReveal(map: MapboxMap?) {
+    /// Moves the pilot symbol (position + altitude + climb/sink icon) and
+    /// refreshes the fading comet. The pilot moves every call; the comet
+    /// geometry/gradient (heavier: two expressions rebuilt) refreshes every
+    /// 3rd tick unless `force`.
+    private func updateLiveOverlays(map: MapboxMap?, force: Bool = false) {
         guard let map else { return }
-        let flown = min(max(distanceFraction(at: elapsed), 0), 1)
-        try? map.setLayerProperty(
-            for: "pfl-track-line",
-            property: "line-trim-offset",
-            value: [flown, 1.0]
+        let sample = engine.interpolate(at: elapsed)
+
+        // Pilot: position, true altitude, vario icon.
+        try? map.updateGeoJSONSource(
+            withId: "pfl-pilot-src",
+            geoJSON: .geometry(Geometry.point(Point(sample.coordinate)))
         )
+        if engine.hasAltitude, let altitude = sample.altitude {
+            try? map.setLayerProperty(for: "pfl-pilot", property: "symbol-z-offset", value: altitude)
+        }
+        let vario = sample.verticalSpeed ?? 0
+        let icon = vario > 0.3 ? "pfl-pilot-climb" : (vario < -0.3 ? "pfl-pilot-sink" : "pfl-pilot-level")
+        try? map.setLayerProperty(for: "pfl-pilot", property: "icon-image", value: icon)
+
+        // Comet (throttled).
+        overlayTick += 1
+        guard force || overlayTick % 3 == 0 else { return }
+
+        let tailStart = max(0, elapsed - cometWindow)
+        guard let trackStart = points.first?.timestamp else { return }
+        var window = points.filter {
+            let t = $0.timestamp.timeIntervalSince(trackStart)
+            return t >= tailStart && t <= elapsed
+        }
+        // Head of the comet = the interpolated live position.
+        window.append(GPSTrackPoint(
+            timestamp: trackStart.addingTimeInterval(elapsed),
+            latitude: sample.coordinate.latitude,
+            longitude: sample.coordinate.longitude,
+            altitude: sample.altitude,
+            speed: sample.speed
+        ))
+        guard window.count >= 2 else {
+            try? map.updateGeoJSONSource(
+                withId: "pfl-comet-src",
+                geoJSON: .geometry(Geometry.lineString(LineString([])))
+            )
+            return
+        }
+
+        let coordinates = window.map {
+            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+        }
+        try? map.updateGeoJSONSource(
+            withId: "pfl-comet-src",
+            geoJSON: .geometry(Geometry.lineString(LineString(coordinates)))
+        )
+
+        // Per-window gradient (vario color, alpha fading toward the tail) and
+        // altitude stops, both over line-progress 0…1.
+        let span = max(elapsed - tailStart, 0.001)
+        var colorStops: [ProgressStop] = []
+        var zStops: [ProgressStop] = []
+        var lastAltitude = window.first?.altitude ?? 0
+        for point in window {
+            let t = point.timestamp.timeIntervalSince(trackStart)
+            let fraction = min(max((t - tailStart) / span, 0), 1)
+            let pointVario = engine.interpolate(at: t).verticalSpeed ?? 0
+            let alpha = 0.08 + 0.92 * fraction
+            colorStops.append(ProgressStop(
+                progress: fraction,
+                value: Self.rgbaString(VarioPalette.color(pointVario), alpha: alpha)
+            ))
+            if let altitude = point.altitude { lastAltitude = altitude }
+            zStops.append(ProgressStop(progress: fraction, value: lastAltitude))
+        }
+        if let gradient = Self.progressExpression(stops: colorStops),
+           let raw = try? JSONEncoder().encode(gradient),
+           let json = try? JSONSerialization.jsonObject(with: raw) {
+            try? map.setLayerProperty(for: "pfl-comet", property: "line-gradient", value: json)
+        }
+        if engine.hasAltitude,
+           let zExpression = Self.progressExpression(stops: zStops),
+           let raw = try? JSONEncoder().encode(zExpression),
+           let json = try? JSONSerialization.jsonObject(with: raw) {
+            try? map.setLayerProperty(for: "pfl-comet", property: "line-z-offset", value: json)
+        }
     }
 
     /// Per-track stops along line-progress (distance fraction 0…1), sampled
@@ -323,16 +377,6 @@ struct MapboxFlightReplayView: View {
         }
     }
 
-    private func varioColorStops() -> [ProgressStop] {
-        let fractions = distanceFractions()
-        guard let start = points.first?.timestamp else { return [] }
-        return sampleIndices().map { index in
-            let time = points[index].timestamp.timeIntervalSince(start)
-            let vario = engine.interpolate(at: time).verticalSpeed ?? 0
-            return ProgressStop(progress: fractions[index], value: Self.rgbaString(VarioPalette.color(vario)))
-        }
-    }
-
     /// Builds `["interpolate", ["linear"], ["line-progress"], p0, v0, …]`
     /// from raw stops (strictly increasing progress enforced). Built via
     /// JSON → Expression decoding, which sidesteps the result-builder DSL
@@ -358,10 +402,30 @@ struct MapboxFlightReplayView: View {
     }
 
     /// SwiftUI Color → "rgba(r,g,b,a)" string for style expressions.
-    private static func rgbaString(_ color: Color) -> String {
-        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 1
-        UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
-        return String(format: "rgba(%d,%d,%d,%.2f)", Int(red * 255), Int(green * 255), Int(blue * 255), alpha)
+    /// `alpha` overrides the color's own opacity (comet tail fade).
+    private static func rgbaString(_ color: Color, alpha: Double? = nil) -> String {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, colorAlpha: CGFloat = 1
+        UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &colorAlpha)
+        let a = alpha ?? Double(colorAlpha)
+        return String(format: "rgba(%d,%d,%d,%.2f)", Int(red * 255), Int(green * 255), Int(blue * 255), a)
+    }
+
+    /// Pilot marker bitmap: white-ringed vario-colored dot with a paraglider
+    /// glyph — rendered once per tint and registered as a style image so the
+    /// 3D symbol layer can display it at true altitude.
+    private static func pilotIcon(color: UIColor) -> UIImage {
+        let side: CGFloat = 26
+        return UIGraphicsImageRenderer(size: CGSize(width: side, height: side)).image { _ in
+            UIColor.white.setFill()
+            UIBezierPath(ovalIn: CGRect(x: 0, y: 0, width: side, height: side)).fill()
+            color.setFill()
+            UIBezierPath(ovalIn: CGRect(x: 2, y: 2, width: side - 4, height: side - 4)).fill()
+            let config = UIImage.SymbolConfiguration(pointSize: 11, weight: .bold)
+            if let glyph = UIImage(systemName: "parachute.fill", withConfiguration: config)?
+                .withTintColor(.white, renderingMode: .alwaysOriginal) {
+                glyph.draw(in: CGRect(x: 6.5, y: 6.5, width: 13, height: 13))
+            }
+        }
     }
 
     // MARK: Camera
@@ -452,22 +516,6 @@ struct MapboxFlightReplayView: View {
             .background(.ultraThinMaterial, in: Circle())
     }
 
-    /// Compact pilot marker: a small vario-colored dot with a white ring and
-    /// a paraglider glyph — precise on the line, not a big blob.
-    private func pilotBadge(_ sample: ReplaySample) -> some View {
-        ZStack {
-            Circle()
-                .fill(VarioPalette.color(sample.verticalSpeed ?? 0))
-                .frame(width: 22, height: 22)
-                .overlay(Circle().strokeBorder(.white, lineWidth: 2))
-                .shadow(color: .black.opacity(0.45), radius: 3, y: 1)
-            Image(systemName: "parachute.fill")
-                .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.4), radius: 1)
-        }
-    }
-
     // MARK: Controls (bottom)
 
     private var controls: some View {
@@ -478,7 +526,7 @@ struct MapboxFlightReplayView: View {
                 onScrub: { fraction in
                     isScrubbing = true
                     elapsed = fraction * engine.totalDuration
-                    updateTrackReveal(map: styleMap)
+                    updateLiveOverlays(map: styleMap, force: true)
                 },
                 onScrubEnd: { isScrubbing = false }
             )
@@ -574,7 +622,7 @@ struct MapboxFlightReplayView: View {
         if elapsed >= engine.totalDuration {
             isPlaying = false
         }
-        updateTrackReveal(map: styleMap)
+        updateLiveOverlays(map: styleMap)
         if follow {
             viewport = followViewport(for: engine.interpolate(at: elapsed))
         }

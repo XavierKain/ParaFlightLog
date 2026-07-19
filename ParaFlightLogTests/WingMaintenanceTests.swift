@@ -274,3 +274,27 @@ import Testing
                 == "trim-11111111-1111-1111-1111-111111111111-smallTrim")
     }
 }
+
+// MARK: - One-time small trim (2026-07-19 rule change)
+
+extension WingMaintenanceTests {
+    /// The small trim is a one-time break-in job: once logged, the deadline
+    /// disappears for good — it must NOT come back every N hours.
+    @Test func smallTrimIsOneTimeOnceLogged() {
+        let snapshot = WingMaintenanceSnapshot(
+            previousHours: nil,
+            purchaseDate: nil,
+            lastTrimDate: nil,
+            serviceLog: [WingServiceEvent(date: Date(timeIntervalSince1970: 1_700_000_000),
+                                          type: .smallTrim, note: nil, hoursAtService: 11)],
+            smallTrimIntervalHours: 10,
+            fullTrimIntervalHours: nil,
+            fullTrimIntervalMonths: nil,
+            flights: (0..<40).map { i in
+                MaintenanceFlight(date: Date(timeIntervalSince1970: 1_700_100_000 + Double(i) * 86_400), hours: 1)
+            }
+        )
+        // 40 h flown since the logged break-in trim: still no deadline.
+        #expect(WingMaintenance.dueState(for: .smallTrim, in: snapshot) == nil)
+    }
+}

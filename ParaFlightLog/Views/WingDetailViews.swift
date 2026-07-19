@@ -143,7 +143,7 @@ struct WingDetailView: View {
                 }
 
                 if let small = states.small {
-                    TrimDueRow(title: "Small trim", state: small)
+                    TrimDueRow(title: "Break-in trim (once)", state: small)
                 }
                 if let full = states.full {
                     TrimDueRow(title: "Full trim", state: full)
