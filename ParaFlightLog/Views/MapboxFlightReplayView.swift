@@ -262,7 +262,7 @@ struct MapboxFlightReplayView: View {
         let sample = engine.interpolate(at: elapsed)
 
         // Pilot: position, true altitude, vario icon.
-        try? map.updateGeoJSONSource(
+        map.updateGeoJSONSource(
             withId: "pfl-pilot-src",
             geoJSON: .geometry(Geometry.point(Point(sample.coordinate)))
         )
@@ -292,7 +292,7 @@ struct MapboxFlightReplayView: View {
             speed: sample.speed
         ))
         guard window.count >= 2 else {
-            try? map.updateGeoJSONSource(
+            map.updateGeoJSONSource(
                 withId: "pfl-comet-src",
                 geoJSON: .geometry(Geometry.lineString(LineString([])))
             )
@@ -302,7 +302,7 @@ struct MapboxFlightReplayView: View {
         let coordinates = window.map {
             CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
         }
-        try? map.updateGeoJSONSource(
+        map.updateGeoJSONSource(
             withId: "pfl-comet-src",
             geoJSON: .geometry(Geometry.lineString(LineString(coordinates)))
         )
