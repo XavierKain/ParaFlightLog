@@ -97,6 +97,10 @@ struct SpotRecordsSection: View {
     }
 
     private static func hoursText(_ seconds: Int) -> String {
+        // Under an hour this printed "0.0 h" right next to a "Longest flight
+        // 2 min" tile, reading as "you have never flown here". Below the hour,
+        // fall back to the same minute idiom the other tiles use.
+        guard seconds >= 3600 else { return durationText(seconds) }
         let hours = Double(seconds) / 3600
         return hours >= 10 ? "\(Int(hours.rounded())) h" : String(format: "%.1f h", hours)
     }

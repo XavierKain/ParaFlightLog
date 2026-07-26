@@ -102,6 +102,11 @@ nonisolated enum UserDefaultsKeys {
     /// Developer tool: run a simulated (fake feed) flight on the Watch
     static let simulateFlightEnabled = "simulateFlightEnabled"
 
+    /// When the Watch-synced settings above were last changed on THIS device
+    /// (seconds since 1970). Drives last-write-wins against the Watch — see
+    /// WatchSyncKeys.settingsUpdatedAt.
+    static let settingsUpdatedAt = "settingsUpdatedAt"
+
     /// UUID string of the wing used for the most recent flight — used to
     /// pre-select it wherever a wing must be picked.
     static let lastUsedWingId = "lastUsedWingId"

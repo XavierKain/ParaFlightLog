@@ -61,11 +61,40 @@ nonisolated enum WatchSyncKeys {
     static let flightId = "flightId"
     /// Marker (Bool) set on a Watch->iPhone payload carrying settings changed on the Watch.
     static let watchSettingsUpdate = "watchSettingsUpdate"
+    /// Version stamp (Double, seconds since 1970) of the settings in a payload,
+    /// carried in BOTH directions. Whoever changed a setting last wins: a side
+    /// applies an incoming payload only when this is strictly newer than its own
+    /// stamp. Without it the two devices had no ordering, so the iPhone's
+    /// push-on-activation silently overwrote a change made on the Watch.
+    static let settingsUpdatedAt = "settingsUpdatedAt"
     /// Marker (Bool) on a best-effort Watch->iPhone sendMessage when a flight
     /// STARTS, alongside "latitude"/"longitude" (Double). Drives the live
     /// presence heartbeat (Step C2). Ephemeral by design: sent via
     /// sendMessage only, never through the persistent outbox.
     static let flightStarted = "flightStarted"
+}
+
+// MARK: - SettingsSyncPolicy
+
+/// The one rule both devices use to merge Watch-synced settings: the most
+/// recent edit wins, wherever it was made. Kept as a pure function so the
+/// policy is identical on iPhone and Watch and can be unit-tested — the bug it
+/// replaces was that neither side had any notion of ordering, so the iPhone's
+/// push-on-activation silently reverted a setting just changed on the Watch.
+nonisolated enum SettingsSyncPolicy {
+    /// - Parameters:
+    ///   - incomingStamp: version stamp carried by the payload, nil when it
+    ///     comes from a build that predates stamping.
+    ///   - localStamp: stamp of the settings this device currently holds.
+    /// - Returns: true when the payload should overwrite the local values.
+    static func shouldApply(incomingStamp: Double?, localStamp: Double) -> Bool {
+        // No stamp: an older app version on the other side. Accept it, so a
+        // mixed-version pair keeps syncing the way it always did.
+        guard let incomingStamp else { return true }
+        // Strictly newer only: on a tie the local value stands, which stops two
+        // devices bouncing the same payload back and forth.
+        return incomingStamp > localStamp
+    }
 }
 
 // MARK: - GPSTrackPoint

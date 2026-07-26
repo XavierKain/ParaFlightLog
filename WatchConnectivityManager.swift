@@ -61,13 +61,24 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     // MARK: - Send Watch Settings
 
     /// Sends the Watch settings via applicationContext
-    func sendWatchSettings(autoWaterLock: Bool, allowSessionDismiss: Bool, developerMode: Bool? = nil, simulateFlight: Bool? = nil) {
+    /// - Parameter markAsLocalChange: true when the pilot just changed a setting
+    ///   on the iPhone, which bumps this device's version stamp so the Watch
+    ///   adopts it. Pass false when merely re-publishing the current state (e.g.
+    ///   on session activation) — otherwise every launch would look like a fresh
+    ///   change and clobber a newer setting made on the Watch.
+    func sendWatchSettings(autoWaterLock: Bool, allowSessionDismiss: Bool, developerMode: Bool? = nil, simulateFlight: Bool? = nil, markAsLocalChange: Bool = true) {
         guard WCSession.default.activationState == .activated else {
             logWarning("WCSession not activated, cannot send watch settings", category: .watchSync)
             return
         }
 
+        let defaults = UserDefaults.standard
+        if markAsLocalChange {
+            defaults.set(Date().timeIntervalSince1970, forKey: UserDefaultsKeys.settingsUpdatedAt)
+        }
+
         var context = WCSession.default.applicationContext
+        context[WatchSyncKeys.settingsUpdatedAt] = defaults.double(forKey: UserDefaultsKeys.settingsUpdatedAt)
         context[UserDefaultsKeys.watchAutoWaterLock] = autoWaterLock
         context[UserDefaultsKeys.watchAllowSessionDismiss] = allowSessionDismiss
 
@@ -223,7 +234,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
                 let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
                 let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
-                self.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: allowDismiss)
+                // Re-publishing what we already hold, NOT a fresh edit — keep the
+                // existing stamp so a newer Watch-side change survives this.
+                self.sendWatchSettings(
+                    autoWaterLock: autoWaterLock,
+                    allowSessionDismiss: allowDismiss,
+                    markAsLocalChange: false
+                )
             }
         }
     }
@@ -385,6 +402,18 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     private func applyWatchSettings(_ payload: [String: Any]) {
         DispatchQueue.main.async { [weak self] in
             let defaults = UserDefaults.standard
+
+            // Last write wins. A payload older than what this device already
+            // holds is a stale echo (transferUserInfo can be delivered minutes
+            // late) and must not undo a newer change made here. Payloads with no
+            // stamp come from a build that predates this and are still accepted,
+            // so an older Watch app keeps working.
+            let localStamp = defaults.double(forKey: UserDefaultsKeys.settingsUpdatedAt)
+            let remoteStamp = payload[WatchSyncKeys.settingsUpdatedAt] as? Double
+            guard SettingsSyncPolicy.shouldApply(incomingStamp: remoteStamp, localStamp: localStamp) else {
+                logInfo("Ignoring settings from the Watch: older than ours (\(remoteStamp ?? 0) <= \(localStamp))", category: .watchSync)
+                return
+            }
             // UserDefaultsKeys.varioEnabled is deliberately absent: that key
             // drives the PHONE's timer vario, while the Watch payload's
             // "varioEnabled" described the watch-local vario. Older queued
@@ -403,6 +432,10 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                 }
             }
             if changed {
+                // Adopt the Watch's stamp so this device now agrees on "when",
+                // and a replay of the same payload is rejected above.
+                defaults.set(remoteStamp ?? Date().timeIntervalSince1970,
+                             forKey: UserDefaultsKeys.settingsUpdatedAt)
                 logInfo("Applied settings changed on the Watch", category: .watchSync)
             }
         }

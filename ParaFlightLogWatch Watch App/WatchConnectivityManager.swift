@@ -214,10 +214,22 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         // reverse direction never synced it. The watch vario stays watch-local.
         let payload: [String: Any] = [
             WatchSyncKeys.watchSettingsUpdate: true,
+            WatchSyncKeys.settingsUpdatedAt: s.settingsUpdatedAt,
             "watchAutoWaterLock": s.autoWaterLockEnabled,
             "watchAllowSessionDismiss": s.allowSessionDismiss,
             "simulateFlightEnabled": s.simulateFlightEnabled
         ]
+
+        // transferUserInfo alone could take minutes to land, so a toggle flipped
+        // here stayed invisible on the iPhone. Send instantly when the phone is
+        // reachable and keep the queued transfer as the guaranteed fallback —
+        // the stamp makes the duplicate harmless (the later copy is <= and is
+        // dropped).
+        if isPhoneReachable {
+            WCSession.default.sendMessage(payload, replyHandler: nil) { error in
+                watchLogDebug("Instant settings push failed, queued copy will deliver: \(error.localizedDescription)", category: .watchSync)
+            }
+        }
         WCSession.default.transferUserInfo(payload)
         watchLogInfo("Sent settings to iPhone (two-way sync)", category: .watchSync)
     }

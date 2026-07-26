@@ -20,6 +20,7 @@ final class WatchSettings {
     var autoWaterLockEnabled: Bool {
         didSet {
             UserDefaults.standard.set(autoWaterLockEnabled, forKey: "autoWaterLockEnabled")
+            stampIfLocalEdit()
         }
     }
 
@@ -28,6 +29,7 @@ final class WatchSettings {
     var allowSessionDismiss: Bool {
         didSet {
             UserDefaults.standard.set(allowSessionDismiss, forKey: "allowSessionDismiss")
+            stampIfLocalEdit()
         }
     }
 
@@ -54,7 +56,29 @@ final class WatchSettings {
     var simulateFlightEnabled: Bool {
         didSet {
             UserDefaults.standard.set(simulateFlightEnabled, forKey: "simulateFlightEnabled")
+            stampIfLocalEdit()
         }
+    }
+
+    // MARK: - Last-write-wins version stamp
+
+    /// When the iPhone-synced settings above were last changed ON THIS WATCH
+    /// (seconds since 1970). Sent with every push to the iPhone and compared
+    /// against the iPhone's own stamp, so whoever edited last wins instead of
+    /// whoever spoke last. See WatchSyncKeys.settingsUpdatedAt.
+    private(set) var settingsUpdatedAt: Double {
+        get { UserDefaults.standard.double(forKey: "settingsUpdatedAt") }
+        set { UserDefaults.standard.set(newValue, forKey: "settingsUpdatedAt") }
+    }
+
+    /// Set only while applying a payload from the iPhone, so those writes are
+    /// not mistaken for a pilot edit on the Watch (which would bump the stamp
+    /// and bounce the value straight back).
+    private var isApplyingRemote = false
+
+    private func stampIfLocalEdit() {
+        guard !isApplyingRemote else { return }
+        settingsUpdatedAt = Date().timeIntervalSince1970
     }
 
     /// Last flight type chosen by the pilot when saving a flight.
@@ -86,6 +110,24 @@ final class WatchSettings {
 
     /// Updates the settings from a context received from the iPhone
     func updateFromContext(_ context: [String: Any]) {
+        // Last write wins: the iPhone re-publishes its settings on every session
+        // activation, so without this an app launch would overwrite a setting the
+        // pilot had just changed here. A context with no stamp comes from a build
+        // that predates this and is still accepted.
+        let remoteStamp = context[WatchSyncKeys.settingsUpdatedAt] as? Double
+        guard SettingsSyncPolicy.shouldApply(incomingStamp: remoteStamp, localStamp: settingsUpdatedAt) else {
+            watchLogInfo("Ignoring settings from the iPhone: older than ours (\(remoteStamp ?? 0) <= \(settingsUpdatedAt))", category: .settings)
+            return
+        }
+
+        isApplyingRemote = true
+        defer {
+            isApplyingRemote = false
+            // Agree with the iPhone on "when", so a re-send of the same context
+            // is rejected above instead of being reapplied.
+            settingsUpdatedAt = remoteStamp ?? Date().timeIntervalSince1970
+        }
+
         if let autoWaterLock = context["watchAutoWaterLock"] as? Bool {
             autoWaterLockEnabled = autoWaterLock
         }
