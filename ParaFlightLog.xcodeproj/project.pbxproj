@@ -474,7 +474,6 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
-				fr,
 				Base,
 			);
 			mainGroup = 257C68CC2ECB7559005F3773;
@@ -831,9 +830,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_CFBundleDisplayName = "SoarX";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog uses your location to automatically record your paragliding flights, including in the background.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog uses your location to record the takeoff spot of your flights.";
-				INFOPLIST_KEY_NSMotionUsageDescription = "ParaFlightLog uses the barometer to measure your climb rate for the vario.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SoarX uses your location to automatically record your paragliding flights, including in the background.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SoarX uses your location to record the takeoff spot of your flights.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "SoarX uses the barometer to measure your climb rate for the vario.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -871,9 +870,9 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
 				INFOPLIST_KEY_CFBundleDisplayName = "SoarX";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "ParaFlightLog uses your location to automatically record your paragliding flights, including in the background.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog uses your location to record the takeoff spot of your flights.";
-				INFOPLIST_KEY_NSMotionUsageDescription = "ParaFlightLog uses the barometer to measure your climb rate for the vario.";
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SoarX uses your location to automatically record your paragliding flights, including in the background.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SoarX uses your location to record the takeoff spot of your flights.";
+				INFOPLIST_KEY_NSMotionUsageDescription = "SoarX uses the barometer to measure your climb rate for the vario.";
 				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -910,9 +909,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "SoarX";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accesses your health data to record your flight sessions.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog starts a workout session during flights to enable Water Lock.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog uses your location to record where you fly.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "SoarX accesses your health data to record your flight sessions.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SoarX starts a workout session during flights to enable Water Lock.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SoarX uses your location to record where you fly.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Used to measure G-force and climb rate during your flight.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog2;
@@ -948,9 +947,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "SoarX";
-				INFOPLIST_KEY_NSHealthShareUsageDescription = "ParaFlightLog accesses your health data to record your flight sessions.";
-				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "ParaFlightLog starts a workout session during flights to enable Water Lock.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "ParaFlightLog uses your location to record where you fly.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "SoarX accesses your health data to record your flight sessions.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SoarX starts a workout session during flights to enable Water Lock.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SoarX uses your location to record where you fly.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "Used to measure G-force and climb rate during your flight.";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.xavierkain.ParaFlightLog2;

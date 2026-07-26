@@ -56,6 +56,14 @@ struct ExploreView: View {
     @State private var customEnd = Date()
 
     @State private var cameraPosition: MapCameraPosition = .userLocation(fallback: .automatic)
+
+    /// True while the map is zoomed far enough out that named spot capsules
+    /// would overlap; the badges then render as compact dots.
+    @State private var isZoomedOut = true
+    /// Longitude span (degrees) above which labels are dropped. ~country scale:
+    /// wide enough to keep names on a regional view, tight enough to unclutter
+    /// the continent/world view where the pile-up happened.
+    private static let labelSpanThreshold: Double = 12
     /// The camera is fitted to the spots once, on first load — not on every
     /// refresh, which would yank the map away from where the pilot panned.
     @State private var didFitCamera = false
@@ -342,14 +350,24 @@ struct ExploreView: View {
         Map(position: $cameraPosition) {
             ForEach(spots) { spot in
                 Annotation("", coordinate: CLLocationCoordinate2D(latitude: spot.latitude, longitude: spot.longitude)) {
-                    CommunitySpotBadge(spot: spot, tint: color(for: spot), periodPhrase: period.activityPhrase)
-                        .onTapGesture {
-                            selectedSpot = spot
-                        }
+                    CommunitySpotBadge(
+                        spot: spot,
+                        tint: color(for: spot),
+                        periodPhrase: period.activityPhrase,
+                        compact: isZoomedOut
+                    )
+                    .onTapGesture {
+                        selectedSpot = spot
+                    }
                 }
             }
         }
         .mapStyle(.standard(elevation: .realistic))
+        // Track the visible span so the badges can shrink to dots when the
+        // named capsules would overlap (see CommunitySpotBadge.compact).
+        .onMapCameraChange(frequency: .onEnd) { context in
+            isZoomedOut = context.region.span.longitudeDelta > Self.labelSpanThreshold
+        }
     }
 
     /// Region containing every spot, with padding. nil when there are none
@@ -557,10 +575,40 @@ private struct CommunitySpotBadge: View {
     let tint: Color
     /// Activity-window phrase for the accessibility label (e.g. "in the last 30 days").
     let periodPhrase: String
+    /// Zoomed far out: draw a compact dot instead of the named capsule. Labels
+    /// at world/continent scale overlap into an unreadable pile (no clustering
+    /// API exists for SwiftUI `Annotation`), so the name is dropped until the
+    /// pilot zooms in enough for it to be legible.
+    var compact: Bool = false
 
     @State private var pulsing = false
 
     var body: some View {
+        if compact {
+            compactDot
+        } else {
+            fullBadge
+        }
+    }
+
+    /// Small tinted dot — no text, so nothing can overlap illegibly. A live
+    /// presence still gets the green ring so "someone is flying" stays visible.
+    private var compactDot: some View {
+        Circle()
+            .fill(tint)
+            .frame(width: 11, height: 11)
+            .overlay(Circle().strokeBorder(.white, lineWidth: 1.5))
+            .overlay {
+                if spot.pilotsFlyingNow > 0 {
+                    Circle().strokeBorder(Color.green, lineWidth: 2).padding(-3)
+                }
+            }
+            .shadow(radius: 1.5)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilityText)
+    }
+
+    private var fullBadge: some View {
         VStack(spacing: 3) {
             if spot.pilotsFlyingNow > 0 {
                 Text("🪂 \(spot.pilotsFlyingNow)")

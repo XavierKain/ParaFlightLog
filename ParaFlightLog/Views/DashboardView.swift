@@ -113,27 +113,35 @@ struct DashboardView: View {
                             }
                             .buttonStyle(.plain)
 
-                            // Global stats
-                            HStack(spacing: 12) {
-                                DashboardStatCard(
-                                    value: formatHoursValue(stats.totalHours),
-                                    label: "Total hours",
-                                    symbol: "clock.fill",
-                                    color: .blue
-                                )
-                                DashboardStatCard(
-                                    value: "\(stats.totalCount)",
-                                    label: "Flights",
-                                    symbol: "airplane",
-                                    color: .green
-                                )
-                                DashboardStatCard(
-                                    value: formatHoursValue(hoursThisYear),
-                                    label: "This year",
-                                    symbol: "calendar",
-                                    color: .orange
-                                )
+                            // Global stats — tappable: in phone-tracker mode the
+                            // Stats tab gives up its slot to the Timer, so this
+                            // is how the full stats stay one tap away.
+                            Button {
+                                onOpenTab(2)
+                            } label: {
+                                HStack(spacing: 12) {
+                                    DashboardStatCard(
+                                        value: formatHoursValue(stats.totalHours),
+                                        label: "Total hours",
+                                        symbol: "clock.fill",
+                                        color: .blue
+                                    )
+                                    DashboardStatCard(
+                                        value: "\(stats.totalCount)",
+                                        label: "Flights",
+                                        symbol: "airplane",
+                                        color: .green
+                                    )
+                                    DashboardStatCard(
+                                        value: formatHoursValue(hoursThisYear),
+                                        label: "This year",
+                                        symbol: "calendar",
+                                        color: .orange
+                                    )
+                                }
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("See all stats")
 
                             // Explore the community (Step D): spots map/list
                             // with live activity, pushed onto this stack.

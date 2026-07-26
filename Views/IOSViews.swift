@@ -94,30 +94,37 @@ struct ContentView: View {
                 }
                 .tag(Tab.wings)
 
-            StatsView()
-                .tabItem {
-                    Label("Stats", systemImage: "chart.bar")
-                }
-                .tag(Tab.stats)
-
-            SettingsView()
-                .tabItem {
-                    Label("Settings", systemImage: "gearshape")
-                }
-                .tag(Tab.settings)
-
+            // Timer TAKES THE PLACE of Stats in phone-tracker mode. A 6th tab
+            // makes iOS collapse the last two into a generic "More" tab, which
+            // buried BOTH the Timer (the whole point of the mode) and Settings
+            // two taps deep. Stats stays one tap away from the Home dashboard.
             if phoneOnlyMode {
                 TimerView()
                     .tabItem {
                         Label("Timer", systemImage: "stopwatch")
                     }
                     .tag(Tab.timer)
+            } else {
+                StatsView()
+                    .tabItem {
+                        Label("Stats", systemImage: "chart.bar")
+                    }
+                    .tag(Tab.stats)
             }
+
+            SettingsView()
+                .tabItem {
+                    Label("Settings", systemImage: "gearshape")
+                }
+                .tag(Tab.settings)
         }
         .onChange(of: phoneOnlyMode) { _, isEnabled in
-            // If the Timer tab disappears while selected, fall back to Flights
-            if !isEnabled && selectedTab == Tab.timer {
-                selectedTab = Tab.flights
+            // Timer and Stats swap places, so whichever one just left the bar
+            // must not stay selected (that would show a blank tab).
+            if isEnabled && selectedTab == Tab.stats {
+                selectedTab = Tab.timer
+            } else if !isEnabled && selectedTab == Tab.timer {
+                selectedTab = Tab.stats
             }
         }
         .onAppear {
