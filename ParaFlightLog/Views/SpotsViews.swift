@@ -303,7 +303,8 @@ struct SpotDetailView: View {
                         Label("Coordinates", systemImage: "map")
                         Spacer()
                         if let lat = spot.latitude, let lon = spot.longitude {
-                            Text("\(lat, specifier: "%.4f"), \(lon, specifier: "%.4f")")
+                            // Dots, not locale decimal commas — see AddFlightView.
+                            Text(verbatim: String(format: "%.4f, %.4f", lat, lon))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         } else {
@@ -1222,7 +1223,8 @@ struct SpotMapPicker: View {
                             .clipShape(Capsule())
 
                         if let coord = markerCoordinate {
-                            Text("\(coord.latitude, specifier: "%.5f"), \(coord.longitude, specifier: "%.5f")")
+                            // Dots, not locale decimal commas — see AddFlightView.
+                            Text(verbatim: String(format: "%.5f, %.5f", coord.latitude, coord.longitude))
                                 .font(.caption)
                                 .foregroundStyle(.blue)
                                 .padding(.horizontal, 12)

@@ -167,7 +167,8 @@ struct EditFlightView: View {
                         HStack {
                             Text("Coordinates")
                             Spacer()
-                            Text("\(coord.latitude, specifier: "%.4f"), \(coord.longitude, specifier: "%.4f")")
+                            // Dots, not locale decimal commas — see AddFlightView.
+                            Text(verbatim: String(format: "%.4f, %.4f", coord.latitude, coord.longitude))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
@@ -563,7 +564,8 @@ struct MapCoordinatePicker: View {
                             .clipShape(Capsule())
 
                         if let coord = markerCoordinate {
-                            Text("\(coord.latitude, specifier: "%.5f"), \(coord.longitude, specifier: "%.5f")")
+                            // Dots, not locale decimal commas — see AddFlightView.
+                            Text(verbatim: String(format: "%.5f, %.5f", coord.latitude, coord.longitude))
                                 .font(.caption)
                                 .foregroundStyle(.blue)
                                 .padding(.horizontal, 12)

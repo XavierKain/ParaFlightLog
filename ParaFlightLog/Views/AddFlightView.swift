@@ -156,7 +156,11 @@ struct AddFlightView: View {
                         HStack {
                             Text("Coordinates")
                             Spacer()
-                            Text("\(coord.latitude, specifier: "%.4f"), \(coord.longitude, specifier: "%.4f")")
+                            // String(format:) is locale-independent, so the decimals
+                            // stay dots. SwiftUI's `specifier:` interpolation is
+                            // locale-aware and turns them into commas in fr/de/es —
+                            // "44,6035, -1,1930" reads as four numbers, not two.
+                            Text(verbatim: String(format: "%.4f, %.4f", coord.latitude, coord.longitude))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
