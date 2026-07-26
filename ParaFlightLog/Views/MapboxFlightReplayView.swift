@@ -478,6 +478,10 @@ struct MapboxFlightReplayView: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal)
+        // The map fills the screen (safe area ignored), so the HUD must inset
+        // itself: without this the altitude chip is clipped by the Dynamic
+        // Island / notch and "Done" collides with the compass ornament.
+        .safeAreaPadding(.top)
         .padding(.top, 8)
     }
 
