@@ -244,6 +244,22 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         }
     }
 
+    /// isWatchAppInstalled was only ever read once, at activation — so a Watch
+    /// app installed (or a watch paired) after the iPhone app launched left
+    /// Settings claiming "Watch App: Not installed" until the next cold start,
+    /// sending the user to debug a setup that actually works. This is the
+    /// callback Apple provides for exactly those transitions.
+    func sessionWatchStateDidChange(_ session: WCSession) {
+        DispatchQueue.main.async { [weak self] in
+            self?.isWatchAppInstalled = session.isWatchAppInstalled
+            self?.isWatchReachable = session.isReachable
+            logDebug(
+                "Watch state changed: paired=\(session.isPaired) installed=\(session.isWatchAppInstalled)",
+                category: .watchSync
+            )
+        }
+    }
+
     // MARK: - Receive Flight from Watch
 
     /// Instant message with reply handler (fast path when the iPhone is reachable)
