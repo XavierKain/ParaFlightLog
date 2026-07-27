@@ -1,3680 +1,4774 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    " · 🪂 %lld flying now": {},
-    "—": {},
-    "· %lld": {},
-    "“%@”": {},
-    "(\\(size) m²)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "(\\(size) m²)"
-          }
-        }
-      }
+  "sourceLanguage" : "en",
+  "strings" : {
+    " · 🪂 %lld flying now" : {
+
     },
-    "(%@ m²)": {},
-    "\\(count) spot détecté": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(count) spot detected"
-          }
-        }
-      }
+    "—" : {
+
     },
-    "\\(count) spots détectés": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(count) spots detected"
-          }
-        }
-      }
+    "· %lld" : {
+
+    },
+    "“%@”" : {
+
     },
-    "\\(count) vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(count) flight"
+    "(\\(size) m²)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "(\\(size) m²)"
           }
         }
       }
     },
-    "\\(count) vols": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(count) flights"
+    "(%@ m²)" : {
+
+    },
+    "\\(count) spot détecté" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(count) spot detected"
           }
         }
       }
     },
-    "\\(dataController.formatHours(hours)) de vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(dataController.formatHours(hours)) of flight"
+    "\\(count) spots détectés" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(count) spots detected"
           }
         }
       }
     },
-    "\\(flights.count)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(flights.count)"
+    "\\(count) vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(count) flight"
           }
         }
       }
     },
-    "\\(formatAltitude(locationService.currentAltitude))m": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(formatAltitude(locationService.currentAltitude))m"
+    "\\(count) vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(count) flights"
           }
         }
       }
     },
-    "\\(formatSpeed(locationService.maxSpeed))": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(formatSpeed(locationService.maxSpeed))"
+    "\\(dataController.formatHours(hours)) de vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(dataController.formatHours(hours)) of flight"
           }
         }
       }
     },
-    "\\(hours)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(hours)"
+    "\\(flights.count)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(flights.count)"
           }
         }
       }
     },
-    "\\(Int(maxAlt)) m": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(Int(maxAlt)) m"
+    "\\(formatAltitude(locationService.currentAltitude))m" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(formatAltitude(locationService.currentAltitude))m"
           }
         }
       }
     },
-    "\\(Int(speed * 3.6)) km/h": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(Int(speed * 3.6)) km/h"
+    "\\(formatSpeed(locationService.maxSpeed))" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(formatSpeed(locationService.maxSpeed))"
           }
         }
       }
     },
-    "\\(language.flag) \\(language.displayName)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(language.flag) \\(language.displayName)"
+    "\\(hours)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(hours)"
           }
         }
       }
     },
-    "\\(minutes)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(minutes)"
+    "\\(Int(maxAlt)) m" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(Int(maxAlt)) m"
           }
         }
       }
     },
-    "\\(size) m²": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(size) m²"
+    "\\(Int(speed * 3.6)) km/h" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(Int(speed * 3.6)) km/h"
           }
         }
       }
     },
-    "\\(spot.count)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(spot.count)"
+    "\\(language.flag) \\(language.displayName)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(language.flag) \\(language.displayName)"
           }
         }
       }
     },
-    "\\(stat.sessions)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(stat.sessions)"
+    "\\(minutes)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(minutes)"
           }
         }
       }
     },
-    "\\(totalFlights)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(totalFlights)"
+    "\\(size) m²" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(size) m²"
           }
         }
       }
     },
-    "\\(track.count) points GPS enregistrés": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(track.count) GPS points recorded"
+    "\\(spot.count)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(spot.count)"
           }
         }
       }
     },
-    "\\(wings.count)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(wings.count)"
+    "\\(stat.sessions)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(stat.sessions)"
           }
         }
       }
     },
-    "\\(wings.count) voiles • \\(flights.count) vols": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "\\(wings.count) wings • \\(flights.count) flights"
+    "\\(totalFlights)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(totalFlights)"
           }
         }
       }
     },
-    "%.4f, %.4f": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$.4f, %2$.4f"
+    "\\(track.count) points GPS enregistrés" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(track.count) GPS points recorded"
           }
         }
       }
     },
-    "%.5f, %.5f": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$.5f, %2$.5f"
+    "\\(wings.count)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(wings.count)"
           }
         }
       }
     },
-    "%@ — %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ — %2$@"
+    "\\(wings.count) voiles • \\(flights.count) vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "\\(wings.count) wings • \\(flights.count) flights"
           }
         }
       }
     },
-    "%@ · %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ · %2$@"
+    "%.4f, %.4f" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$.4f, %2$.4f"
           }
         }
       }
     },
-    "%@ %@": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ %2$@"
+    "%@ — %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ — %2$@"
           }
         }
       }
     },
-    "%@ • %lld flights": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ • %2$lld flights"
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
           }
         }
       }
     },
-    "%@ de vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ flight time"
+    "%@ %@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$@ %2$@"
           }
         }
       }
     },
-    "%@ flown": {},
-    "%@ flown • %lld flights": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ flown • %2$lld flights"
+    "%@ • %lld flights" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ • %2$lld flights"
           }
         }
       }
     },
-    "%@ m²": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@ m²"
+    "%@ de vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ flight time"
           }
         }
       }
+    },
+    "%@ flown" : {
+
     },
-    "%@ this year": {},
-    "%@ total": {},
-    "%@%@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@%2$@"
+    "%@ flown • %lld flights" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ flown • %2$lld flights"
           }
         }
       }
     },
-    "%@m": {},
-    "%lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld"
+    "%@ m²" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ m²"
           }
         }
       }
     },
-    "%lld %%": {},
-    "%lld different %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld different %2$@"
+    "%@ this year" : {
+
+    },
+    "%@ total" : {
+
+    },
+    "%@%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@"
           }
         }
       }
     },
-    "%lld flight%@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld flight%2$@"
+    "%@m" : {
+
+    },
+    "%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld"
           }
         }
       }
+    },
+    "%lld %%" : {
+
     },
-    "%lld GPS points recorded": {},
-    "%lld h": {},
-    "%lld km/h": {},
-    "%lld m": {},
-    "%lld m • %@ km/h": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld m • %2$@ km/h"
+    "%lld different %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld different %2$@"
           }
         }
       }
     },
-    "%lld min": {},
-    "%lld percent": {},
-    "%lld spot détecté": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld spot detected"
+    "%lld flight%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld flight%2$@"
           }
         }
       }
     },
-    "%lld spot%@ différent%@": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld different spot%2$@"
+    "%lld GPS points recorded" : {
+
+    },
+    "%lld h" : {
+
+    },
+    "%lld km/h" : {
+
+    },
+    "%lld m" : {
+
+    },
+    "%lld m • %@ km/h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld m • %2$@ km/h"
           }
         }
       }
     },
-    "%lld spots détectés": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld spots detected"
+    "%lld min" : {
+
+    },
+    "%lld percent" : {
+
+    },
+    "%lld spot détecté" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld spot detected"
           }
         }
       }
     },
-    "%lld vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld flight"
+    "%lld spot%@ différent%@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld different spot%2$@"
           }
         }
       }
     },
-    "%lld vol%@": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lld flight%2$@"
+    "%lld spots détectés" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld spots detected"
           }
         }
       }
     },
-    "%lld vols": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lld flights"
+    "%lld vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld flight"
           }
         }
       }
     },
-    "%lld wings • %lld flights": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld wings • %2$lld flights"
+    "%lld vol%@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lld flight%2$@"
           }
         }
       }
     },
-    "%lld.": {},
-    "%lld/%lld": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$lld/%2$lld"
+    "%lld vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld flights"
           }
         }
       }
     },
-    "%lld%%": {},
-    "%lld°": {},
-    "%lld°C": {},
-    "%lld×": {},
-    "%lldh": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lldh"
+    "%lld wings • %lld flights" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld wings • %2$lld flights"
           }
         }
       }
     },
-    "%lldh %@m": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lldh %2$@m"
+    "%lld." : {
+
+    },
+    "%lld/%lld" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
           }
         }
       }
+    },
+    "%lld%%" : {
+
     },
-    "%lldh%@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$lldh%2$@"
+    "%lld°" : {
+
+    },
+    "%lld°C" : {
+
+    },
+    "%lld×" : {
+
+    },
+    "%lldh" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldh"
           }
         }
       }
     },
-    "%lldkm/h": {},
-    "%lldm": {},
-    "%lldmin": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%lldmin"
+    "%lldh %@m" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lldh %2$@m"
           }
         }
       }
     },
-    "%lldx": {},
-    "•": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "•"
+    "%lldh%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%1$lldh%2$@"
           }
         }
       }
+    },
+    "%lldkm/h" : {
+
     },
-    "• \\(size) m²": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "• \\(size) m²"
+    "%lldm" : {
+
+    },
+    "%lldmin" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lldmin"
           }
         }
       }
+    },
+    "%lldx" : {
+
     },
-    "• \\(size)m²": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "• \\(size)m²"
+    "•" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "•"
           }
         }
       }
     },
-    "• %@": {},
-    "• %@ m²": {},
-    "• %@m²": {},
-    "^[%lld flight](inflect: true)": {},
-    "^[%lld flight](inflect: true) — %lld untyped": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "^[%1$lld flight](inflect: true) — %2$lld untyped"
+    "• \\(size) m²" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "• \\(size) m²"
           }
         }
       }
     },
-    "^[%lld flight](inflect: true) — all typed": {},
-    "^[%lld flight](inflect: true) %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "^[%1$lld flight](inflect: true) %2$@"
+    "• \\(size)m²" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "• \\(size)m²"
           }
         }
       }
+    },
+    "• %@" : {
+
+    },
+    "• %@ m²" : {
+
     },
-    "^[%lld flight](inflect: true) by ^[%lld pilot](inflect: true) this month": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "^[%1$lld flight](inflect: true) by ^[%2$lld pilot](inflect: true) this month"
+    "• %@m²" : {
+
+    },
+    "^[%lld flight](inflect: true)" : {
+
+    },
+    "^[%lld flight](inflect: true) — %lld untyped" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld flight](inflect: true) — %2$lld untyped"
           }
         }
       }
     },
-    "^[%lld flight](inflect: true) selected": {},
-    "^[%lld flight](inflect: true) still without a type": {},
-    "^[%lld flight](inflect: true) to import": {},
-    "^[%lld flight](inflect: true) will be moved to this new spot.": {},
-    "+ %lld autre%@ spot%@": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "+ %1$lld other spot%2$@"
+    "^[%lld flight](inflect: true) — all typed" : {
+
+    },
+    "^[%lld flight](inflect: true) %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld flight](inflect: true) %2$@"
           }
         }
       }
     },
-    "☀️ %@ – %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "☀️ %1$@ – %2$@"
+    "^[%lld flight](inflect: true) by ^[%lld pilot](inflect: true) this month" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "^[%1$lld flight](inflect: true) by ^[%2$lld pilot](inflect: true) this month"
           }
         }
       }
+    },
+    "^[%lld flight](inflect: true) selected" : {
+
     },
-    "⚠️ Cette action est irréversible ! La voile \"%@\" et ses %lld vol%@ seront définitivement supprimés.": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "⚠️ This action is irreversible! The wing \"%1$@\" and its %2$lld flight%3$@ will be permanently deleted."
+    "^[%lld flight](inflect: true) still without a type" : {
+
+    },
+    "^[%lld flight](inflect: true) to import" : {
+
+    },
+    "^[%lld flight](inflect: true) will be moved to this new spot." : {
+
+    },
+    "+ %lld autre%@ spot%@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "+ %1$lld other spot%2$@"
           }
         }
       }
     },
-    "⚠️ La fin doit être après le début": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "⚠️ End time must be after start time"
+    "☀️ %@ – %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "☀️ %1$@ – %2$@"
           }
         }
       }
     },
-    "⚠️ The end must be after the start": {},
-    "⚠️ This action is irreversible! The wing \"%@\" and its %lld flight%@ will be permanently deleted.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "⚠️ This action is irreversible! The wing \"%1$@\" and its %2$lld flight%3$@ will be permanently deleted."
+    "⚠️ Cette action est irréversible ! La voile \"%@\" et ses %lld vol%@ seront définitivement supprimés." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⚠️ This action is irreversible! The wing \"%1$@\" and its %2$lld flight%3$@ will be permanently deleted."
           }
         }
       }
     },
-    "🏆": {},
-    "📍 \\(count) vol sera mis à jour": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📍 \\(count) flight will be updated"
+    "⚠️ La fin doit être après le début" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "⚠️ End time must be after start time"
           }
         }
       }
+    },
+    "⚠️ The end must be after the start" : {
+
     },
-    "📍 \\(count) vols seront mis à jour": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📍 \\(count) flights will be updated"
+    "⚠️ This action is irreversible! The wing \"%@\" and its %lld flight%@ will be permanently deleted." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "⚠️ This action is irreversible! The wing \"%1$@\" and its %2$lld flight%3$@ will be permanently deleted."
           }
         }
       }
     },
-    "📍 %lld vol sera mis à jour": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📍 %lld flight will be updated"
+    "🏆" : {
+
+    },
+    "📍 \\(count) vol sera mis à jour" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 \\(count) flight will be updated"
           }
         }
       }
     },
-    "📍 %lld vols seront mis à jour": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "📍 %lld flights will be updated"
+    "📍 \\(count) vols seront mis à jour" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 \\(count) flights will be updated"
           }
         }
       }
     },
-    "🪂 %lld": {},
-    "🪂 %lld flying now": {},
-    "1": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1"
+    "📍 %lld vol sera mis à jour" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 %lld flight will be updated"
           }
         }
       }
     },
-    "1 year": {},
-    "1.0.0": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "1.0.0"
+    "📍 %lld vols seront mis à jour" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "📍 %lld flights will be updated"
           }
         }
       }
+    },
+    "🪂 %lld" : {
+
     },
-    "30 days": {},
-    "99+": {},
-    "A flight of %@ was interrupted. Continue it (keeps ONE session) or save it as it was?": {},
-    "A location fix is needed to place a new spot at where you are.": {},
-    "A pilot": {},
-    "À propos": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "About"
+    "🪂 %lld flying now" : {
+
+    },
+    "1" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1"
           }
         }
       }
+    },
+    "1 year" : {
+
     },
-    "About": {},
-    "Account": {},
-    "Account & Cloud Backup": {},
-    "Active": {},
-    "Active le Water Lock au début d'un vol pour éviter les touches accidentelles": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Enables Water Lock at flight start to prevent accidental touches"
+    "1.0.0" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "1.0.0"
           }
         }
       }
+    },
+    "30 days" : {
+
+    },
+    "99+" : {
+
+    },
+    "A flight of %@ was interrupted. Continue it (keeps ONE session) or save it as it was?" : {
+
+    },
+    "A location fix is needed to place a new spot at where you are." : {
+
     },
-    "Activité": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Activity"
+    "A pilot" : {
+
+    },
+    "À propos" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "About"
           }
         }
       }
+    },
+    "About" : {
+
+    },
+    "Account" : {
+
+    },
+    "Account & Cloud Backup" : {
+
     },
-    "Activity": {},
-    "Activity from pilots who share their flights in Settings › Community.": {},
-    "Activity period": {},
-    "Activity period: %@": {},
-    "Add": {},
-    "Add a note (optional)": {},
-    "Add a short bio (optional)": {},
-    "Add a spot with a location to pick a home spot.": {},
-    "Add a Wing": {},
-    "Add a wing in the Wings tab first": {},
-    "Add a wing in the Wings tab first.": {},
-    "Add Flight": {},
-    "Add My Wing": {},
-    "Add one from the iPhone": {},
-    "Add Spot": {},
-    "Add your first wing": {},
-    "addWing.custom": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Custom Add"
+    "Active" : {
+
+    },
+    "Active le Water Lock au début d'un vol pour éviter les touches accidentelles" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enables Water Lock at flight start to prevent accidental touches"
           }
         }
       }
     },
-    "addWing.customDesc": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Manually enter wing details"
+    "Activité" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activity"
           }
         }
       }
+    },
+    "Activity" : {
+
+    },
+    "Activity from pilots who share their flights in Settings › Community." : {
+
+    },
+    "Activity period" : {
+
+    },
+    "Activity period: %@" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add a note (optional)" : {
+
+    },
+    "Add a short bio (optional)" : {
+
+    },
+    "Add a spot with a location to pick a home spot." : {
+
+    },
+    "Add a Wing" : {
+
+    },
+    "Add a wing in the Wings tab first" : {
+
+    },
+    "Add a wing in the Wings tab first." : {
+
     },
-    "addWing.customTitle": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Custom Wing"
+    "Add Flight" : {
+
+    },
+    "Add My Wing" : {
+
+    },
+    "Add one from the iPhone" : {
+
+    },
+    "Add Spot" : {
+
+    },
+    "Add your first wing" : {
+
+    },
+    "addWing.custom" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom Add"
           }
         }
       }
     },
-    "addWing.fromLibrary": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose from Library"
+    "addWing.customDesc" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manually enter wing details"
           }
         }
       }
     },
-    "addWing.fromLibraryDesc": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Select from preconfigured wings with photos"
+    "addWing.customTitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom Wing"
           }
         }
       }
     },
-    "addWing.navTitle": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "New Wing"
+    "addWing.fromLibrary" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose from Library"
           }
         }
       }
     },
-    "addWing.subtitle": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose how you want to add your wing"
+    "addWing.fromLibraryDesc" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select from preconfigured wings with photos"
           }
         }
       }
     },
-    "addWing.title": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add a Wing"
+    "addWing.navTitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New Wing"
           }
         }
       }
     },
-    "Adjust on the map": {},
-    "Airtime from pilots who share their flights here.": {},
-    "Ajouter": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add"
+    "addWing.subtitle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose how you want to add your wing"
           }
         }
       }
     },
-    "Ajouter coordonnées GPS": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add GPS coordinates"
+    "addWing.title" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add a Wing"
           }
         }
       }
+    },
+    "Adjust on the map" : {
+
     },
-    "Ajoutez d'abord une voile dans l'onglet Voiles": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "First add a wing in the Wings tab"
+    "Airtime from pilots who share their flights here." : {
+
+    },
+    "Ajouter" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
           }
         }
       }
     },
-    "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add GPS coordinates to a spot to automatically apply them to all associated flights"
+    "Ajouter coordonnées GPS" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add GPS coordinates"
           }
         }
       }
     },
-    "Ajoutez votre première voile": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add your first wing"
+    "Ajoutez d'abord une voile dans l'onglet Voiles" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "First add a wing in the Wings tab"
           }
         }
       }
     },
-    "Ajoutez-en depuis l'iPhone": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add one from iPhone"
+    "Ajoutez des coordonnées GPS à un spot pour les appliquer automatiquement à tous les vols associés" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add GPS coordinates to a spot to automatically apply them to all associated flights"
           }
         }
       }
     },
-    "Alert me on flyable days": {},
-    "All": {},
-    "All flights are categorized 🎉": {},
-    "All shared flights at this spot, from pilots who share their flights in Settings › Community.": {},
-    "All time": {},
-    "All types": {},
-    "All Types": {},
-    "All-time": {},
-    "Allow flight cancellation": {},
-    "Alt": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Alt"
+    "Ajoutez votre première voile" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add your first wing"
           }
         }
       }
     },
-    "Alt. arrivée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Landing alt."
+    "Ajoutez-en depuis l'iPhone" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add one from iPhone"
           }
         }
       }
+    },
+    "Alert me on flyable days" : {
+
+    },
+    "All" : {
+
+    },
+    "All flights are categorized 🎉" : {
+
+    },
+    "All shared flights at this spot, from pilots who share their flights in Settings › Community." : {
+
+    },
+    "All time" : {
+
+    },
+    "All types" : {
+
+    },
+    "All Types" : {
+
+    },
+    "All-time" : {
+
+    },
+    "Allow flight cancellation" : {
+
     },
-    "Alt. départ": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Takeoff alt."
+    "Alt" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alt"
           }
         }
       }
     },
-    "Alt. max": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Max alt."
+    "Alt. arrivée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Landing alt."
           }
         }
       }
     },
-    "Altitude atterrissage": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Landing altitude"
+    "Alt. départ" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Takeoff alt."
           }
         }
       }
     },
-    "Altitude départ": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Takeoff altitude"
+    "Alt. max" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max alt."
           }
         }
       }
     },
-    "Altitude max": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Max altitude"
+    "Altitude atterrissage" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Landing altitude"
           }
         }
       }
     },
-    "Annuler": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel"
+    "Altitude départ" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Takeoff altitude"
           }
         }
       }
     },
-    "Annuler le vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Discard flight"
+    "Altitude max" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max altitude"
           }
         }
       }
     },
-    "App Watch": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Watch App"
+    "Annuler" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
           }
         }
       }
     },
-    "Apple Watch": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Watch"
+    "Annuler le vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Discard flight"
           }
         }
       }
     },
-    "Apply": {},
-    "Applying rewrites the flight's track, duration and stats (max altitude, max speed, distance). This cannot be undone.": {},
-    "Archive": {},
-    "Archived Wings": {},
-    "Archived wings will appear here": {},
-    "Archiver": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Archive"
+    "App Watch" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Watch App"
           }
         }
       }
     },
-    "ARRÊTER LE VOL": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "STOP FLIGHT"
+    "Apple Watch" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Watch"
           }
         }
       }
     },
-    "Arrivée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Landing"
+    "Apply" : {
+
+    },
+    "Applying rewrites the flight's track, duration and stats (max altitude, max speed, distance). This cannot be undone." : {
+
+    },
+    "Archive" : {
+
+    },
+    "Archived Wings" : {
+
+    },
+    "Archived wings will appear here" : {
+
+    },
+    "Archiver" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archive"
           }
         }
       }
     },
-    "Assign Type": {},
-    "Assigning a type to a spot fills its untyped flights. A spot that already has flights of one type shows it as the suggestion — one tap applies it.": {},
-    "at %@ total": {},
-    "Attributes": {},
-    "Aucun spot": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No spot"
+    "ARRÊTER LE VOL" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "STOP FLIGHT"
           }
         }
       }
     },
-    "Aucun spot avec coordonnées GPS": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No spot with GPS coordinates"
+    "Arrivée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Landing"
           }
         }
       }
+    },
+    "Assign Type" : {
+
+    },
+    "Assigning a type to a spot fills its untyped flights. A spot that already has flights of one type shows it as the suggestion — one tap applies it." : {
+
+    },
+    "at %@ total" : {
+
     },
-    "Aucun vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No flights"
+    "Attributes" : {
+
+    },
+    "Aucun spot" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No spot"
           }
         }
       }
     },
-    "Aucun vol durant cette période": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No flights during this period"
+    "Aucun spot avec coordonnées GPS" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No spot with GPS coordinates"
           }
         }
       }
     },
-    "Aucune": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "None"
+    "Aucun vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No flights"
           }
         }
       }
     },
-    "Aucune donnée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No data"
+    "Aucun vol durant cette période" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No flights during this period"
           }
         }
       }
     },
-    "Aucune voile": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No wings"
+    "Aucune" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "None"
           }
         }
       }
     },
-    "Aucune voile archivée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No archived wings"
+    "Aucune donnée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No data"
           }
         }
       }
     },
-    "Auto-follow spots I fly": {},
-    "Auto-follow spots I fly subscribes you to condition reports at the spots you log, so nearby pilots' updates reach you. Alert me on flyable days schedules a local morning notification when tomorrow's forecast looks good at a spot you follow.": {},
-    "Automatic Water Lock": {},
-    "Autoriser l'annulation de vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Allow flight cancellation"
+    "Aucune voile" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No wings"
           }
         }
       }
     },
-    "Back": {},
-    "Back Up Now": {},
-    "Backfill flight weather": {},
-    "Backup created!": {},
-    "Backup créé !": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Backup created!"
+    "Aucune voile archivée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No archived wings"
           }
         }
       }
+    },
+    "Auto-follow spots I fly" : {
+
+    },
+    "Auto-follow spots I fly subscribes you to condition reports at the spots you log, so nearby pilots' updates reach you. Alert me on flyable days schedules a local morning notification when tomorrow's forecast looks good at a spot you follow." : {
+
+    },
+    "Automatic Water Lock" : {
+
     },
-    "Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights.": {},
-    "Bars: share of days per wind band (daily max). %: days with 10–35 km/h from the launch directions. Last 3 years, ERA5 via Open-Meteo.": {},
-    "Be the first to share your flights! Turn on sharing in Settings › Community and your spots will appear here for every pilot.": {},
-    "Best months to fly": {},
-    "Bio": {},
-    "Blue: the part you keep. Gray: what gets cut.": {},
-    "Bought used": {},
-    "Brand": {},
-    "Build": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Build"
+    "Autoriser l'annulation de vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allow flight cancellation"
           }
         }
       }
+    },
+    "Back" : {
+
+    },
+    "Back Up Now" : {
+
+    },
+    "Backfill flight weather" : {
+
+    },
+    "Backup created!" : {
+
     },
-    "By Flight Type": {},
-    "By Spot": {},
-    "By Wing": {},
-    "Calculated duration": {},
-    "Camera mode: %@. Tap to change.": {},
-    "Cancel": {},
-    "Caractéristiques": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Characteristics"
+    "Backup créé !" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Backup created!"
           }
         }
       }
     },
-    "Carte": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Map"
+    "Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights." : {
+
+    },
+    "Bars: share of days per wind band (daily max). %: days with 10–35 km/h from the launch directions. Last 3 years, ERA5 via Open-Meteo." : {
+
+    },
+    "Be the first to share your flights! Turn on sharing in Settings › Community and your spots will appear here for every pilot." : {
+
+    },
+    "Best months to fly" : {
+
+    },
+    "Bio" : {
+
+    },
+    "Blue: the part you keep. Gray: what gets cut." : {
+
+    },
+    "Bought used" : {
+
+    },
+    "Brand" : {
+
+    },
+    "Build" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Build"
           }
         }
       }
     },
-    "Carte des spots": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spots map"
+    "By Flight Type" : {
+
+    },
+    "By Spot" : {
+
+    },
+    "By Wing" : {
+
+    },
+    "Calculated duration" : {
+
+    },
+    "Camera mode: %@. Tap to change." : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Caractéristiques" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Characteristics"
           }
         }
       }
     },
-    "Categorize Flights": {},
-    "Ce spot sera utilisé en priorité sur la détection GPS automatique": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This spot will take priority over automatic GPS detection"
+    "Carte" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Map"
           }
         }
       }
     },
-    "Ces paramètres sont synchronisés automatiquement avec votre Apple Watch.": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "These settings are automatically synced with your Apple Watch."
+    "Carte des spots" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spots map"
           }
         }
       }
     },
-    "Cette voile a %lld vol%@ enregistré%@. L'archivage conservera les données, la suppression les effacera.": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This wing has %1$lld recorded flight%2$@. Archiving will preserve the data, deletion will erase it."
+    "Categorize Flights" : {
+
+    },
+    "Ce spot sera utilisé en priorité sur la détection GPS automatique" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This spot will take priority over automatic GPS detection"
           }
         }
       }
     },
-    "Cette voile n'a aucun vol enregistré.": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "This wing has no recorded flights."
+    "Ces paramètres sont synchronisés automatiquement avec votre Apple Watch." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These settings are automatically synced with your Apple Watch."
           }
         }
       }
     },
-    "Change Photo": {},
-    "Change spot": {},
-    "Changer la photo": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change photo"
+    "Cette voile a %lld vol%@ enregistré%@. L'archivage conservera les données, la suppression les effacera." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This wing has %1$lld recorded flight%2$@. Archiving will preserve the data, deletion will erase it."
           }
         }
       }
     },
-    "Changer le spot": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change spot"
+    "Cette voile n'a aucun vol enregistré." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This wing has no recorded flights."
           }
         }
       }
+    },
+    "Change Photo" : {
+
     },
-    "Check your connection and try again.": {},
-    "Checking your account…": {},
-    "Choisir la période": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose period"
+    "Change spot" : {
+
+    },
+    "Changer la photo" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change photo"
           }
         }
       }
     },
-    "Choisir sur la carte": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose on map"
+    "Changer le spot" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change spot"
           }
         }
       }
+    },
+    "Check your connection and try again." : {
+
     },
-    "Choisir une photo": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose a photo"
+    "Checking your account…" : {
+
+    },
+    "Choisir la période" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose period"
           }
         }
       }
     },
-    "Choisir une voile": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose a wing"
+    "Choisir sur la carte" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose on map"
           }
         }
       }
     },
-    "Choose a known model with photo and specs": {},
-    "Choose a Photo": {},
-    "Choose a Spot": {},
-    "Choose a type for %@": {},
-    "Choose a Wing": {},
-    "Choose…": {},
-    "Chrono": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Timer"
+    "Choisir une photo" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a photo"
           }
         }
       }
     },
-    "Chronomètre": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chronometer"
+    "Choisir une voile" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose a wing"
           }
         }
       }
+    },
+    "Choose a known model with photo and specs" : {
+
+    },
+    "Choose a Photo" : {
+
+    },
+    "Choose a Spot" : {
+
+    },
+    "Choose a type for %@" : {
+
+    },
+    "Choose a Wing" : {
+
     },
-    "City": {},
-    "City (e.g. Tarifa)": {},
-    "Clear type": {},
-    "Close": {},
-    "Close replay": {},
-    "Cloud Backup": {},
-    "Color": {},
-    "Coming soon": {},
-    "Coming Soon": {},
-    "Commencez un vol depuis la Watch ou l'onglet Chrono": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start a flight from the Watch or Timer tab"
+    "Choose…" : {
+
+    },
+    "Chrono" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timer"
           }
         }
       }
     },
-    "common.add": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Add"
+    "Chronomètre" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chronometer"
           }
         }
       }
+    },
+    "City" : {
+
+    },
+    "City (e.g. Tarifa)" : {
+
+    },
+    "Clear type" : {
+
+    },
+    "Close" : {
+
+    },
+    "Close replay" : {
+
+    },
+    "Cloud Backup" : {
+
+    },
+    "Color" : {
+
     },
-    "common.cancel": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cancel"
+    "Coming soon" : {
+
+    },
+    "Coming Soon" : {
+
+    },
+    "Commencez un vol depuis la Watch ou l'onglet Chrono" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a flight from the Watch or Timer tab"
           }
         }
       }
     },
-    "Community": {},
-    "Community features are not available yet. Please check back later.": {},
-    "Community Feed": {},
-    "Community spots, live activity & conditions": {},
-    "Community stats unavailable.": {},
-    "Computing climatology…": {},
-    "Condition reports are tied to your pilot account. Passwords must be at least 8 characters.": {},
-    "Conditions": {},
-    "Conditions at takeoff": {},
-    "Conditions now": {},
-    "Conditions unavailable": {},
-    "Conditions unavailable.": {},
-    "Continue flight": {},
-    "Coordinates": {},
-    "Coordonnées": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Coordinates"
+    "common.add" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Add"
           }
         }
       }
     },
-    "Could not load community activity.": {},
-    "Could not load community spots": {},
-    "Could not load reports.": {},
-    "Could not load the forecast.": {},
-    "Could not save the changes. Please try again.": {},
-    "Could not save the wing. Please try again.": {},
-    "Couleur": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Color"
+    "common.cancel" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancel"
           }
         }
       }
+    },
+    "Community" : {
+
+    },
+    "Community features are not available yet. Please check back later." : {
+
+    },
+    "Community Feed" : {
+
+    },
+    "Community spots, live activity & conditions" : {
+
+    },
+    "Community stats unavailable." : {
+
+    },
+    "Computing climatology…" : {
+
+    },
+    "Condition reports are tied to your pilot account. Passwords must be at least 8 characters." : {
+
+    },
+    "Conditions" : {
+
+    },
+    "Conditions at takeoff" : {
+
+    },
+    "Conditions now" : {
+
+    },
+    "Conditions unavailable" : {
+
+    },
+    "Conditions unavailable." : {
+
+    },
+    "Continue flight" : {
+
+    },
+    "Coordinates" : {
+
     },
-    "Create": {},
-    "Create & Move": {},
-    "Create a new spot here": {},
-    "Create Account": {},
-    "Create Backup": {},
-    "Creating backup...": {},
-    "Création du backup...": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Creating backup..."
+    "Coordonnées" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Coordinates"
           }
         }
       }
     },
-    "Crowd-sourced reports from pilots, valid for 3 hours.": {},
-    "Custom color": {},
-    "Custom Period": {},
-    "Custom range": {},
-    "Custom Wing": {},
-    "Custom…": {},
-    "Cut from the end": {},
-    "Cut from the start": {},
-    "Data": {},
-    "Date": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Date"
+    "Could not load community activity." : {
+
+    },
+    "Could not load community spots" : {
+
+    },
+    "Could not load reports." : {
+
+    },
+    "Could not load the forecast." : {
+
+    },
+    "Could not save the changes. Please try again." : {
+
+    },
+    "Could not save the wing. Please try again." : {
+
+    },
+    "Couleur" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Color"
           }
         }
       }
+    },
+    "Create" : {
+
+    },
+    "Create & Move" : {
+
     },
-    "Date & Duration": {},
-    "Date & Time": {},
-    "Date de début": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start date"
+    "Create a new spot here" : {
+
+    },
+    "Create Account" : {
+
+    },
+    "Create Backup" : {
+
+    },
+    "Creating backup..." : {
+
+    },
+    "Création du backup..." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Creating backup..."
           }
         }
       }
+    },
+    "Crowd-sourced reports from pilots, valid for 3 hours." : {
+
+    },
+    "Custom color" : {
+
+    },
+    "Custom Period" : {
+
+    },
+    "Custom range" : {
+
     },
-    "Date de fin": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "End date"
+    "Custom Wing" : {
+
+    },
+    "Custom…" : {
+
+    },
+    "Cut from the end" : {
+
+    },
+    "Cut from the start" : {
+
+    },
+    "Data" : {
+
+    },
+    "Date" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date"
           }
         }
       }
+    },
+    "Date & Duration" : {
+
     },
-    "Date et heure": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Date and time"
+    "Date & Time" : {
+
+    },
+    "Date de début" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start date"
           }
         }
       }
     },
-    "Début": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start"
+    "Date de fin" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End date"
           }
         }
       }
     },
-    "Début du vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flight start"
+    "Date et heure" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Date and time"
           }
         }
       }
     },
-    "Définir le spot manuellement": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Set spot manually"
+    "Début" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
           }
         }
       }
     },
-    "Delete": {},
-    "Delete \"%@\"?": {},
-    "Delete All Data": {},
-    "Delete all my shared data": {},
-    "Delete all your shared data?": {},
-    "Delete Permanently": {},
-    "Delete permanently?": {},
-    "Delete Shared Data": {},
-    "Delete Spot": {},
-    "Delete this flight": {},
-    "Delete this flight?": {},
-    "Delete?": {},
-    "DÉMARRER LE VOL": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "START FLIGHT"
+    "Début du vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight start"
           }
         }
       }
     },
-    "Départ": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Takeoff"
+    "Définir le spot manuellement" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Set spot manually"
           }
         }
       }
+    },
+    "Delete" : {
+
+    },
+    "Delete \"%@\"?" : {
+
+    },
+    "Delete All Data" : {
+
+    },
+    "Delete all my shared data" : {
+
+    },
+    "Delete all your shared data?" : {
+
+    },
+    "Delete Permanently" : {
+
+    },
+    "Delete permanently?" : {
+
+    },
+    "Delete Shared Data" : {
+
+    },
+    "Delete Spot" : {
+
     },
-    "Dernier vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Latest flight"
+    "Delete this flight" : {
+
+    },
+    "Delete this flight?" : {
+
+    },
+    "Delete?" : {
+
+    },
+    "DÉMARRER LE VOL" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "START FLIGHT"
           }
         }
       }
     },
-    "Deselect All": {},
-    "Détail du vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flight details"
+    "Départ" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Takeoff"
           }
         }
       }
     },
-    "Details": {},
-    "Détails": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Details"
+    "Dernier vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Latest flight"
           }
         }
       }
+    },
+    "Deselect All" : {
+
     },
-    "Developer": {},
-    "Developer mode": {},
-    "Développeur": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Developer"
+    "Détail du vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight details"
           }
         }
       }
     },
-    "Discard": {},
-    "Discard flight": {},
-    "Dist": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dist"
+    "Details" : {
+
+    },
+    "Détails" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Details"
           }
         }
       }
+    },
+    "Developer" : {
+
     },
-    "Distance": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Distance"
+    "Developer mode" : {
+
+    },
+    "Développeur" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Developer"
           }
         }
       }
+    },
+    "Discard" : {
+
     },
-    "Done": {},
-    "Données": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Data"
+    "Discard flight" : {
+
+    },
+    "Dist" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dist"
           }
         }
       }
     },
-    "Drag to move through the flight": {},
-    "Duration": {},
-    "durée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "duration"
+    "Distance" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Distance"
           }
         }
       }
+    },
+    "Done" : {
+
     },
-    "Durée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Duration"
+    "Données" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Data"
           }
         }
       }
+    },
+    "Drag to move through the flight" : {
+
+    },
+    "Duration" : {
+
     },
-    "Durée calculée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calculated duration"
+    "durée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "duration"
           }
         }
       }
     },
-    "Durée du vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flight duration"
+    "Durée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Duration"
           }
         }
       }
     },
-    "Earlier": {},
-    "Edit": {},
-    "Edit Flight": {},
-    "Edit Wing": {},
-    "Email": {},
-    "Enables detailed logging (may slow down the app)": {},
-    "Enables Water Lock at takeoff to prevent accidental taps": {},
-    "End": {},
-    "End Date": {},
-    "End flight?": {},
-    "Enregistrer": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save"
+    "Durée calculée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Calculated duration"
           }
         }
       }
     },
-    "Enter the details manually": {},
-    "Erreur": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Error"
+    "Durée du vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight duration"
           }
         }
       }
+    },
+    "Earlier" : {
+
+    },
+    "Edit" : {
+
+    },
+    "Edit Flight" : {
+
+    },
+    "Edit Wing" : {
+
     },
-    "Error": {},
-    "Existing spot": {},
-    "Explore": {},
-    "Explore community spots": {},
-    "Explore spots": {},
-    "Export": {},
-    "Export Backup": {},
-    "Export Failed": {},
-    "Exporter en CSV": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Export to CSV"
+    "Email" : {
+
+    },
+    "Enables detailed logging (may slow down the app)" : {
+
+    },
+    "Enables Water Lock at takeoff to prevent accidental taps" : {
+
+    },
+    "End" : {
+
+    },
+    "End Date" : {
+
+    },
+    "End flight?" : {
+
+    },
+    "Enregistrer" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
           }
         }
       }
     },
-    "Feed unavailable": {},
-    "Fermer": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Close"
+    "Enter the details manually" : {
+
+    },
+    "Erreur" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error"
           }
         }
       }
+    },
+    "Error" : {
+
     },
-    "Fill %lld untyped": {},
-    "Filter by spot type": {},
-    "Fin": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "End"
+    "Existing spot" : {
+
+    },
+    "Explore" : {
+
+    },
+    "Explore community spots" : {
+
+    },
+    "Explore spots" : {
+
+    },
+    "Export" : {
+
+    },
+    "Export Backup" : {
+
+    },
+    "Export Failed" : {
+
+    },
+    "Exporter en CSV" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Export to CSV"
           }
         }
       }
+    },
+    "Feed unavailable" : {
+
     },
-    "Fin du vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flight end"
+    "Fermer" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
           }
         }
       }
     },
-    "Find pilots": {},
-    "Find Pilots": {},
-    "Find pilots & invite friends": {},
-    "First: your wing": {},
-    "flight": {},
-    "Flight Complete!": {},
-    "Flight Details": {},
-    "Flight duration": {},
-    "Flight duration after trim": {},
-    "Flight end": {},
-    "Flight groups found: %@. Each becomes \"%@ 1\", \"%@ 2\", … that you can rename.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Flight groups found: %1$@. Each becomes \"%2$@ 1\", \"%3$@ 2\", … that you can rename."
+    "Fill %lld untyped" : {
+
+    },
+    "Filter by spot type" : {
+
+    },
+    "Fin" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End"
           }
         }
       }
     },
-    "Flight History": {},
-    "Flight hours": {},
-    "Flight recovered": {},
-    "Flight saved!": {},
-    "Flight start": {},
-    "Flight statistics": {},
-    "flight time": {},
-    "FLIGHT TIME": {},
-    "Flight timeline": {},
-    "Flight Timer": {},
-    "Flight type": {},
-    "Flight Type": {},
-    "Flight Types": {},
-    "flights": {},
-    "Flights": {},
-    "Flights are linked to a wing. Add yours now — pick it from the online library or enter it manually.": {},
-    "Flights can then be moved to this spot from any spot's detail page.": {},
-    "Flights keep their spot name but lose the link; they can be reassigned later.": {},
-    "Flying": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flying"
+    "Fin du vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight end"
           }
         }
       }
+    },
+    "Find pilots" : {
+
+    },
+    "Find Pilots" : {
+
+    },
+    "Find pilots & invite friends" : {
+
+    },
+    "First: your wing" : {
+
+    },
+    "flight" : {
+
+    },
+    "Flight Complete!" : {
+
     },
-    "Flying Spots": {},
-    "Follow": {},
-    "Follow pilots and see their latest flights here. Sign in from Settings › Account to get started.": {},
-    "Follow pilots to see their flights here. Find them in Explore or on any spot's leaderboard.": {},
-    "Follow the pilot": {},
-    "Follow this spot": {},
-    "Following": {},
-    "For each flight at a located spot, this shares the spot, date, duration and flight type — never your GPS tracks or notes. Flights without a located spot are skipped.": {},
-    "Forecast by Open-Meteo. Dots rate the wind against the launch directions above.": {},
-    "From": {},
-    "From pilots who share their flights in Settings › Community.": {},
-    "From the configured launch directions above.": {},
-    "From the Library": {},
-    "G": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "G"
+    "Flight Details" : {
+
+    },
+    "Flight duration" : {
+
+    },
+    "Flight duration after trim" : {
+
+    },
+    "Flight end" : {
+
+    },
+    "Flight groups found: %@. Each becomes \"%@ 1\", \"%@ 2\", … that you can rename." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Flight groups found: %1$@. Each becomes \"%2$@ 1\", \"%3$@ 2\", … that you can rename."
           }
         }
       }
+    },
+    "Flight History" : {
+
+    },
+    "Flight hours" : {
+
+    },
+    "Flight recovered" : {
+
+    },
+    "Flight saved!" : {
+
     },
-    "G-Force": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "G-Force"
+    "Flight start" : {
+
+    },
+    "Flight statistics" : {
+
+    },
+    "flight time" : {
+
+    },
+    "FLIGHT TIME" : {
+
+    },
+    "Flight timeline" : {
+
+    },
+    "Flight Timer" : {
+
+    },
+    "Flight type" : {
+
+    },
+    "Flight Type" : {
+
+    },
+    "Flight Types" : {
+
+    },
+    "flights" : {
+
+    },
+    "Flights" : {
+
+    },
+    "Flights are linked to a wing. Add yours now — pick it from the online library or enter it manually." : {
+
+    },
+    "Flights can then be moved to this spot from any spot's detail page." : {
+
+    },
+    "Flights keep their spot name but lose the link; they can be reassigned later." : {
+
+    },
+    "Flying" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flying"
           }
         }
       }
+    },
+    "Flying Spots" : {
+
+    },
+    "Follow" : {
+
     },
-    "G-Force max": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Max G-Force"
+    "Follow pilots and see their latest flights here. Sign in from Settings › Account to get started." : {
+
+    },
+    "Follow pilots to see their flights here. Find them in Explore or on any spot's leaderboard." : {
+
+    },
+    "Follow the pilot" : {
+
+    },
+    "Follow this spot" : {
+
+    },
+    "Following" : {
+
+    },
+    "For each flight at a located spot, this shares the spot, date, duration and flight type — never your GPS tracks or notes. Flights without a located spot are skipped." : {
+
+    },
+    "Forecast by Open-Meteo. Dots rate the wind against the launch directions above." : {
+
+    },
+    "From" : {
+
+    },
+    "From pilots who share their flights in Settings › Community." : {
+
+    },
+    "From the configured launch directions above." : {
+
+    },
+    "From the Library" : {
+
+    },
+    "G" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G"
           }
         }
       }
     },
-    "Generate Test Flights": {},
-    "Générer des données de test": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Generate test data"
+    "G-Force" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "G-Force"
           }
         }
       }
     },
-    "Gérer les spots": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Manage Spots"
+    "G-Force max" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max G-Force"
           }
         }
       }
+    },
+    "Generate Test Flights" : {
+
     },
-    "Give kudos": {},
-    "GPS ✓": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "GPS ✓"
+    "Générer des données de test" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Generate test data"
           }
         }
       }
     },
-    "GPX": {},
-    "Graphiques": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Charts"
+    "Gérer les spots" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manage Spots"
           }
         }
       }
     },
-    "Groups this spot's flights by takeoff position (within 1 km = same spot) and creates \"%@ 1\", \"%@ 2\", … — open each one afterwards to rename it to the real launch.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Groups this spot's flights by takeoff position (within 1 km = same spot) and creates \"%1$@ 1\", \"%2$@ 2\", … — open each one afterwards to rename it to the real launch."
+    "Give kudos" : {
+
+    },
+    "GPS ✓" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GPS ✓"
           }
         }
       }
+    },
+    "GPX" : {
+
     },
-    "gusts %lld": {},
-    "Gusts %lld km/h": {},
-    "h": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "h"
+    "Graphiques" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Charts"
           }
         }
       }
     },
-    "heures": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "hours"
+    "Groups this spot's flights by takeoff position (within 1 km = same spot) and creates \"%@ 1\", \"%@ 2\", … — open each one afterwards to rename it to the real launch." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Groups this spot's flights by takeoff position (within 1 km = same spot) and creates \"%1$@ 1\", \"%2$@ 2\", … — open each one afterwards to rename it to the real launch."
           }
         }
       }
     },
-    "Heures": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hours"
+    "gusts %lld" : {
+
+    },
+    "Gusts %lld km/h" : {
+
+    },
+    "h" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "h"
           }
         }
       }
     },
-    "Heures de vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flight hours"
+    "heures" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "hours"
           }
         }
       }
     },
-    "Historique des vols": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flight history"
+    "Heures" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hours"
           }
         }
       }
     },
-    "History": {},
-    "Home": {},
-    "Home spot": {},
-    "hours": {},
-    "Hours": {},
-    "Hours already flown before using the app count toward the wing's total and its trim schedule.": {},
-    "Hours Breakdown": {},
-    "How is it?": {},
-    "I'll do it later": {},
-    "iCloud Sync": {},
-    "iCloud sync is coming in a future version — use Account & Cloud Backup below to save your logbook in the cloud meanwhile. Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights.": {},
-    "IGC": {},
-    "Import": {},
-    "Import Backup": {},
-    "Import en cours...": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Importing..."
+    "Heures de vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight hours"
           }
         }
       }
     },
-    "Import IGC / GPX Track": {},
-    "Import Tracks": {},
-    "Importation des données...": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Importing data..."
+    "Historique des vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight history"
           }
         }
       }
     },
-    "Importer depuis Excel/CSV": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Import from Excel/CSV"
-          }
+    "History" : {
+
+    },
+    "Home" : {
+
+    },
+    "Home spot" : {
+
+    },
+    "hours" : {
+
+    },
+    "Hours" : {
+
+    },
+    "Hours already flown before using the app count toward the wing's total and its trim schedule." : {
+
+    },
+    "Hours Breakdown" : {
+
+    },
+    "How is it?" : {
+
+    },
+    "I'll do it later" : {
+
+    },
+    "iCloud Sync" : {
+
+    },
+    "iCloud sync is coming in a future version — use Account & Cloud Backup below to save your logbook in the cloud meanwhile. Backups use the .paraflightlog format and include wings, flights, photos and GPS tracks. Import IGC / GPX Track turns tracks recorded by other vario apps into flights." : {
+
+    },
+    "IGC" : {
+
+    },
+    "Import" : {
+
+    },
+    "Import Backup" : {
+
+    },
+    "Import en cours..." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importing..."
+          }
+        }
+      }
+    },
+    "Import IGC / GPX Track" : {
+
+    },
+    "Import Tracks" : {
+
+    },
+    "Importation des données..." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Importing data..."
+          }
+        }
+      }
+    },
+    "Importer depuis Excel/CSV" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Import from Excel/CSV"
+          }
         }
       }
     },
-    "Importing data...": {},
-    "incl. %@ before the app": {},
-    "Informations": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Information"
+    "Importing data..." : {
+
+    },
+    "incl. %@ before the app" : {
+
+    },
+    "Informations" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Information"
           }
         }
       }
+    },
+    "Installed" : {
+
     },
-    "Installed": {},
-    "Installée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installed"
+    "Installée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Installed"
           }
         }
       }
     },
-    "Invite a friend to SoarX": {},
-    "Joignable": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Reachable"
+    "Invite a friend to SoarX" : {
+
+    },
+    "Joignable" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reachable"
           }
         }
       }
+    },
+    "km/h" : {
+
     },
-    "km/h": {},
-    "Known last trim date": {},
-    "Lancer un vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start a flight"
+    "Known last trim date" : {
+
+    },
+    "Lancer un vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a flight"
           }
         }
       }
     },
-    "Landing": {},
-    "Langue": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Language"
+    "Landing" : {
+
+    },
+    "Langue" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Language"
           }
         }
       }
     },
-    "Langue actuelle": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Current language"
+    "Langue actuelle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Current language"
           }
         }
       }
     },
-    "Langue de l'application": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App language"
+    "Langue de l'application" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App language"
           }
         }
       }
+    },
+    "Last backup: %@" : {
+
+    },
+    "Last trimmed on" : {
+
+    },
+    "Latest flight" : {
+
+    },
+    "Latest flights from pilots you follow" : {
+
+    },
+    "Launch directions" : {
+
+    },
+    "Leaderboard" : {
+
     },
-    "Last backup: %@": {},
-    "Last trimmed on": {},
-    "Latest flight": {},
-    "Latest flights from pilots you follow": {},
-    "Launch directions": {},
-    "Leaderboard": {},
-    "Learned from ^[%lld flight](inflect: true) at this spot.": {},
-    "Learning this spot…": {},
-    "Leave a field empty when the manufacturer doesn't specify it. When both an hour and a month interval are set, the first one reached wins.": {},
-    "Legend: green flyable, orange marginal, red too strong, blue activity.": {},
-    "Les spots apparaîtront ici une fois que vous aurez enregistré des vols": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spots will appear here once you record flights"
+    "Learned from ^[%lld flight](inflect: true) at this spot." : {
+
+    },
+    "Learning this spot…" : {
+
+    },
+    "Leave a field empty when the manufacturer doesn't specify it. When both an hour and a month interval are set, the first one reached wins." : {
+
+    },
+    "Legend: green flyable, orange marginal, red too strong, blue activity." : {
+
+    },
+    "Les spots apparaîtront ici une fois que vous aurez enregistré des vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spots will appear here once you record flights"
           }
         }
       }
     },
-    "Les voiles archivées apparaîtront ici": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Archived wings will appear here"
+    "Les voiles archivées apparaîtront ici" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archived wings will appear here"
           }
         }
       }
+    },
+    "Let other pilots see your airtime on spot leaderboards." : {
+
+    },
+    "Lets you cancel an ongoing flight without saving it" : {
+
+    },
+    "Loading community activity…" : {
+
+    },
+    "Loading community spots…" : {
+
+    },
+    "Loading conditions…" : {
+
+    },
+    "Loading feed…" : {
+
+    },
+    "Loading flight details…" : {
+
+    },
+    "Loading forecast…" : {
+
+    },
+    "Loading leaderboard…" : {
+
+    },
+    "Loading profile…" : {
+
+    },
+    "Loading recent flights…" : {
+
+    },
+    "Loading reports…" : {
+
+    },
+    "Loading shared flights…" : {
+
+    },
+    "Log Service" : {
+
+    },
+    "Log Service…" : {
+
     },
-    "Let other pilots see your airtime on spot leaderboards.": {},
-    "Lets you cancel an ongoing flight without saving it": {},
-    "Loading community activity…": {},
-    "Loading community spots…": {},
-    "Loading conditions…": {},
-    "Loading feed…": {},
-    "Loading flight details…": {},
-    "Loading forecast…": {},
-    "Loading leaderboard…": {},
-    "Loading profile…": {},
-    "Loading recent flights…": {},
-    "Loading reports…": {},
-    "Loading shared flights…": {},
-    "Log Service": {},
-    "Log Service…": {},
-    "m²": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "m²"
+    "m²" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "m²"
           }
         }
       }
     },
-    "Maintenance": {},
-    "Maintenance Schedule": {},
-    "Manage Spots": {},
-    "Mark all read": {},
-    "Match spot from GPS": {},
-    "Max": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Max"
+    "Maintenance" : {
+
+    },
+    "Maintenance Schedule" : {
+
+    },
+    "Manage Spots" : {
+
+    },
+    "Mark all read" : {
+
+    },
+    "Match spot from GPS" : {
+
+    },
+    "Max" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max"
           }
         }
       }
     },
-    "Max altitude": {},
-    "Max G-force": {},
-    "Max speed": {},
-    "Mes voiles": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "My Wings"
+    "Max altitude" : {
+
+    },
+    "Max G-force" : {
+
+    },
+    "Max speed" : {
+
+    },
+    "Mes voiles" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My Wings"
           }
         }
       }
     },
-    "Mes vols": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "My Flights"
+    "Mes vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "My Flights"
           }
         }
       }
     },
-    "min": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "min"
+    "min" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "min"
           }
         }
       }
+    },
+    "Minutes" : {
+
+    },
+    "Mode" : {
+
     },
-    "Minutes": {},
-    "Mode": {},
-    "Model": {},
-    "Modifier": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edit"
+    "Model" : {
+
+    },
+    "Modifier" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit"
           }
         }
       }
     },
-    "Modifier la voile": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edit wing"
+    "Modifier la voile" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit wing"
           }
         }
       }
     },
-    "Modifier le vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edit flight"
+    "Modifier le vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit flight"
           }
         }
       }
     },
-    "Modifier sur la carte": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Edit on map"
+    "Modifier sur la carte" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Edit on map"
           }
         }
       }
+    },
+    "Move To" : {
+
+    },
+    "My Flights" : {
+
+    },
+    "My Pilot Profile" : {
+
+    },
+    "My records here" : {
+
+    },
+    "My Spots" : {
+
+    },
+    "My Wings" : {
+
+    },
+    "Name" : {
+
+    },
+    "New Flight" : {
+
+    },
+    "New spot" : {
+
     },
-    "Move To": {},
-    "My Flights": {},
-    "My Pilot Profile": {},
-    "My records here": {},
-    "My Spots": {},
-    "My Wings": {},
-    "Name": {},
-    "New Flight": {},
-    "New spot": {},
-    "New Spot": {},
-    "New spot name": {},
-    "New Spot…": {},
-    "New Wing": {},
-    "Next": {},
-    "No": {},
-    "No %@ Flights": {},
-    "No Archived Wings": {},
-    "No cloud backup yet.": {},
-    "No community spots match %@. Try “All types”.": {},
-    "No community spots yet": {},
-    "No coordinates": {},
-    "No data": {},
-    "No Flights": {},
-    "No flights at this spot.": {},
-    "No flights during this period": {},
-    "No flights or launch directions yet — record a flight here, or set the launch directions above, to learn when it flies.": {},
-    "No flights yet": {},
-    "No GPS Track": {},
-    "No notifications": {},
-    "No pilot found with that name.": {},
-    "No ranked flights for this period yet.": {},
-    "No reports yet — be the first to say how it flies.": {},
-    "No shared flights at this spot yet.": {},
-    "No shared flights yet.": {},
-    "No spot": {},
-    "No spot within %lld km — drop one at your current location and report on it.": {},
-    "No Spots": {},
-    "No spots match the selected type. Pick a different type or “All types”.": {},
-    "No spots of this type": {},
-    "No Spots of This Type": {},
-    "No spots with GPS coordinates": {},
-    "No track to trim": {},
-    "No trim schedule set — add the intervals in Edit.": {},
-    "No type": {},
-    "No wing available — the simulated flight will be saved without a wing": {},
-    "No wings": {},
-    "No Wings": {},
-    "Nom": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Name"
+    "New Spot" : {
+
+    },
+    "New spot name" : {
+
+    },
+    "New Spot…" : {
+
+    },
+    "New Wing" : {
+
+    },
+    "Next" : {
+
+    },
+    "No" : {
+
+    },
+    "No %@ Flights" : {
+
+    },
+    "No Archived Wings" : {
+
+    },
+    "No cloud backup yet." : {
+
+    },
+    "No community spots match %@. Try “All types”." : {
+
+    },
+    "No community spots yet" : {
+
+    },
+    "No coordinates" : {
+
+    },
+    "No data" : {
+
+    },
+    "No Flights" : {
+
+    },
+    "No flights at this spot." : {
+
+    },
+    "No flights during this period" : {
+
+    },
+    "No flights or launch directions yet — record a flight here, or set the launch directions above, to learn when it flies." : {
+
+    },
+    "No flights yet" : {
+
+    },
+    "No GPS Track" : {
+
+    },
+    "No notifications" : {
+
+    },
+    "No pilot found with that name." : {
+
+    },
+    "No ranked flights for this period yet." : {
+
+    },
+    "No reports yet — be the first to say how it flies." : {
+
+    },
+    "No shared flights at this spot yet." : {
+
+    },
+    "No shared flights yet." : {
+
+    },
+    "No spot" : {
+
+    },
+    "No spot within %lld km — drop one at your current location and report on it." : {
+
+    },
+    "No Spots" : {
+
+    },
+    "No spots match the selected type. Pick a different type or “All types”." : {
+
+    },
+    "No spots of this type" : {
+
+    },
+    "No Spots of This Type" : {
+
+    },
+    "No spots with GPS coordinates" : {
+
+    },
+    "No track to trim" : {
+
+    },
+    "No trim schedule set — add the intervals in Edit." : {
+
+    },
+    "No type" : {
+
+    },
+    "No wing available — the simulated flight will be saved without a wing" : {
+
+    },
+    "No wings" : {
+
+    },
+    "No Wings" : {
+
+    },
+    "Nom" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Name"
           }
         }
       }
     },
-    "Nom du spot": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spot name"
+    "Nom du spot" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spot name"
           }
         }
       }
     },
-    "Nombre de voiles": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Number of wings"
+    "Nombre de voiles" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Number of wings"
           }
         }
       }
     },
-    "Nombre de vols": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Number of flights"
+    "Nombre de vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Number of flights"
           }
         }
       }
     },
-    "Non": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No"
+    "Non" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No"
           }
         }
       }
     },
-    "Non installée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Not installed"
+    "Non installée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Not installed"
           }
         }
       }
     },
-    "None": {},
-    "Not here yet? Add this launch at your current location.": {},
-    "Not installed": {},
-    "Not on SoarX yet? Send them an invite by message, WhatsApp or anything else.": {},
-    "Note": {},
-    "Note (optional)": {},
-    "Notes": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Notes"
+    "None" : {
+
+    },
+    "Not here yet? Add this launch at your current location." : {
+
+    },
+    "Not installed" : {
+
+    },
+    "Not on SoarX yet? Send them an invite by message, WhatsApp or anything else." : {
+
+    },
+    "Note" : {
+
+    },
+    "Note (optional)" : {
+
+    },
+    "Notes" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Notes"
           }
         }
       }
     },
-    "Notifications": {},
-    "Notifications, %lld unread": {},
-    "Nouvelle voile": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "New wing"
+    "Notifications" : {
+
+    },
+    "Notifications, %lld unread" : {
+
+    },
+    "Nouvelle voile" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "New wing"
           }
         }
       }
+    },
+    "Number of flights" : {
+
     },
-    "Number of flights": {},
-    "Off by default. Sharing sends flight summaries only — spot, date, duration and type. GPS tracks and notes never leave your device.": {},
-    "OK": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OK"
+    "Off by default. Sharing sends flight summaries only — spot, date, duration and type. GPS tracks and notes never leave your device." : {
+
+    },
+    "OK" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
           }
         }
       }
     },
-    "Options Apple Watch": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Apple Watch options"
+    "Options Apple Watch" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apple Watch options"
           }
         }
       }
+    },
+    "Other pilots can see your flight line and replay it in 3D (simplified track). Forgot to stop a flight? Trim it from the flight page before it's shared." : {
+
     },
-    "Other pilots can see your flight line and replay it in 3D (simplified track). Forgot to stop a flight? Trim it from the flight page before it's shared.": {},
-    "Oui": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Yes"
+    "Oui" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Yes"
           }
         }
       }
     },
-    "Overwrite all %lld flights": {},
-    "Par spot": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "By spot"
+    "Overwrite all %lld flights" : {
+
+    },
+    "Par spot" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By spot"
           }
         }
       }
     },
-    "Par voile": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "By wing"
+    "Par voile" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "By wing"
           }
         }
       }
     },
-    "ParaFlightLog": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "ParaFlightLog"
+    "ParaFlightLog" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ParaFlightLog"
           }
         }
       }
     },
-    "Pas de coordonnées": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No coordinates"
+    "Pas de coordonnées" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No coordinates"
           }
         }
       }
+    },
+    "Password" : {
+
+    },
+    "Pause" : {
+
     },
-    "Password": {},
-    "Pause": {},
-    "Period": {},
-    "Période": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Period"
+    "Period" : {
+
+    },
+    "Période" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Period"
           }
         }
       }
     },
-    "Période personnalisée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Custom period"
+    "Période personnalisée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom period"
           }
         }
       }
     },
-    "Permet d'annuler un vol en cours sans le sauvegarder": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Allows canceling an ongoing flight without saving it"
+    "Permet d'annuler un vol en cours sans le sauvegarder" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allows canceling an ongoing flight without saving it"
           }
         }
       }
     },
-    "Permission refusée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Permission denied"
+    "Permission refusée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permission denied"
           }
         }
       }
     },
-    "Photo": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Photo"
+    "Photo" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Photo"
           }
         }
       }
+    },
+    "Pick a wing first" : {
+
+    },
+    "Pick a wing from the library or enter its details yourself." : {
+
+    },
+    "Pick Location" : {
+
+    },
+    "Pick on the map" : {
+
     },
-    "Pick a wing first": {},
-    "Pick a wing from the library or enter its details yourself.": {},
-    "Pick Location": {},
-    "Pick on the map": {},
-    "Pilot": {},
-    "Pilot name": {},
-    "Pilot name (public)": {},
-    "Pilots checking your spot see \"🪂 flying now\" for up to 2 hours after takeoff. Anonymous — your name is never shown.": {},
-    "Pinch to zoom · two-finger drag to tilt in 3D · rotate to orbit": {},
-    "Play": {},
-    "Playback speed %lldx": {},
-    "Please wait": {},
-    "Position indisponible": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Position unavailable"
+    "Pilot" : {
+
+    },
+    "Pilot name" : {
+
+    },
+    "Pilot name (public)" : {
+
+    },
+    "Pilots checking your spot see \"🪂 flying now\" for up to 2 hours after takeoff. Anonymous — your name is never shown." : {
+
+    },
+    "Pinch to zoom · two-finger drag to tilt in 3D · rotate to orbit" : {
+
+    },
+    "Play" : {
+
+    },
+    "Playback speed %lldx" : {
+
+    },
+    "Please wait" : {
+
+    },
+    "Position indisponible" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Position unavailable"
           }
         }
       }
     },
-    "Position...": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Location..."
+    "Position..." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Location..."
           }
         }
       }
+    },
+    "Post" : {
+
+    },
+    "Pre-filled from the current forecast — tap a point to change." : {
+
     },
-    "Post": {},
-    "Pre-filled from the current forecast — tap a point to change.": {},
-    "Prêt à exporter": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ready to export"
+    "Prêt à exporter" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to export"
           }
         }
       }
     },
-    "Prêt à partager": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ready to share"
+    "Prêt à partager" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ready to share"
           }
         }
       }
     },
-    "Previous flights": {},
-    "Profile unavailable": {},
-    "Public stats": {},
-    "Purchase date": {},
-    "Purchased on": {},
-    "Que voulez-vous faire ?": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What do you want to do?"
+    "Previous flights" : {
+
+    },
+    "Profile unavailable" : {
+
+    },
+    "Public stats" : {
+
+    },
+    "Purchase date" : {
+
+    },
+    "Purchased on" : {
+
+    },
+    "Que voulez-vous faire ?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "What do you want to do?"
           }
         }
       }
     },
-    "Reachable": {},
-    "Ready to export": {},
-    "Ready to share": {},
-    "Récapitulatif": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Summary"
+    "Reachable" : {
+
+    },
+    "Ready to export" : {
+
+    },
+    "Ready to share" : {
+
+    },
+    "Récapitulatif" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Summary"
           }
         }
       }
+    },
+    "Recent flights" : {
+
+    },
+    "Recent flights here" : {
+
     },
-    "Recent flights": {},
-    "Recent flights here": {},
-    "Recent flights unavailable.": {},
-    "Recherche...": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Searching..."
+    "Recent flights unavailable." : {
+
+    },
+    "Recherche..." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching..."
           }
         }
       }
     },
-    "Rechercher le lieu": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Search location"
+    "Rechercher le lieu" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Search location"
           }
         }
       }
+    },
+    "Record flights with your Apple Watch or tap + to add one manually." : {
+
+    },
+    "Record weather at takeoff" : {
+
+    },
+    "Recorded at %@ total on this wing." : {
+
     },
-    "Record flights with your Apple Watch or tap + to add one manually.": {},
-    "Record weather at takeoff": {},
-    "Recorded at %@ total on this wing.": {},
-    "Records": {},
-    "Refresh catalog": {},
-    "Refresh community spots": {},
-    "Refresh weather": {},
-    "Réglages": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Settings"
+    "Records" : {
+
+    },
+    "Refresh catalog" : {
+
+    },
+    "Refresh community spots" : {
+
+    },
+    "Refresh weather" : {
+
+    },
+    "Réglages" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
           }
         }
       }
+    },
+    "Remove and use GPS" : {
+
     },
-    "Remove and use GPS": {},
-    "Remove coordinates": {},
-    "Remove kudos": {},
-    "Remove Photo": {},
-    "Removes every flight you shared with the community, and your live presence. Your local logbook is not affected.": {},
-    "Répartition des heures": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hours breakdown"
+    "Remove coordinates" : {
+
+    },
+    "Remove kudos" : {
+
+    },
+    "Remove Photo" : {
+
+    },
+    "Removes every flight you shared with the community, and your live presence. Your local logbook is not affected." : {
+
+    },
+    "Répartition des heures" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hours breakdown"
           }
         }
       }
+    },
+    "Replay Flight" : {
+
+    },
+    "Replay in 3D" : {
+
+    },
+    "Replay Onboarding" : {
+
+    },
+    "Report" : {
+
+    },
+    "Report conditions" : {
+
+    },
+    "Report conditions at %@" : {
+
     },
-    "Replay Flight": {},
-    "Replay in 3D": {},
-    "Replay Onboarding": {},
-    "Report": {},
-    "Report conditions": {},
-    "Report conditions at %@": {},
-    "Report near me": {},
-    "Reports from spots you follow and other alerts will show up here.": {},
-    "Restart replay": {},
-    "Restaurer": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Restore"
+    "Report near me" : {
+
+    },
+    "Reports from spots you follow and other alerts will show up here." : {
+
+    },
+    "Restart replay" : {
+
+    },
+    "Restaurer" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restore"
           }
         }
       }
+    },
+    "Restore" : {
+
     },
-    "Restore": {},
-    "Restore Backup": {},
-    "Restore Backup?": {},
-    "Restoring will merge the cloud backup into your current data.": {},
-    "Result": {},
-    "Résultat": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Result"
+    "Restore Backup" : {
+
+    },
+    "Restore Backup?" : {
+
+    },
+    "Restoring will merge the cloud backup into your current data." : {
+
+    },
+    "Result" : {
+
+    },
+    "Résultat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Result"
           }
         }
       }
     },
-    "Retour": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Back"
+    "Retour" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Back"
           }
         }
       }
+    },
+    "Retry" : {
+
     },
-    "Retry": {},
-    "Sauvegarder": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Save"
+    "Sauvegarder" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Save"
           }
         }
       }
     },
-    "Save": {},
-    "Save & stop": {},
-    "Save Error": {},
-    "Save Failed": {},
-    "Search": {},
-    "Search for a place...": {},
-    "Search location": {},
-    "Searching...": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Searching..."
+    "Save" : {
+
+    },
+    "Save & stop" : {
+
+    },
+    "Save Error" : {
+
+    },
+    "Save Failed" : {
+
+    },
+    "Search" : {
+
+    },
+    "Search for a place..." : {
+
+    },
+    "Search location" : {
+
+    },
+    "Searching..." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Searching..."
           }
         }
       }
+    },
+    "Searching…" : {
+
+    },
+    "Section" : {
+
+    },
+    "See all" : {
+
     },
-    "Searching…": {},
-    "Section": {},
-    "See all": {},
-    "Seeded from ParaglidingEarth — refine it by flying here.": {},
-    "Select a wing": {},
-    "Select All": {},
-    "Select flights to move them to another spot — e.g. split \"%@\" into its real launches.": {},
-    "Select Period": {},
-    "Selection": {},
-    "Sélection": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Selection"
+    "See all stats" : {
+
+    },
+    "Seeded from ParaglidingEarth — refine it by flying here." : {
+
+    },
+    "Select a wing" : {
+
+    },
+    "Select All" : {
+
+    },
+    "Select flights to move them to another spot — e.g. split \"%@\" into its real launches." : {
+
+    },
+    "Select Period" : {
+
+    },
+    "Selection" : {
+
+    },
+    "Sélection" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Selection"
           }
         }
       }
     },
-    "Sélectionner une voile": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Select a wing"
+    "Sélectionner une voile" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select a wing"
           }
         }
       }
+    },
+    "Service Log" : {
+
+    },
+    "session" : {
+
     },
-    "Service Log": {},
-    "session": {},
-    "session%@": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "session%@"
+    "session%@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "session%@"
           }
         }
       }
     },
-    "sessions": {},
-    "Sessions": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sessions"
+    "sessions" : {
+
+    },
+    "Sessions" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sessions"
           }
         }
       }
+    },
+    "Set a duration of at least one minute." : {
+
+    },
+    "Set on map" : {
+
+    },
+    "Set spot manually" : {
+
+    },
+    "Set the spot manually" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Share / Save" : {
+
+    },
+    "Share ^[%lld flight](inflect: true)" : {
+
+    },
+    "Share GPS tracks" : {
+
+    },
+    "Share my flight history" : {
+
     },
-    "Set a duration of at least one minute.": {},
-    "Set on map": {},
-    "Set spot manually": {},
-    "Set the spot manually": {},
-    "Settings": {},
-    "Share / Save": {},
-    "Share ^[%lld flight](inflect: true)": {},
-    "Share GPS tracks": {},
-    "Share my flight history": {},
-    "Share my flights": {},
-    "Share of days per wind band (daily max, last 3 years — ERA5 via Open-Meteo). Set launch directions to see the flyable-day share.": {},
-    "Share your flight history?": {},
-    "Shared flight": {},
-    "Sharing %lld / %lld…": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Sharing %1$lld / %2$lld…"
+    "Share my flights" : {
+
+    },
+    "Share of days per wind band (daily max, last 3 years — ERA5 via Open-Meteo). Set launch directions to see the flyable-day share." : {
+
+    },
+    "Share your flight history?" : {
+
+    },
+    "Shared flight" : {
+
+    },
+    "Sharing %lld / %lld…" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Sharing %1$lld / %2$lld…"
           }
         }
       }
+    },
+    "Show all types" : {
+
+    },
+    "Show me as flying now" : {
+
+    },
+    "Sign In" : {
+
+    },
+    "Sign in first (Account section above)" : {
+
+    },
+    "Sign in to back up your logbook in the cloud and restore it on a new device. Passwords must be at least 8 characters." : {
+
+    },
+    "Sign in to report" : {
+
+    },
+    "Sign in to see your feed" : {
+
+    },
+    "Sign in to set up your profile" : {
+
+    },
+    "Sign Out" : {
+
+    },
+    "Simulate a Flight (Live)" : {
+
+    },
+    "Simulate flight on Watch" : {
+
+    },
+    "SIMULATION" : {
+
+    },
+    "Size" : {
+
+    },
+    "Skip" : {
+
+    },
+    "Skipped Files" : {
+
+    },
+    "SoarX" : {
+
     },
-    "Show all types": {},
-    "Show me as flying now": {},
-    "Sign In": {},
-    "Sign in first (Account section above)": {},
-    "Sign in to back up your logbook in the cloud and restore it on a new device. Passwords must be at least 8 characters.": {},
-    "Sign in to report": {},
-    "Sign in to see your feed": {},
-    "Sign in to set up your profile": {},
-    "Sign Out": {},
-    "Simulate a Flight (Live)": {},
-    "Simulate flight on Watch": {},
-    "SIMULATION": {},
-    "Size": {},
-    "Skip": {},
-    "Skipped Files": {},
-    "SoarX": {},
-    "SoarX Voice — in-flight voice assistant": {},
-    "Split by GPS": {},
-    "Split by GPS location": {},
-    "Split into %lld spots": {},
-    "Spot": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spot"
+    "SoarX Voice — in-flight voice assistant" : {
+
+    },
+    "Split by GPS" : {
+
+    },
+    "Split by GPS location" : {
+
+    },
+    "Split into %lld spots" : {
+
+    },
+    "Spot" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spot"
           }
         }
       }
     },
-    "Spot inconnu": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Unknown spot"
+    "Spot inconnu" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unknown spot"
           }
         }
       }
+    },
+    "Spot Map" : {
+
+    },
+    "Spot name" : {
+
+    },
+    "Spot name (e.g. Punta Paloma)" : {
+
+    },
+    "Spot or city" : {
+
+    },
+    "Spot record — %@" : {
+
     },
-    "Spot Map": {},
-    "Spot name": {},
-    "Spot name (e.g. Punta Paloma)": {},
-    "Spot or city": {},
-    "Spot record — %@": {},
-    "Spot type": {},
-    "Spot, wing or notes": {},
-    "Spots": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Spots"
+    "Spot type" : {
+
+    },
+    "Spot, wing or notes" : {
+
+    },
+    "Spots" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spots"
           }
         }
       }
     },
-    "Spots are created automatically from your flights' locations. You can also add one manually.": {},
-    "Spots de vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flying spots"
+    "Spots are created automatically from your flights' locations. You can also add one manually." : {
+
+    },
+    "Spots de vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flying spots"
           }
         }
       }
+    },
+    "Spots near you" : {
+
+    },
+    "Spots near you — see how it flies, or add a new one" : {
+
     },
-    "Spots near you": {},
-    "Spots near you — see how it flies, or add a new one": {},
-    "Start": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start"
+    "Start" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
           }
         }
       }
+    },
+    "Start Date" : {
+
+    },
+    "Start Flight" : {
+
+    },
+    "START FLIGHT" : {
+
+    },
+    "Starting a flight on the Watch shows a fake feed (altitude, speed, G) so you can check readability without moving." : {
+
+    },
+    "Statistics" : {
+
     },
-    "Start Date": {},
-    "Start Flight": {},
-    "START FLIGHT": {},
-    "Starting a flight on the Watch shows a fake feed (altitude, speed, G) so you can check readability without moving.": {},
-    "Statistics": {},
-    "Statistiques": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Statistics"
+    "Statistiques" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Statistics"
           }
         }
       }
     },
-    "Statistiques de vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flight statistics"
+    "Statistiques de vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight statistics"
           }
         }
       }
     },
-    "Stats": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stats"
+    "Stats" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stats"
           }
         }
       }
     },
-    "Stop": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Stop"
+    "Stop" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stop"
           }
         }
       }
     },
-    "STOP FLIGHT": {},
-    "Summary": {},
-    "Supprimer": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete"
+    "STOP FLIGHT" : {
+
+    },
+    "Summary" : {
+
+    },
+    "Supprimer" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete"
           }
         }
       }
     },
-    "Supprimer ce vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete this flight"
+    "Supprimer ce vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete this flight"
           }
         }
       }
     },
-    "Supprimer définitivement": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete permanently"
+    "Supprimer définitivement" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete permanently"
           }
         }
       }
     },
-    "Supprimer définitivement ?": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete permanently?"
+    "Supprimer définitivement ?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete permanently?"
           }
         }
       }
     },
-    "Supprimer et utiliser le GPS": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete and use GPS"
+    "Supprimer et utiliser le GPS" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete and use GPS"
           }
         }
       }
     },
-    "Supprimer la photo": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete photo"
+    "Supprimer la photo" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete photo"
           }
         }
       }
     },
-    "Supprimer les coordonnées": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete coordinates"
+    "Supprimer les coordonnées" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete coordinates"
           }
         }
       }
     },
-    "Supprimer toutes les données": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete all data"
+    "Supprimer toutes les données" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Delete all data"
           }
         }
       }
     },
-    "Swipez vers la gauche": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Swipe left"
+    "Swipez vers la gauche" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Swipe left"
           }
         }
       }
     },
-    "Sync Wings": {},
-    "Synchroniser les voiles": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sync wings"
+    "Sync Wings" : {
+
+    },
+    "Synchroniser les voiles" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sync wings"
           }
         }
       }
     },
-    "Système": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "System"
+    "Système" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
           }
         }
       }
     },
-    "Taille (ex: 22 m²)": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Size (e.g. 22 m²)"
+    "Taille (ex: 22 m²)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Size (e.g. 22 m²)"
           }
         }
       }
+    },
+    "Takeoff" : {
+
+    },
+    "Talk to your logbook while flying. Coming in a future version." : {
+
     },
-    "Takeoff": {},
-    "Talk to your logbook while flying. Coming in a future version.": {},
-    "Tap a spot to rename it, set its city and coordinates, or move flights to another spot (e.g. split a city into its real launches).": {},
-    "Tap the map to place the marker": {},
-    "Tap the point the wind comes from.": {},
-    "Tapez sur la carte pour placer le marqueur": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tap on the map to place the marker"
+    "Tap a spot to rename it, set its city and coordinates, or move flights to another spot (e.g. split a city into its real launches)." : {
+
+    },
+    "Tap the map to place the marker" : {
+
+    },
+    "Tap the point the wind comes from." : {
+
+    },
+    "Tapez sur la carte pour placer le marqueur" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap on the map to place the marker"
           }
         }
       }
     },
-    "Temps": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Time"
+    "Temps" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Time"
           }
         }
       }
     },
-    "temps de vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "flight time"
+    "temps de vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "flight time"
           }
         }
       }
     },
-    "TEMPS DE VOL": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLIGHT TIME"
+    "TEMPS DE VOL" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FLIGHT TIME"
           }
         }
       }
     },
-    "Terminer": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Done"
+    "Terminer" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
           }
         }
       }
     },
-    "Terminer le vol ?": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "End flight?"
+    "Terminer le vol ?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "End flight?"
           }
         }
       }
+    },
+    "The flight could not be saved. Please try again." : {
+
+    },
+    "These settings are synced automatically with your Apple Watch." : {
+
     },
-    "The flight could not be saved. Please try again.": {},
-    "These settings are synced automatically with your Apple Watch.": {},
-    "This flight has no GPS track.": {},
-    "This flight has no recorded track to replay.": {},
-    "This flight was shared without its GPS track.": {},
-    "This is the public name other pilots see on your flights and reports.": {},
-    "This spot flies when…": {},
-    "This spot takes priority over automatic GPS detection": {},
-    "This wing has %lld recorded flight%@. Archiving keeps the data, deleting erases it.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "This wing has %1$lld recorded flight%2$@. Archiving keeps the data, deleting erases it."
+    "This flight has no GPS track." : {
+
+    },
+    "This flight has no recorded track to replay." : {
+
+    },
+    "This flight was shared without its GPS track." : {
+
+    },
+    "This is the public name other pilots see on your flights and reports." : {
+
+    },
+    "This spot flies when…" : {
+
+    },
+    "This spot takes priority over automatic GPS detection" : {
+
+    },
+    "This wing has %lld recorded flight%@. Archiving keeps the data, deleting erases it." : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "This wing has %1$lld recorded flight%2$@. Archiving keeps the data, deleting erases it."
           }
         }
       }
+    },
+    "This wing has no recorded flights." : {
+
     },
-    "This wing has no recorded flights.": {},
-    "Time": {},
-    "Timeline": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Timeline"
+    "Time" : {
+
+    },
+    "Timeline" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Timeline"
           }
         }
       }
+    },
+    "Timer" : {
+
+    },
+    "Timer (Simulation)" : {
+
     },
-    "Timer": {},
-    "Timer (Simulation)": {},
-    "To": {},
-    "Today": {},
-    "Tools": {},
-    "Total": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Total"
+    "To" : {
+
+    },
+    "Today" : {
+
+    },
+    "Tools" : {
+
+    },
+    "Total" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Total"
           }
         }
       }
+    },
+    "Total hours" : {
+
     },
-    "Total hours": {},
-    "Toutes": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All"
+    "Toutes" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All"
           }
         }
       }
+    },
+    "Track shared by the pilot (simplified line, colored by speed)." : {
+
+    },
+    "Tracking" : {
+
+    },
+    "Trim flight" : {
+
+    },
+    "Trim flight…" : {
+
+    },
+    "Turn vario off" : {
+
     },
-    "Track shared by the pilot (simplified line, colored by speed).": {},
-    "Tracking": {},
-    "Trim flight": {},
-    "Trim flight…": {},
-    "Turn vario off": {},
-    "Turn vario on": {},
-    "Type": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Type"
+    "Turn vario on" : {
+
+    },
+    "Type" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type"
           }
         }
       }
+    },
+    "Type a pilot name to find them — then follow them from their profile." : {
+
+    },
+    "Unfollow this spot" : {
+
+    },
+    "Unread" : {
+
+    },
+    "Untyped only" : {
+
     },
-    "Type a pilot name to find them — then follow them from their profile.": {},
-    "Unfollow this spot": {},
-    "Unread": {},
-    "Untyped only": {},
-    "Use iPhone as tracker": {},
-    "Use iPhone as tracker adds a Timer tab so you can track flights without an Apple Watch. The vario plays climb beeps and sink alerts while a flight is running. Record weather at takeoff saves wind and temperature (Open-Meteo) with each new flight. Wind unit sets whether condition reports show wind strength in km/h or knots.": {},
-    "Valider": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Validate"
+    "Use iPhone as tracker" : {
+
+    },
+    "Use iPhone as tracker adds a Timer tab so you can track flights without an Apple Watch. The vario plays climb beeps and sink alerts while a flight is running. Record weather at takeoff saves wind and temperature (Open-Meteo) with each new flight. Wind unit sets whether condition reports show wind strength in km/h or knots." : {
+
+    },
+    "Valider" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Validate"
           }
         }
       }
     },
-    "Vario %@": {},
-    "Vario sound & haptics": {},
-    "Verrouillage automatique": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auto water lock"
+    "Vario %@" : {
+
+    },
+    "Vario sound & haptics" : {
+
+    },
+    "Verrouillage automatique" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto water lock"
           }
         }
       }
     },
-    "Version": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Version"
+    "Version" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version"
           }
         }
       }
     },
-    "Veuillez patienter": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Please wait"
+    "Veuillez patienter" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Please wait"
           }
         }
       }
+    },
+    "View" : {
+
     },
-    "View": {},
-    "View my spot": {},
-    "Vitesse": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Speed"
+    "View my spot" : {
+
+    },
+    "Vitesse" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Speed"
           }
         }
       }
     },
-    "Vitesse max": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Max speed"
+    "Vitesse max" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Max speed"
           }
         }
       }
     },
-    "Voile": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wing"
+    "Voile" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wing"
           }
         }
       }
     },
-    "Voile utilisée": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wing used"
+    "Voile utilisée" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wing used"
           }
         }
       }
     },
-    "Voiles": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wings"
+    "Voiles" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wings"
           }
         }
       }
     },
-    "Voiles archivées": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Archived wings"
+    "Voiles archivées" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Archived wings"
           }
         }
       }
     },
-    "vol": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "flight"
+    "vol" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "flight"
           }
         }
       }
     },
-    "VOL EN COURS": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "FLIGHT IN PROGRESS"
+    "VOL EN COURS" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FLIGHT IN PROGRESS"
           }
         }
       }
     },
-    "Vol terminé !": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flight completed!"
+    "Vol terminé !" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight completed!"
           }
         }
       }
     },
-    "vol%@": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "flight%@"
+    "vol%@" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "flight%@"
           }
         }
       }
     },
-    "vols": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "flights"
+    "vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "flights"
           }
         }
       }
     },
-    "Vols": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flights"
+    "Vols" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flights"
           }
         }
       }
     },
-    "Vols précédents": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Previous flights"
+    "Vols précédents" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Previous flights"
           }
         }
       }
+    },
+    "Watch App" : {
+
+    },
+    "Weather" : {
+
+    },
+    "Weather by Open-Meteo." : {
+
+    },
+    "Week" : {
+
     },
-    "Watch App": {},
-    "Weather": {},
-    "Weather by Open-Meteo.": {},
-    "Week": {},
-    "Welcome to SoarX": {},
-    "Whole flight overview": {},
-    "widget_description": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Launch the app and track your flights"
+    "Welcome to SoarX" : {
+
+    },
+    "Whole flight overview" : {
+
+    },
+    "widget_description" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Launch the app and track your flights"
           }
         }
       }
     },
-    "widget_flight": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Flight"
+    "widget_flight" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Flight"
           }
         }
       }
     },
-    "widget_start_flight": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Start a flight"
+    "widget_start_flight" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start a flight"
           }
         }
       }
+    },
+    "Wind direction" : {
+
+    },
+    "Wind directions this launch works with — used for the flyability dots in the forecast." : {
+
+    },
+    "Wind strength" : {
+
     },
-    "Wind direction": {},
-    "Wind directions this launch works with — used for the flyability dots in the forecast.": {},
-    "Wind strength": {},
-    "Wind unit": {},
-    "Wing": {},
-    "Wing (e.g. Moustache M1 23)": {},
-    "wingLibrary.allWings": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All wings"
+    "Wind unit" : {
+
+    },
+    "Wing" : {
+
+    },
+    "Wing (e.g. Moustache M1 23)" : {
+
+    },
+    "wingLibrary.allWings" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "All wings"
           }
         }
       }
     },
-    "wingLibrary.chooseFromLibrary": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose from library"
+    "wingLibrary.chooseFromLibrary" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose from library"
           }
         }
       }
     },
-    "wingLibrary.loading": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loading..."
+    "wingLibrary.loading" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading..."
           }
         }
       }
     },
-    "wingLibrary.manufacturers": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Manufacturers"
+    "wingLibrary.manufacturers" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manufacturers"
           }
         }
       }
     },
-    "wingLibrary.offlineMode": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Offline mode - data may be outdated"
+    "wingLibrary.offlineMode" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline mode - data may be outdated"
           }
         }
       }
     },
-    "wingLibrary.retry": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retry"
+    "wingLibrary.retry" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retry"
           }
         }
       }
     },
-    "wingLibrary.selectSize": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Select size"
+    "wingLibrary.selectSize" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Select size"
           }
         }
       }
     },
-    "wingLibrary.title": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wing Library"
+    "wingLibrary.title" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wing Library"
           }
         }
       }
+    },
+    "Wings" : {
+
+    },
+    "Yes" : {
+
+    },
+    "You fly here too — open your own spot page (forecast, flyability, your flights)." : {
+
+    },
+    "Your dashboard fills up as you log flights. Start with your Watch, or add a flight manually from the Flights tab." : {
+
+    },
+    "Your flights, your spots, your sky." : {
+
+    },
+    "Your pilot profile is tied to your account. Sign in from Settings › Account to pick a name, bio and home spot." : {
+
+    },
+    "Your spots" : {
+
     },
-    "Wings": {},
-    "Yes": {},
-    "You fly here too — open your own spot page (forecast, flyability, your flights).": {},
-    "Your dashboard fills up as you log flights. Start with your Watch, or add a flight manually from the Flights tab.": {},
-    "Your flights, your spots, your sky.": {},
-    "Your pilot profile is tied to your account. Sign in from Settings › Account to pick a name, bio and home spot.": {},
-    "Your spots": {},
-    "Your spots' weather, forecast & flyability": {}
+    "Your spots' weather, forecast & flyability" : {
+
+    }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
