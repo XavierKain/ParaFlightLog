@@ -39,6 +39,12 @@ struct EditFlightView: View {
     @State private var showingDeleteConfirmation = false
     @State private var showSaveError = false
 
+    @State private var showingTrimSheet = false
+    /// The flight's dates as they stood when the trim sheet was opened, so the
+    /// dismiss handler can tell an applied trim from a cancelled one.
+    @State private var preTrimStart: Date?
+    @State private var preTrimEnd: Date?
+
     init(flight: Flight) {
         self.flight = flight
         _startDate = State(initialValue: flight.startDate)
@@ -86,6 +92,19 @@ struct EditFlightView: View {
                         Text("⚠️ The end must be after the start")
                             .font(.caption)
                             .foregroundStyle(.red)
+                    }
+
+                    // Forgetting to stop the tracker is the usual reason a
+                    // duration is wrong, so the fix belongs next to it. Nothing
+                    // to trim without a track (a hand-entered flight).
+                    if flight.gpsTrack?.isEmpty == false {
+                        Button {
+                            preTrimStart = flight.startDate
+                            preTrimEnd = flight.endDate
+                            showingTrimSheet = true
+                        } label: {
+                            Label("Trim flight…", systemImage: "scissors")
+                        }
                     }
                 }
 
@@ -267,6 +286,9 @@ struct EditFlightView: View {
             .onAppear {
                 selectedWing = flight.wing
             }
+            .sheet(isPresented: $showingTrimSheet, onDismiss: adoptTrimmedDates) {
+                TrimFlightView(flight: flight)
+            }
             .sheet(isPresented: $showingMapPicker) {
                 MapCoordinatePicker(
                     selectedCoordinate: $selectedCoordinate,
@@ -316,6 +338,21 @@ struct EditFlightView: View {
         } else {
             spotMatchMessage = "No existing spot within 1.5 km"
         }
+    }
+
+    /// Trimming writes straight to the model, while this form holds its edits
+    /// staged until Save. Without this, saving after a trim would push the
+    /// pre-trim dates back over the trimmed ones and silently restore the
+    /// original duration. Only adopt when the trim actually changed something,
+    /// so cancelling it leaves any dates the pilot was editing untouched.
+    private func adoptTrimmedDates() {
+        defer {
+            preTrimStart = nil
+            preTrimEnd = nil
+        }
+        guard flight.startDate != preTrimStart || flight.endDate != preTrimEnd else { return }
+        startDate = flight.startDate
+        endDate = flight.endDate
     }
 
     private func saveFlight() {
