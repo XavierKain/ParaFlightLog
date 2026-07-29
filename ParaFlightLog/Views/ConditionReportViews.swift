@@ -50,7 +50,11 @@ struct ConditionReportSheet: View {
     @State private var signInEmail = ""
     @State private var signInPassword = ""
     @State private var signInError: String?
+    /// Neutral (non-red) hint, used when a provider flow ends without a session.
+    @State private var signInNotice: String?
     @State private var isSigningIn = false
+    /// Provider whose web sheet is open, so only that row spins.
+    @State private var pendingProvider: OAuthProviderKind?
 
     /// Remaining anti-spam cooldown for this spot (0 = free to post). Seeded on
     /// appear and ticked down while the sheet is open.
@@ -216,7 +220,9 @@ struct ConditionReportSheet: View {
                 } label: {
                     HStack {
                         Text("Sign In")
-                        if isSigningIn {
+                        // Only spin here when it's this button doing the work —
+                        // an OAuth flow spins on its own row.
+                        if isSigningIn, pendingProvider == nil {
                             Spacer()
                             ProgressView()
                         }
@@ -225,13 +231,27 @@ struct ConditionReportSheet: View {
                 Button("Create Account") {
                     Task { await signIn(creatingAccount: true) }
                 }
+            }
+            .disabled(isSigningIn || !isSignInFormValid)
+
+            Section {
+                OAuthSignInButtons(pending: pendingProvider, isDisabled: isSigningIn) { provider in
+                    Task { await signIn(with: provider) }
+                }
+            } header: {
+                Text("Or continue with")
             } footer: {
-                if let signInError {
+                if let signInNotice {
+                    Text(signInNotice)
+                }
+            }
+
+            if let signInError {
+                Section {
                     Text(signInError)
                         .foregroundStyle(.red)
                 }
             }
-            .disabled(isSigningIn || !isSignInFormValid)
         }
     }
 
@@ -241,6 +261,7 @@ struct ConditionReportSheet: View {
 
     private func signIn(creatingAccount: Bool) async {
         signInError = nil
+        signInNotice = nil
         isSigningIn = true
         do {
             if creatingAccount {
@@ -252,6 +273,24 @@ struct ConditionReportSheet: View {
         } catch {
             signInError = (error as? LocalizedError)?.errorDescription ?? "Could not sign in."
         }
+        isSigningIn = false
+    }
+
+    private func signIn(with provider: OAuthProviderKind) async {
+        signInError = nil
+        signInNotice = nil
+        isSigningIn = true
+        pendingProvider = provider
+        do {
+            try await AuthService.shared.signIn(with: provider)
+        } catch let authError as AuthError where authError.isCancellation {
+            // Backing out of the sheet and "this provider isn't configured yet"
+            // are indistinguishable from here — neutral hint, not a red error.
+            signInNotice = "Sign-in with \(provider.displayName) didn't complete."
+        } catch {
+            signInError = (error as? LocalizedError)?.errorDescription ?? "Could not sign in."
+        }
+        pendingProvider = nil
         isSigningIn = false
     }
 

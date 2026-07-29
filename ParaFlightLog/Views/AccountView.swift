@@ -24,8 +24,12 @@ struct AccountView: View {
     @State private var password = ""
     @State private var errorMessage: String?
     @State private var statusMessage: String?
+    /// Neutral (non-red) hint, used when a provider flow ends without a session.
+    @State private var noticeMessage: String?
     @State private var isWorking = false
     @State private var showRestoreConfirmation = false
+    /// Provider whose web sheet is open, so only that row spins.
+    @State private var pendingProvider: OAuthProviderKind?
 
     init(
         onBackup: @escaping () async throws -> URL,
@@ -59,6 +63,7 @@ struct AccountView: View {
                 await auth.restoreSession()
             }
             if auth.state.isSignedIn {
+                await auth.refreshSignInMethod()
                 await cloudBackup.refreshLastBackupDate()
             }
         }
@@ -100,7 +105,9 @@ struct AccountView: View {
             } label: {
                 HStack {
                     Text("Sign In")
-                    if isWorking {
+                    // Only spin here when it's this button doing the work —
+                    // an OAuth flow spins on its own row.
+                    if isWorking, pendingProvider == nil {
                         Spacer()
                         ProgressView()
                     }
@@ -109,13 +116,30 @@ struct AccountView: View {
             Button("Create Account") {
                 signUp()
             }
+        }
+        .disabled(isWorking || !isFormValid)
+
+        Section {
+            OAuthSignInButtons(pending: pendingProvider, isDisabled: isWorking) { provider in
+                signIn(with: provider)
+            }
+        } header: {
+            Text("Or continue with")
         } footer: {
-            if let errorMessage {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("No password to remember. If the provider gives us an email you already have an account with, you land back in the same logbook.")
+                if let noticeMessage {
+                    Text(noticeMessage)
+                }
+            }
+        }
+
+        if let errorMessage {
+            Section {
                 Text(errorMessage)
                     .foregroundStyle(.red)
             }
         }
-        .disabled(isWorking || !isFormValid)
     }
 
     private var isFormValid: Bool {
@@ -127,7 +151,17 @@ struct AccountView: View {
     @ViewBuilder
     private func signedInSections(userEmail: String) -> some View {
         Section("Account") {
-            LabeledContent("Email", value: userEmail)
+            // Facebook can withhold the email, and Apple's "Hide My Email"
+            // gives a relay address — fall back to whatever name we got.
+            if userEmail.isEmpty {
+                LabeledContent("Signed in as", value: auth.displayName ?? "Pilot")
+            } else {
+                LabeledContent("Email", value: userEmail)
+            }
+            if let method = auth.signInMethod,
+               let provider = OAuthProviderKind(rawValue: method) {
+                LabeledContent("Signed in with", value: provider.displayName)
+            }
         }
 
         Section {
@@ -186,6 +220,24 @@ struct AccountView: View {
         }
     }
 
+    private func signIn(with provider: OAuthProviderKind) {
+        pendingProvider = provider
+        run {
+            defer { pendingProvider = nil }
+            do {
+                try await auth.signIn(with: provider)
+            } catch let error as AuthError where error.isCancellation {
+                // Backing out of the sheet and "this provider isn't configured
+                // yet" are indistinguishable from here, and staying silent
+                // leaves a tester with a button that does nothing. Say something
+                // neutral instead of nothing, and in grey rather than red.
+                noticeMessage = "Sign-in with \(provider.displayName) didn't complete."
+                return
+            }
+            await cloudBackup.refreshLastBackupDate()
+        }
+    }
+
     private func signUp() {
         run {
             try await auth.signUp(email: email, password: password)
@@ -221,10 +273,13 @@ struct AccountView: View {
     private func run(_ operation: @escaping @MainActor () async throws -> Void) {
         errorMessage = nil
         statusMessage = nil
+        noticeMessage = nil
         isWorking = true
         Task { @MainActor in
             do {
                 try await operation()
+            } catch let authError as AuthError where authError.isCancellation {
+                // Closing the provider's web sheet isn't worth a red line.
             } catch {
                 errorMessage = error.localizedDescription
             }
