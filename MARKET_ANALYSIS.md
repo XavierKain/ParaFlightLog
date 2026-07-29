@@ -76,20 +76,63 @@ Nous : **Open-Meteo (gratuit, sans clé) + flyability par orientation de décoll
 
 ## 4. Ce qui nous manque — priorisé (à intégrer)
 
-| # | Feature | Pourquoi | Effort |
-|---|---|---|---|
-| 1 | **Alerte de proximité espace aérien** (données OpenAIP/OpenAir) — affichage + alerte haptique à l'approche, PAS un calculateur | Manque n°1 de la catégorie ; Wingman l'a ; sécurité ; notre public côtier/casual vole près des CTR | **M** |
-| 2 | **Vent live des balises** : Pioupiou/OpenWindMap (gratuit, usage commercial OK, sans clé) puis FFVL (France) ; + **enrichir l'appel Open-Meteo existant** avec CAPE/plafond/hauteur de couche (quasi zéro effort) | Plus gros manque *ressenti* en météo ; les pilotes vérifient les balises avant de rouler | **S→M** |
-| 3 | **Spots + orientations depuis ParaglidingEarth** (API publique, orientations par direction 0/1/2 = exactement notre modèle) | Auto-remplit les spots + orientations mondialement, réduit la config manuelle | **S→M** |
-| 4 | **Profils pilotes publics + follow + feed léger + kudos** (résumé seulement) | Le vrai écart entre « logbook » et « app sociale » ; boucle de rétention Strava ; déjà à la roadmap | **M** |
-| 5 | **Classements par spot / « légendes du site »** (privacy-safe, dérivés des résumés) | Statut sans scoring XC ; différenciateur vs le ranking « élitiste » d'XContest | **M** |
-| 6 | **Soumission IGC/XContest en un tap** (on exporte déjà l'IGC) | Retient les pilotes XC-curieux qui partiraient sur XCTrack | **S→M** |
-| 7 | **Export replay 3D → vidéo verticale** (vide Ayvri, SkyViz le monétise) | Viralité top-of-funnel IG/TikTok, compatible vie privée (l'utilisateur choisit) | **M→L** |
-| 8 | **Vario acoustique en vol sur la Watch** (on a déjà la donnée baro/vario) | Transforme un enregistreur passif en outil *utilisé* en vol ; approfondit le moat Watch | **S→M** |
-| 9 | **Rappels d'entretien matériel** (repliage secours, révision voile, heures) | Les casual y tiennent ; on a déjà le logbook par voile | **S** |
-| 10 | **Alertes « bon jour »** sur le score flyability existant | Feature payante ailleurs (Windy Premium) ; on calcule déjà le score | **S** |
+> ⚠️ **Ce tableau a changé de nature le 2026-07-29.** Écrit le 2026-07-09, il décrivait
+> une feuille de route : dix trous à combler dans une catégorie où personne ne les
+> avait tous. Depuis, **OutDare** en couvre **7 sur 10**, gratuitement. Ce n'est plus
+> une feuille de route, c'est la description d'un concurrent. Lire la colonne
+> « OutDare » avant de prioriser quoi que ce soit ici. Voir § 4b.
+
+| # | Feature | Pourquoi | Effort | OutDare |
+|---|---|---|---|---|
+| 1 | **Alerte de proximité espace aérien** (données OpenAIP/OpenAir) — affichage + alerte haptique à l'approche, PAS un calculateur | Manque n°1 de la catégorie ; Wingman l'a ; sécurité ; notre public côtier/casual vole près des CTR | **M** | ✅ + obstacles |
+| 2 | **Vent live des balises** : Pioupiou/OpenWindMap (gratuit, usage commercial OK, sans clé) puis FFVL (France) ; + **enrichir l'appel Open-Meteo existant** avec CAPE/plafond/hauteur de couche (quasi zéro effort) | Plus gros manque *ressenti* en météo ; les pilotes vérifient les balises avant de rouler | **S→M** | ✅ + METAR, Holfuy, MeteoSwiss |
+| 3 | **Spots + orientations depuis ParaglidingEarth** (API publique, orientations par direction 0/1/2 = exactement notre modèle) | Auto-remplit les spots + orientations mondialement, réduit la config manuelle | **S→M** | ✅ 14 000 sites hors-ligne, 249 pays |
+| 4 | **Profils pilotes publics + follow + feed léger + kudos** (résumé seulement) | Le vrai écart entre « logbook » et « app sociale » ; boucle de rétention Strava ; déjà à la roadmap | **M** | ✅ + groupes et chat |
+| 5 | **Classements par spot / « légendes du site »** (privacy-safe, dérivés des résumés) | Statut sans scoring XC ; différenciateur vs le ranking « élitiste » d'XContest | **M** | ✅ |
+| 6 | **Soumission IGC/XContest en un tap** (on exporte déjà l'IGC) | Retient les pilotes XC-curieux qui partiraient sur XCTrack | **S→M** | ✅ IGC signé, WeGlide/DHV-XC/Leonardo/XContest |
+| 7 | **Export replay 3D → vidéo verticale** (vide Ayvri, SkyViz le monétise) | Viralité top-of-funnel IG/TikTok, compatible vie privée (l'utilisateur choisit) | **M→L** | ❌ |
+| 8 | **Vario acoustique en vol sur la Watch** (on a déjà la donnée baro/vario) | Transforme un enregistreur passif en outil *utilisé* en vol ; approfondit le moat Watch | **S→M** | ❌ |
+| 9 | **Rappels d'entretien matériel** (repliage secours, révision voile, heures) | Les casual y tiennent ; on a déjà le logbook par voile | **S** | ❌ |
+| 10 | **Alertes « bon jour »** sur le score flyability existant | Feature payante ailleurs (Windy Premium) ; on calcule déjà le score | **S** | ✅ + résumé hebdo par e-mail |
 
 **À surveiller :** Wingman itère chaque semaine et occupe notre position. Se différencier concrètement : **fiabilité Watch (crash recovery, outbox, G-force, type de vol au poignet) + beauté du replay + modèle gratuit/pas cher.**
+
+---
+
+## 4b. OutDare — le concurrent qui rend le § 4 obsolète (2026-07-29)
+
+**« OutDare: Paragliding Weather »** — App Store `id6768607246`, éditeur *menandiere llc*,
+`outdare.app`. Sorti le **2026-05-13**, déjà en 1.0.12. **Entièrement gratuit, aucun
+paywall annoncé.** 7 langues. iOS / Watch / Mac / Vision **+ une web app** (Android
+annoncé sur leur site, aucune fiche Play trouvée).
+
+> ⚠️ Tout ce qui suit vient de leur marketing et de leur fiche App Store. **Non vérifié à l'usage.**
+
+### En plus des 7 items du § 4, ils ont aussi
+Live tracking OGN + lien de partage navigateur ; SOS automatique sur choc + immobilité ;
+un assistant IA ; **et les horaires de marée sur les sites côtiers** — ce dernier point
+mord directement sur notre niche soaring.
+
+### Ce qu'ils n'ont pas
+Suivi d'entretien / trim du matériel ; les types de vol gonflage / air-surfing /
+speedflying ; notre ingénierie de fiabilité Watch ; et **la fenêtre de vol apprise
+par spot à partir des vents réels au décollage**.
+
+### Ce qu'il faut leur voler
+Leur verdict **expliqué** : ils ne disent pas « rouge », ils nomment **le** facteur
+bloquant et **à qui appartient la limite**. L'idée est excellente — et chez eux les
+limites sont **déclaratives**. Les nôtres sont **dérivées de vrais décollages
+enregistrés**. C'est le seul endroit du produit où l'on est structurellement meilleurs,
+et il était invisible tant qu'on ne renvoyait qu'un enum. *(Livré : voir
+`PLAN_OUTDARE_RESPONSE.md` item 1.)*
+
+### Conséquence stratégique — la vraie
+Leur traction est encore minuscule (5 notes), donc **ce n'est pas urgent, c'est
+structurel** : un concurrent gratuit tout-en-un sape la prémisse du modèle financé par
+les marques, qui suppose qu'on capte l'audience (les marques suivent l'audience, pas
+l'inverse). **Notre différenciation doit se resserrer sur la profondeur — soaring, Watch,
+matériel — et non sur l'étendue.** Toute tentative de rattraper leur périmètre est une
+course perdue d'avance.
 
 ---
 
