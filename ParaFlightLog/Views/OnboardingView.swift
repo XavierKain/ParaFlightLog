@@ -2,8 +2,9 @@
 //  OnboardingView.swift
 //  ParaFlightLog
 //
-//  First-launch onboarding: presents the app's pillars page by page and
-//  ends by guiding the pilot to add their first wing.
+//  First-launch onboarding: presents the app's pillars page by page, offers
+//  the "flyable tomorrow" alerts as an explicit opt-in, and ends by guiding
+//  the pilot to add their first wing.
 //  Shown once (UserDefaultsKeys.hasCompletedOnboarding).
 //  Target: iOS only
 //
@@ -17,7 +18,16 @@ struct OnboardingView: View {
     let onSkip: () -> Void
 
     @State private var currentPage = 0
-    private let lastPageIndex = 3
+    private let lastPageIndex = 4
+
+    /// Forecast-alerts opt-in, bound to the SAME UserDefaults key the Settings
+    /// toggle uses (ForecastAlertService.enabledKey), so Settings always shows
+    /// what was chosen here and stays the single source of truth.
+    /// Default OFF on purpose: this page is an explicit, informed opt-in.
+    /// Flipping it here only PERSISTS the preference — notification
+    /// authorization is still requested lazily by ForecastAlertService
+    /// (PushService.ensureAuthorized) when there is a first alert to schedule.
+    @AppStorage(ForecastAlertService.enabledKey) private var forecastAlertsEnabled = false
 
     var body: some View {
         ZStack {
@@ -69,6 +79,44 @@ struct OnboardingView: View {
                     )
                     .tag(2)
 
+                    // Forecast alerts: explicit opt-in, no system prompt here.
+                    VStack(spacing: 22) {
+                        Spacer()
+
+                        Image(systemName: "bell.badge")
+                            .font(.system(size: 72))
+                            .foregroundStyle(.indigo)
+
+                        Text("Never miss a good day")
+                            .font(.title.bold())
+                            .multilineTextAlignment(.center)
+
+                        Text("SoarX follows the spots you fly, so it knows where to look from your very first flight. Turn this on and you get one notification the morning before — the spot, the wind direction and its strength — and only when the forecast matches what that spot actually needs.")
+                            .font(.body)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+
+                        Toggle(isOn: $forecastAlertsEnabled) {
+                            Text("Alert me on flyable days")
+                                .font(.headline)
+                        }
+                        .padding(.horizontal, 18)
+                        .padding(.vertical, 12)
+                        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 14))
+                        .padding(.horizontal, 32)
+
+                        Text("iOS only asks for notification permission when the first alert is ready. You can change this any time in Settings.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 32)
+
+                        Spacer()
+                        Spacer()
+                    }
+                    .tag(3)
+
                     // Final page: guided first action
                     VStack(spacing: 24) {
                         Spacer()
@@ -108,7 +156,7 @@ struct OnboardingView: View {
                         // bottom of the TabView (they overlapped this button)
                         .padding(.bottom, 56)
                     }
-                    .tag(3)
+                    .tag(4)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .always))
                 .indexViewStyle(.page(backgroundDisplayMode: .always))
