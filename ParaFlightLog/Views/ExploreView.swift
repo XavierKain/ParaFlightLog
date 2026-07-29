@@ -834,6 +834,13 @@ private struct CommunitySpotSheet: View {
                     )
                 }
 
+                // Real anemometer vs. model, same as the local spot page.
+                LiveWindBeaconRow(
+                    latitude: summary.latitude,
+                    longitude: summary.longitude,
+                    forecastSpeed: weather.windSpeed
+                )
+
                 // Next 48 h — same strip as the local spot page. The
                 // flyability tint uses the directions LEARNED from shared
                 // flights here (gray cells until the spot has learned data).

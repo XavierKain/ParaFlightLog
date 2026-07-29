@@ -786,6 +786,14 @@ private struct SpotWeatherSection: View {
                     windGusts: weather.windGusts
                 )
 
+                // The forecast checked against a real anemometer — directly
+                // under the verdict it is allowed to contradict.
+                LiveWindBeaconRow(
+                    latitude: latitude,
+                    longitude: longitude,
+                    forecastSpeed: weather.windSpeed
+                )
+
                 // Today's thermal picture — hidden entirely on non-thermal days,
                 // which is most days at a coastal spot.
                 if let thermal = WeatherService.thermalOutlook(from: weather.hourly, on: Date()) {
@@ -843,8 +851,9 @@ private struct SpotWeatherSection: View {
             }
         } footer: {
             if weather != nil {
-                // Attribution not required by Open-Meteo, kept as a courtesy.
-                Text("Forecast by Open-Meteo. Dots rate the wind against the launch directions above.")
+                // Open-Meteo attribution is a courtesy; the OpenWindMap one is
+                // a licence condition and must stay visible.
+                Text("Forecast by Open-Meteo. \(WindBeaconService.attribution). Dots rate the wind against the launch directions above.")
             }
         }
     }
