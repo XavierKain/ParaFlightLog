@@ -513,7 +513,7 @@ struct ArchivedWingsView: View {
                                 // Flight count
                                 let flightCount = wing.flights?.count ?? 0
                                 if flightCount > 0 {
-                                    Text("\(flightCount) flight\(flightCount > 1 ? "s" : "")")
+                                    Text("^[\(flightCount) flight](inflect: true)")
                                         .font(.caption)
                                         .foregroundStyle(.blue)
                                 }
@@ -559,7 +559,7 @@ struct ArchivedWingsView: View {
         } message: {
             if let wing = wingToDelete {
                 let flightCount = wing.flights?.count ?? 0
-                Text("⚠️ This action is irreversible! The wing \"\(wing.name)\" and its \(flightCount) flight\(flightCount > 1 ? "s" : "") will be permanently deleted.")
+                Text("⚠️ This action is irreversible! The wing \"\(wing.name)\" and its ^[\(flightCount) flight](inflect: true) will be permanently deleted.")
             }
         }
     }

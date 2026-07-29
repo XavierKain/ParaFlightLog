@@ -99,7 +99,7 @@ struct WingsView: View {
                 if let wing = wingToDelete {
                     let flightCount = wing.flights?.count ?? 0
                     if flightCount > 0 {
-                        Text("This wing has \(flightCount) recorded flight\(flightCount > 1 ? "s" : ""). Archiving keeps the data, deleting erases it.")
+                        Text("This wing has ^[\(flightCount) flight](inflect: true) recorded. Archiving keeps the data, deleting erases it.")
                     } else {
                         Text("This wing has no recorded flights.")
                     }

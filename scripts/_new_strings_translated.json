@@ -1,0 +1,78 @@
+{
+  "No launch directions set for this spot yet.": {
+    "fr": "Aucune orientation de décollage définie pour ce spot.",
+    "de": "Für diesen Spot sind noch keine Startrichtungen hinterlegt."
+  },
+  "No wind data for this moment.": {
+    "fr": "Pas de données de vent pour ce moment.",
+    "de": "Keine Winddaten für diesen Zeitpunkt."
+  },
+  "Conditions look flyable.": {
+    "fr": "Les conditions semblent volables.",
+    "de": "Die Bedingungen sehen fliegbar aus."
+  },
+  "From this site's orientations on ParaglidingEarth.": {
+    "fr": "D'après les orientations de ce site sur ParaglidingEarth.",
+    "de": "Nach den Ausrichtungen dieses Fluggebiets auf ParaglidingEarth."
+  },
+  "From the launch directions you set for this spot.": {
+    "fr": "D'après les orientations de décollage que tu as définies pour ce spot.",
+    "de": "Nach den Startrichtungen, die du für diesen Spot festgelegt hast."
+  },
+  "North": { "fr": "nord", "de": "Norden" },
+  "North-East": { "fr": "nord-est", "de": "Nordosten" },
+  "East": { "fr": "est", "de": "Osten" },
+  "South-East": { "fr": "sud-est", "de": "Südosten" },
+  "South": { "fr": "sud", "de": "Süden" },
+  "South-West": { "fr": "sud-ouest", "de": "Südwesten" },
+  "West": { "fr": "ouest", "de": "Westen" },
+  "North-West": { "fr": "nord-ouest", "de": "Nordwesten" },
+  "no direction": { "fr": "aucune direction", "de": "keine Richtung" },
+  "Or continue with": {
+    "fr": "Ou continuer avec",
+    "de": "Oder weiter mit"
+  },
+  "No password to remember. If the provider gives us an email you already have an account with, you land back in the same logbook.": {
+    "fr": "Aucun mot de passe à retenir. Si le fournisseur nous transmet un e-mail avec lequel tu as déjà un compte, tu retombes sur le même carnet de vol.",
+    "de": "Kein Passwort zum Merken. Wenn der Anbieter uns eine E-Mail übermittelt, mit der du bereits ein Konto hast, landest du wieder im selben Flugbuch."
+  },
+  "No live wind beacon nearby — pilot reports are the only ground truth here.": {
+    "fr": "Aucune balise de vent à proximité — ici, les reports des pilotes sont la seule vérité terrain.",
+    "de": "Keine Windstation in der Nähe — hier sind Pilotenmeldungen die einzige verlässliche Quelle."
+  },
+  "just now": { "fr": "à l'instant", "de": "gerade eben" },
+  "Never miss a good day": {
+    "fr": "Ne rate plus un bon jour",
+    "de": "Verpasse keinen guten Tag mehr"
+  },
+  "SoarX follows the spots you fly, so it knows where to look from your very first flight. Turn this on and you get one notification the morning before — the spot, the wind direction and its strength — and only when the forecast matches what that spot actually needs.": {
+    "fr": "SoarX suit les spots où tu voles, donc il sait où regarder dès ton tout premier vol. Active ceci et tu reçois une notification la veille au matin — le spot, la direction du vent et sa force — et uniquement quand les prévisions correspondent à ce que ce spot demande vraiment.",
+    "de": "SoarX merkt sich die Spots, an denen du fliegst, und weiß so schon ab deinem allerersten Flug, wo es hinschauen muss. Schalte das ein und du bekommst am Morgen davor eine Benachrichtigung — der Spot, die Windrichtung und ihre Stärke — und nur dann, wenn die Vorhersage zu dem passt, was dieser Spot wirklich braucht."
+  },
+  "iOS only asks for notification permission when the first alert is ready. You can change this any time in Settings.": {
+    "fr": "iOS ne demande l'autorisation de notification qu'au moment où la première alerte est prête. Tu peux changer ça à tout moment dans les Réglages.",
+    "de": "iOS fragt die Mitteilungs-Erlaubnis erst ab, wenn die erste Meldung ansteht. Du kannst das jederzeit in den Einstellungen ändern."
+  },
+  "Unstable — the day can overdevelop.": {
+    "fr": "Instable — la journée peut surdévelopper.",
+    "de": "Labil — der Tag kann überentwickeln."
+  },
+  "Status": { "fr": "État", "de": "Status" },
+  "Wind": { "fr": "Vent", "de": "Wind" },
+  "Send": { "fr": "Envoyer", "de": "Senden" },
+  "Sending…": { "fr": "Envoi…", "de": "Senden…" },
+  "Start a flight": { "fr": "Démarrer un vol", "de": "Flug starten" },
+  "Flight": { "fr": "Vol", "de": "Flug" },
+  "Shows flight status and quick access": {
+    "fr": "Affiche le statut de vol et un accès rapide",
+    "de": "Zeigt den Flugstatus und schnellen Zugriff"
+  },
+  "⚠️ This action is irreversible! The wing \"%1$@\" and its ^[%2$lld flight](inflect: true) will be permanently deleted.": {
+    "fr": "⚠️ Cette action est irréversible ! La voile « %1$@ » et ses ^[%2$lld vol](inflect: true) seront définitivement supprimés.",
+    "de": "⚠️ Diese Aktion ist unwiderruflich! Der Schirm „%1$@“ und seine ^[%2$lld Flug](inflect: true) werden endgültig gelöscht."
+  },
+  "This wing has ^[%lld flight](inflect: true) recorded. Archiving keeps the data, deleting erases it.": {
+    "fr": "Cette voile totalise ^[%lld vol](inflect: true). L'archivage conserve les données, la suppression les efface.",
+    "de": "Dieser Schirm hat ^[%lld Flug](inflect: true) aufgezeichnet. Archivieren behält die Daten, Löschen entfernt sie."
+  }
+}

@@ -9,36 +9,12 @@
 import SwiftUI
 import WidgetKit
 
-// MARK: - Localization Helper
-
-/// Helper pour les chaînes localisées du widget
-/// Lit la langue depuis les UserDefaults de l'app Watch (synchronisée depuis iPhone)
-private enum WidgetStrings {
-    /// Clé utilisée par WatchLocalizationManager pour stocker la langue
-    private static let languageKey = "watch_app_language"
-    
-    /// Vérifie si la langue sélectionnée dans l'app est le français
-    private static var isFrench: Bool {
-        // Lire la langue depuis UserDefaults (partagé avec l'app Watch)
-        if let languageCode = UserDefaults.standard.string(forKey: languageKey) {
-            return languageCode == "fr"
-        }
-        // Fallback: utiliser la langue du système
-        return Locale.current.language.languageCode?.identifier == "fr"
-    }
-    
-    static var startFlight: String {
-        isFrench ? "Démarrer un vol" : "Start a flight"
-    }
-    
-    static var description: String {
-        isFrench ? "Affiche le statut de vol et accès rapide" : "Shows flight status and quick access"
-    }
-    
-    static var flight: String {
-        isFrench ? "Vol" : "Flight"
-    }
-}
+// NOTE: this extension used to carry a hand-rolled FR/EN switch (WidgetStrings,
+// reading a "watch_app_language" default written by the v1 localization
+// manager). Nothing writes that default any more, and the app now ships a real
+// string catalog localized to en/fr/de — so the strings below are plain
+// LocalizedStringKey / LocalizedStringResource literals and get translated by
+// the standard mechanism.
 
 // MARK: - Timeline Entry
 
@@ -177,7 +153,7 @@ struct RectangularWidgetView: View {
                     Text("ParaFlightLog")
                         .font(.headline)
 
-                    Text(WidgetStrings.startFlight)
+                    Text("Start a flight")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                 }
@@ -197,7 +173,7 @@ struct CornerWidgetView: View {
         Image(systemName: "wind")
             .font(.system(size: 20, weight: .semibold))
             .widgetLabel {
-                Text(WidgetStrings.flight)
+                Text("Flight")
             }
     }
 }
@@ -227,7 +203,7 @@ struct ParaFlightLogWidget: Widget {
             FlightWidgetEntryView(entry: entry)
         }
         .configurationDisplayName("ParaFlightLog")
-        .description(WidgetStrings.description)
+        .description("Shows flight status and quick access")
 #if os(watchOS)
         .supportedFamilies([
             .accessoryCircular,
