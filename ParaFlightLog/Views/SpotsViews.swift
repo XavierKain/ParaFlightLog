@@ -349,6 +349,7 @@ struct SpotDetailView: View {
             // Weather (only when the spot is located)
             if let lat = spot.latitude, let lon = spot.longitude {
                 SpotWeatherSection(
+                    spot: spot,
                     latitude: lat,
                     longitude: lon,
                     windDirections: sortedDirections
@@ -756,9 +757,12 @@ extension Flyability {
     }
 }
 
-// MARK: - SpotWeatherSection (current conditions + 7-day forecast)
+// MARK: - SpotWeatherSection (current conditions + 10-day forecast)
 
 private struct SpotWeatherSection: View {
+    /// Needed for the LEARNED verdict — the dots below still rate against the
+    /// live-edited `windDirections`, but the headline is allowed to know better.
+    let spot: Spot
     let latitude: Double
     let longitude: Double
     /// The spot's launch directions (live edit state) for the flyability dots.
@@ -772,6 +776,21 @@ private struct SpotWeatherSection: View {
         Section {
             if let weather {
                 currentRow(weather)
+
+                // Why the current conditions rate the way they do, and on whose
+                // authority.
+                SpotVerdictRow(
+                    spot: spot,
+                    windDirectionDeg: weather.windDirectionDeg,
+                    windSpeed: weather.windSpeed,
+                    windGusts: weather.windGusts
+                )
+
+                // Today's thermal picture — hidden entirely on non-thermal days,
+                // which is most days at a coastal spot.
+                if let thermal = WeatherService.thermalOutlook(from: weather.hourly, on: Date()) {
+                    ThermalOutlookRow(outlook: thermal)
+                }
 
                 // Next 48 h, one compact cell per hour tinted by flyability.
                 if !weather.hourly.isEmpty {

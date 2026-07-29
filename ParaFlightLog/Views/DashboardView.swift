@@ -451,8 +451,13 @@ struct DashboardView: View {
 private struct DashboardConditionsCard: View {
     let spot: Spot
 
+    @Environment(DataController.self) private var dataController
     @State private var weather: SpotWeather?
     @State private var loadFailed = false
+    /// Learned verdict for the current conditions — the badge's rating AND the
+    /// one-line reason under the wind. Loaded together with the weather so the
+    /// two can never describe different conditions.
+    @State private var verdict: FlyabilityVerdict?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -495,26 +500,21 @@ private struct DashboardConditionsCard: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
+
+                    // The reason, not just the colour. This is the line the
+                    // pilot actually reads at 7am.
+                    if let verdict, verdict.rating != .unknown {
+                        Text(verdict.headline)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
 
                 Spacer()
 
-                if let weather {
-                    let flyability = WeatherService.flyability(
-                        windDirectionDeg: weather.windDirectionDeg,
-                        windSpeed: weather.windSpeed,
-                        windGusts: weather.windGusts,
-                        spotDirections: spot.windDirections
-                    )
-                    if flyability != .unknown {
-                        Text(flyability.displayLabel)
-                            .font(.caption2.weight(.semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 4)
-                            .foregroundStyle(flyability.displayColor)
-                            .background(flyability.displayColor.opacity(0.15))
-                            .clipShape(Capsule())
-                    }
+                if let verdict, verdict.rating != .unknown {
+                    FlyabilityVerdictBadge(rating: verdict.rating)
                 }
 
                 Image(systemName: "chevron.right")
@@ -532,8 +532,16 @@ private struct DashboardConditionsCard: View {
     private func load() async {
         loadFailed = false
         do {
-            weather = try await WeatherService.shared.weather(
+            let fetched = try await WeatherService.shared.weather(
                 latitude: spot.latitude ?? 0, longitude: spot.longitude ?? 0
+            )
+            weather = fetched
+            verdict = await WeatherService.shared.verdictV2(
+                for: spot,
+                windDirectionDeg: fetched.windDirectionDeg,
+                windSpeed: fetched.windSpeed,
+                windGusts: fetched.windGusts,
+                dataController: dataController
             )
         } catch {
             logWarning("Dashboard conditions failed: \(error.localizedDescription)", category: .weather)

@@ -720,6 +720,12 @@ private struct CommunitySpotSheet: View {
     /// same information as the pilot's own spot page.
     @State private var learnedDirections: [String] = []
 
+    /// The window behind those directions, kept whole so the current conditions
+    /// can be given an EXPLAINED verdict — on a community spot the provenance
+    /// caption matters even more, since the pilot has never flown here and has
+    /// no other way to judge how much the rating is worth.
+    @State private var learnedWindow: SpotIntelligenceService.LearnedWindow?
+
     /// Live presence: prefer the fresh per-spot stats over the (possibly
     /// 15-minute-old) Explore summary once they arrive.
     private var pilotsFlyingNow: Int {
@@ -813,6 +819,20 @@ private struct CommunitySpotSheet: View {
         Section {
             if let weather {
                 currentConditionsRow(weather)
+
+                // Explained verdict, only once the community window has landed:
+                // without it there is nothing honest to say beyond the numbers
+                // already on the row above.
+                if let learnedWindow {
+                    FlyabilityVerdictRow(
+                        verdict: SpotIntelligenceService.shared.verdictV2(
+                            windDirectionDeg: weather.windDirectionDeg,
+                            windSpeed: weather.windSpeed,
+                            windGusts: weather.windGusts,
+                            window: learnedWindow
+                        )
+                    )
+                }
 
                 // Next 48 h — same strip as the local spot page. The
                 // flyability tint uses the directions LEARNED from shared
@@ -1083,6 +1103,7 @@ private struct CommunitySpotSheet: View {
             spotKey: summary.spotKey, latitude: summary.latitude, longitude: summary.longitude
         )
         guard !window.isEmpty else { return }
+        learnedWindow = window
         learnedDirections = WeatherService.compassPoints.filter { window.sectors[$0] != nil }
     }
 }

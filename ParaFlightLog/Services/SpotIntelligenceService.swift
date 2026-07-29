@@ -59,6 +59,15 @@ final class SpotIntelligenceService {
 
         /// Empty windows carry no direction information at all.
         var isEmpty: Bool { sectors.isEmpty }
+
+        /// How a verdict rated against this window should describe its limits.
+        var basis: FlyabilityBasis {
+            switch source {
+            case .learned: return .learned(flights: totalFlights)
+            case .seeded: return .seeded
+            case .configured: return .configured
+            }
+        }
     }
 
     // MARK: - Tuning
@@ -296,8 +305,28 @@ final class SpotIntelligenceService {
         windGusts: Double?,
         window: LearnedWindow
     ) -> Flyability {
+        verdictV2(windDirectionDeg: windDirectionDeg, windSpeed: windSpeed,
+                  windGusts: windGusts, window: window).rating
+    }
+
+    /// The explained form of `flyabilityV2`: the same rating, plus the ONE
+    /// limiting factor and the window's provenance. This is where the app's
+    /// real edge becomes visible — a red against a band derived from 14 real
+    /// takeoffs at this spot says something a generic threshold cannot.
+    ///
+    /// The rating is computed by `FlyabilityVerdict.make`, which reproduces the
+    /// original combination rule exactly; the only change is that the speed and
+    /// gust checks are rated separately so one of them can be named.
+    func verdictV2(
+        windDirectionDeg: Double?,
+        windSpeed: Double?,
+        windGusts: Double?,
+        window: LearnedWindow
+    ) -> FlyabilityVerdict {
         guard !window.sectors.isEmpty else { return .unknown }
-        guard let direction = windDirectionDeg, let speed = windSpeed else { return .unknown }
+        guard let direction = windDirectionDeg, let speed = windSpeed else {
+            return .noWindData(basis: window.basis)
+        }
         let gusts = windGusts ?? speed
 
         // Direction against the learned sectors, via the 8-point buckets.
@@ -310,11 +339,21 @@ final class SpotIntelligenceService {
             || window.sectors[left] != nil
             || window.sectors[right] != nil
 
-        let (goodSpeeds, marginalSpeeds) = Self.speedFit(speed: speed, gusts: gusts, range: window.speedRange)
+        let directionSeverity: FlyabilityVerdict.Severity = directionOK ? .ok : (directionBorderline ? .marginal : .breaking)
+        let speedCandidate = Self.speedCandidate(speed: speed, range: window.speedRange)
+        let gustCandidate = Self.gustCandidate(gusts: gusts, range: window.speedRange)
 
-        if directionOK && goodSpeeds { return .good }
-        if (directionOK && marginalSpeeds) || (directionBorderline && goodSpeeds) { return .marginal }
-        return .bad
+        return FlyabilityVerdict.make(
+            direction: .init(directionSeverity, .direction(
+                from: windPoint,
+                worksWith: FlyabilityVerdict.orderedPoints(window.sectors.keys)
+            )),
+            speed: speedCandidate,
+            gusts: gustCandidate,
+            basis: window.basis,
+            windFrom: windPoint,
+            windSpeed: speed
+        )
     }
 
     /// Spot overload: when the window is empty (no learned data, no seed, no
@@ -327,15 +366,30 @@ final class SpotIntelligenceService {
         windGusts: Double?,
         window: LearnedWindow
     ) -> Flyability {
+        verdictV2(spot: spot, windDirectionDeg: windDirectionDeg, windSpeed: windSpeed,
+                  windGusts: windGusts, window: window).rating
+    }
+
+    /// Explained spot overload, same fallback: an empty window defers to the
+    /// classic verdict, which reports `.configured` as its basis — so the
+    /// caption tells the pilot the rating rests on directions they typed in,
+    /// not on anything the app has observed.
+    func verdictV2(
+        spot: Spot,
+        windDirectionDeg: Double?,
+        windSpeed: Double?,
+        windGusts: Double?,
+        window: LearnedWindow
+    ) -> FlyabilityVerdict {
         guard !window.sectors.isEmpty else {
-            return WeatherService.flyability(
+            return WeatherService.verdict(
                 windDirectionDeg: windDirectionDeg,
                 windSpeed: windSpeed,
                 windGusts: windGusts,
                 spotDirections: spot.windDirections
             )
         }
-        return flyabilityV2(
+        return verdictV2(
             windDirectionDeg: windDirectionDeg,
             windSpeed: windSpeed,
             windGusts: windGusts,
@@ -343,18 +397,68 @@ final class SpotIntelligenceService {
         )
     }
 
-    /// (good, marginal) speed verdicts. With a learned range: good inside the
-    /// ±20%-padded band (gusts ≤ 1.5× padded high), marginal a bit either side.
-    /// Without one: the classic WeatherService thresholds.
-    private static func speedFit(speed: Double, gusts: Double, range: ClosedRange<Double>?) -> (good: Bool, marginal: Bool) {
+    /// Sustained-wind severity, plus how to phrase it if it turns out to be the
+    /// limiting factor. With a learned range: good inside the ±20%-padded band,
+    /// marginal a bit either side. Without one: the classic one-sided
+    /// WeatherService thresholds — which is why `.windTooLight` can only ever
+    /// come out of a learned band. A spot's lower bound is real information
+    /// (a coastal ridge does not work at 5 km/h) and no threshold knows it.
+    private static func speedCandidate(speed: Double, range: ClosedRange<Double>?) -> FlyabilityVerdict.Candidate {
         guard let range else {
-            return (speed <= 25 && gusts <= 40, speed <= 35 && gusts <= 55)
+            let severity: FlyabilityVerdict.Severity = speed <= WeatherService.goodSpeedLimit
+                ? .ok
+                : (speed <= WeatherService.marginalSpeedLimit ? .marginal : .breaking)
+            return .init(severity, .windTooStrong(
+                kmh: speed,
+                band: nil,
+                defaultLimit: severity == .breaking ? WeatherService.marginalSpeedLimit : WeatherService.goodSpeedLimit
+            ))
         }
+
         let padLow = max(0, range.lowerBound * (1 - speedPad))
         let padHigh = range.upperBound * (1 + speedPad)
-        let good = speed >= padLow && speed <= padHigh && gusts <= padHigh * 1.5
-        let marginal = speed >= padLow * 0.6 && speed <= padHigh * 1.4 && gusts <= padHigh * 2.0
-        return (good, marginal)
+
+        let severity: FlyabilityVerdict.Severity
+        if speed >= padLow && speed <= padHigh {
+            severity = .ok
+        } else if speed >= padLow * 0.6 && speed <= padHigh * 1.4 {
+            severity = .marginal
+        } else {
+            severity = .breaking
+        }
+
+        // Quote the UNPADDED band: the padding is our tolerance, not something
+        // the pilot ever flew.
+        let factor: FlyabilityFactor = speed < padLow
+            ? .windTooLight(kmh: speed, band: range)
+            : .windTooStrong(kmh: speed, band: range, defaultLimit: padHigh)
+        return .init(severity, factor)
+    }
+
+    /// Gust severity, rated separately from the sustained wind so a verdict can
+    /// name gusts specifically — the difference between "too windy" and "too
+    /// rough" is the whole decision on a marginal day.
+    private static func gustCandidate(gusts: Double, range: ClosedRange<Double>?) -> FlyabilityVerdict.Candidate {
+        guard let range else {
+            let severity: FlyabilityVerdict.Severity = gusts <= WeatherService.goodGustLimit
+                ? .ok
+                : (gusts <= WeatherService.marginalGustLimit ? .marginal : .breaking)
+            return .init(severity, .gusts(
+                kmh: gusts,
+                limit: severity == .breaking ? WeatherService.marginalGustLimit : WeatherService.goodGustLimit,
+                isLearned: false
+            ))
+        }
+
+        let padHigh = range.upperBound * (1 + speedPad)
+        let goodLimit = padHigh * 1.5
+        let marginalLimit = padHigh * 2.0
+        let severity: FlyabilityVerdict.Severity = gusts <= goodLimit ? .ok : (gusts <= marginalLimit ? .marginal : .breaking)
+        return .init(severity, .gusts(
+            kmh: gusts,
+            limit: severity == .breaking ? marginalLimit : goodLimit,
+            isLearned: true
+        ))
     }
 
     // MARK: - ParaglidingEarth seed
