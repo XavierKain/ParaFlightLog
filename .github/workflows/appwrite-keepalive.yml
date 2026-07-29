@@ -1,0 +1,69 @@
+name: Appwrite keep-alive
+
+# Appwrite Cloud's free tier pauses a project after 7 days without API
+# requests, which silently kills the wing catalog, community spots, condition
+# reports and push for everyone. One request a day is enough to reset that
+# counter, and running it here rather than on a laptop means it keeps happening
+# while nobody is flying or coding.
+#
+# Nothing secret is involved: the project ID is a public client identifier,
+# already shipped in the app binary (ParaFlightLog/Services/AppwriteService.swift)
+# and readable in this repo. The request is exactly the anonymous read the app
+# performs on launch.
+#
+# If the project IS paused, the request fails and this workflow goes red — which
+# is the point: GitHub emails you instead of a beta tester discovering it.
+
+on:
+  schedule:
+    # Daily at 07:14 UTC. Off the hour on purpose: GitHub queues cron jobs and
+    # delays the crowded slots the most.
+    - cron: '14 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    name: Ping the Appwrite project
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      APPWRITE_ENDPOINT: https://fra.cloud.appwrite.io/v1
+      APPWRITE_PROJECT: 69524ce30037813a6abb
+      APPWRITE_DATABASE: 69524e510015a312526b
+    steps:
+      - name: Read the public wing catalog
+        run: |
+          set -euo pipefail
+          # A real database read against a real collection — closer to what
+          # Appwrite counts as project activity than a bare health check.
+          # `read(any)` on `wings` is what lets the app load the catalog before
+          # the pilot signs in, so no key is needed.
+          url="${APPWRITE_ENDPOINT}/databases/${APPWRITE_DATABASE}/collections/wings/documents"
+          query='queries[]={"method":"limit","values":[1]}'
+          # Not named `status`: that's read-only in zsh, and this snippet is
+          # worth being able to paste into a local shell to debug.
+          http_code=$(curl -sS -G \
+            --max-time 30 --retry 3 --retry-delay 10 --retry-all-errors \
+            -o /tmp/wings.json -w '%{http_code}' \
+            --data-urlencode "$query" \
+            -H "X-Appwrite-Project: ${APPWRITE_PROJECT}" \
+            "$url")
+
+          echo "HTTP $http_code"
+          head -c 400 /tmp/wings.json; echo
+
+          if [ "$http_code" != "200" ]; then
+            echo "::error::Appwrite returned HTTP $http_code — the project is probably paused. Restore it at https://cloud.appwrite.io/console/project-fra-${APPWRITE_PROJECT}"
+            exit 1
+          fi
+
+          total=$(python3 -c 'import json;print(json.load(open("/tmp/wings.json"))["total"])')
+          echo "Wing catalog reachable — $total wings."
+
+      - name: Ping
+        run: |
+          set -euo pipefail
+          curl -sS --max-time 30 --retry 2 \
+            -H "X-Appwrite-Project: ${APPWRITE_PROJECT}" \
+            "${APPWRITE_ENDPOINT}/ping"
+          echo
