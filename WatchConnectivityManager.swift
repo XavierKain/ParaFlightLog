@@ -307,6 +307,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             return
         }
 
+        // Condition report posted from the Watch? The reply IS the feature:
+        // handleConditionReport always calls the replyHandler exactly once.
+        if message[WatchSyncKeys.conditionReport] as? Bool == true {
+            handleConditionReport(message, replyHandler: replyHandler)
+            return
+        }
+
         // Otherwise it should be a flight
         guard let dto = Self.decodeFlightDTO(from: message) else {
             logWarning("Received message is not a valid flight payload", category: .watchSync)
@@ -339,6 +346,13 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         // Flight started on the Watch? Best-effort live presence (Step C2).
         if message[WatchSyncKeys.flightStarted] as? Bool == true {
             handleFlightStarted(message)
+            return
+        }
+
+        // Condition report from an older/odd delivery path with no reply
+        // channel. Still posted — the Watch just won't hear the outcome.
+        if message[WatchSyncKeys.conditionReport] as? Bool == true {
+            handleConditionReport(message, replyHandler: nil)
             return
         }
 
@@ -475,6 +489,120 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                 spotKey: spotKey
             )
         }
+    }
+
+    // MARK: - Condition report from the Watch
+
+    /// Posts a community condition report the pilot filed ON THE WATCH:
+    /// [conditionReport: true, conditionReportStatus: String,
+    ///  conditionReportWindForce: String, "latitude": Double, "longitude": Double].
+    ///
+    /// The Watch has no auth, no spot list, no cooldown state and no network,
+    /// so this is the only place the truth exists — the reply carries a real
+    /// `ConditionReportOutcome` and the Watch shows it verbatim. `replyHandler`
+    /// is therefore called EXACTLY ONCE on every path.
+    ///
+    /// The spot is resolved from raw coordinates exactly like
+    /// `handleFlightStarted`, so the Watch never needs GeoHash or the spot list.
+    private func handleConditionReport(_ payload: [String: Any], replyHandler: (([String: Any]) -> Void)?) {
+        let statusRaw = payload[WatchSyncKeys.conditionReportStatus] as? String
+        let windRaw = payload[WatchSyncKeys.conditionReportWindForce] as? String
+        let latitude = payload["latitude"] as? Double
+        let longitude = payload["longitude"] as? Double
+
+        DispatchQueue.main.async { [weak self] in
+            guard let statusRaw, let status = ReportStatus(rawValue: statusRaw),
+                  let windRaw, let windForce = WindForce(rawValue: windRaw) else {
+                logWarning("Condition report from the Watch has an unreadable status/wind force", category: .community)
+                Self.replyConditionReport(replyHandler, .failed)
+                return
+            }
+
+            guard let latitude, let longitude else {
+                logDebug("Condition report from the Watch has no coordinates", category: .community)
+                Self.replyConditionReport(replyHandler, .noLocation)
+                return
+            }
+
+            // Answered without a round trip so the pilot gets an instant,
+            // actionable "sign in on your phone" instead of a network error.
+            guard AuthService.shared.state.isSignedIn else {
+                Self.replyConditionReport(replyHandler, .notSignedIn)
+                return
+            }
+
+            // Same resolution as live presence: nearest known spot within
+            // 1.5 km, and its canonical community key so Watch reports
+            // aggregate with the ones posted from the iPhone.
+            let coordinate = CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            guard let spot = self?.dataController?.nearestSpot(to: coordinate, within: 1500),
+                  let spotKey = spot.communitySpotKey
+                    ?? CommunitySpotKey.make(name: spot.name, latitude: spot.latitude, longitude: spot.longitude) else {
+                Self.replyConditionReport(replyHandler, .noSpotNearby)
+                return
+            }
+            let spotName = spot.name
+
+            Task { @MainActor in
+                // Checked before submitting so the reply can carry the exact
+                // remaining time; submitReport would only throw a bare
+                // .reportCooldown.
+                let remaining = ConditionReportService.shared.submitCooldownRemaining(forSpotKey: spotKey)
+                guard remaining <= 0 else {
+                    Self.replyConditionReport(
+                        replyHandler, .cooldown,
+                        extra: [WatchSyncKeys.conditionReportCooldown: remaining]
+                    )
+                    return
+                }
+
+                do {
+                    // The Watch reports status + wind force only: it has no
+                    // wind vane, no note field and no wing size at hand.
+                    try await ConditionReportService.shared.submitReport(
+                        spot: spot,
+                        spotKey: spotKey,
+                        spotName: spotName,
+                        status: status,
+                        windForce: windForce,
+                        windDirectionDeg: nil,
+                        wingSize: nil,
+                        note: nil
+                    )
+                    logInfo("Condition report from the Watch posted at \(spotKey) (\(status.rawValue))", category: .community)
+                    Self.replyConditionReport(
+                        replyHandler, .posted,
+                        extra: [WatchSyncKeys.conditionReportSpotName: spotName]
+                    )
+                } catch ConditionReportError.notSignedIn {
+                    Self.replyConditionReport(replyHandler, .notSignedIn)
+                } catch ConditionReportError.reportCooldown {
+                    Self.replyConditionReport(
+                        replyHandler, .cooldown,
+                        extra: [WatchSyncKeys.conditionReportCooldown:
+                                    ConditionReportService.shared.submitCooldownRemaining(forSpotKey: spotKey)]
+                    )
+                } catch ConditionReportError.backendNotConfigured {
+                    Self.replyConditionReport(replyHandler, .backendUnavailable)
+                } catch {
+                    logWarning("Condition report from the Watch failed: \(error.localizedDescription)", category: .community)
+                    Self.replyConditionReport(replyHandler, .failed)
+                }
+            }
+        }
+    }
+
+    /// Single exit point for the Watch's condition-report reply, so no branch
+    /// can leave the Watch waiting (or claim a success it never got).
+    private static func replyConditionReport(
+        _ replyHandler: (([String: Any]) -> Void)?,
+        _ outcome: ConditionReportOutcome,
+        extra: [String: Any] = [:]
+    ) {
+        guard let replyHandler else { return }
+        var response: [String: Any] = [WatchSyncKeys.conditionReportOutcome: outcome.rawValue]
+        for (key, value) in extra { response[key] = value }
+        replyHandler(response)
     }
 
     // MARK: - Flight Handling

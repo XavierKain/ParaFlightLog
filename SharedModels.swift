@@ -45,6 +45,142 @@ nonisolated enum FlightType: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - ReportStatus
+/// What a pilot reports about a spot right now. Raw values are the exact
+/// strings stored in `spot_reports.status`.
+///
+/// Lives HERE (and not in ConditionReportService.swift) because the Apple
+/// Watch posts condition reports too, and this root-level file is the only
+/// source file compiled into BOTH the iOS app and the Watch app targets.
+/// The SwiftUI `color` used by the iPhone chips stays iOS-only, as an
+/// extension in ConditionReportService.swift — this file must not import
+/// SwiftUI.
+nonisolated enum ReportStatus: String, CaseIterable, Identifiable, Sendable {
+    case flying
+    case goingToFly
+    case flyable
+    case notFlyable
+    case tooStrong
+
+    var id: String { rawValue }
+
+    /// Emoji shown on the status chip.
+    var emoji: String {
+        switch self {
+        case .flying: return "🪂"
+        case .goingToFly: return "🚗"
+        case .flyable: return "✅"
+        case .notFlyable: return "🚫"
+        case .tooStrong: return "💨"
+        }
+    }
+
+    /// Short chip label.
+    var label: String {
+        switch self {
+        case .flying: return "Flying now"
+        case .goingToFly: return "Going to fly"
+        case .flyable: return "Flyable"
+        case .notFlyable: return "Not flyable"
+        case .tooStrong: return "Too strong"
+        }
+    }
+}
+
+// MARK: - WindForce
+/// Rough wind strength reported alongside the status. Raw values are the
+/// exact strings stored in `spot_reports.windForce` (unchanged — only the
+/// labels/hints are recalibrated for free flight, in KNOTS).
+///
+/// Free-flight scale (paraglider / parakite), knots reference:
+///   calm       < 5 kt   — hard to soar
+///   light      5–11 kt
+///   moderate   11–18 kt — sweet spot
+///   strong     18–25 kt — flyable for parakite / experienced
+///   veryStrong 25–30 kt
+///   tooMuch    > 30 kt
+///
+/// Shared with the Watch (see ReportStatus). The unit-aware
+/// `rangeHint(in:)` needs `WindUnit`, an iPhone-only preference, so it
+/// stays in ConditionReportService.swift; the Watch uses `knotsHint`.
+nonisolated enum WindForce: String, CaseIterable, Identifiable, Sendable {
+    case calm
+    case light
+    case moderate
+    case strong
+    case veryStrong
+    case tooMuch
+
+    var id: String { rawValue }
+
+    /// Short chip label.
+    var label: String {
+        switch self {
+        case .calm: return "Calm"
+        case .light: return "Light"
+        case .moderate: return "Moderate"
+        case .strong: return "Strong"
+        case .veryStrong: return "Very strong"
+        case .tooMuch: return "Too much"
+        }
+    }
+
+    /// The band's knots range as (lower, upper); nil bounds are open-ended.
+    var knotsRange: (lower: Int?, upper: Int?) {
+        switch self {
+        case .calm: return (nil, 5)
+        case .light: return (5, 11)
+        case .moderate: return (11, 18)
+        case .strong: return (18, 25)
+        case .veryStrong: return (25, 30)
+        case .tooMuch: return (30, nil)
+        }
+    }
+
+    /// Unit-free range hint in knots, e.g. "11–18 kt". Used where the
+    /// iPhone's km/h-or-knots preference is not available (the Watch).
+    var knotsHint: String {
+        switch knotsRange {
+        case let (nil, upper?): return "< \(upper) kt"
+        case let (lower?, nil): return "> \(lower) kt"
+        case let (lower?, upper?): return "\(lower)–\(upper) kt"
+        case (nil, nil): return ""
+        }
+    }
+}
+
+// MARK: - ConditionReportOutcome
+/// Verdict of a condition report posted FROM THE WATCH. The Watch has no
+/// auth, no spot list, no cooldown state and no network, so only the iPhone
+/// can decide what happened — it answers the Watch's sendMessage with the
+/// raw value of one of these.
+///
+/// The last three are produced by the Watch itself and never travel over the
+/// wire (`noLocation` is also sent by the iPhone when a payload arrives with
+/// no coordinates).
+nonisolated enum ConditionReportOutcome: String, Sendable {
+    /// The report row was created. The reply also carries the resolved spot name.
+    case posted
+    /// No Appwrite session on the iPhone.
+    case notSignedIn
+    /// The 10-minute per-spot submit cooldown is still running. The reply also
+    /// carries the remaining seconds.
+    case cooldown
+    /// No known spot within 1.5 km of the Watch's coordinates.
+    case noSpotNearby
+    /// The community backend has no `spot_reports` table yet.
+    case backendUnavailable
+    /// Anything else (network, unreadable payload, unexpected Appwrite error).
+    case failed
+    /// Watch-side: WCSession is not activated or the iPhone is not reachable,
+    /// so NOTHING was sent.
+    case phoneUnreachable
+    /// Watch-side: sendMessage itself failed, so the outcome is UNKNOWN.
+    case sendFailed
+    /// No usable GPS fix (Watch-side), or a payload with no coordinates (iPhone-side).
+    case noLocation
+}
+
 // MARK: - WatchSyncKeys
 /// Keys and message types used by the Watch <-> iPhone WatchConnectivity protocol.
 /// Kept in one place so both sides always agree.
@@ -72,6 +208,33 @@ nonisolated enum WatchSyncKeys {
     /// presence heartbeat (Step C2). Ephemeral by design: sent via
     /// sendMessage only, never through the persistent outbox.
     static let flightStarted = "flightStarted"
+
+    // MARK: Condition report (Watch -> iPhone, always answered)
+
+    /// Marker (Bool) on a Watch->iPhone sendMessage carrying a community
+    /// CONDITION REPORT, alongside `conditionReportStatus`,
+    /// `conditionReportWindForce` (String raw values) and "latitude" /
+    /// "longitude" (Double) — the same raw-coordinates shape as
+    /// `flightStarted`, so the Watch never needs the spot list or GeoHash.
+    ///
+    /// ALWAYS sent with a replyHandler: the Watch cannot know whether the
+    /// pilot is signed in, whether a spot is in range or whether the submit
+    /// cooldown is running, so a fake "sent!" would be a lie. Never queued
+    /// through transferUserInfo — a condition report expires after 3 h and a
+    /// stale one is worse than none.
+    static let conditionReport = "conditionReport"
+    /// Payload key: ReportStatus raw value (String).
+    static let conditionReportStatus = "conditionReportStatus"
+    /// Payload key: WindForce raw value (String).
+    static let conditionReportWindForce = "conditionReportWindForce"
+    /// Reply key: ConditionReportOutcome raw value (String).
+    static let conditionReportOutcome = "conditionReportOutcome"
+    /// Reply key: remaining submit cooldown in SECONDS (Double). Only present
+    /// on a `.cooldown` outcome.
+    static let conditionReportCooldown = "conditionReportCooldown"
+    /// Reply key: name of the spot the report was filed under (String). Only
+    /// present on a `.posted` outcome.
+    static let conditionReportSpotName = "conditionReportSpotName"
 }
 
 // MARK: - SettingsSyncPolicy

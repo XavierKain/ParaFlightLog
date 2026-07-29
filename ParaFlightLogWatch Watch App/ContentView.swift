@@ -49,6 +49,14 @@ struct ContentView: View {
             )
             .environment(watchManager)
             .tag(2)
+
+            // Screen 3 (far right): community condition report from the wrist.
+            // A pilot standing on the launch reports the wind here, without
+            // reaching for the phone — on most spots this IS the wind beacon.
+            ConditionReportView()
+                .environment(watchManager)
+                .environment(locationService)
+                .tag(3)
         }
         .tabViewStyle(.page)
         // fullScreenCover(item:) so SwiftUI captures the value at presentation time

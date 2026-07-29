@@ -59,39 +59,13 @@ enum ConditionReportError: LocalizedError {
 
 // MARK: - Report status & wind force
 
-/// What a pilot reports about a spot right now. Raw values are the exact
-/// strings stored in `spot_reports.status`.
-enum ReportStatus: String, CaseIterable, Identifiable, Sendable {
-    case flying
-    case goingToFly
-    case flyable
-    case notFlyable
-    case tooStrong
+// `ReportStatus` and `WindForce` themselves live in the root-level
+// SharedModels.swift: the Apple Watch posts condition reports too, and that
+// file is the only source compiled into both the iOS app and the Watch app.
+// Everything that needs SwiftUI (or the iPhone-only WindUnit preference)
+// stays here, as iOS-only extensions.
 
-    var id: String { rawValue }
-
-    /// Emoji shown on the status chip.
-    var emoji: String {
-        switch self {
-        case .flying: return "🪂"
-        case .goingToFly: return "🚗"
-        case .flyable: return "✅"
-        case .notFlyable: return "🚫"
-        case .tooStrong: return "💨"
-        }
-    }
-
-    /// Short chip label.
-    var label: String {
-        switch self {
-        case .flying: return "Flying now"
-        case .goingToFly: return "Going to fly"
-        case .flyable: return "Flyable"
-        case .notFlyable: return "Not flyable"
-        case .tooStrong: return "Too strong"
-        }
-    }
-
+extension ReportStatus {
     /// Accent color for chips, consensus banners and list rows.
     var color: Color {
         switch self {
@@ -150,52 +124,10 @@ enum WindUnit: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// Rough wind strength reported alongside the status. Raw values are the
-/// exact strings stored in `spot_reports.windForce` (unchanged — only the
-/// labels/hints are recalibrated for free flight, in KNOTS).
-///
-/// Free-flight scale (paraglider / parakite), knots reference:
-///   calm       < 5 kt   — hard to soar
-///   light      5–11 kt
-///   moderate   11–18 kt — sweet spot
-///   strong     18–25 kt — flyable for parakite / experienced
-///   veryStrong 25–30 kt
-///   tooMuch    > 30 kt
-enum WindForce: String, CaseIterable, Identifiable, Sendable {
-    case calm
-    case light
-    case moderate
-    case strong
-    case veryStrong
-    case tooMuch
-
-    var id: String { rawValue }
-
-    /// Short chip label.
-    var label: String {
-        switch self {
-        case .calm: return "Calm"
-        case .light: return "Light"
-        case .moderate: return "Moderate"
-        case .strong: return "Strong"
-        case .veryStrong: return "Very strong"
-        case .tooMuch: return "Too much"
-        }
-    }
-
-    /// The band's knots range as (lower, upper); nil bounds are open-ended.
-    var knotsRange: (lower: Int?, upper: Int?) {
-        switch self {
-        case .calm: return (nil, 5)
-        case .light: return (5, 11)
-        case .moderate: return (11, 18)
-        case .strong: return (18, 25)
-        case .veryStrong: return (25, 30)
-        case .tooMuch: return (30, nil)
-        }
-    }
-
+extension WindForce {
     /// Range hint rendered in the chosen unit, e.g. "11–18 kt" or "20–33 km/h".
+    /// iPhone-only: `WindUnit` is a local @AppStorage preference the Watch does
+    /// not receive, so the Watch shows `knotsHint` instead.
     func rangeHint(in unit: WindUnit) -> String {
         let (lower, upper) = knotsRange
         let suffix = unit.shortLabel

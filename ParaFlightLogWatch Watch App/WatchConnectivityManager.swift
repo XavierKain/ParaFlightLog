@@ -14,6 +14,26 @@
 import Foundation
 import WatchConnectivity
 
+// MARK: - ConditionReportResult
+
+/// What came back from the iPhone after posting a condition report from the
+/// Watch — the outcome plus the two details the pilot-facing message needs.
+/// Watch-only: the wire format is the flat reply dictionary described in
+/// `WatchSyncKeys`.
+struct ConditionReportResult {
+    let outcome: ConditionReportOutcome
+    /// Seconds still to wait, only meaningful on `.cooldown`.
+    let cooldownRemaining: TimeInterval
+    /// Spot the report was filed under, only present on `.posted`.
+    let spotName: String?
+
+    init(outcome: ConditionReportOutcome, cooldownRemaining: TimeInterval = 0, spotName: String? = nil) {
+        self.outcome = outcome
+        self.cooldownRemaining = cooldownRemaining
+        self.spotName = spotName
+    }
+}
+
 @Observable
 final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     static let shared = WatchConnectivityManager()
@@ -256,6 +276,64 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         WCSession.default.sendMessage(payload, replyHandler: nil) { error in
             watchLogDebug("Flight-started signal failed (best-effort, dropped): \(error.localizedDescription)", category: .watchSync)
         }
+    }
+
+    // MARK: - Condition report (Watch -> iPhone, answered)
+
+    /// Posts a community CONDITION REPORT for the pilot's current position.
+    ///
+    /// Unlike a flight, this NEVER goes through the outbox and is never
+    /// retried: a report expires after 3 h server-side, so one delivered late
+    /// would describe conditions that no longer exist — worse than no report
+    /// at all. When the iPhone is out of reach the pilot is told so, plainly,
+    /// and nothing is sent.
+    ///
+    /// The Watch cannot judge the result itself (no auth, no spot list, no
+    /// cooldown state, no network), so this always uses sendMessage WITH a
+    /// reply handler and hands the iPhone's verdict back untouched.
+    /// `completion` is called exactly once, on the main queue.
+    func submitConditionReport(
+        status: ReportStatus,
+        windForce: WindForce,
+        latitude: Double,
+        longitude: Double,
+        completion: @escaping (ConditionReportResult) -> Void
+    ) {
+        guard sessionActivated, isPhoneReachable else {
+            watchLogInfo("Condition report not sent: iPhone not reachable", category: .watchSync)
+            completion(ConditionReportResult(outcome: .phoneUnreachable))
+            return
+        }
+
+        let payload: [String: Any] = [
+            WatchSyncKeys.conditionReport: true,
+            WatchSyncKeys.conditionReportStatus: status.rawValue,
+            WatchSyncKeys.conditionReportWindForce: windForce.rawValue,
+            "latitude": latitude,
+            "longitude": longitude
+        ]
+
+        WCSession.default.sendMessage(payload, replyHandler: { reply in
+            let outcome = (reply[WatchSyncKeys.conditionReportOutcome] as? String)
+                .flatMap(ConditionReportOutcome.init(rawValue:)) ?? .failed
+            let cooldown = reply[WatchSyncKeys.conditionReportCooldown] as? Double ?? 0
+            let spotName = reply[WatchSyncKeys.conditionReportSpotName] as? String
+            watchLogInfo("Condition report outcome from the iPhone: \(outcome.rawValue)", category: .watchSync)
+            DispatchQueue.main.async {
+                completion(ConditionReportResult(
+                    outcome: outcome,
+                    cooldownRemaining: cooldown,
+                    spotName: spotName
+                ))
+            }
+        }, errorHandler: { error in
+            // The message may or may not have reached the iPhone, so this is
+            // reported as "unknown", never as a failure to post.
+            watchLogWarning("Condition report sendMessage failed: \(error.localizedDescription)", category: .watchSync)
+            DispatchQueue.main.async {
+                completion(ConditionReportResult(outcome: .sendFailed))
+            }
+        })
     }
 
     // MARK: - WCSessionDelegate
