@@ -292,11 +292,15 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
     /// cooldown state, no network), so this always uses sendMessage WITH a
     /// reply handler and hands the iPhone's verdict back untouched.
     /// `completion` is called exactly once, on the main queue.
+    /// - Parameter postFlight: true when this comes from the post-flight
+    ///   summary. The coordinates are then the TAKEOFF's, and the iPhone lets
+    ///   it supersede a report the same pilot filed before launching.
     func submitConditionReport(
         status: ReportStatus,
         windForce: WindForce,
         latitude: Double,
         longitude: Double,
+        postFlight: Bool = false,
         completion: @escaping (ConditionReportResult) -> Void
     ) {
         guard sessionActivated, isPhoneReachable else {
@@ -309,6 +313,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
             WatchSyncKeys.conditionReport: true,
             WatchSyncKeys.conditionReportStatus: status.rawValue,
             WatchSyncKeys.conditionReportWindForce: windForce.rawValue,
+            WatchSyncKeys.conditionReportPostFlight: postFlight,
             "latitude": latitude,
             "longitude": longitude
         ]

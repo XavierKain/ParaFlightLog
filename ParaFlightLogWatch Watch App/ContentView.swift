@@ -8,13 +8,14 @@
 //
 
 import SwiftUI
+import CoreLocation  // CLLocationCoordinate2D for the post-flight report
 
 struct ContentView: View {
     @Environment(WatchConnectivityManager.self) private var watchManager
     @Environment(WatchLocationService.self) private var locationService
     @State private var selectedWing: WingDTO?
     @State private var activeFlightWing: WingDTO? // Wing captured at start - also triggers the fullScreenCover
-    @State private var selectedTab: Int = 1  // open on the middle (wing selection)
+    @State private var selectedTab: Int = 2  // open on the wing list (report is one swipe left)
     @State private var isFlying: Bool = false
     // Timer data stored at ContentView level
     @State private var flightStartDate: Date?
@@ -35,12 +36,24 @@ struct ContentView: View {
             WatchSettingsView()
                 .tag(0)
 
-            // Screen 1 (middle, opens here): wing selection
-            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab)
+            // Screen 1: community condition report from the wrist. A pilot
+            // standing on the launch reports the wind here, without reaching
+            // for the phone — on most spots this IS the wind beacon. It sits
+            // ONE SWIPE LEFT of the wing list, the page the app opens on:
+            // reporting is the only thing you do before flying, so it must be
+            // the nearest neighbour. It used to be the far-right page, which
+            // meant swiping THROUGH the Start button to reach it.
+            ConditionReportView()
                 .environment(watchManager)
+                .environment(locationService)
                 .tag(1)
 
-            // Screen 2 (right): wing recap + Start button (the flight)
+            // Screen 2 (opens here): wing selection
+            WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab)
+                .environment(watchManager)
+                .tag(2)
+
+            // Screen 3 (right): wing recap + Start button (the flight)
             FlightStartView(
                 selectedWing: $selectedWing,
                 onStartFlight: {
@@ -48,15 +61,7 @@ struct ContentView: View {
                 }
             )
             .environment(watchManager)
-            .tag(2)
-
-            // Screen 3 (far right): community condition report from the wrist.
-            // A pilot standing on the launch reports the wind here, without
-            // reaching for the phone — on most spots this IS the wind beacon.
-            ConditionReportView()
-                .environment(watchManager)
-                .environment(locationService)
-                .tag(3)
+            .tag(3)
         }
         .tabViewStyle(.page)
         // fullScreenCover(item:) so SwiftUI captures the value at presentation time
@@ -294,7 +299,7 @@ struct ContentView: View {
         flightStartDate = nil
         activeFlightWing = nil
         selectedWing = nil
-        selectedTab = 1 // Back to wing selection (middle)
+        selectedTab = 2 // Back to wing selection
     }
 
     private func discardFlight() {
@@ -314,7 +319,7 @@ struct ContentView: View {
         flightStartDate = nil
         activeFlightWing = nil
         selectedWing = nil
-        selectedTab = 1 // Back to wing selection (middle)
+        selectedTab = 2 // Back to wing selection
     }
 }
 
@@ -364,7 +369,7 @@ struct WingSelectionView: View {
                                     // Short delay so the selection effect is visible before the scroll
                                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                                         withAnimation {
-                                            selectedTab = 2  // go to the flight/start screen
+                                            selectedTab = 3  // go to the flight/start screen
                                         }
                                     }
                                 }
@@ -1098,6 +1103,9 @@ struct StopFlightContainerView: View {
 
 struct FlightSummaryView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(WatchLocationService.self) private var locationService
+    @State private var askingConditions = false
+    @State private var takeoffCoordinate: CLLocationCoordinate2D?
     let duration: Int
     let flightType: FlightType
     let wing: WingDTO
@@ -1110,6 +1118,20 @@ struct FlightSummaryView: View {
     let onDismiss: () -> Void
 
     var body: some View {
+        if askingConditions, let takeoffCoordinate {
+            PostFlightConditionView(
+                flightType: flightType,
+                takeoffLatitude: takeoffCoordinate.latitude,
+                takeoffLongitude: takeoffCoordinate.longitude,
+                onFinish: onDismiss
+            )
+            .transition(.opacity.combined(with: .move(edge: .bottom)))
+        } else {
+            summary
+        }
+    }
+
+    private var summary: some View {
         ScrollView {
             VStack(spacing: 6) {
                 // Icon + title on one line to save space
@@ -1183,9 +1205,18 @@ struct FlightSummaryView: View {
 
                 // Close button
                 Button {
-                    // Don't call dismiss() - onDismiss closes the fullScreenCover,
-                    // which makes the sheet disappear automatically
-                    onDismiss()
+                    // The flight is already saved by this point, so asking about
+                    // the conditions can never put it at risk. Only ask when the
+                    // takeoff was located — without a fix there is no spot to
+                    // file the report against.
+                    if let takeoff = locationService.takeoffCoordinate {
+                        takeoffCoordinate = takeoff
+                        withAnimation(.easeOut(duration: 0.25)) { askingConditions = true }
+                    } else {
+                        // Don't call dismiss() - onDismiss closes the fullScreenCover,
+                        // which makes the sheet disappear automatically
+                        onDismiss()
+                    }
                 } label: {
                     Text("OK")
                         .font(.headline)

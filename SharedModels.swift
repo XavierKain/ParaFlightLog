@@ -149,6 +149,57 @@ nonisolated enum WindForce: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+// MARK: - ConditionVocabulary
+
+/// How a wind band is PHRASED, given the kind of flying that was done.
+///
+/// The stored values never change — a report always travels as a `WindForce`
+/// raw value, so the backend, the iPhone chips and any other client keep
+/// working untouched. Only the words on screen move: telling a thermal pilot
+/// their day was "moderate wind" describes the wrong thing entirely, when what
+/// they actually know is whether it was working.
+///
+/// Shared, because the Watch asks the question and the iPhone renders the
+/// answer.
+nonisolated enum ConditionVocabulary {
+
+    /// Bands offered right after a flight. Four is what fits a wrist without
+    /// scrolling, and they span the range a pilot who just landed can actually
+    /// distinguish — the finer bands only make sense when you are standing at
+    /// the launch watching the windsock.
+    static let postFlightForces: [WindForce] = [.light, .moderate, .strong, .tooMuch]
+
+    /// The question, phrased for what the pilot was doing.
+    static func postFlightQuestion(for flightType: FlightType?) -> String {
+        switch flightType {
+        case .thermal: return String(localized: "How were the thermals?")
+        case .groundHandling: return String(localized: "How was the wind?")
+        default: return String(localized: "How were the conditions?")
+        }
+    }
+
+    /// Label for one band. Thermal flying gets its own words; everything else
+    /// keeps the wind wording, which is what `WindForce.label` already says.
+    static func label(_ force: WindForce, for flightType: FlightType?) -> String {
+        guard flightType == .thermal else { return force.label }
+        switch force {
+        case .calm: return String(localized: "Nothing working")
+        case .light: return String(localized: "Light thermals")
+        case .moderate: return String(localized: "Working well")
+        case .strong: return String(localized: "Strong and punchy")
+        case .veryStrong: return String(localized: "Very punchy")
+        case .tooMuch: return String(localized: "Too rough")
+        }
+    }
+
+    /// Status implied by the band the pilot picked. They flew it, so it was
+    /// flyable — unless they say it was over the top, which is the one answer
+    /// worth flagging to everyone else.
+    static func impliedStatus(for force: WindForce) -> ReportStatus {
+        force == .tooMuch ? .tooStrong : .flyable
+    }
+}
+
 // MARK: - ConditionReportOutcome
 /// Verdict of a condition report posted FROM THE WATCH. The Watch has no
 /// auth, no spot list, no cooldown state and no network, so only the iPhone
@@ -235,6 +286,12 @@ nonisolated enum WatchSyncKeys {
     /// Reply key: name of the spot the report was filed under (String). Only
     /// present on a `.posted` outcome.
     static let conditionReportSpotName = "conditionReportSpotName"
+    /// Marker (Bool) on a report sent from the post-flight summary rather than
+    /// from the launch. It carries the TAKEOFF coordinates, and it supersedes
+    /// the pre-flight report instead of being refused by the anti-spam
+    /// cooldown: a pilot who reported before launching and again after landing
+    /// is not spamming, they are saying how it actually turned out.
+    static let conditionReportPostFlight = "conditionReportPostFlight"
 }
 
 // MARK: - SettingsSyncPolicy

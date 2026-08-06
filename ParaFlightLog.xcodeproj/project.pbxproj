@@ -19,7 +19,6 @@
 		2564C65A2EDBB92000C716D0 /* WatchConnectivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2564C6562EDBB92000C716D0 /* WatchConnectivityManager.swift */; };
 		257C68F32ECB7651005F3773 /* ParaFlightLogWatch Watch App.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 257C68E92ECB7650005F3773 /* ParaFlightLogWatch Watch App.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		2589C4572F02D8E000EF6911 /* Appwrite in Frameworks */ = {isa = PBXBuildFile; productRef = 2589C4562F02D8E000EF6911 /* Appwrite */; };
-		AB0000702F110000000C0070 /* MapboxMaps in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000712F110000000C0071 /* MapboxMaps */; };
 		25C979902EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		25C979922EDBB5DA009233B8 /* SharedModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798F2EDBB5DA009233B8 /* SharedModels.swift */; };
 		25C979932EDBB5DA009233B8 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25C9798E2EDBB5DA009233B8 /* Models.swift */; };
@@ -33,6 +32,7 @@
 		AB0000022EFF0000000C0002 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25145C2B2EDE61D80095D7A9 /* WidgetKit.framework */; };
 		AB0000032EFF0000000C0003 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25145C2D2EDE61D80095D7A9 /* SwiftUI.framework */; };
 		AB0000042EFF0000000C0004 /* FlightWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = AB0000102EFF0000000C0010 /* FlightWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AB0000702F110000000C0070 /* MapboxMaps in Frameworks */ = {isa = PBXBuildFile; productRef = AB0000712F110000000C0071 /* MapboxMaps */; };
 		C841AFFD7BE2509F251B21C5 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3D6E3BD81946B048929752FA /* Foundation.framework */; };
 		D3EEDC2F14D44AF39E21AEE1 /* ZipBackup.swift in Sources */ = {isa = PBXBuildFile; fileRef = 362EAB42550846EE9491A703 /* ZipBackup.swift */; };
 		E07FE23106BC451BAF22AC49 /* ChartsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C310D0CB152141398E4E5E4F /* ChartsView.swift */; };
@@ -831,7 +831,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
-				INFOPLIST_KEY_CFBundleDisplayName = "SoarX";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SoarX uses your location to automatically record your paragliding flights, including in the background.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SoarX uses your location to record the takeoff spot of your flights.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "SoarX uses the barometer to measure your climb rate for the vario.";
@@ -871,7 +871,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "";
-				INFOPLIST_KEY_CFBundleDisplayName = "SoarX";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "SoarX uses your location to automatically record your paragliding flights, including in the background.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SoarX uses your location to record the takeoff spot of your flights.";
 				INFOPLIST_KEY_NSMotionUsageDescription = "SoarX uses the barometer to measure your climb rate for the vario.";
@@ -910,7 +910,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "SoarX";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "SoarX accesses your health data to record your flight sessions.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SoarX starts a workout session during flights to enable Water Lock.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SoarX uses your location to record where you fly.";
@@ -948,7 +948,7 @@
 				DEVELOPMENT_TEAM = S96H22CQ8W;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "SoarX";
+				INFOPLIST_KEY_CFBundleDisplayName = SoarX;
 				INFOPLIST_KEY_NSHealthShareUsageDescription = "SoarX accesses your health data to record your flight sessions.";
 				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "SoarX starts a workout session during flights to enable Water Lock.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SoarX uses your location to record where you fly.";

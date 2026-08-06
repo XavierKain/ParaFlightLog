@@ -44,6 +44,11 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     }
 
     var lastKnownLocation: CLLocation?
+
+    /// Where the current (or most recent) flight started. Survives
+    /// `stopFlightTracking()` on purpose — the post-flight report is filed
+    /// after the flight has already ended.
+    private(set) var takeoffCoordinate: CLLocationCoordinate2D?
     var currentSpotName: String = "Searching..."
     var authorizationStatus: CLAuthorizationStatus = .notDetermined
 
@@ -124,6 +129,13 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
     /// Démarre le tracking des données de vol
     func startFlightTracking() {
         isTracking = true
+        // Where the flight began. The post-flight condition report is filed
+        // against THIS, not wherever the pilot is standing when they answer:
+        // the landing field is regularly more than the 1.5 km the iPhone
+        // searches for a known spot, so reporting from there would either be
+        // rejected or, worse, land on the wrong spot. It also happens to be
+        // what other pilots want to know — how it flies at the launch.
+        takeoffCoordinate = lastKnownLocation?.coordinate
         startAltitude = nil
         maxAltitude = nil
         currentAltitude = nil

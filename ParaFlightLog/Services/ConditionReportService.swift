@@ -235,7 +235,8 @@ final class ConditionReportService {
         windForce: WindForce,
         windDirectionDeg: Double?,
         wingSize: String?,
-        note: String?
+        note: String?,
+        bypassCooldown: Bool = false
     ) async throws {
         guard case .signedIn(let userId, _) = AuthService.shared.state else {
             throw ConditionReportError.notSignedIn
@@ -244,7 +245,9 @@ final class ConditionReportService {
         // Client-side cooldown: block a fresh report for a spot the pilot just
         // reported on (in-memory + persisted), so a double-tap or an over-eager
         // pilot can't spam the spot's followers with push notifications.
-        guard submitCooldownRemaining(forSpotKey: spotKey) <= 0 else {
+        // A post-flight report is exempt: it supersedes the one the same pilot
+        // filed before launching, and it is the better of the two.
+        guard bypassCooldown || submitCooldownRemaining(forSpotKey: spotKey) <= 0 else {
             throw ConditionReportError.reportCooldown
         }
 

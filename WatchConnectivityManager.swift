@@ -509,6 +509,7 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let windRaw = payload[WatchSyncKeys.conditionReportWindForce] as? String
         let latitude = payload["latitude"] as? Double
         let longitude = payload["longitude"] as? Double
+        let isPostFlight = payload[WatchSyncKeys.conditionReportPostFlight] as? Bool == true
 
         DispatchQueue.main.async { [weak self] in
             guard let statusRaw, let status = ReportStatus(rawValue: statusRaw),
@@ -547,7 +548,14 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                 // Checked before submitting so the reply can carry the exact
                 // remaining time; submitReport would only throw a bare
                 // .reportCooldown.
-                let remaining = ConditionReportService.shared.submitCooldownRemaining(forSpotKey: spotKey)
+                // The cooldown exists to stop a pilot spamming a spot's
+                // followers. A post-flight report is the opposite of spam — it
+                // is the only one written from experience rather than from
+                // looking at the windsock — so it is allowed to supersede the
+                // pre-flight one it would otherwise collide with.
+                let remaining = isPostFlight
+                    ? 0
+                    : ConditionReportService.shared.submitCooldownRemaining(forSpotKey: spotKey)
                 guard remaining <= 0 else {
                     Self.replyConditionReport(
                         replyHandler, .cooldown,
@@ -558,7 +566,11 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
 
                 do {
                     // The Watch reports status + wind force only: it has no
-                    // wind vane, no note field and no wing size at hand.
+                    // wind vane and no wing size at hand. A post-flight report
+                    // carries a short note so readers know it was written from
+                    // the air rather than from the launch — the same wind band
+                    // means something different coming from someone who just
+                    // flew it.
                     try await ConditionReportService.shared.submitReport(
                         spot: spot,
                         spotKey: spotKey,
@@ -567,7 +579,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                         windForce: windForce,
                         windDirectionDeg: nil,
                         wingSize: nil,
-                        note: nil
+                        note: isPostFlight ? String(localized: "Reported after flying.") : nil,
+                        bypassCooldown: isPostFlight
                     )
                     logInfo("Condition report from the Watch posted at \(spotKey) (\(status.rawValue))", category: .community)
                     Self.replyConditionReport(
