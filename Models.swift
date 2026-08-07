@@ -379,3 +379,53 @@ final class Flight {
         return formatter.string(from: startDate)
     }
 }
+
+// MARK: - TrashedFlight
+
+/// A deleted flight, kept for a week so an accidental delete is recoverable.
+///
+/// Deliberately a SEPARATE table rather than a `deletedAt` flag on `Flight`.
+/// Flights are read by a dozen `@Query` sites plus the stats, the community
+/// share and the backup export; a flag would have to be excluded from every
+/// one of them, and the day one is missed a deleted flight silently comes back
+/// into someone's totals. Nothing here can leak: the row is not a `Flight`.
+///
+/// The flight itself is stored as an encoded `BackupFlight` — the same shape
+/// the backup format uses — so restoring reuses a mapping that is already
+/// exercised by import/export instead of a second, parallel one.
+@Model
+final class TrashedFlight {
+    /// The original flight's id, so a restore lands back on the same identity
+    /// (and a second restore cannot duplicate it).
+    var id: UUID = UUID()
+    var deletedAt: Date = Date()
+
+    /// Denormalised so the trash list renders without decoding every payload.
+    var flightDate: Date = Date()
+    var durationSeconds: Int = 0
+    var spotName: String?
+    var flightType: String?
+
+    /// JSON-encoded `BackupFlight`, GPS track included.
+    var payload: Data = Data()
+
+    init(id: UUID, deletedAt: Date, flightDate: Date, durationSeconds: Int,
+         spotName: String?, flightType: String?, payload: Data) {
+        self.id = id
+        self.deletedAt = deletedAt
+        self.flightDate = flightDate
+        self.durationSeconds = durationSeconds
+        self.spotName = spotName
+        self.flightType = flightType
+        self.payload = payload
+    }
+
+    /// How long a deleted flight is kept before it is purged for good.
+    nonisolated static let retention: TimeInterval = 7 * 24 * 3600
+
+    /// Whole days left before this row is purged (0 = today).
+    var daysLeft: Int {
+        let remaining = deletedAt.addingTimeInterval(Self.retention).timeIntervalSinceNow
+        return max(0, Int(remaining / 86400))
+    }
+}

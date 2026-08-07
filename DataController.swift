@@ -93,7 +93,7 @@ final class DataController {
     nonisolated private static func makeContainer() -> ContainerResult {
         let start = Date()
         logInfo("ModelContainer build started", category: .dataController)
-        let schema = Schema([Wing.self, Flight.self, Spot.self])
+        let schema = Schema([Wing.self, Flight.self, Spot.self, TrashedFlight.self])
         defer {
             let ms = Int(Date().timeIntervalSince(start) * 1000)
             logInfo("ModelContainer build finished in \(ms) ms", category: .dataController)
@@ -407,10 +407,159 @@ final class DataController {
         }
     }
 
-    /// Deletes a flight
+    /// Deletes a flight — into the trash, where it stays recoverable for a week.
+    ///
+    /// A logbook is years of flying that exists nowhere else, and the delete
+    /// button sits next to Edit. Snapshotting first costs a few kilobytes and
+    /// removes the one mistake that cannot be undone.
     func deleteFlight(_ flight: Flight) {
+        if let snapshot = Self.snapshot(flight) {
+            modelContext.insert(snapshot)
+        } else {
+            // Encoding a snapshot should not fail, but if it ever did, losing
+            // the safety net must not also block the delete the pilot asked for.
+            logWarning("Could not snapshot flight \(flight.id) before deleting — no trash entry", category: .dataController)
+        }
         modelContext.delete(flight)
         saveContext()
+    }
+
+    /// Encodes a flight into a trash row, GPS track included.
+    private static func snapshot(_ flight: Flight) -> TrashedFlight? {
+        let backup = BackupFlight(
+            id: flight.id,
+            wingId: flight.wing?.id,
+            startDate: flight.startDate,
+            endDate: flight.endDate,
+            durationSeconds: flight.durationSeconds,
+            spotName: flight.spotName,
+            latitude: flight.latitude,
+            longitude: flight.longitude,
+            flightType: flight.flightType,
+            notes: flight.notes,
+            createdAt: flight.createdAt,
+            startAltitude: flight.startAltitude,
+            maxAltitude: flight.maxAltitude,
+            endAltitude: flight.endAltitude,
+            totalDistance: flight.totalDistance,
+            maxSpeed: flight.maxSpeed,
+            maxGForce: flight.maxGForce,
+            gpsTrack: flight.gpsTrack,
+            spotId: flight.spot?.id,
+            takeoffWindSpeed: flight.takeoffWindSpeed,
+            takeoffWindGusts: flight.takeoffWindGusts,
+            takeoffWindDirection: flight.takeoffWindDirection,
+            takeoffTemperature: flight.takeoffTemperature
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        guard let payload = try? encoder.encode(backup) else { return nil }
+
+        return TrashedFlight(
+            id: flight.id,
+            deletedAt: Date(),
+            flightDate: flight.startDate,
+            durationSeconds: flight.durationSeconds,
+            spotName: flight.spotName,
+            flightType: flight.flightType,
+            payload: payload
+        )
+    }
+
+    /// Flights currently in the trash, most recently deleted first.
+    func trashedFlights() -> [TrashedFlight] {
+        let descriptor = FetchDescriptor<TrashedFlight>(
+            sortBy: [SortDescriptor(\TrashedFlight.deletedAt, order: .reverse)]
+        )
+        return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    /// Puts a trashed flight back in the logbook, wing and spot relinked when
+    /// they still exist. Returns false when the payload cannot be decoded.
+    @discardableResult
+    func restoreFlight(_ trashed: TrashedFlight) -> Bool {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let backup = try? decoder.decode(BackupFlight.self, from: trashed.payload) else {
+            logError("Could not decode trashed flight \(trashed.id)", category: .dataController)
+            return false
+        }
+
+        // Already back (restored twice, or re-imported from a backup meanwhile):
+        // drop the trash row rather than create a duplicate.
+        if findFlight(byId: backup.id) != nil {
+            modelContext.delete(trashed)
+            saveContext()
+            return true
+        }
+
+        var trackData: Data?
+        if let track = backup.gpsTrack, !track.isEmpty {
+            trackData = try? JSONEncoder().encode(track)
+        }
+
+        let flight = Flight(
+            id: backup.id,
+            wing: backup.wingId.flatMap { wingId in
+                fetchWings().first { $0.id == wingId }
+            },
+            startDate: backup.startDate,
+            endDate: backup.endDate,
+            durationSeconds: backup.durationSeconds,
+            spotName: backup.spotName,
+            latitude: backup.latitude,
+            longitude: backup.longitude,
+            flightType: backup.flightType,
+            notes: backup.notes,
+            createdAt: backup.createdAt,
+            startAltitude: backup.startAltitude,
+            maxAltitude: backup.maxAltitude,
+            endAltitude: backup.endAltitude,
+            totalDistance: backup.totalDistance,
+            maxSpeed: backup.maxSpeed,
+            maxGForce: backup.maxGForce,
+            gpsTrackData: trackData
+        )
+        flight.takeoffWindSpeed = backup.takeoffWindSpeed
+        flight.takeoffWindGusts = backup.takeoffWindGusts
+        flight.takeoffWindDirection = backup.takeoffWindDirection
+        flight.takeoffTemperature = backup.takeoffTemperature
+        modelContext.insert(flight)
+
+        // The spot may have been deleted meanwhile; fall back to name linking.
+        if let spotId = backup.spotId, let spot = fetchSpots().first(where: { $0.id == spotId }) {
+            flight.spot = spot
+            flight.spotName = spot.name
+        }
+
+        modelContext.delete(trashed)
+        saveContext()
+        if flight.spot == nil { linkUnlinkedFlights() }
+        logInfo("Restored flight \(backup.id) from the trash", category: .dataController)
+        return true
+    }
+
+    /// Deletes one trash row for good.
+    func purgeTrashedFlight(_ trashed: TrashedFlight) {
+        modelContext.delete(trashed)
+        saveContext()
+    }
+
+    /// Drops trash rows past the retention window. Called at launch — the app
+    /// has no background scheduler, and "a week" only has to be honoured the
+    /// next time the pilot opens the app.
+    /// - Returns: how many rows were purged.
+    @discardableResult
+    func purgeExpiredTrash() -> Int {
+        let cutoff = Date().addingTimeInterval(-TrashedFlight.retention)
+        let descriptor = FetchDescriptor<TrashedFlight>(
+            predicate: #Predicate { $0.deletedAt < cutoff }
+        )
+        guard let expired = try? modelContext.fetch(descriptor), !expired.isEmpty else { return 0 }
+        for row in expired { modelContext.delete(row) }
+        saveContext()
+        logInfo("Purged \(expired.count) flight(s) from the trash", category: .dataController)
+        return expired.count
     }
 
     /// Bulk-assigns a flight type (nil clears it). One save for the whole batch.

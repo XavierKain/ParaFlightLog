@@ -289,6 +289,12 @@ struct SettingsView: View {
                 Label("Manage Spots", systemImage: "mappin.and.ellipse")
             }
 
+            NavigationLink {
+                TrashView()
+            } label: {
+                Label("Trash", systemImage: "trash")
+            }
+
             BackfillWeatherRow()
         } header: {
             Text("Data")

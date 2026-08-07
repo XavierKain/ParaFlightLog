@@ -261,6 +261,11 @@ private struct IOSRootView: View {
                     // their flights keep after deleteSpot.
                     dataController.runSpotMigrationIfNeeded()
 
+                    // Drop trashed flights past their week. There is no
+                    // background scheduler, and there doesn't need to be:
+                    // retention only has to hold the next time the app opens.
+                    dataController.purgeExpiredTrash()
+
                     locationService.requestAuthorization()
 
                     // Restore the Appwrite session NOW, not lazily on the first
