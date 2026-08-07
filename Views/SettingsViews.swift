@@ -840,6 +840,7 @@ private struct CommunitySettingsSection: View {
     @State private var showSignInHint = false
     @State private var showingShareConfirm = false
     @State private var showingDeleteConfirm = false
+    @State private var showingCleanupConfirm = false
     @State private var isWorking = false
     @State private var progressDone = 0
     @State private var progressTotal = 0
@@ -956,6 +957,24 @@ private struct CommunitySettingsSection: View {
 
             // Withdrawal must stay available even after sharing is turned off.
             if auth.state.isSignedIn {
+                Button {
+                    showingCleanupConfirm = true
+                } label: {
+                    Label("Clean up flights I deleted", systemImage: "wand.and.sparkles")
+                }
+                .confirmationDialog(
+                    "Clean up flights you deleted?",
+                    isPresented: $showingCleanupConfirm,
+                    titleVisibility: .visible
+                ) {
+                    Button("Clean up", role: .destructive) {
+                        cleanUpOrphans()
+                    }
+                    Button("Cancel", role: .cancel) { }
+                } message: {
+                    Text("Removes shared flights that are no longer in this logbook — leftovers from deletes made before the app removed them for you. If you also log flights on another device, run this from the device that has them all.")
+                }
+
                 Button(role: .destructive) {
                     showingDeleteConfirm = true
                 } label: {
@@ -1046,6 +1065,32 @@ private struct CommunitySettingsSection: View {
             showingResult = true
             isWorking = false
             progressTotal = 0
+        }
+    }
+
+    /// Sweeps shared flights with no counterpart in this logbook. Flights in
+    /// the trash count as deleted — their community copy went with them, and
+    /// restoring one re-shares it.
+    private func cleanUpOrphans() {
+        isWorking = true
+
+        Task { @MainActor in
+            do {
+                let removed = try await CommunityService.shared.removeOrphanedSharedFlights(
+                    localFlightIds: Set(flights.map(\.id))
+                )
+                // Spelled out rather than inflected: inflection markup only
+                // resolves in a literal Text, not through String(localized:).
+                resultMessage = removed == 0
+                    ? String(localized: "Nothing to clean up — the community only has flights that are still in your logbook.")
+                    : (removed == 1
+                        ? String(localized: "1 deleted flight removed from the community.")
+                        : String(localized: "\(removed) deleted flights removed from the community."))
+            } catch {
+                resultMessage = "Could not clean up: \(error.localizedDescription)"
+            }
+            showingResult = true
+            isWorking = false
         }
     }
 

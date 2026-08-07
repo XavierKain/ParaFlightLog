@@ -355,7 +355,8 @@ struct ConditionReportSheet: View {
                 windForce: windForce,
                 windDirectionDeg: windDirectionDeg,
                 wingSize: wingSize.isEmpty ? nil : wingSize,
-                note: note.isEmpty ? nil : note
+                note: note.isEmpty ? nil : note,
+                dataController: dataController
             )
             // Posting a report is a good moment to line up push (fail-soft in
             // the push layer if APNs isn't configured). Fire-and-forget so it

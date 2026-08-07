@@ -580,7 +580,8 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
                         windDirectionDeg: nil,
                         wingSize: nil,
                         note: isPostFlight ? String(localized: "Reported after flying.") : nil,
-                        bypassCooldown: isPostFlight
+                        bypassCooldown: isPostFlight,
+                        dataController: self?.dataController
                     )
                     logInfo("Condition report from the Watch posted at \(spotKey) (\(status.rawValue))", category: .community)
                     Self.replyConditionReport(

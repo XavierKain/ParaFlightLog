@@ -544,6 +544,103 @@ final class CommunityService {
         }
     }
 
+    // MARK: - Unshare one flight
+
+    /// Fire-and-forget removal of one flight's community copy, called when the
+    /// pilot deletes the flight locally.
+    ///
+    /// Deleting a flight has to mean deleting it everywhere: a flight the
+    /// pilot removed from their logbook must stop showing up in Explore, the
+    /// feed and the leaderboards. Nothing here is conditional on
+    /// `isSharingEnabled` — the row may well date from a period when sharing
+    /// was on, and a missing row is a success anyway.
+    ///
+    /// The trash keeps the flight locally for a week; restoring it re-shares
+    /// through the normal path, onto the same deterministic row ID, so kudos
+    /// that pointed at it reattach.
+    func unshareFlight(_ flightId: UUID) {
+        guard AuthService.shared.state.isSignedIn else { return }
+        Task { try? await self.deleteSharedRow(flightId: flightId) }
+    }
+
+    /// Deletes one shared flight row. Throws only on a real failure — a row
+    /// that isn't there (never shared, or already removed) is a success.
+    func deleteSharedRow(flightId id: UUID) async throws {
+        do {
+            _ = try await tablesDB.deleteRow(
+                databaseId: AppwriteConfig.databaseId,
+                tableId: AppwriteConfig.sharedFlightsCollectionId,
+                rowId: Self.rowId(for: id.uuidString)
+            )
+            // Which spot it belonged to is not known here without another
+            // round trip, so every per-spot cache is dropped rather than one.
+            statsCache.removeAll()
+            recentFlightsCache.removeAll()
+            windObsCache.removeAll()
+            exploreCache.removeAll()
+            logInfo("Flight \(id) removed from the community", category: .community)
+        } catch {
+            guard !Self.isNotFound(error) else { return }
+            logWarning("Could not remove flight \(id) from the community: \(error)", category: .community)
+            throw Self.mapError(error)
+        }
+    }
+
+    /// Deletes shared flights that have no counterpart in the local logbook.
+    ///
+    /// Cleans up rows left behind by deletes made before `unshareFlight`
+    /// existed. Deliberately NOT automatic: the same account can log flights
+    /// from a second device, and those are orphans from this device's point of
+    /// view. The caller asks the pilot first.
+    /// - Parameter localFlightIds: every flight id currently in the logbook.
+    /// - Returns: how many rows were removed.
+    @discardableResult
+    func removeOrphanedSharedFlights(localFlightIds: Set<UUID>) async throws -> Int {
+        guard case .signedIn(let userId, _) = AuthService.shared.state else {
+            throw CommunityError.notSignedIn
+        }
+
+        do {
+            let rows = try await listAllRows(
+                tableId: AppwriteConfig.sharedFlightsCollectionId,
+                queries: [
+                    Query.equal("userId", value: userId),
+                    Query.select(["userId", "$id"])
+                ]
+            )
+            let known = Set(localFlightIds.map { Self.rowId(for: $0.uuidString) })
+            let orphans = rows.map(\.id).filter { !known.contains($0) }
+
+            var deleted = 0
+            for rowId in orphans {
+                do {
+                    _ = try await tablesDB.deleteRow(
+                        databaseId: AppwriteConfig.databaseId,
+                        tableId: AppwriteConfig.sharedFlightsCollectionId,
+                        rowId: rowId
+                    )
+                    deleted += 1
+                } catch {
+                    // One stubborn row must not abort the sweep.
+                    guard !Self.isNotFound(error) else { continue }
+                    logWarning("Could not delete orphaned shared flight \(rowId): \(error)", category: .community)
+                }
+            }
+
+            if deleted > 0 {
+                statsCache.removeAll()
+                recentFlightsCache.removeAll()
+                windObsCache.removeAll()
+                exploreCache.removeAll()
+            }
+            logInfo("Removed \(deleted) orphaned shared flight(s) of \(rows.count)", category: .community)
+            return deleted
+        } catch {
+            logWarning("Orphan sweep failed: \(error)", category: .community)
+            throw Self.mapError(error)
+        }
+    }
+
     /// Deletes every shared flight owned by the current user, plus the live
     /// presence document (Settings "Stop & delete my shared data" action).
     /// Community spot documents stay — they belong to the community.
@@ -1176,6 +1273,12 @@ final class CommunityService {
     private static func isAlreadyExists(_ error: Error) -> Bool {
         guard let appwriteError = error as? AppwriteError else { return false }
         return appwriteError.code == 409
+    }
+
+    /// True for "row not found" (HTTP 404) — an idempotent-delete success.
+    private static func isNotFound(_ error: Error) -> Bool {
+        guard let appwriteError = error as? AppwriteError else { return false }
+        return appwriteError.code == 404
     }
 
     /// True for per-document permission denials (HTTP 401): after an

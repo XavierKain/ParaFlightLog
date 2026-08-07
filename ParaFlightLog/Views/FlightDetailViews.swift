@@ -353,6 +353,9 @@ struct FlightDetailView: View {
                         if hasTakeoffWeather {
                             takeoffConditionsCard
                         }
+
+                        // What pilots said about the air around this flight.
+                        FlightConditionReportsCard(flight: flight)
                     }
                     .padding(.horizontal)
 
@@ -508,6 +511,126 @@ struct FlightDetailView: View {
             logError("Track export failed: \(error.localizedDescription)", category: .flight)
             exportErrorMessage = error.localizedDescription
         }
+    }
+}
+
+// MARK: - FlightConditionReportsCard
+
+/// Condition reports filed at this flight's spot, around the time it was
+/// flown — the pilot's own and the other pilots' alike.
+///
+/// Reads the LOCAL archive, never the server: `spot_reports` rows are dropped
+/// 3 hours after they are filed, so by the time anyone opens a flight card
+/// there is nothing left to fetch. `ArchivedSpotReport` is the copy taken
+/// while they were still readable.
+///
+/// Renders nothing when no report matches — most flights have none, and an
+/// empty "no reports" box on every card is noise.
+struct FlightConditionReportsCard: View {
+    @Environment(DataController.self) private var dataController
+    let flight: Flight
+
+    @State private var reports: [ArchivedSpotReport] = []
+
+    var body: some View {
+        Group {
+            if !reports.isEmpty {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "bubble.left.and.text.bubble.right.fill")
+                            .foregroundStyle(.teal)
+                            .font(.title3)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Pilot reports")
+                                .font(.headline)
+                            Text("^[\(reports.count) report](inflect: true) at this spot around this flight")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                    }
+
+                    ForEach(reports) { report in
+                        Divider()
+                        ArchivedReportRow(report: report)
+                    }
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+            }
+        }
+        // Reports can be archived asynchronously just after a flight is saved,
+        // so this reads on appearance rather than once at init.
+        .task(id: flight.id) {
+            reports = dataController.conditionReports(for: flight)
+        }
+    }
+}
+
+/// One archived report. Shows the clock time rather than "3 weeks ago": on a
+/// flight card what matters is where the report sits inside the session.
+private struct ArchivedReportRow: View {
+    let report: ArchivedSpotReport
+    @AppStorage(WindUnit.storageKey) private var windUnit: WindUnit = .kmh
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Text(report.statusEnum?.emoji ?? "🪂")
+                .frame(width: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    Text(report.isMine ? String(localized: "You") : report.pilotName)
+                        .font(.subheadline.weight(.medium))
+                        .lineLimit(1)
+                    if let status = report.statusEnum {
+                        Text(status.label)
+                            .font(.caption2.weight(.semibold))
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .foregroundStyle(status.color)
+                            .background(status.color.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                }
+
+                if let condition = conditionText {
+                    Text(condition)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let note = report.note, !note.isEmpty {
+                    Text("“\(note)”")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Spacer()
+
+            Text(report.createdAt, format: .dateTime.hour().minute())
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.tertiary)
+        }
+    }
+}
+
+private extension ArchivedReportRow {
+    /// "SW · moderate 11–18 kt" from whichever wind fields the report carries.
+    var conditionText: String? {
+        var parts: [String] = []
+        if let direction = report.windDirectionDeg {
+            parts.append(WeatherService.degreesToCompass(direction))
+        }
+        if let force = report.windForceEnum {
+            parts.append("\(force.label.lowercased()) \(force.rangeHint(in: windUnit))")
+        }
+        if let wingSize = report.wingSize, !wingSize.isEmpty {
+            parts.append(wingSize)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
 

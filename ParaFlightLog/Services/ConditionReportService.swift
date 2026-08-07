@@ -227,6 +227,9 @@ final class ConditionReportService {
     /// Posts one condition report (row TTL 3 h). Read by anyone, editable and
     /// deletable only by its author. `spot` is accepted for API symmetry with
     /// the rest of the community layer; the write uses `spotKey`/`spotName`.
+    /// - Parameter dataController: when given, the posted report is also
+    ///   archived locally so it can be shown on the flight card months later,
+    ///   long after the server row's 3-hour TTL has passed.
     func submitReport(
         spot: Spot?,
         spotKey: String,
@@ -236,7 +239,8 @@ final class ConditionReportService {
         windDirectionDeg: Double?,
         wingSize: String?,
         note: String?,
-        bypassCooldown: Bool = false
+        bypassCooldown: Bool = false,
+        dataController: DataController? = nil
     ) async throws {
         guard case .signedIn(let userId, _) = AuthService.shared.state else {
             throw ConditionReportError.notSignedIn
@@ -278,7 +282,7 @@ final class ConditionReportService {
         }
 
         do {
-            _ = try await tablesDB.createRow(
+            let row = try await tablesDB.createRow(
                 databaseId: AppwriteConfig.databaseId,
                 tableId: Self.reportsTableId,
                 rowId: ID.unique(),
@@ -289,6 +293,26 @@ final class ConditionReportService {
                     Permission.delete(Role.user(userId))
                 ]
             )
+            // Keep the pilot's own report for good: this is the one they will
+            // look for on the flight card, and the server copy is gone in 3 h.
+            if let dataController {
+                dataController.archiveConditionReports([
+                    ArchivedSpotReport(
+                        id: row.id,
+                        spotKey: spotKey,
+                        spotName: spotName,
+                        userId: userId,
+                        pilotName: Self.effectivePilotName,
+                        status: status.rawValue,
+                        windForce: windForce.rawValue,
+                        windDirectionDeg: data["windDirectionDeg"] as? Double,
+                        wingSize: data["wingSize"] as? String,
+                        note: data["note"] as? String,
+                        createdAt: now,
+                        isMine: true
+                    )
+                ])
+            }
             // Freshest data next read — the pilot expects to see their report.
             reportsCache.removeValue(forKey: spotKey)
             // Start the anti-spam cooldown for this spot.
@@ -379,6 +403,62 @@ final class ConditionReportService {
         } catch {
             logInfo("Recent reports unavailable for \(spotKey): \(error)", category: .community)
             throw Self.mapError(error)
+        }
+    }
+
+    // MARK: - Archiving reports against a flight
+
+    /// Fire-and-forget: copies the condition reports that describe a flight's
+    /// air into the local archive, so the flight card can show them for good.
+    ///
+    /// Called right after a flight is saved, which is the only moment the
+    /// other pilots' reports for that session are still readable — the server
+    /// drops them 3 hours after they were filed. Reports outside the flight's
+    /// window are ignored: what matters is the air that was flown, not
+    /// whatever someone posted at the same spot the next morning.
+    ///
+    /// Silent on every failure. A flight must save whether or not the
+    /// community is reachable.
+    func archiveReports(for flight: Flight, dataController: DataController) {
+        // Plain values captured BEFORE the awaits — the flight is a SwiftData
+        // model and must not be touched across a suspension point.
+        guard let spotKey = dataController.communitySpotKey(for: flight) else { return }
+        let window = ArchivedSpotReport.flightMatchWindow
+        let from = flight.startDate.addingTimeInterval(-window)
+        let to = flight.endDate.addingTimeInterval(window)
+        let myUserId: String? = {
+            if case .signedIn(let userId, _) = AuthService.shared.state { return userId }
+            return nil
+        }()
+
+        Task { [weak dataController] in
+            // forceRefresh: the 5-minute cache may well have been filled
+            // before takeoff, and would then be missing the very reports —
+            // including the pilot's own post-flight one — this exists to keep.
+            guard let reports = try? await self.recentReports(forSpotKey: spotKey, forceRefresh: true) else { return }
+            let matching = reports
+                .filter { $0.createdAt >= from && $0.createdAt <= to }
+                .map { report in
+                    ArchivedSpotReport(
+                        id: report.id,
+                        spotKey: report.spotKey,
+                        spotName: nil,
+                        userId: report.userId,
+                        pilotName: report.pilotName,
+                        status: report.status.rawValue,
+                        windForce: report.windForce?.rawValue,
+                        windDirectionDeg: report.windDirectionDeg,
+                        wingSize: report.wingSize,
+                        note: report.note,
+                        createdAt: report.createdAt,
+                        isMine: myUserId != nil && report.userId == myUserId
+                    )
+                }
+            guard let dataController, !matching.isEmpty else { return }
+            let archived = dataController.archiveConditionReports(matching)
+            if archived > 0 {
+                logInfo("Archived \(archived) condition report(s) for a flight at \(spotKey)", category: .community)
+            }
         }
     }
 

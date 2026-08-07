@@ -380,6 +380,74 @@ final class Flight {
     }
 }
 
+// MARK: - ArchivedSpotReport
+
+/// A community condition report kept on the device so it can still be read
+/// long after the server copy is gone.
+///
+/// `spot_reports` rows carry a 3-hour TTL: they answer "is it flyable RIGHT
+/// NOW?", and the query that reads them filters on `expiresAt`. That makes
+/// them useless as flight history — by the time you open a flight the evening
+/// after, every report from that session has expired. So each report that
+/// matters is copied here at the moment it is known: the pilot's own reports
+/// when they are posted, and the other pilots' reports at the spot when a
+/// flight is saved.
+///
+/// Reports are NOT linked to a flight by a relationship. A report exists
+/// before the flight it describes (and may describe a flight that never
+/// happened), the spot may only be resolved after landing, and the same
+/// report legitimately belongs to several pilots' flights. Matching is done
+/// at read time on spot key + time window — see
+/// `DataController.conditionReports(for:)`.
+@Model
+final class ArchivedSpotReport {
+    /// Appwrite row ID, the report's natural identity. Not a unique
+    /// constraint (CloudKit forbids them) — writers de-duplicate on it.
+    var id: String = ""
+    var spotKey: String = ""
+    var spotName: String?
+    var userId: String = ""
+    var pilotName: String = ""
+    /// `ReportStatus` raw value; kept as a string so an unknown future status
+    /// round-trips instead of failing to decode.
+    var status: String = ""
+    /// `WindForce` raw value.
+    var windForce: String?
+    var windDirectionDeg: Double?
+    var wingSize: String?
+    var note: String?
+    var createdAt: Date = Date()
+    /// True when this is the signed-in pilot's own report — it reads as "you"
+    /// rather than as a stranger's opinion of the same air.
+    var isMine: Bool = false
+
+    init(id: String, spotKey: String, spotName: String?, userId: String,
+         pilotName: String, status: String, windForce: String?,
+         windDirectionDeg: Double?, wingSize: String?, note: String?,
+         createdAt: Date, isMine: Bool) {
+        self.id = id
+        self.spotKey = spotKey
+        self.spotName = spotName
+        self.userId = userId
+        self.pilotName = pilotName
+        self.status = status
+        self.windForce = windForce
+        self.windDirectionDeg = windDirectionDeg
+        self.wingSize = wingSize
+        self.note = note
+        self.createdAt = createdAt
+        self.isMine = isMine
+    }
+
+    var statusEnum: ReportStatus? { ReportStatus(rawValue: status) }
+    var windForceEnum: WindForce? { windForce.flatMap(WindForce.init(rawValue:)) }
+
+    /// How far either side of a flight a report still describes that flight's
+    /// air. Mirrors the report's own 3-hour relevance window: a report filed
+    /// at launch and one filed after landing both have to land inside it.
+    nonisolated static let flightMatchWindow: TimeInterval = 3 * 3600
+}
+
 // MARK: - TrashedFlight
 
 /// A deleted flight, kept for a week so an accidental delete is recoverable.
@@ -406,17 +474,25 @@ final class TrashedFlight {
     var spotName: String?
     var flightType: String?
 
+    /// Wing name at the time of deletion. Denormalised rather than resolved
+    /// from the payload's `wingId`, because the wing itself may be retired or
+    /// deleted before the pilot comes looking for the flight — and "which wing
+    /// was it?" is half of how you tell two flights apart in the trash.
+    /// nil on rows trashed before this was recorded.
+    var wingName: String?
+
     /// JSON-encoded `BackupFlight`, GPS track included.
     var payload: Data = Data()
 
     init(id: UUID, deletedAt: Date, flightDate: Date, durationSeconds: Int,
-         spotName: String?, flightType: String?, payload: Data) {
+         spotName: String?, flightType: String?, wingName: String? = nil, payload: Data) {
         self.id = id
         self.deletedAt = deletedAt
         self.flightDate = flightDate
         self.durationSeconds = durationSeconds
         self.spotName = spotName
         self.flightType = flightType
+        self.wingName = wingName
         self.payload = payload
     }
 

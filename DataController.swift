@@ -93,7 +93,9 @@ final class DataController {
     nonisolated private static func makeContainer() -> ContainerResult {
         let start = Date()
         logInfo("ModelContainer build started", category: .dataController)
-        let schema = Schema([Wing.self, Flight.self, Spot.self, TrashedFlight.self])
+        let schema = Schema([
+            Wing.self, Flight.self, Spot.self, TrashedFlight.self, ArchivedSpotReport.self
+        ])
         defer {
             let ms = Int(Date().timeIntervalSince(start) * 1000)
             logInfo("ModelContainer build finished in \(ms) ms", category: .dataController)
@@ -333,6 +335,9 @@ final class DataController {
             // Opt-in community share. Fire-and-forget: never affects the
             // save/ACK path (same pattern as the weather snapshot).
             CommunityService.shared.shareFlightIfEnabled(flight, dataController: self)
+            // Keep this session's condition reports before the server drops
+            // them 3 hours after they were filed.
+            ConditionReportService.shared.archiveReports(for: flight, dataController: self)
             // The wing's hour counters moved — refresh the trim reminders.
             refreshTrimReminders()
         }
@@ -369,6 +374,8 @@ final class DataController {
         logInfo("Flight saved: \(flight.durationFormatted) at \(flight.spotName ?? "Unknown")", category: .flight)
         // Opt-in community share. Fire-and-forget: never affects the save path.
         CommunityService.shared.shareFlightIfEnabled(flight, dataController: self)
+        // Keep this session's condition reports before the server drops them.
+        ConditionReportService.shared.archiveReports(for: flight, dataController: self)
         // The wing's hour counters moved — refresh the trim reminders.
         refreshTrimReminders()
         return flight
@@ -402,8 +409,13 @@ final class DataController {
         // A spot may only have been resolved by this late geocode — give the
         // opt-in community share a second chance. Idempotent (doc ID = flight
         // id) and fire-and-forget: never affects this update path.
+        //
+        // It is also the first moment the flight has a key to look its
+        // condition reports up by: the attempt made when it was saved had
+        // nothing to match on and returned immediately.
         if flight.spot != nil {
             CommunityService.shared.shareFlightIfEnabled(flight, dataController: self)
+            ConditionReportService.shared.archiveReports(for: flight, dataController: self)
         }
     }
 
@@ -420,6 +432,10 @@ final class DataController {
             // the safety net must not also block the delete the pilot asked for.
             logWarning("Could not snapshot flight \(flight.id) before deleting — no trash entry", category: .dataController)
         }
+        // A deleted flight has to disappear from the community too, or it keeps
+        // showing up in Explore, the feed and the leaderboards for everyone
+        // else. Fire-and-forget and idempotent: restoring re-shares it.
+        CommunityService.shared.unshareFlight(flight.id)
         modelContext.delete(flight)
         saveContext()
     }
@@ -462,8 +478,18 @@ final class DataController {
             durationSeconds: flight.durationSeconds,
             spotName: flight.spotName,
             flightType: flight.flightType,
+            wingName: flight.wing?.name,
             payload: payload
         )
+    }
+
+    /// Decodes a trashed flight's payload back into the backup shape the trash
+    /// detail sheet renders. Nil when the payload is unreadable — the same
+    /// condition that makes `restoreFlight` fail.
+    static func decodeTrashed(_ trashed: TrashedFlight) -> BackupFlight? {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(BackupFlight.self, from: trashed.payload)
     }
 
     /// Flights currently in the trash, most recently deleted first.
@@ -478,9 +504,7 @@ final class DataController {
     /// they still exist. Returns false when the payload cannot be decoded.
     @discardableResult
     func restoreFlight(_ trashed: TrashedFlight) -> Bool {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let backup = try? decoder.decode(BackupFlight.self, from: trashed.payload) else {
+        guard let backup = Self.decodeTrashed(trashed) else {
             logError("Could not decode trashed flight \(trashed.id)", category: .dataController)
             return false
         }
@@ -535,6 +559,13 @@ final class DataController {
         modelContext.delete(trashed)
         saveContext()
         if flight.spot == nil { linkUnlinkedFlights() }
+
+        // Put it back in the community as well, onto the same deterministic
+        // row ID it had before, so kudos left on it reattach. Respects the
+        // sharing opt-in — a pilot who turned sharing off since deleting the
+        // flight does not get it re-uploaded.
+        CommunityService.shared.shareFlightIfEnabled(flight, dataController: self)
+
         logInfo("Restored flight \(backup.id) from the trash", category: .dataController)
         return true
     }
@@ -560,6 +591,60 @@ final class DataController {
         saveContext()
         logInfo("Purged \(expired.count) flight(s) from the trash", category: .dataController)
         return expired.count
+    }
+
+    // MARK: - Archived condition reports
+
+    /// Stores condition reports locally so they outlive the server's 3-hour
+    /// TTL. Rows already archived (same Appwrite ID) are skipped, so calling
+    /// this repeatedly with overlapping sets is safe.
+    /// - Returns: how many new reports were archived.
+    @discardableResult
+    func archiveConditionReports(_ reports: [ArchivedSpotReport]) -> Int {
+        guard !reports.isEmpty else { return 0 }
+        // An Array, not a Set: `contains` on an array is the form SwiftData
+        // translates into an SQL `IN`.
+        let incomingIds = Array(Set(reports.map(\.id)))
+        let existing = Set(
+            ((try? modelContext.fetch(FetchDescriptor<ArchivedSpotReport>(
+                predicate: #Predicate { incomingIds.contains($0.id) }
+            ))) ?? []).map(\.id)
+        )
+
+        var inserted = 0
+        for report in reports where !existing.contains(report.id) {
+            modelContext.insert(report)
+            inserted += 1
+        }
+        if inserted > 0 { saveContext() }
+        return inserted
+    }
+
+    /// Archived condition reports that describe one flight's air: same spot,
+    /// filed within `ArchivedSpotReport.flightMatchWindow` of it. Newest first.
+    ///
+    /// Matching is on the community spot KEY rather than the spot's identity:
+    /// a report is filed against a key derived from name + coordinates, and
+    /// the flight may have been linked to its spot only after landing.
+    func conditionReports(for flight: Flight) -> [ArchivedSpotReport] {
+        guard let spotKey = communitySpotKey(for: flight) else { return [] }
+        let window = ArchivedSpotReport.flightMatchWindow
+        let from = flight.startDate.addingTimeInterval(-window)
+        let to = flight.endDate.addingTimeInterval(window)
+
+        let descriptor = FetchDescriptor<ArchivedSpotReport>(
+            predicate: #Predicate { $0.spotKey == spotKey && $0.createdAt >= from && $0.createdAt <= to },
+            sortBy: [SortDescriptor(\ArchivedSpotReport.createdAt, order: .reverse)]
+        )
+        return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    /// Community spot key a flight's reports would have been filed under, or
+    /// nil when the flight has no located spot (nothing can be matched then).
+    func communitySpotKey(for flight: Flight) -> String? {
+        guard let spot = flight.spot else { return nil }
+        return spot.communitySpotKey
+            ?? CommunitySpotKey.make(name: spot.name, latitude: spot.latitude, longitude: spot.longitude)
     }
 
     /// Bulk-assigns a flight type (nil clears it). One save for the whole batch.
