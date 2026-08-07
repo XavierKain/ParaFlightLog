@@ -19,15 +19,42 @@
     "fr": "D'après les orientations de décollage que tu as définies pour ce spot.",
     "de": "Nach den Startrichtungen, die du für diesen Spot festgelegt hast."
   },
-  "North": { "fr": "nord", "de": "Norden" },
-  "North-East": { "fr": "nord-est", "de": "Nordosten" },
-  "East": { "fr": "est", "de": "Osten" },
-  "South-East": { "fr": "sud-est", "de": "Südosten" },
-  "South": { "fr": "sud", "de": "Süden" },
-  "South-West": { "fr": "sud-ouest", "de": "Südwesten" },
-  "West": { "fr": "ouest", "de": "Westen" },
-  "North-West": { "fr": "nord-ouest", "de": "Nordwesten" },
-  "no direction": { "fr": "aucune direction", "de": "keine Richtung" },
+  "North": {
+    "fr": "nord",
+    "de": "Norden"
+  },
+  "North-East": {
+    "fr": "nord-est",
+    "de": "Nordosten"
+  },
+  "East": {
+    "fr": "est",
+    "de": "Osten"
+  },
+  "South-East": {
+    "fr": "sud-est",
+    "de": "Südosten"
+  },
+  "South": {
+    "fr": "sud",
+    "de": "Süden"
+  },
+  "South-West": {
+    "fr": "sud-ouest",
+    "de": "Südwesten"
+  },
+  "West": {
+    "fr": "ouest",
+    "de": "Westen"
+  },
+  "North-West": {
+    "fr": "nord-ouest",
+    "de": "Nordwesten"
+  },
+  "no direction": {
+    "fr": "aucune direction",
+    "de": "keine Richtung"
+  },
   "Or continue with": {
     "fr": "Ou continuer avec",
     "de": "Oder weiter mit"
@@ -40,7 +67,10 @@
     "fr": "Aucune balise de vent à proximité — ici, les reports des pilotes sont la seule vérité terrain.",
     "de": "Keine Windstation in der Nähe — hier sind Pilotenmeldungen die einzige verlässliche Quelle."
   },
-  "just now": { "fr": "à l'instant", "de": "gerade eben" },
+  "just now": {
+    "fr": "à l'instant",
+    "de": "gerade eben"
+  },
   "Never miss a good day": {
     "fr": "Ne rate plus un bon jour",
     "de": "Verpasse keinen guten Tag mehr"
@@ -57,12 +87,30 @@
     "fr": "Instable — la journée peut surdévelopper.",
     "de": "Labil — der Tag kann überentwickeln."
   },
-  "Status": { "fr": "État", "de": "Status" },
-  "Wind": { "fr": "Vent", "de": "Wind" },
-  "Send": { "fr": "Envoyer", "de": "Senden" },
-  "Sending…": { "fr": "Envoi…", "de": "Senden…" },
-  "Start a flight": { "fr": "Démarrer un vol", "de": "Flug starten" },
-  "Flight": { "fr": "Vol", "de": "Flug" },
+  "Status": {
+    "fr": "État",
+    "de": "Status"
+  },
+  "Wind": {
+    "fr": "Vent",
+    "de": "Wind"
+  },
+  "Send": {
+    "fr": "Envoyer",
+    "de": "Senden"
+  },
+  "Sending…": {
+    "fr": "Envoi…",
+    "de": "Senden…"
+  },
+  "Start a flight": {
+    "fr": "Démarrer un vol",
+    "de": "Flug starten"
+  },
+  "Flight": {
+    "fr": "Vol",
+    "de": "Flug"
+  },
   "Shows flight status and quick access": {
     "fr": "Affiche le statut de vol et un accès rapide",
     "de": "Zeigt den Flugstatus und schnellen Zugriff"
@@ -74,5 +122,93 @@
   "This wing has ^[%lld flight](inflect: true) recorded. Archiving keeps the data, deleting erases it.": {
     "fr": "Cette voile totalise ^[%lld vol](inflect: true). L'archivage conserve les données, la suppression les efface.",
     "de": "Dieser Schirm hat ^[%lld Flug](inflect: true) aufgezeichnet. Archivieren behält die Daten, Löschen entfernt sie."
+  },
+  "No wing or spot recorded": {
+    "fr": "Ni voile ni spot enregistrés",
+    "de": "Kein Schirm und kein Spot erfasst"
+  },
+  "Deleted flight": {
+    "fr": "Vol supprimé",
+    "de": "Gelöschter Flug"
+  },
+  "Takeoff altitude": {
+    "fr": "Altitude au décollage",
+    "de": "Starthöhe"
+  },
+  "Landing altitude": {
+    "fr": "Altitude à l'atterrissage",
+    "de": "Landehöhe"
+  },
+  "GPS points": {
+    "fr": "Points GPS",
+    "de": "GPS-Punkte"
+  },
+  "Gusts": {
+    "fr": "Rafales",
+    "de": "Böen"
+  },
+  "Direction": {
+    "fr": "Direction",
+    "de": "Richtung"
+  },
+  "Temperature": {
+    "fr": "Température",
+    "de": "Temperatur"
+  },
+  "Restore this flight": {
+    "fr": "Restaurer ce vol",
+    "de": "Diesen Flug wiederherstellen"
+  },
+  "Delete for good": {
+    "fr": "Supprimer définitivement",
+    "de": "Endgültig löschen"
+  },
+  "Removed for good today.": {
+    "fr": "Supprimé définitivement aujourd'hui.",
+    "de": "Wird heute endgültig gelöscht."
+  },
+  "Clean up flights I deleted": {
+    "fr": "Nettoyer les vols que j'ai supprimés",
+    "de": "Von mir gelöschte Flüge aufräumen"
+  },
+  "Clean up flights you deleted?": {
+    "fr": "Nettoyer les vols que vous avez supprimés ?",
+    "de": "Gelöschte Flüge aufräumen?"
+  },
+  "Clean up": {
+    "fr": "Nettoyer",
+    "de": "Aufräumen"
+  },
+  "Removes shared flights that are no longer in this logbook — leftovers from deletes made before the app removed them for you. If you also log flights on another device, run this from the device that has them all.": {
+    "fr": "Supprime les vols partagés qui ne sont plus dans ce carnet — des restes de suppressions faites avant que l'app ne s'en charge. Si vous enregistrez aussi des vols sur un autre appareil, lancez ce nettoyage depuis celui qui les a tous.",
+    "de": "Entfernt geteilte Flüge, die nicht mehr in diesem Flugbuch sind — Überbleibsel von Löschungen, bevor die App das selbst übernahm. Wenn du auch auf einem anderen Gerät Flüge aufzeichnest, führe dies auf dem Gerät aus, das alle enthält."
+  },
+  "Nothing to clean up — the community only has flights that are still in your logbook.": {
+    "fr": "Rien à nettoyer — la communauté ne contient que des vols encore présents dans votre carnet.",
+    "de": "Nichts aufzuräumen — die Community enthält nur Flüge, die noch in deinem Flugbuch stehen."
+  },
+  "1 deleted flight removed from the community.": {
+    "fr": "1 vol supprimé retiré de la communauté.",
+    "de": "1 gelöschter Flug aus der Community entfernt."
+  },
+  "%lld deleted flights removed from the community.": {
+    "fr": "%lld vols supprimés retirés de la communauté.",
+    "de": "%lld gelöschte Flüge aus der Community entfernt."
+  },
+  "Pilot reports": {
+    "fr": "Reports des pilotes",
+    "de": "Pilotenmeldungen"
+  },
+  "You": {
+    "fr": "Vous",
+    "de": "Du"
+  },
+  "^[%lld report](inflect: true) at this spot around this flight": {
+    "fr": "^[%lld report](inflect: true) sur ce spot autour de ce vol",
+    "de": "^[%lld Meldung](inflect: true) an diesem Spot rund um diesen Flug"
+  },
+  "^[%lld day](inflect: true) left before this flight is removed for good.": {
+    "fr": "^[%lld jour](inflect: true) avant la suppression définitive de ce vol.",
+    "de": "Noch ^[%lld Tag](inflect: true), bis dieser Flug endgültig gelöscht wird."
   }
 }
