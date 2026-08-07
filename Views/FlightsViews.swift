@@ -383,6 +383,15 @@ struct LatestFlightCard: View {
                     .frame(height: 180)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     .allowsHitTesting(false)
+                    // `initialPosition` is applied ONCE, when the Map is first
+                    // built. This card keeps its place in the hierarchy when the
+                    // featured flight changes, so SwiftUI reuses the same Map and
+                    // the camera stays on the previous flight — after deleting
+                    // the most recent flight, the card showed the new flight's
+                    // details over the deleted one's location. Tying identity to
+                    // the flight forces a fresh Map, and a fresh camera, whenever
+                    // the featured flight changes.
+                    .id(flight.id)
                 } else {
                     // Placeholder when there are no coordinates
                     RoundedRectangle(cornerRadius: 16, style: .continuous)
