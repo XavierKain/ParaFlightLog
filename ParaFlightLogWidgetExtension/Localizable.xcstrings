@@ -1,7 +1,40 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "Flight" : {
+
+    },
+    "How was the wind?" : {
+
+    },
+    "How were the conditions?" : {
+
+    },
+    "How were the thermals?" : {
+
+    },
+    "Light thermals" : {
+
+    },
+    "Nothing working" : {
+
+    },
     "ParaFlightLog" : {
+
+    },
+    "Shows flight status and quick access" : {
+
+    },
+    "Start a flight" : {
+
+    },
+    "Strong and punchy" : {
+
+    },
+    "Too rough" : {
+
+    },
+    "Very punchy" : {
 
     },
     "widget_description" : {
@@ -54,6 +87,9 @@
           }
         }
       }
+    },
+    "Working well" : {
+
     }
   },
   "version" : "1.0"

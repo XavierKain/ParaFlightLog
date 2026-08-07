@@ -1615,6 +1615,9 @@
         }
       }
     },
+    "^[%lld day](inflect: true) left" : {
+
+    },
     "^[%lld flight](inflect: true)" : {
       "localizations" : {
         "de" : {
@@ -5235,6 +5238,9 @@
         }
       }
     },
+    "Could not restore" : {
+
+    },
     "Could not save the changes. Please try again." : {
       "localizations" : {
         "de" : {
@@ -5825,6 +5831,9 @@
         }
       }
     },
+    "Delete for good?" : {
+
+    },
     "Delete Permanently" : {
       "localizations" : {
         "de" : {
@@ -5936,6 +5945,9 @@
           }
         }
       }
+    },
+    "Deleted flights land here and stay for 7 days, so an accidental delete can be undone." : {
+
     },
     "DÉMARRER LE VOL" : {
       "extractionState" : "stale",
@@ -7352,6 +7364,9 @@
           }
         }
       }
+    },
+    "Flights are removed for good 7 days after deletion." : {
+
     },
     "Flights can then be moved to this spot from any spot's detail page." : {
       "localizations" : {
@@ -12020,6 +12035,9 @@
         }
       }
     },
+    "Removed for good today" : {
+
+    },
     "Removes every flight you shared with the community, and your live presence. Your local logbook is not affected." : {
       "localizations" : {
         "de" : {
@@ -14635,6 +14653,9 @@
         }
       }
     },
+    "This flight cannot be recovered afterwards." : {
+
+    },
     "This flight has no GPS track." : {
       "localizations" : {
         "de" : {
@@ -14682,6 +14703,9 @@
           }
         }
       }
+    },
+    "This flight's saved copy could not be read." : {
+
     },
     "This is the public name other pilots see on your flights and reports." : {
       "localizations" : {
@@ -15007,6 +15031,12 @@
           }
         }
       }
+    },
+    "Trash" : {
+
+    },
+    "Trash is empty" : {
+
     },
     "Trim flight" : {
       "localizations" : {
