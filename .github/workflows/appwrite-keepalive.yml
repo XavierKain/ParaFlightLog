@@ -1,18 +1,22 @@
-name: Appwrite keep-alive
+name: Appwrite pause monitor
 
-# Appwrite Cloud's free tier pauses a project after 7 days without API
-# requests, which silently kills the wing catalog, community spots, condition
-# reports and push for everyone. One request a day is enough to reset that
-# counter, and running it here rather than on a laptop means it keeps happening
-# while nobody is flying or coding.
+# Appwrite Cloud's free plan pauses a project after 7 days without
+# *development activity in the Console*. API traffic does not count — Appwrite
+# says so explicitly, and this workflow proved it: it pinged the project every
+# day from 2026-07-29 and the project was still paused on 08-20, 08-30, 09-14
+# and 09-25. No request made from here can keep the project awake.
+#
+# What this workflow does instead:
+#   1. Checks daily that the project answers. When it is paused, the run goes
+#      red and GitHub emails you — before a beta tester finds out. Restore it
+#      from the Console (one click, instant).
+#   2. Keeps itself enabled. GitHub disables scheduled workflows after 60 days
+#      without a commit; re-enabling through the API resets that counter.
+#
+# The only permanent fix is Appwrite Pro, where projects are never paused.
 #
 # Nothing secret is involved: the project ID is a public client identifier,
-# already shipped in the app binary (ParaFlightLog/Services/AppwriteService.swift)
-# and readable in this repo. The request is exactly the anonymous read the app
-# performs on launch.
-#
-# If the project IS paused, the request fails and this workflow goes red — which
-# is the point: GitHub emails you instead of a beta tester discovering it.
+# already shipped in the app binary (ParaFlightLog/Services/AppwriteService.swift).
 
 on:
   schedule:
@@ -21,9 +25,12 @@ on:
     - cron: '14 7 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  ping:
-    name: Ping the Appwrite project
+  check:
+    name: Check the Appwrite project is running
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
@@ -34,16 +41,13 @@ jobs:
       - name: Read the public wing catalog
         run: |
           set -euo pipefail
-          # A real database read against a real collection — closer to what
-          # Appwrite counts as project activity than a bare health check.
-          # `read(any)` on `wings` is what lets the app load the catalog before
-          # the pilot signs in, so no key is needed.
+          # The anonymous read the app performs on launch.
           url="${APPWRITE_ENDPOINT}/databases/${APPWRITE_DATABASE}/collections/wings/documents"
           query='queries[]={"method":"limit","values":[1]}'
           # Not named `status`: that's read-only in zsh, and this snippet is
           # worth being able to paste into a local shell to debug.
           http_code=$(curl -sS -G \
-            --max-time 30 --retry 3 --retry-delay 10 --retry-all-errors \
+            --max-time 30 --retry 3 --retry-delay 10 \
             -o /tmp/wings.json -w '%{http_code}' \
             --data-urlencode "$query" \
             -H "X-Appwrite-Project: ${APPWRITE_PROJECT}" \
@@ -52,18 +56,31 @@ jobs:
           echo "HTTP $http_code"
           head -c 400 /tmp/wings.json; echo
 
+          console="https://cloud.appwrite.io/console/project-fra-${APPWRITE_PROJECT}"
+          if grep -q '"project_paused"' /tmp/wings.json; then
+            echo "::error::Appwrite project is PAUSED — the app's catalog, spots, reports and push are down. Restore it: ${console}"
+            exit 1
+          fi
           if [ "$http_code" != "200" ]; then
-            echo "::error::Appwrite returned HTTP $http_code — the project is probably paused. Restore it at https://cloud.appwrite.io/console/project-fra-${APPWRITE_PROJECT}"
+            echo "::error::Appwrite returned HTTP $http_code. Check the project: ${console}"
             exit 1
           fi
 
           total=$(python3 -c 'import json;print(json.load(open("/tmp/wings.json"))["total"])')
-          echo "Wing catalog reachable — $total wings."
+          echo "Appwrite project running — $total wings in the catalog."
 
-      - name: Ping
+  stay-enabled:
+    name: Keep this workflow enabled
+    # Independent of `check`, so it still runs on the days the project is paused.
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Re-enable this workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
-          curl -sS --max-time 30 --retry 2 \
-            -H "X-Appwrite-Project: ${APPWRITE_PROJECT}" \
-            "${APPWRITE_ENDPOINT}/ping"
-          echo
+          # Resets GitHub's 60-days-of-inactivity counter without a commit.
+          gh api -X PUT "repos/${{ github.repository }}/actions/workflows/appwrite-keepalive.yml/enable"
+          echo "Workflow re-enabled."
