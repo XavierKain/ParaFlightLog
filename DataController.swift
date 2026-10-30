@@ -94,9 +94,7 @@ final class DataController {
     nonisolated private static func makeContainer() -> ContainerResult {
         let start = Date()
         logInfo("ModelContainer build started", category: .dataController)
-        let schema = Schema([
-            Wing.self, Flight.self, Spot.self, TrashedFlight.self, ArchivedSpotReport.self
-        ])
+        let schema = Schema(Self.registeredModels)
         defer {
             let ms = Int(Date().timeIntervalSince(start) * 1000)
             logInfo("ModelContainer build finished in \(ms) ms", category: .dataController)
@@ -1054,6 +1052,19 @@ final class DataController {
         let m = Int((hours - Double(h)) * 60)
         return m > 0 ? "\(h)h\(String(format: "%02d", m))" : "\(h)h"
     }
+
+    // MARK: - Registered models
+
+    /// Every @Model the app persists.
+    ///
+    /// Named and exposed on purpose: a model missing from this list still
+    /// compiles, still passes tests that build their own container, and fails
+    /// only at runtime, where the symptom is a save that silently does
+    /// nothing. ModelRegistrationTests asserts the list is complete.
+    nonisolated static let registeredModels: [any PersistentModel.Type] = [
+        Wing.self, Flight.self, Spot.self, TrashedFlight.self, ArchivedSpotReport.self,
+        Reserve.self
+    ]
 
     // MARK: - Reserves
 
