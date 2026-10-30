@@ -505,3 +505,77 @@ final class TrashedFlight {
         return max(0, Int(remaining / 86400))
     }
 }
+
+// MARK: - Reserve
+
+/// A reserve parachute, tracked on its own rather than as fields on a wing.
+///
+/// A reserve outlives the wing it is flown under and moves between harnesses,
+/// so attaching it to a Wing would either duplicate it or lose its repack
+/// history the day the pilot changes glider. It is also the one piece of gear
+/// with a legal-ish deadline: manufacturers require a repack at a fixed
+/// interval whether or not it has been flown, which is why the deadline here
+/// is purely calendar-based — unlike a wing's trim, which is driven by hours.
+@Model
+final class Reserve {
+    var id: UUID = UUID()
+    var name: String = ""
+    var brand: String?
+    /// Printed size/model reference, free text ("SQR 100", "120").
+    var size: String?
+    var serialNumber: String?
+
+    /// Date of manufacture, as printed on the reserve's label.
+    var manufactureDate: Date?
+    /// Last repack or inspection actually carried out.
+    var lastRepackDate: Date?
+
+    /// Months between repacks. 12 by default, which is what most European
+    /// manufacturers ask for; some specify 6, hence configurable.
+    var repackIntervalMonths: Int = 12
+
+    var notes: String?
+    /// Retired reserves stay in the logbook but stop producing reminders.
+    var isArchived: Bool = false
+    var createdAt: Date = Date()
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        brand: String? = nil,
+        size: String? = nil,
+        serialNumber: String? = nil,
+        manufactureDate: Date? = nil,
+        lastRepackDate: Date? = nil,
+        repackIntervalMonths: Int = 12,
+        notes: String? = nil,
+        isArchived: Bool = false,
+        createdAt: Date = Date()
+    ) {
+        self.id = id
+        self.name = name
+        self.brand = brand
+        self.size = size
+        self.serialNumber = serialNumber
+        self.manufactureDate = manufactureDate
+        self.lastRepackDate = lastRepackDate
+        self.repackIntervalMonths = repackIntervalMonths
+        self.notes = notes
+        self.isArchived = isArchived
+        self.createdAt = createdAt
+    }
+
+    /// When the next repack falls due. Nil until a first repack is recorded —
+    /// a brand-new reserve's clock starts at its first packing, and guessing
+    /// from the manufacture date would invent a deadline the pilot never set.
+    var nextRepackDate: Date? {
+        guard let lastRepackDate else { return nil }
+        return Calendar.current.date(byAdding: .month, value: repackIntervalMonths, to: lastRepackDate)
+    }
+
+    /// Age in whole years, for the label that matters once a reserve gets old.
+    var ageInYears: Int? {
+        guard let manufactureDate else { return nil }
+        return Calendar.current.dateComponents([.year], from: manufactureDate, to: Date()).year
+    }
+}

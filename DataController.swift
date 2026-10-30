@@ -10,6 +10,7 @@ import Foundation
 import SwiftData
 import CoreLocation
 import UIKit  // For ImageCacheManager
+import UserNotifications  // Cancelling a deleted reserve's repack reminder
 
 // MARK: - FlightStats
 /// Aggregated statistics computed in a single pass over all flights.
@@ -1052,6 +1053,47 @@ final class DataController {
         let h = Int(hours)
         let m = Int((hours - Double(h)) * 60)
         return m > 0 ? "\(h)h\(String(format: "%02d", m))" : "\(h)h"
+    }
+
+    // MARK: - Reserves
+
+    /// Reserve parachutes, newest first. Archived ones included — the caller
+    /// decides, as the reminders do.
+    func fetchReserves() -> [Reserve] {
+        let descriptor = FetchDescriptor<Reserve>(
+            sortBy: [SortDescriptor(\Reserve.createdAt, order: .reverse)]
+        )
+        return (try? modelContext.fetch(descriptor)) ?? []
+    }
+
+    func addReserve(_ reserve: Reserve) {
+        modelContext.insert(reserve)
+        saveContext()
+        refreshRepackReminders()
+    }
+
+    func deleteReserve(_ reserve: Reserve) {
+        // Drop its pending reminder with it, otherwise a deleted reserve keeps
+        // nagging until the notification fires.
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: [ReserveMaintenance.reminderIdentifier(reserveId: reserve.id)]
+        )
+        modelContext.delete(reserve)
+        saveContext()
+    }
+
+    /// Records a repack done today (or on `date`) and re-arms the reminder.
+    func logRepack(for reserve: Reserve, on date: Date = Date()) {
+        reserve.lastRepackDate = date
+        saveContext()
+        refreshRepackReminders()
+    }
+
+    /// Fire-and-forget refresh of the local repack reminders. Fail-soft, like
+    /// refreshTrimReminders: never affects the save path.
+    func refreshRepackReminders() {
+        let reserves = fetchReserves()
+        Task { await ReserveMaintenance.scheduleRepackReminders(reserves: reserves) }
     }
 
     // MARK: - Trim reminders

@@ -298,6 +298,9 @@ private struct IOSRootView: View {
                         // prompts only when a reminder actually needs
                         // scheduling.
                         await WingMaintenance.scheduleTrimReminders(wings: dataController.fetchWings())
+                        // Same at launch for the reserve: its deadline is
+                        // calendar-based, so it can come due with the app closed.
+                        await ReserveMaintenance.scheduleRepackReminders(reserves: dataController.fetchReserves())
                     }
 
                     // Keep WatchConnectivity setup off the first-paint path.

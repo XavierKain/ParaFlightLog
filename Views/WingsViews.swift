@@ -19,6 +19,7 @@ struct WingsView: View {
     @Query(filter: #Predicate<Wing> { !$0.isArchived }, sort: \Wing.displayOrder) private var wings: [Wing]
     // Reactive source for per-wing hours; also drives the async stats recompute.
     @Query(sort: \Flight.startDate, order: .reverse) private var flights: [Flight]
+    @Query(sort: \Reserve.createdAt, order: .reverse) private var reserves: [Reserve]
     @State private var showingAddWing = false
 
     // Per-wing hours, computed off the render path (see .task below)
@@ -49,6 +50,18 @@ struct WingsView: View {
                         )
                     }
                     .onMove(perform: moveWing)
+                }
+
+                // The reserve lives here rather than in Settings: it is gear,
+                // and this is the gear tab. Surfacing its deadline on the row
+                // is the point — a repack that is only visible once you go
+                // looking for it is a repack that gets forgotten.
+                Section {
+                    NavigationLink {
+                        ReservesView()
+                    } label: {
+                        ReserveSummaryRow(reserves: reserves)
+                    }
                 }
             }
             .navigationTitle("My Wings")
@@ -241,3 +254,74 @@ struct WingRow: View {
     }
 }
 
+
+
+// MARK: - ReserveSummaryRow
+
+/// The reserve entry in the gear tab. Shows the nearest repack deadline so the
+/// pilot sees it without opening anything; an empty state invites recording one.
+private struct ReserveSummaryRow: View {
+    let reserves: [Reserve]
+
+    /// The deadline that matters: the worst status among active reserves.
+    private var worst: (reserve: Reserve, deadline: RepackDeadline)? {
+        let rank: [RepackStatus: Int] = [.overdue: 0, .dueSoon: 1, .ok: 2, .unknown: 3]
+        return reserves
+            .filter { !$0.isArchived }
+            .map { ($0, ReserveMaintenance.deadline(for: $0)) }
+            .min { (rank[$0.1.status] ?? 9) < (rank[$1.1.status] ?? 9) }
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "lifepreserver.fill")
+                .font(.title3)
+                .foregroundStyle(Color.accentColor)
+                .frame(width: 32)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Reserve")
+                    .font(.headline)
+                detail
+                    .font(.caption)
+                    .foregroundStyle(detailColor)
+            }
+        }
+        .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var detail: some View {
+        if let worst {
+            switch worst.deadline.status {
+            case .overdue:
+                Text("\(worst.reserve.name) — repack overdue")
+            case .dueSoon:
+                if let due = worst.deadline.dueDate {
+                    Text("\(worst.reserve.name) — repack due \(due.formatted(date: .abbreviated, time: .omitted))")
+                } else {
+                    Text("\(worst.reserve.name) — repack due soon")
+                }
+            case .ok:
+                if let due = worst.deadline.dueDate {
+                    Text("Next repack \(due.formatted(date: .abbreviated, time: .omitted))")
+                } else {
+                    Text("Up to date")
+                }
+            case .unknown:
+                Text("No repack recorded yet")
+            }
+        } else {
+            Text("Add your reserve and its repack date")
+        }
+    }
+
+    private var detailColor: Color {
+        switch worst?.deadline.status {
+        case .overdue: return .red
+        case .dueSoon: return .orange
+        case .ok: return .green
+        default: return .secondary
+        }
+    }
+}
