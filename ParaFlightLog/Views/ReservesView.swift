@@ -188,9 +188,10 @@ struct ReserveEditView: View {
 
     @State private var hasManufactureDate: Bool
     @State private var manufactureDate: Date
-    @State private var hasRepackDate: Bool
-    @State private var lastRepackDate: Date
+    @State private var repackLog: [RepackEvent]
     @State private var intervalMonths: Int
+    @State private var newRepackDate = Date()
+    @State private var addingRepack = false
     @State private var isArchived: Bool
 
     init(reserve: Reserve?) {
@@ -202,8 +203,7 @@ struct ReserveEditView: View {
         _notes = State(initialValue: reserve?.notes ?? "")
         _hasManufactureDate = State(initialValue: reserve?.manufactureDate != nil)
         _manufactureDate = State(initialValue: reserve?.manufactureDate ?? Date())
-        _hasRepackDate = State(initialValue: reserve?.lastRepackDate != nil)
-        _lastRepackDate = State(initialValue: reserve?.lastRepackDate ?? Date())
+        _repackLog = State(initialValue: reserve?.repackLog ?? [])
         _intervalMonths = State(initialValue: reserve?.repackIntervalMonths ?? 12)
         _isArchived = State(initialValue: reserve?.isArchived ?? false)
     }
@@ -232,24 +232,64 @@ struct ReserveEditView: View {
                 }
 
                 Section {
-                    Toggle("Repack recorded", isOn: $hasRepackDate.animation())
-                    if hasRepackDate {
-                        DatePicker("Last repack", selection: $lastRepackDate, displayedComponents: .date)
-                        Picker("Repack every", selection: $intervalMonths) {
-                            Text("^[\(6) month](inflect: true)").tag(6)
-                            Text("^[\(12) month](inflect: true)").tag(12)
-                            Text("^[\(24) month](inflect: true)").tag(24)
-                        }
-                        if let due = Calendar.current.date(byAdding: .month, value: intervalMonths, to: lastRepackDate) {
-                            LabeledContent("Next repack") {
-                                Text(due.formatted(date: .abbreviated, time: .omitted))
+                    Picker("Repack every", selection: $intervalMonths) {
+                        Text("^[\(6) month](inflect: true)").tag(6)
+                        Text("^[\(12) month](inflect: true)").tag(12)
+                        Text("^[\(24) month](inflect: true)").tag(24)
+                    }
+
+                    // Newest first, so the entry that drives the deadline is
+                    // the one at the top.
+                    ForEach(repackLog) { event in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(event.date, format: .dateTime.day().month(.wide).year())
+                                .font(.callout)
+                            if let packer = event.packer, !packer.isEmpty {
+                                Text(packer)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
+                    .onDelete { offsets in
+                        repackLog.remove(atOffsets: offsets)
+                    }
+
+                    if addingRepack {
+                        DatePicker("Repack date", selection: $newRepackDate, displayedComponents: .date)
+                        HStack {
+                            Button("Cancel") { addingRepack = false }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Add") {
+                                repackLog.append(RepackEvent(date: newRepackDate))
+                                repackLog.sort { $0.date > $1.date }
+                                addingRepack = false
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    } else {
+                        Button {
+                            newRepackDate = Date()
+                            withAnimation { addingRepack = true }
+                        } label: {
+                            Label("Log a repack", systemImage: "plus.circle")
+                        }
+                    }
+
+                    if let last = repackLog.first?.date,
+                       let due = Calendar.current.date(byAdding: .month, value: intervalMonths, to: last) {
+                        LabeledContent("Next repack") {
+                            Text(due.formatted(date: .abbreviated, time: .omitted))
+                        }
+                    }
+                } header: {
+                    Text("Repack history")
                 } footer: {
-                    Text(hasRepackDate
-                         ? "You'll get a reminder a month before the next repack is due."
-                         : "Record a repack to start the deadline. Without one there is nothing to remind you about.")
+                    Text(repackLog.isEmpty
+                         ? "Log a repack to start the deadline. Without one there is nothing to remind you about."
+                         : "The newest entry sets the deadline. You'll get a reminder a month before it's due.")
                 }
 
                 Section {
@@ -292,7 +332,7 @@ struct ReserveEditView: View {
             reserve.serialNumber = cleanedSerial.isEmpty ? nil : cleanedSerial
             reserve.notes = cleanedNotes.isEmpty ? nil : cleanedNotes
             reserve.manufactureDate = hasManufactureDate ? manufactureDate : nil
-            reserve.lastRepackDate = hasRepackDate ? lastRepackDate : nil
+            reserve.repackLog = repackLog
             reserve.repackIntervalMonths = intervalMonths
             reserve.isArchived = isArchived
             dataController.saveContext()
@@ -304,7 +344,7 @@ struct ReserveEditView: View {
                 size: cleanedSize.isEmpty ? nil : cleanedSize,
                 serialNumber: cleanedSerial.isEmpty ? nil : cleanedSerial,
                 manufactureDate: hasManufactureDate ? manufactureDate : nil,
-                lastRepackDate: hasRepackDate ? lastRepackDate : nil,
+                repackLog: repackLog,
                 repackIntervalMonths: intervalMonths,
                 notes: cleanedNotes.isEmpty ? nil : cleanedNotes
             ))

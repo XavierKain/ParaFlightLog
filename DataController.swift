@@ -1082,9 +1082,10 @@ final class DataController {
         saveContext()
     }
 
-    /// Records a repack done today (or on `date`) and re-arms the reminder.
-    func logRepack(for reserve: Reserve, on date: Date = Date()) {
-        reserve.lastRepackDate = date
+    /// Appends a repack to the reserve's history and re-arms the reminder.
+    /// The deadline follows automatically — it reads the newest log entry.
+    func logRepack(for reserve: Reserve, on date: Date = Date(), packer: String? = nil, note: String? = nil) {
+        reserve.repackLog.append(RepackEvent(date: date, packer: packer, note: note))
         saveContext()
         refreshRepackReminders()
     }

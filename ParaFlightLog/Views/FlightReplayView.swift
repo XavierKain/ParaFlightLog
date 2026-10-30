@@ -329,7 +329,7 @@ struct FlightReplayView: View {
                 Circle()
                     .stroke(VarioPalette.color(current.verticalSpeed ?? 0), lineWidth: 3)
                     .frame(width: 46, height: 46)
-                Image(systemName: "parachute.fill")
+                Image(systemName: "figure.fall")
                     .font(.title2)
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.5), radius: 2)

@@ -30,7 +30,11 @@ struct ReserveMaintenanceTests {
             let base = calendar.date(byAdding: .month, value: -monthsAgo, to: Self.now)!
             last = calendar.date(byAdding: .day, value: daysOffset, to: base)!
         }
-        let r = Reserve(name: "Test", lastRepackDate: last, repackIntervalMonths: interval)
+        let r = Reserve(
+            name: "Test",
+            repackLog: last.map { [RepackEvent(date: $0)] } ?? [],
+            repackIntervalMonths: interval
+        )
         container.mainContext.insert(r)
         return r
     }
@@ -94,7 +98,7 @@ struct ReserveMaintenanceTests {
     @Test func dueDateIsTheRepackDatePlusTheInterval() throws {
         let calendar = Calendar.current
         let last = calendar.date(from: DateComponents(year: 2026, month: 1, day: 31))!
-        let r = Reserve(name: "Test", lastRepackDate: last, repackIntervalMonths: 12)
+        let r = Reserve(name: "Test", repackLog: [RepackEvent(date: last)], repackIntervalMonths: 12)
         container.mainContext.insert(r)
 
         let due = try #require(r.nextRepackDate)
@@ -110,5 +114,69 @@ struct ReserveMaintenanceTests {
         let r = Reserve(name: "Test", manufactureDate: made)
         container.mainContext.insert(r)
         #expect(r.ageInYears == 2)
+    }
+}
+
+// MARK: - Repack history
+
+@Suite("Reserve repack history")
+struct ReserveRepackLogTests {
+
+    private let container: ModelContainer
+
+    init() throws {
+        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        container = try ModelContainer(for: Reserve.self, configurations: configuration)
+    }
+
+    private func make(_ dates: [Date]) -> Reserve {
+        let r = Reserve(name: "Test", repackLog: dates.map { RepackEvent(date: $0) })
+        container.mainContext.insert(r)
+        return r
+    }
+
+    private func day(_ year: Int, _ month: Int, _ day: Int) -> Date {
+        Calendar.current.date(from: DateComponents(year: year, month: month, day: day))!
+    }
+
+    /// Entries come back newest first whatever order they went in, because the
+    /// deadline reads the first one.
+    @Test func historyIsOrderedNewestFirst() {
+        let r = make([day(2024, 3, 1), day(2026, 5, 10), day(2025, 4, 2)])
+        let dates = r.repackLog.map(\.date)
+        #expect(dates == [day(2026, 5, 10), day(2025, 4, 2), day(2024, 3, 1)])
+    }
+
+    /// The deadline must follow the NEWEST entry, not the last one appended —
+    /// a pilot backfilling an old repack must not reset their deadline.
+    @Test func backfillingAnOlderRepackDoesNotMoveTheDeadline() {
+        let r = make([day(2026, 5, 10)])
+        r.repackLog.append(RepackEvent(date: day(2023, 1, 1)))
+        #expect(r.lastRepackDate == day(2026, 5, 10))
+    }
+
+    @Test func loggingANewerRepackMovesTheDeadline() {
+        let r = make([day(2025, 5, 10)])
+        r.repackLog.append(RepackEvent(date: day(2026, 6, 1)))
+        #expect(r.lastRepackDate == day(2026, 6, 1))
+        #expect(r.repackLog.count == 2)
+    }
+
+    /// An empty history means no deadline at all, not a deadline in 1970.
+    @Test func emptyHistoryHasNoDeadline() {
+        let r = make([])
+        #expect(r.lastRepackDate == nil)
+        #expect(r.nextRepackDate == nil)
+        #expect(ReserveMaintenance.deadline(for: r).status == .unknown)
+    }
+
+    /// The packer survives a round trip through the encoded payload — it is
+    /// the half of the record that matters when a reserve changes hands.
+    @Test func packerAndNoteSurviveEncoding() throws {
+        let r = make([])
+        r.repackLog = [RepackEvent(date: day(2026, 2, 3), packer: "Aero Rigging", note: "Lines checked")]
+        let entry = try #require(r.repackLog.first)
+        #expect(entry.packer == "Aero Rigging")
+        #expect(entry.note == "Lines checked")
     }
 }

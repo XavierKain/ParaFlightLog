@@ -506,6 +506,29 @@ final class TrashedFlight {
     }
 }
 
+// MARK: - RepackEvent
+
+/// One repack or inspection in a reserve's history, stored JSON-encoded in
+/// `Reserve.repackLogData` (same pattern as WingServiceEvent).
+///
+/// The history matters beyond the next deadline: a reserve changes hands, and
+/// the question a buyer — or an investigator — asks is when it was packed and
+/// by whom, not just that it is currently in date.
+nonisolated struct RepackEvent: Codable, Identifiable, Sendable {
+    var id: UUID = UUID()
+    var date: Date
+    /// Who packed it (a school, a rigger, or the pilot).
+    var packer: String?
+    var note: String?
+
+    init(id: UUID = UUID(), date: Date, packer: String? = nil, note: String? = nil) {
+        self.id = id
+        self.date = date
+        self.packer = packer
+        self.note = note
+    }
+}
+
 // MARK: - Reserve
 
 /// A reserve parachute, tracked on its own rather than as fields on a wing.
@@ -527,8 +550,12 @@ final class Reserve {
 
     /// Date of manufacture, as printed on the reserve's label.
     var manufactureDate: Date?
-    /// Last repack or inspection actually carried out.
-    var lastRepackDate: Date?
+
+    /// JSON-encoded [RepackEvent] (same pattern as Wing.serviceLogData).
+    /// The log is the single source of truth for the deadline — see
+    /// `lastRepackDate`, which is derived from it rather than stored
+    /// alongside it, so the two can never disagree.
+    var repackLogData: Data?
 
     /// Months between repacks. 12 by default, which is what most European
     /// manufacturers ask for; some specify 6, hence configurable.
@@ -546,7 +573,7 @@ final class Reserve {
         size: String? = nil,
         serialNumber: String? = nil,
         manufactureDate: Date? = nil,
-        lastRepackDate: Date? = nil,
+        repackLog: [RepackEvent] = [],
         repackIntervalMonths: Int = 12,
         notes: String? = nil,
         isArchived: Bool = false,
@@ -558,11 +585,32 @@ final class Reserve {
         self.size = size
         self.serialNumber = serialNumber
         self.manufactureDate = manufactureDate
-        self.lastRepackDate = lastRepackDate
         self.repackIntervalMonths = repackIntervalMonths
         self.notes = notes
         self.isArchived = isArchived
         self.createdAt = createdAt
+        self.repackLog = repackLog
+    }
+
+    /// Repack history, newest first. Encoded in `repackLogData`.
+    var repackLog: [RepackEvent] {
+        get {
+            guard let repackLogData,
+                  let decoded = try? JSONDecoder().decode([RepackEvent].self, from: repackLogData)
+            else { return [] }
+            return decoded.sorted { $0.date > $1.date }
+        }
+        set {
+            let sorted = newValue.sorted { $0.date > $1.date }
+            repackLogData = try? JSONEncoder().encode(sorted)
+        }
+    }
+
+    /// The most recent repack. DERIVED from the log rather than stored next to
+    /// it: a reserve's deadline and its history must be the same fact, and two
+    /// copies of one fact drift the first time an old entry is corrected.
+    var lastRepackDate: Date? {
+        repackLog.first?.date
     }
 
     /// When the next repack falls due. Nil until a first repack is recorded —

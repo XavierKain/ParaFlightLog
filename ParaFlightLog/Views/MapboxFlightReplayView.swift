@@ -421,7 +421,7 @@ struct MapboxFlightReplayView: View {
             color.setFill()
             UIBezierPath(ovalIn: CGRect(x: 2, y: 2, width: side - 4, height: side - 4)).fill()
             let config = UIImage.SymbolConfiguration(pointSize: 11, weight: .bold)
-            if let glyph = UIImage(systemName: "parachute.fill", withConfiguration: config)?
+            if let glyph = UIImage(systemName: "figure.fall", withConfiguration: config)?
                 .withTintColor(.white, renderingMode: .alwaysOriginal) {
                 glyph.draw(in: CGRect(x: 6.5, y: 6.5, width: 13, height: 13))
             }
