@@ -198,14 +198,25 @@ final class CommunityService {
     // MARK: - Settings (UserDefaults-backed)
 
     /// Master opt-in for uploading flight summaries. Default FALSE.
+    ///
+    /// Reads false whenever the community half is off, whatever the pilot once
+    /// chose: a build with no community UI must not keep uploading in the
+    /// background because the toggle was on before the switch was flipped.
     var isSharingEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: UserDefaultsKeys.communitySharingEnabled) }
+        get {
+            AppFeatures.communityEnabled
+                && UserDefaults.standard.bool(forKey: UserDefaultsKeys.communitySharingEnabled)
+        }
         set { UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.communitySharingEnabled) }
     }
 
     /// Opt-in for the live presence heartbeat. Default FALSE.
+    /// Gated on the community half for the same reason as `isSharingEnabled`.
     var isPresenceEnabled: Bool {
-        get { UserDefaults.standard.bool(forKey: UserDefaultsKeys.presenceEnabled) }
+        get {
+            AppFeatures.communityEnabled
+                && UserDefaults.standard.bool(forKey: UserDefaultsKeys.presenceEnabled)
+        }
         set { UserDefaults.standard.set(newValue, forKey: UserDefaultsKeys.presenceEnabled) }
     }
 

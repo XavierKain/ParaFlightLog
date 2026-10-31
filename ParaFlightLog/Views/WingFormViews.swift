@@ -71,6 +71,9 @@ struct AddWingView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     .disabled(isAddingFromLibrary)
+                    // The library is served from Appwrite and curated by other
+                    // pilots, so it travels with the community half.
+                    .communityOnly()
 
                     // Custom button
                     Button {

@@ -25,6 +25,7 @@ struct SettingsView: View {
     // Default TRUE (matches WeatherService.autoSnapshotEnabled's fallback)
     @AppStorage(UserDefaultsKeys.autoWeatherSnapshot) private var autoWeatherSnapshot = true
     @AppStorage(UserDefaultsKeys.developerModeEnabled) private var developerModeEnabled = false
+    @AppStorage(UserDefaultsKeys.communityEnabled) private var communityEnabled = false
     @AppStorage(UserDefaultsKeys.simulateFlightEnabled) private var simulateFlightEnabled = false
     // Reactive so changes made on the Watch (pushed back via WCSession) show live here.
     @AppStorage(UserDefaultsKeys.watchAutoWaterLock) private var watchAutoWaterLock = false
@@ -59,6 +60,7 @@ struct SettingsView: View {
                 dataSection
                 accountSection
                 CommunitySettingsSection(flights: flights)
+                    .communityOnly()
                 notificationsSection
                 comingSoonSection
                 developerSection
@@ -408,6 +410,15 @@ struct SettingsView: View {
             }
 
             if developerModeEnabled {
+                Toggle(isOn: $communityEnabled) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Community features")
+                        Text("Explore, feed, pilot profiles, spot reports and the wing library. Off for builds handed to other pilots.")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
                 NavigationLink {
                     // LazyView: TimerView's init builds FlightSimulator +
                     // PhoneVarioService (barometer/audio). Without laziness that

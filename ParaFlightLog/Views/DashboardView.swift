@@ -25,6 +25,10 @@ struct DashboardView: View {
     @State private var showingNearbySpots = false
     @State private var showingNotificationCenter = false
 
+    /// The community half of the Home screen (Explore, feed, condition
+    /// reports, the notification bell) is hidden when it is off.
+    @AppStorage(UserDefaultsKeys.communityEnabled) private var communityEnabled = false
+
     /// Observed singleton — the bell badge tracks the unread count live.
     private var inbox: NotificationInboxService { NotificationInboxService.shared }
 
@@ -112,6 +116,7 @@ struct DashboardView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
                             .buttonStyle(.plain)
+                            .communityOnly()
 
                             // Global stats — tappable: in phone-tracker mode the
                             // Stats tab gives up its slot to the Timer, so this
@@ -173,6 +178,7 @@ struct DashboardView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
                             .buttonStyle(.plain)
+                            .communityOnly()
 
                             // Community Feed (Step E): latest flights from the
                             // pilots you follow, pushed onto this stack.
@@ -204,6 +210,7 @@ struct DashboardView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 14))
                             }
                             .buttonStyle(.plain)
+                            .communityOnly()
 
                             // My Spots: reach the local spots list (each spot's
                             // weather, forecast & flyability) without going
@@ -339,6 +346,7 @@ struct DashboardView: View {
                                             .font(.subheadline)
                                             .labelStyle(.titleAndIcon)
                                     }
+                                    .communityOnly()
                                 }
                                 NavigationLink {
                                     SpotDetailView(spot: spot)
@@ -355,6 +363,7 @@ struct DashboardView: View {
             .navigationTitle("Home")
             .background(Color(.systemGroupedBackground))
             .toolbar {
+                if communityEnabled {
                 // Notification center: unread count badges the bell.
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -389,6 +398,7 @@ struct DashboardView: View {
                         Image(systemName: "globe")
                     }
                     .accessibilityLabel("Explore community spots")
+                }
                 }
             }
             // Token (not just count) so in-place flight edits refresh the totals

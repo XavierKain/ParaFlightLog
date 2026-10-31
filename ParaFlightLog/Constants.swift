@@ -129,6 +129,12 @@ nonisolated enum UserDefaultsKeys {
     /// as enabled (`object(forKey:) == nil` pattern).
     static let autoWeatherSnapshot = "autoWeatherSnapshot"
 
+    /// Master switch for the whole community half of the app (Explore, feed,
+    /// pilot profiles, spot reports, wing library, sharing). Default FALSE so
+    /// a build handed to friends is a plain logbook. Read via
+    /// `AppFeatures.communityEnabled`; flipped from Settings > Developer.
+    static let communityEnabled = "communityEnabled"
+
     /// Opt-in community sharing (Step C): upload flight summaries to
     /// Appwrite. Default FALSE — read/written via
     /// `CommunityService.isSharingEnabled`.
