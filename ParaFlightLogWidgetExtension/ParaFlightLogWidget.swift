@@ -109,14 +109,15 @@ struct CircularWidgetView: View {
                 }
             }
         } else {
-            // Au repos : afficher l'icône de l'app (version circulaire)
+            // Au repos : le parapente, dessiné et non rastérisé.
+            //
+            // Ce que montrait cette complication était un recadrage carré de
+            // l'icône de l'app, forcé dans un cercle : le logo s'y trouvait
+            // tranché en bas, et le système en désaturait les couleurs.
             ZStack {
                 AccessoryWidgetBackground()
-                Image("WidgetIconCircular")
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 50, height: 50)
-                    .clipShape(Circle())
+                SoarXGlyph()
+                    .padding(4)
             }
         }
     }
@@ -133,8 +134,8 @@ struct RectangularWidgetView: View {
                 RoundedRectangle(cornerRadius: 6)
                     .fill(.ultraThinMaterial)
                     .frame(width: 26, height: 26)
-                Image(systemName: "wind")
-                    .font(.system(size: 14, weight: .semibold))
+                SoarXGlyph()
+                    .frame(width: 18, height: 18)
             }
 
             VStack(alignment: .leading, spacing: 2) {
@@ -150,7 +151,7 @@ struct RectangularWidgetView: View {
                             .lineLimit(1)
                     }
                 } else {
-                    Text("ParaFlightLog")
+                    Text(verbatim: "SoarX")
                         .font(.headline)
 
                     Text("Start a flight")
@@ -170,8 +171,8 @@ struct CornerWidgetView: View {
     let entry: FlightEntry
 
     var body: some View {
-        Image(systemName: "wind")
-            .font(.system(size: 20, weight: .semibold))
+        SoarXGlyph()
+            .frame(width: 20, height: 20)
             .widgetLabel {
                 Text("Flight")
             }
@@ -188,7 +189,11 @@ struct InlineWidgetView: View {
             Label(entry.elapsedTime, systemImage: "play.fill")
                 .fontWeight(.semibold)
         } else {
-            Label("ParaFlightLog", systemImage: "wind")
+            Label {
+                Text(verbatim: "SoarX")
+            } icon: {
+                Image(systemName: "wind")
+            }
         }
     }
 }
@@ -198,11 +203,15 @@ struct InlineWidgetView: View {
 struct ParaFlightLogWidget: Widget {
     let kind: String = "ParaFlightLogWidget"
 
+    /// A product name, not a phrase: passed as a plain String so it takes the
+    /// non-localizing overload and stays out of the string catalog.
+    private static let displayName = "SoarX"
+
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: FlightWidgetProvider()) { entry in
             FlightWidgetEntryView(entry: entry)
         }
-        .configurationDisplayName("ParaFlightLog")
+        .configurationDisplayName(Self.displayName)
         .description("Shows flight status and quick access")
 #if os(watchOS)
         .supportedFamilies([
