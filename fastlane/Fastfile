@@ -117,17 +117,23 @@ platform :ios do
       xcargs: "-allowProvisioningUpdates"
     )
 
-    # skip_waiting_for_build_processing DOIT rester false : c'est la seule
-    # fenêtre où fastlane peut répondre à la question de chiffrement et
-    # affecter les groupes. À true, le build arrive bien sur App Store Connect
-    # mais reste en « Missing Compliance » — invisible des testeurs jusqu'à ce
-    # qu'on clique dans l'interface. Ça coûte ~10 min d'attente par upload.
+    # La conformité chiffrement est déclarée à la COMPILATION
+    # (INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO), pas après l'upload :
+    # le build n'atterrit plus jamais en « Missing Compliance », et fastlane
+    # n'a donc plus besoin d'attendre la fin du traitement pour y répondre.
+    #
+    # C'est ce qui permet de remettre skip_waiting à true — et ça évite un
+    # faux échec : pilot traite TOUTE sortie d'erreur d'altool comme un échec,
+    # or altool journalise un inoffensif « Failed to create URL for
+    # CDUploaderStateInfoResumeFilePath » juste après « UPLOAD SUCCEEDED ».
+    # L'upload passait, la lane échouait.
+    #
+    # Un groupe externe demande en revanche d'attendre (et une Beta App Review).
     groups = options[:groups]&.split(",")&.map(&:strip)
     upload_to_testflight(
       api_key: api_key,
-      skip_waiting_for_build_processing: false,
-      uses_non_exempt_encryption: false, # HTTPS standard uniquement → exempté
-      distribute_external: !groups.nil?, # un groupe externe = Beta App Review
+      skip_waiting_for_build_processing: groups.nil?,
+      distribute_external: !groups.nil?,
       groups: groups,
       changelog: options[:changelog] || "Nouvelle version de test SoarX."
     )
@@ -156,13 +162,12 @@ platform :ios do
       xcargs: "-allowProvisioningUpdates"
     )
 
-    # Voir le commentaire de la lane `beta` : à true, le build reste bloqué
-    # en « Missing Compliance ».
+    # Voir le commentaire de la lane `beta` : la conformité est déclarée à la
+    # compilation, donc rien à attendre sauf pour un groupe externe.
     groups = ENV["PILOT_GROUPS"]&.split(",")&.map(&:strip)
     upload_to_testflight(
       api_key: api_key,
-      skip_waiting_for_build_processing: false,
-      uses_non_exempt_encryption: false,
+      skip_waiting_for_build_processing: groups.nil?,
       distribute_external: !groups.nil?,
       groups: groups
     )
