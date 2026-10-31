@@ -1,6 +1,6 @@
 {
   "version": "2026-10-31",
-  "lastUpdated": "2026-10-31T11:42:10Z",
+  "lastUpdated": "2026-10-31T12:02:04Z",
   "manufacturers": [
     {
       "id": "flare",
@@ -473,7 +473,7 @@
         "22.5",
         "25"
       ],
-      "imageFileId": null,
+      "imageFileId": "ozone-vapor",
       "year": 2026,
       "displayOrder": 23
     },
@@ -489,7 +489,7 @@
         "17",
         "19"
       ],
-      "imageFileId": null,
+      "imageFileId": "ozone-zero-3",
       "year": null,
       "displayOrder": 24
     },
