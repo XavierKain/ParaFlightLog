@@ -22,8 +22,12 @@ import SwiftUI
 /// to other people is a logbook.
 nonisolated enum AppFeatures {
 
-    /// Explore, community feed, pilot profiles, spot condition reports, the
-    /// shared wing library and flight sharing.
+    /// Explore, community feed, pilot profiles, spot condition reports and
+    /// flight sharing.
+    ///
+    /// NOT the wing library: that is a hardware catalog, it ships in the app
+    /// bundle, and it is part of adding a wing — which every pilot does,
+    /// community or not.
     ///
     /// Non-View code (services, the share path) reads this directly; views go
     /// through `.communityOnly()` or their own `@AppStorage` so flipping the

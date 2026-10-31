@@ -413,7 +413,7 @@ struct SettingsView: View {
                 Toggle(isOn: $communityEnabled) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Community features")
-                        Text("Explore, feed, pilot profiles, spot reports and the wing library. Off for builds handed to other pilots.")
+                        Text("Explore, feed, pilot profiles and spot reports. Off for builds handed to other pilots.")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
