@@ -29,7 +29,7 @@ Build signé + upload TestFlight depuis ton Mac (signature auto)
 [bundle exec] fastlane ios beta_ci
 ```
 
-Build signé + upload TestFlight depuis GitHub Actions (match)
+Build signé + upload TestFlight depuis GitHub Actions (signature auto)
 
 ### ios version_info
 
