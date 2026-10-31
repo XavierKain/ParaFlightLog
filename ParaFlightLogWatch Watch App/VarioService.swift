@@ -13,6 +13,26 @@ import Foundation
 import CoreMotion
 import WatchKit
 
+/// Why the vario is, or is not, showing a number. The readout used to print a
+/// silent "0.0 m/s" in every failure case, which is indistinguishable from
+/// genuinely level flight — so a denied Motion & Fitness permission looked
+/// exactly like a working vario.
+enum VarioStatus: Equatable {
+    /// Switched off by the pilot.
+    case off
+    /// This Watch has no barometer.
+    case unsupported
+    /// Motion & Fitness is denied or restricted — no samples will ever arrive.
+    case needsPermission
+    /// Running, but no usable sample yet (the first callback is discarded
+    /// because a vertical speed needs two of them).
+    case warmingUp
+    /// Delivering vertical speed.
+    case running
+    /// Core Motion reported an error.
+    case failed
+}
+
 @Observable
 final class VarioService {
     static let shared = VarioService()
@@ -26,6 +46,7 @@ final class VarioService {
     /// Smoothed vertical speed in m/s (positive = climbing)
     var verticalSpeed: Double = 0.0
     private(set) var isRunning: Bool = false
+    private(set) var status: VarioStatus = .off
 
     // MARK: - Tuning
 
@@ -50,10 +71,34 @@ final class VarioService {
 
     // MARK: - Lifecycle
 
-    /// Starts altimeter updates and haptic feedback. No-op if unavailable or already running.
+    /// Starts altimeter updates and haptic feedback. No-op if already running.
+    /// Sets `status` on every early return so the UI can say why instead of
+    /// showing a motionless zero.
     func start() {
-        guard Self.isAvailable, !isRunning else { return }
+        guard !isRunning else { return }
+
+        guard Self.isAvailable else {
+            status = .unsupported
+            watchLogWarning("Vario not started: this Watch has no barometer", category: .flight)
+            return
+        }
+
+        // Motion & Fitness is per-device, so a freshly paired Watch starts out
+        // unauthorized even though the iPhone app has had the permission for
+        // months. .notDetermined is fine: the first updates call prompts.
+        switch CMAltimeter.authorizationStatus() {
+        case .denied, .restricted:
+            status = .needsPermission
+            watchLogWarning("Vario not started: Motion & Fitness denied or restricted", category: .flight)
+            return
+        case .notDetermined, .authorized:
+            break
+        @unknown default:
+            break
+        }
+
         isRunning = true
+        status = .warmingUp
         verticalSpeed = 0.0
         lastRelativeAltitude = nil
         lastSampleTimestamp = nil
@@ -64,11 +109,19 @@ final class VarioService {
         // The handler closure is @Sendable: extract the plain values, then hop
         // to the main actor before touching @Observable/MainActor state.
         altimeter.startRelativeAltitudeUpdates(to: .main) { [weak self] data, error in
-            guard let data = data, error == nil else { return }
-            let relativeAltitude = data.relativeAltitude.doubleValue
-            let timestamp = data.timestamp
+            let errorDescription = error?.localizedDescription
+            let sample = data.map { ($0.relativeAltitude.doubleValue, $0.timestamp) }
             DispatchQueue.main.async {
-                self?.process(relativeAltitude: relativeAltitude, timestamp: timestamp)
+                guard let self = self, self.isRunning else { return }
+                if let errorDescription {
+                    // Swallowing this is what made a permission problem
+                    // look like still air.
+                    self.status = .failed
+                    watchLogWarning("Vario altimeter error: \(errorDescription)", category: .flight)
+                    return
+                }
+                guard let sample else { return }
+                self.process(relativeAltitude: sample.0, timestamp: sample.1)
             }
         }
 
@@ -86,8 +139,14 @@ final class VarioService {
 
     /// Stops altimeter updates and haptics (called when the flight ends).
     func stop() {
-        guard isRunning else { return }
+        guard isRunning else {
+            // Clear a failure state so the next flight starts from scratch
+            // instead of inheriting a stale "needs permission".
+            status = .off
+            return
+        }
         isRunning = false
+        status = .off
         altimeter?.stopRelativeAltitudeUpdates()
         altimeter = nil
         hapticTimer?.invalidate()
@@ -123,6 +182,11 @@ final class VarioService {
         // Exponential smoothing over ~1s
         let alpha = dt / (smoothingTimeConstant + dt)
         verticalSpeed += alpha * (rawSpeed - verticalSpeed)
+
+        if status != .running {
+            status = .running
+            watchLogInfo("Vario delivering samples", category: .flight)
+        }
     }
 
     // MARK: - Haptics

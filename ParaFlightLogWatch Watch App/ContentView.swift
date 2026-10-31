@@ -687,17 +687,29 @@ struct ActiveFlightView: View {
             }
             .padding(.vertical, 2)
 
-            // Vario readout (only when the feature is on and available)
+            // Vario readout (only when the feature is on and available).
+            // A number is shown only once samples are actually arriving: a
+            // denied Motion & Fitness permission used to render as "0.0 m/s",
+            // which reads exactly like level flight.
             if VarioService.isAvailable && settings.varioEnabled {
-                HStack(spacing: 3) {
-                    Image(systemName: vario.verticalSpeed >= 0 ? "arrow.up" : "arrow.down")
-                        .font(.system(size: 10, weight: .bold))
-                    Text(WatchFormatters.verticalSpeed(vario.verticalSpeed))
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        .monospacedDigit()
-                        .lineLimit(1)
+                switch vario.status {
+                case .running:
+                    HStack(spacing: 3) {
+                        Image(systemName: vario.verticalSpeed >= 0 ? "arrow.up" : "arrow.down")
+                            .font(.system(size: 10, weight: .bold))
+                        Text(WatchFormatters.verticalSpeed(vario.verticalSpeed))
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                    }
+                    .foregroundStyle(varioColor)
+                case .needsPermission:
+                    varioNotice("Motion access off", icon: "exclamationmark.triangle.fill", tint: .orange)
+                case .failed:
+                    varioNotice("Vario unavailable", icon: "exclamationmark.triangle.fill", tint: .orange)
+                case .warmingUp, .off, .unsupported:
+                    varioNotice("Vario…", icon: "waveform.path.ecg", tint: .secondary)
                 }
-                .foregroundStyle(varioColor)
             }
 
             Spacer()
@@ -785,6 +797,16 @@ struct ActiveFlightView: View {
                 VarioService.shared.start()
             }
         }
+        // The flag is the single source of truth. Without this, flipping Vario
+        // on the Settings screen during a flight showed the readout while the
+        // altimeter stayed stopped — a vario frozen at 0.0 for the whole flight.
+        .onChange(of: settings.varioEnabled) { _, enabled in
+            if enabled {
+                VarioService.shared.start()
+            } else {
+                VarioService.shared.stop()
+            }
+        }
         .onDisappear {
             stopTimer()
             // Safety net: never leave the altimeter running after a flight
@@ -802,13 +824,24 @@ struct ActiveFlightView: View {
         }
     }
 
+    /// Flips the flag only — starting and stopping the service is handled by
+    /// the onChange above, so both this button and the Settings screen take
+    /// the same path.
     private func toggleVario() {
         settings.varioEnabled.toggle()
-        if settings.varioEnabled {
-            VarioService.shared.start()
-        } else {
-            VarioService.shared.stop()
+    }
+
+    /// Short in-flight notice standing in for the number when the vario has
+    /// nothing to show. Sized to the readout it replaces.
+    private func varioNotice(_ message: LocalizedStringKey, icon: String, tint: Color) -> some View {
+        HStack(spacing: 3) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+            Text(message)
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(1)
         }
+        .foregroundStyle(tint)
     }
 
     private func startTimerImmediately() {
