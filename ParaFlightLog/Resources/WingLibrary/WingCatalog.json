@@ -1,6 +1,6 @@
 {
   "version": "2026-10-31",
-  "lastUpdated": "2026-10-31T11:08:06Z",
+  "lastUpdated": "2026-10-31T11:42:10Z",
   "manufacturers": [
     {
       "id": "flare",
@@ -26,6 +26,11 @@
       "id": "dune-rider",
       "name": "Dune Rider",
       "displayOrder": 4
+    },
+    {
+      "id": "ozone",
+      "name": "Ozone",
+      "displayOrder": 5
     },
     {
       "id": "u-turn",
@@ -452,6 +457,57 @@
       "imageFileId": "skywalk-chili5",
       "year": null,
       "displayOrder": 22
+    },
+    {
+      "id": "ozone-vapor",
+      "manufacturer": "ozone",
+      "model": "Vapor",
+      "fullName": "Ozone Vapor",
+      "type": "Soaring",
+      "sizes": [
+        "11",
+        "13",
+        "15",
+        "17.5",
+        "20",
+        "22.5",
+        "25"
+      ],
+      "imageFileId": null,
+      "year": 2026,
+      "displayOrder": 23
+    },
+    {
+      "id": "ozone-zero-3",
+      "manufacturer": "ozone",
+      "model": "Zero 3",
+      "fullName": "Ozone Zero 3",
+      "type": "Speedflying",
+      "sizes": [
+        "13",
+        "15",
+        "17",
+        "19"
+      ],
+      "imageFileId": null,
+      "year": null,
+      "displayOrder": 24
+    },
+    {
+      "id": "swing-sonic-rs",
+      "manufacturer": "swing",
+      "model": "Sonic RS",
+      "fullName": "Swing Sonic RS",
+      "type": "Soaring",
+      "sizes": [
+        "15",
+        "18",
+        "21",
+        "24"
+      ],
+      "imageFileId": null,
+      "year": 2026,
+      "displayOrder": 25
     }
   ]
 }

@@ -242,7 +242,10 @@ private struct WingRowView: View {
                         if let year = wing.year {
                             Text("•")
                                 .foregroundStyle(.secondary)
-                            Text("\(year)")
+                            // verbatim: Text("\(Int)") is locale-formatted, so
+                            // a model year rendered as "2 026" on a French
+                            // device. A year is a label, not a quantity.
+                            Text(verbatim: String(year))
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
