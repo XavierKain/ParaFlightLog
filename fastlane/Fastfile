@@ -35,8 +35,23 @@ WATCH_ID        = "com.xavierkain.ParaFlightLog2.watchkitapp"
 WATCH_WIDGET_ID = "com.xavierkain.ParaFlightLog2.watchkitapp.ParaFlightLogWidgetExtension"
 ALL_IDS = [APP_ID, WIDGET_ID, WATCH_ID, WATCH_WIDGET_ID].freeze
 
-# ── Clé API App Store Connect (le .p8 vient d'un env base64) ─────────────
+# ── Clé API App Store Connect ────────────────────────────────────────────
+# Deux sources, dans cet ordre :
+#   • ASC_KEY_FILEPATH — chemin du .p8 sur le disque. Le cas local : rien à
+#     encoder, fastlane lit le fichier lui-même.
+#   • ASC_KEY_P8_BASE64 — le .p8 encodé. Le cas CI, où il n'y a pas de fichier.
 def asc_api_key
+  key_path = ENV["ASC_KEY_FILEPATH"]
+  if key_path && !key_path.empty?
+    expanded = File.expand_path(key_path)
+    UI.user_error!("ASC_KEY_FILEPATH ne pointe sur aucun fichier : #{expanded}") unless File.exist?(expanded)
+    return app_store_connect_api_key(
+      key_id: ENV.fetch("ASC_KEY_ID"),
+      issuer_id: ENV.fetch("ASC_ISSUER_ID"),
+      key_filepath: expanded
+    )
+  end
+
   app_store_connect_api_key(
     key_id: ENV.fetch("ASC_KEY_ID"),
     issuer_id: ENV.fetch("ASC_ISSUER_ID"),
@@ -56,8 +71,12 @@ end
 
 def ensure_app_record_exists(api_key)
   require "spaceship"
-  key_path = File.expand_path("asc_key.p8") # gitignored (*.p8)
-  File.write(key_path, Base64.decode64(ENV.fetch("ASC_KEY_P8_BASE64")))
+  if (existing = ENV["ASC_KEY_FILEPATH"]) && !existing.empty?
+    key_path = File.expand_path(existing)
+  else
+    key_path = File.expand_path("asc_key.p8") # gitignored (*.p8)
+    File.write(key_path, Base64.decode64(ENV.fetch("ASC_KEY_P8_BASE64")))
+  end
   Spaceship::ConnectAPI.token = Spaceship::ConnectAPI::Token.create(
     key_id: ENV.fetch("ASC_KEY_ID"),
     issuer_id: ENV.fetch("ASC_ISSUER_ID"),
