@@ -15,6 +15,8 @@
 #   ASC_KEY_P8_BASE64  — contenu du .p8 encodé en base64
 #   APPLE_TEAM_ID      — S96H22CQ8W
 
+require "tmpdir"
+
 default_platform(:ios)
 
 # Force UTF-8 : sinon xcpretty plante sur "invalid byte sequence in US-ASCII"
@@ -95,6 +97,47 @@ rescue => e
   UI.important("Vérification app record ignorée (#{e.message}) — on continue.")
 end
 
+# Numéro de build RÉELLEMENT embarqué dans l'ipa.
+#
+# `increment_build_number` fixe le numéro avant l'archive, mais l'export
+# App Store de Xcode gère lui-même les collisions : il renumérote en
+# silence si le numéro est déjà pris chez Apple. Le compteur local et ce
+# qui arrive sur TestFlight peuvent donc diverger — la seule vérité est
+# dans le binaire envoyé.
+def shipped_build_number(ipa_path)
+  return nil unless ipa_path && File.exist?(ipa_path)
+  Dir.mktmpdir do |dir|
+    system("unzip", "-q", "-o", ipa_path, "Payload/*/Info.plist", "-d", dir, out: File::NULL, err: File::NULL)
+    plist = Dir.glob(File.join(dir, "Payload", "*.app", "Info.plist")).first
+    return nil unless plist
+    `/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" "#{plist}" 2>/dev/null`.strip
+  end
+rescue StandardError
+  nil
+end
+
+# Lance l'upload en absorbant UN faux échec connu, et un seul.
+#
+# pilot traite toute sortie d'erreur d'altool comme un échec. Or altool
+# journalise « Failed to create URL for CDUploaderStateInfoResumeFilePath »
+# dans son nettoyage, juste APRÈS « UPLOAD SUCCEEDED » : le binaire part,
+# la lane échoue. Toute autre erreur reste une vraie erreur.
+#
+# Limite assumée : si un upload échouait pour une autre raison ET
+# journalisait cette ligne, on la raterait. D'où le message ci-dessous
+# plutôt qu'un « ✅ » muet.
+BENIGN_ALTOOL_NOISE = "CDUploaderStateInfoResumeFilePath"
+
+def upload_tolerating_altool_noise(**options)
+  upload_to_testflight(**options)
+  true
+rescue StandardError => e
+  raise e unless e.message.to_s.include?(BENIGN_ALTOOL_NOISE)
+  UI.important("altool a signalé « UPLOAD SUCCEEDED » puis journalisé une ligne de nettoyage inoffensive.")
+  UI.important("L'envoi est passé ; vérifie quand même l'onglet TestFlight.")
+  false
+end
+
 platform :ios do
 
   # ── LOCAL (Mac) : signature automatique ────────────────────────────────
@@ -130,14 +173,15 @@ platform :ios do
     #
     # Un groupe externe demande en revanche d'attendre (et une Beta App Review).
     groups = options[:groups]&.split(",")&.map(&:strip)
-    upload_to_testflight(
+    shipped = shipped_build_number(lane_context[SharedValues::IPA_OUTPUT_PATH])
+    upload_tolerating_altool_noise(
       api_key: api_key,
       skip_waiting_for_build_processing: groups.nil?,
       distribute_external: !groups.nil?,
       groups: groups,
       changelog: options[:changelog] || "Nouvelle version de test SoarX."
     )
-    UI.success("✅ Envoyé sur TestFlight — dispo dans l'app TestFlight d'ici ~10-30 min.")
+    UI.success("✅ Envoyé sur TestFlight — build #{shipped || '?'} — dispo d'ici ~10-30 min.")
   end
 
   # ── CI (GitHub Actions) : signature AUTOMATIQUE via clé API ─────────────
@@ -165,13 +209,14 @@ platform :ios do
     # Voir le commentaire de la lane `beta` : la conformité est déclarée à la
     # compilation, donc rien à attendre sauf pour un groupe externe.
     groups = ENV["PILOT_GROUPS"]&.split(",")&.map(&:strip)
-    upload_to_testflight(
+    shipped = shipped_build_number(lane_context[SharedValues::IPA_OUTPUT_PATH])
+    upload_tolerating_altool_noise(
       api_key: api_key,
       skip_waiting_for_build_processing: groups.nil?,
       distribute_external: !groups.nil?,
       groups: groups
     )
-    UI.success("✅ Envoyé sur TestFlight — dispo dans l'app TestFlight d'ici ~10-30 min.")
+    UI.success("✅ Envoyé sur TestFlight — build #{shipped || '?'} — dispo d'ici ~10-30 min.")
   end
 
   desc "Infos version courante"
