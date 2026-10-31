@@ -17,6 +17,10 @@
 //      /tmp/wingcut comps render.png              # list components
 //      /tmp/wingcut keep render.png out.png 0     # keep component 0
 //
+//  For a render published on a flat studio background with no alpha
+//  (Flare, most dealers):
+//      /tmp/wingcut dekey render.png out.png      # key out the backdrop
+//
 //  Other modes (bbox, cols, rows, make) exist for probing a source.
 //
 
@@ -115,6 +119,122 @@ guard args.count >= 3 else {
 }
 
 guard var (px, w, h) = loadRGBA(args[2]) else { print("load failed"); exit(1) }
+
+if args[1] == "dekey" {
+    // dekey <in> <out> [near] [far]
+    //
+    // For renders published on a flat studio background instead of with an
+    // alpha channel. Everything within `near` of the sampled background colour
+    // becomes transparent, everything past `far` stays, and the band between
+    // the two is feathered so the edge does not turn into a staircase.
+    let out = args[3]
+    let near = args.count > 4 ? Double(args[4])! : 12
+    let far = args.count > 5 ? Double(args[5])! : 44
+
+    // Background = median of the four corners, so one stray pixel cannot
+    // decide what gets erased.
+    var corners: [(Double, Double, Double)] = []
+    for (x, y) in [(2, 2), (w - 3, 2), (2, h - 3), (w - 3, h - 3)] {
+        let i = (y * w + x) * 4
+        corners.append((Double(px[i]), Double(px[i+1]), Double(px[i+2])))
+    }
+    let bg = (corners.map { $0.0 }.sorted()[1], corners.map { $0.1 }.sorted()[1], corners.map { $0.2 }.sorted()[1])
+
+    var alpha = [Double](repeating: 255, count: w * h)
+    for i in 0..<(w * h) {
+        let o = i * 4
+        let d = max(abs(Double(px[o]) - bg.0), max(abs(Double(px[o+1]) - bg.1), abs(Double(px[o+2]) - bg.2)))
+        if d <= near { alpha[i] = 0 }
+        else if d < far { alpha[i] = 255 * (d - near) / (far - near) }
+    }
+
+    // A light panel on the sail can read as background. Transparency only
+    // counts when it reaches the border, so flood the outside and restore
+    // every hole the keying punched inside the wing.
+    var outside = [Bool](repeating: false, count: w * h)
+    var stack: [Int] = []
+    for x in 0..<w {
+        for y in [0, h - 1] where alpha[y * w + x] < 8 && !outside[y * w + x] {
+            outside[y * w + x] = true; stack.append(y * w + x)
+        }
+    }
+    for y in 0..<h {
+        for x in [0, w - 1] where alpha[y * w + x] < 8 && !outside[y * w + x] {
+            outside[y * w + x] = true; stack.append(y * w + x)
+        }
+    }
+    while let p = stack.popLast() {
+        let x = p % w, y = p / w
+        for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+            let nx = x + dx, ny = y + dy
+            guard nx >= 0, nx < w, ny >= 0, ny < h else { continue }
+            let q = ny * w + nx
+            if !outside[q] && alpha[q] < 8 { outside[q] = true; stack.append(q) }
+        }
+    }
+    for i in 0..<(w * h) where alpha[i] < 255 && !outside[i] { alpha[i] = 255 }
+
+    // Unpremultiply against the background so feathered edge pixels keep the
+    // sail's colour instead of a grey fringe.
+    for i in 0..<(w * h) {
+        let o = i * 4
+        let a = alpha[i] / 255
+        if a <= 0 { px[o] = 0; px[o+1] = 0; px[o+2] = 0; px[o+3] = 0; continue }
+        if a < 1 {
+            let chans = [Double(px[o]), Double(px[o+1]), Double(px[o+2])]
+            let bgs = [bg.0, bg.1, bg.2]
+            for c in 0..<3 {
+                let v = (chans[c] - (1 - a) * bgs[c]) / a
+                px[o + c] = UInt8(max(0, min(255, v.rounded())))
+            }
+        }
+        // Store premultiplied: that is the layout this tool reads and writes.
+        px[o] = UInt8((Double(px[o]) * a).rounded())
+        px[o+1] = UInt8((Double(px[o+1]) * a).rounded())
+        px[o+2] = UInt8((Double(px[o+2]) * a).rounded())
+        px[o+3] = UInt8(alpha[i].rounded())
+    }
+
+    // Drop the drop-shadow and any speck the key left behind.
+    let (label, n) = components(px, w, h, threshold: 24)
+    if n > 0 {
+        var area = [Int](repeating: 0, count: n)
+        for i in 0..<(w * h) where label[i] >= 0 { area[label[i]] += 1 }
+        let biggest = (0..<n).max(by: { area[$0] < area[$1] })!
+        for i in 0..<(w * h) where label[i] != biggest {
+            px[i * 4] = 0; px[i * 4 + 1] = 0; px[i * 4 + 2] = 0; px[i * 4 + 3] = 0
+        }
+    }
+
+    guard let b = alphaBounds(px, w, h) else { print("nothing left"); exit(1) }
+    let bw = b.x1 - b.x0 + 1, bh = b.y1 - b.y0 + 1
+    let side = 500, pad = 10
+    let scale = min(Double(side - 2 * pad) / Double(bw), Double(side - 2 * pad) / Double(bh))
+    let dw = Int((Double(bw) * scale).rounded()), dh = Int((Double(bh) * scale).rounded())
+    let ox = (side - dw) / 2, oy = (side - dh) / 2
+    var outPx = [UInt8](repeating: 0, count: side * side * 4)
+    for dy in 0..<dh {
+        for dx in 0..<dw {
+            let sx0 = b.x0 + Int(Double(dx) / scale), sx1 = min(b.x0 + Int(Double(dx + 1) / scale), b.x1 + 1)
+            let sy0 = b.y0 + Int(Double(dy) / scale), sy1 = min(b.y0 + Int(Double(dy + 1) / scale), b.y1 + 1)
+            var r = 0, g = 0, bl = 0, a = 0, n2 = 0
+            for sy in sy0..<max(sy1, sy0 + 1) {
+                for sx in sx0..<max(sx1, sx0 + 1) {
+                    guard sx < w, sy < h else { continue }
+                    let i = (sy * w + sx) * 4
+                    r += Int(px[i]); g += Int(px[i+1]); bl += Int(px[i+2]); a += Int(px[i+3]); n2 += 1
+                }
+            }
+            guard n2 > 0 else { continue }
+            let o = ((oy + dy) * side + (ox + dx)) * 4
+            outPx[o] = UInt8(r / n2); outPx[o+1] = UInt8(g / n2); outPx[o+2] = UInt8(bl / n2); outPx[o+3] = UInt8(a / n2)
+        }
+    }
+    if writePNG(outPx, side, side, to: out) {
+        print("wrote \(out)  bg=\(Int(bg.0)),\(Int(bg.1)),\(Int(bg.2))  \(bw)x\(bh) -> \(dw)x\(dh)")
+    } else { print("write failed"); exit(1) }
+    exit(0)
+}
 
 if args[1] == "comps" {
     let (label, n) = components(px, w, h)

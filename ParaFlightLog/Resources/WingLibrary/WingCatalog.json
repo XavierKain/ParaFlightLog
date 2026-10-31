@@ -1,6 +1,6 @@
 {
   "version": "2026-10-31",
-  "lastUpdated": "2026-10-31T12:05:37Z",
+  "lastUpdated": "2026-10-31T12:09:37Z",
   "manufacturers": [
     {
       "id": "flare",
@@ -173,6 +173,24 @@
       "displayOrder": 5
     },
     {
+      "id": "flare-line-2",
+      "manufacturer": "flare",
+      "model": "Line²",
+      "fullName": "Flare Line²",
+      "type": "Speedflying",
+      "sizes": [
+        "9",
+        "10",
+        "11",
+        "13",
+        "15",
+        "17"
+      ],
+      "imageFileId": "flare-line-2",
+      "year": 2026,
+      "displayOrder": 6
+    },
+    {
       "id": "moustache-m1",
       "manufacturer": "flare",
       "model": "Moustache M1",
@@ -187,7 +205,7 @@
       ],
       "imageFileId": "moustache-m1",
       "year": null,
-      "displayOrder": 6
+      "displayOrder": 7
     },
     {
       "id": "dudek-touch",
@@ -203,7 +221,7 @@
       ],
       "imageFileId": "dudek-touch",
       "year": null,
-      "displayOrder": 7
+      "displayOrder": 8
     },
     {
       "id": "dudek-touch-red-",
@@ -219,7 +237,7 @@
       ],
       "imageFileId": "dudek-touch-red-",
       "year": null,
-      "displayOrder": 8
+      "displayOrder": 9
     },
     {
       "id": "mullet-2",
@@ -237,7 +255,7 @@
       ],
       "imageFileId": "mullet-2",
       "year": 2026,
-      "displayOrder": 9
+      "displayOrder": 10
     },
     {
       "id": "albatroxx",
@@ -253,7 +271,7 @@
       ],
       "imageFileId": "albatroxx",
       "year": 2025,
-      "displayOrder": 10
+      "displayOrder": 11
     },
     {
       "id": "flow-mulletx",
@@ -270,7 +288,7 @@
       ],
       "imageFileId": "flow-mulletx",
       "year": null,
-      "displayOrder": 11
+      "displayOrder": 12
     },
     {
       "id": "flow-mullet",
@@ -287,7 +305,7 @@
       ],
       "imageFileId": "flow-mullet",
       "year": null,
-      "displayOrder": 12
+      "displayOrder": 13
     },
     {
       "id": "dune-rider-scraper",
@@ -302,7 +320,7 @@
       ],
       "imageFileId": "dune-rider-scraper",
       "year": null,
-      "displayOrder": 13
+      "displayOrder": 14
     },
     {
       "id": "hopper",
@@ -317,7 +335,7 @@
       ],
       "imageFileId": "hopper",
       "year": 2026,
-      "displayOrder": 14
+      "displayOrder": 15
     },
     {
       "id": "u-turn-razorblade",
@@ -336,7 +354,7 @@
       ],
       "imageFileId": "u-turn-razorblade",
       "year": null,
-      "displayOrder": 15
+      "displayOrder": 16
     },
     {
       "id": "raptor",
@@ -353,7 +371,7 @@
       ],
       "imageFileId": "raptor",
       "year": 2025,
-      "displayOrder": 16
+      "displayOrder": 17
     },
     {
       "id": "jester",
@@ -370,7 +388,7 @@
       ],
       "imageFileId": "jester",
       "year": 2025,
-      "displayOrder": 17
+      "displayOrder": 18
     },
     {
       "id": "dune",
@@ -387,7 +405,7 @@
       ],
       "imageFileId": "dune-v2",
       "year": 2025,
-      "displayOrder": 18
+      "displayOrder": 19
     },
     {
       "id": "fuze",
@@ -405,7 +423,7 @@
       ],
       "imageFileId": "fuze-v2",
       "year": 2025,
-      "displayOrder": 19
+      "displayOrder": 20
     },
     {
       "id": "wave-rs",
@@ -422,7 +440,7 @@
       ],
       "imageFileId": "wave-rs",
       "year": 2025,
-      "displayOrder": 20
+      "displayOrder": 21
     },
     {
       "id": "la-mouette",
@@ -439,7 +457,7 @@
       ],
       "imageFileId": "la-mouette",
       "year": 2024,
-      "displayOrder": 21
+      "displayOrder": 22
     },
     {
       "id": "skywalk-chili5",
@@ -456,7 +474,7 @@
       ],
       "imageFileId": "skywalk-chili5",
       "year": null,
-      "displayOrder": 22
+      "displayOrder": 23
     },
     {
       "id": "ozone-vapor",
@@ -475,7 +493,7 @@
       ],
       "imageFileId": "ozone-vapor",
       "year": 2026,
-      "displayOrder": 23
+      "displayOrder": 24
     },
     {
       "id": "ozone-zero-3",
@@ -491,7 +509,7 @@
       ],
       "imageFileId": "ozone-zero-3",
       "year": null,
-      "displayOrder": 24
+      "displayOrder": 25
     }
   ]
 }
