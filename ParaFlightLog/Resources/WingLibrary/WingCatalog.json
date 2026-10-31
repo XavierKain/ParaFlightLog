@@ -1,0 +1,457 @@
+{
+  "version": "2026-10-31",
+  "lastUpdated": "2026-10-31T11:08:06Z",
+  "manufacturers": [
+    {
+      "id": "flare",
+      "name": "Flare",
+      "displayOrder": 0
+    },
+    {
+      "id": "skywalk",
+      "name": "Skywalk",
+      "displayOrder": 1
+    },
+    {
+      "id": "flow",
+      "name": "Flow",
+      "displayOrder": 2
+    },
+    {
+      "id": "dudek",
+      "name": "Dudek",
+      "displayOrder": 3
+    },
+    {
+      "id": "dune-rider",
+      "name": "Dune Rider",
+      "displayOrder": 4
+    },
+    {
+      "id": "u-turn",
+      "name": "U-Turn",
+      "displayOrder": 6
+    },
+    {
+      "id": "little-cloud",
+      "name": "Little Cloud",
+      "displayOrder": 7
+    },
+    {
+      "id": "level-wings",
+      "name": "Level Wings",
+      "displayOrder": 8
+    },
+    {
+      "id": "niviuk",
+      "name": "Niviuk",
+      "displayOrder": 9
+    },
+    {
+      "id": "swing",
+      "name": "Swing",
+      "displayOrder": 10
+    },
+    {
+      "id": "vril-wings",
+      "name": "Vril Wings",
+      "displayOrder": 11
+    },
+    {
+      "id": "windtech",
+      "name": "Windtech",
+      "displayOrder": 12
+    }
+  ],
+  "wings": [
+    {
+      "id": "flare-bandit",
+      "manufacturer": "flare",
+      "model": "Bandit",
+      "fullName": "Flare Bandit",
+      "type": "Soaring",
+      "sizes": [
+        "10",
+        "13",
+        "16",
+        "19",
+        "22"
+      ],
+      "imageFileId": "flare-bandit",
+      "year": null,
+      "displayOrder": 0
+    },
+    {
+      "id": "flare-scout",
+      "manufacturer": "flare",
+      "model": "Scout",
+      "fullName": "Flare Scout",
+      "type": "Soaring",
+      "sizes": [
+        "16",
+        "19",
+        "22",
+        "26"
+      ],
+      "imageFileId": "flare-scout",
+      "year": 2026,
+      "displayOrder": 1
+    },
+    {
+      "id": "moustache-m2",
+      "manufacturer": "flare",
+      "model": "Moustache M2",
+      "fullName": "Flare Moustache M2",
+      "type": "Soaring",
+      "sizes": [
+        "13",
+        "15",
+        "18",
+        "20",
+        "22"
+      ],
+      "imageFileId": "moustache-m2",
+      "year": null,
+      "displayOrder": 2
+    },
+    {
+      "id": "flare-moustache-m2-grey-",
+      "manufacturer": "flare",
+      "model": "Moustache M2 (grey)",
+      "fullName": "Flare Moustache M2 (grey)",
+      "type": "Soaring",
+      "sizes": [
+        "13",
+        "15",
+        "18",
+        "20",
+        "22"
+      ],
+      "imageFileId": "flare-moustache-m2-grey-",
+      "year": null,
+      "displayOrder": 3
+    },
+    {
+      "id": "flare-prop",
+      "manufacturer": "flare",
+      "model": "Prop",
+      "fullName": "Flare Prop",
+      "type": "Soaring",
+      "sizes": [
+        "14",
+        "16",
+        "18",
+        "21",
+        "24",
+        "28"
+      ],
+      "imageFileId": "u-turn-prop",
+      "year": null,
+      "displayOrder": 4
+    },
+    {
+      "id": "flare-line",
+      "manufacturer": "flare",
+      "model": "Line",
+      "fullName": "Flare Line",
+      "type": "Speedflying",
+      "sizes": [
+        "8",
+        "9",
+        "10",
+        "11",
+        "13",
+        "15"
+      ],
+      "imageFileId": "flare-line",
+      "year": null,
+      "displayOrder": 5
+    },
+    {
+      "id": "moustache-m1",
+      "manufacturer": "flare",
+      "model": "Moustache M1",
+      "fullName": "Flare Moustache M1",
+      "type": "Soaring",
+      "sizes": [
+        "13",
+        "15",
+        "18",
+        "22",
+        "26"
+      ],
+      "imageFileId": "moustache-m1",
+      "year": null,
+      "displayOrder": 6
+    },
+    {
+      "id": "dudek-touch",
+      "manufacturer": "dudek",
+      "model": "Touch (black)",
+      "fullName": "Dudek Touch (black)",
+      "type": "Soaring",
+      "sizes": [
+        "15",
+        "18",
+        "22",
+        "26"
+      ],
+      "imageFileId": "dudek-touch",
+      "year": null,
+      "displayOrder": 7
+    },
+    {
+      "id": "dudek-touch-red-",
+      "manufacturer": "dudek",
+      "model": "Touch (red)",
+      "fullName": "Dudek Touch (red)",
+      "type": "Soaring",
+      "sizes": [
+        "15",
+        "18",
+        "22",
+        "26"
+      ],
+      "imageFileId": "dudek-touch-red-",
+      "year": null,
+      "displayOrder": 8
+    },
+    {
+      "id": "mullet-2",
+      "manufacturer": "flow",
+      "model": "Mullet 2",
+      "fullName": "Flow Mullet 2",
+      "type": "Soaring",
+      "sizes": [
+        "13",
+        "15",
+        "17.5",
+        "20",
+        "23",
+        "26"
+      ],
+      "imageFileId": "mullet-2",
+      "year": 2026,
+      "displayOrder": 9
+    },
+    {
+      "id": "albatroxx",
+      "manufacturer": "flow",
+      "model": "Albatroxx",
+      "fullName": "Flow Albatroxx",
+      "type": "Soaring",
+      "sizes": [
+        "13",
+        "16",
+        "19",
+        "22"
+      ],
+      "imageFileId": "albatroxx",
+      "year": 2025,
+      "displayOrder": 10
+    },
+    {
+      "id": "flow-mulletx",
+      "manufacturer": "flow",
+      "model": "MulletX",
+      "fullName": "Flow MulletX",
+      "type": "Soaring",
+      "sizes": [
+        "13",
+        "15",
+        "17.5",
+        "20.5",
+        "23.5"
+      ],
+      "imageFileId": "flow-mulletx",
+      "year": null,
+      "displayOrder": 11
+    },
+    {
+      "id": "flow-mullet",
+      "manufacturer": "flow",
+      "model": "Mullet",
+      "fullName": "Flow Mullet",
+      "type": "Soaring",
+      "sizes": [
+        "15",
+        "17",
+        "18",
+        "20",
+        "23"
+      ],
+      "imageFileId": "flow-mullet",
+      "year": null,
+      "displayOrder": 12
+    },
+    {
+      "id": "dune-rider-scraper",
+      "manufacturer": "dune-rider",
+      "model": "Scraper",
+      "fullName": "Dune Rider Scraper",
+      "type": "Soaring",
+      "sizes": [
+        "12",
+        "16",
+        "20"
+      ],
+      "imageFileId": "dune-rider-scraper",
+      "year": null,
+      "displayOrder": 13
+    },
+    {
+      "id": "hopper",
+      "manufacturer": "dune-rider",
+      "model": "Hopper",
+      "fullName": "Dune Rider Hopper",
+      "type": "Soaring",
+      "sizes": [
+        "16",
+        "19",
+        "24"
+      ],
+      "imageFileId": "hopper",
+      "year": 2026,
+      "displayOrder": 14
+    },
+    {
+      "id": "u-turn-razorblade",
+      "manufacturer": "u-turn",
+      "model": "RazorBlade",
+      "fullName": "U-Turn RazorBlade",
+      "type": "Soaring",
+      "sizes": [
+        "10",
+        "11.5",
+        "13",
+        "15",
+        "18",
+        "22",
+        "26"
+      ],
+      "imageFileId": "u-turn-razorblade",
+      "year": null,
+      "displayOrder": 15
+    },
+    {
+      "id": "raptor",
+      "manufacturer": "vril-wings",
+      "model": "Raptor",
+      "fullName": "Vril Wings Raptor",
+      "type": "Soaring",
+      "sizes": [
+        "13",
+        "16",
+        "19",
+        "22",
+        "25"
+      ],
+      "imageFileId": "raptor",
+      "year": 2025,
+      "displayOrder": 16
+    },
+    {
+      "id": "jester",
+      "manufacturer": "niviuk",
+      "model": "Jester",
+      "fullName": "Niviuk Jester",
+      "type": "Soaring",
+      "sizes": [
+        "14",
+        "16",
+        "18",
+        "21",
+        "24"
+      ],
+      "imageFileId": "jester",
+      "year": 2025,
+      "displayOrder": 17
+    },
+    {
+      "id": "dune",
+      "manufacturer": "windtech",
+      "model": "Dune",
+      "fullName": "Windtech Dune",
+      "type": "Soaring",
+      "sizes": [
+        "14",
+        "16",
+        "18",
+        "20",
+        "23"
+      ],
+      "imageFileId": "dune-v2",
+      "year": 2025,
+      "displayOrder": 18
+    },
+    {
+      "id": "fuze",
+      "manufacturer": "level-wings",
+      "model": "Fuze",
+      "fullName": "Level Wings Fuze",
+      "type": "Soaring",
+      "sizes": [
+        "10",
+        "12.5",
+        "15",
+        "17.5",
+        "20",
+        "22.5"
+      ],
+      "imageFileId": "fuze-v2",
+      "year": 2025,
+      "displayOrder": 19
+    },
+    {
+      "id": "wave-rs",
+      "manufacturer": "swing",
+      "model": "Wave RS",
+      "fullName": "Swing Wave RS",
+      "type": "Soaring",
+      "sizes": [
+        "10",
+        "11.5",
+        "13",
+        "15",
+        "18"
+      ],
+      "imageFileId": "wave-rs",
+      "year": 2025,
+      "displayOrder": 20
+    },
+    {
+      "id": "la-mouette",
+      "manufacturer": "little-cloud",
+      "model": "La Mouette",
+      "fullName": "Little Cloud La Mouette",
+      "type": "Soaring",
+      "sizes": [
+        "14",
+        "16",
+        "19",
+        "22",
+        "25"
+      ],
+      "imageFileId": "la-mouette",
+      "year": 2024,
+      "displayOrder": 21
+    },
+    {
+      "id": "skywalk-chili5",
+      "manufacturer": "skywalk",
+      "model": "Chili 5",
+      "fullName": "Skywalk Chili 5",
+      "type": "Thermique",
+      "sizes": [
+        "22",
+        "24",
+        "26",
+        "28",
+        "30"
+      ],
+      "imageFileId": "skywalk-chili5",
+      "year": null,
+      "displayOrder": 22
+    }
+  ]
+}

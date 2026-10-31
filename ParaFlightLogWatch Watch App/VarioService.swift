@@ -231,11 +231,16 @@ final class VarioService {
         // Filter absurd spikes (> 30 m/s vertical is sensor noise)
         guard abs(rawSpeed) < 30.0 else { return }
 
-        // Exponential smoothing over ~1s
-        let alpha = dt / (smoothingTimeConstant + dt)
-        verticalSpeed += alpha * (rawSpeed - verticalSpeed)
-
-        if status != .running {
+        if status == .running {
+            // Exponential smoothing over ~1s
+            let alpha = dt / (smoothingTimeConstant + dt)
+            verticalSpeed += alpha * (rawSpeed - verticalSpeed)
+        } else {
+            // Seed with the first usable reading instead of easing into it
+            // from zero: smoothing from a standing start costs several seconds
+            // at the one moment the pilot is looking to see whether the vario
+            // works at all.
+            verticalSpeed = rawSpeed
             status = .running
             watchLogInfo("Vario delivering samples", category: .flight)
         }

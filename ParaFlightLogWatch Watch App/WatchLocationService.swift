@@ -228,7 +228,7 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
         // Base takeoff position (a ridge near Annecy) so the recorded track is plausible
         let baseLat = 45.90
         let baseLon = 6.10
-        let baseAltitude = 500.0
+        let baseAltitude = 750.0
 
         currentSpotName = "Simulator"
         lockedSpotName = "Simulator"
@@ -243,10 +243,13 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
 
             // Altitude: slow climb/sink between ~500 m and ~1000 m.
             // Amplitude and period are chosen together: the derivative is
-            // 250/90 ≈ 2.8 m/s peak, a climb rate a glider actually sees. The
-            // old 450 m over a 18 s scale implied ~25 m/s, which made the
-            // simulated vario read like a rocket.
-            let altitude = baseAltitude + 250.0 * (1.0 - cos(t / 90.0))
+            // 250/90 ≈ 2.8 m/s peak, a climb rate a glider actually sees.
+            //
+            // sin, not 1−cos: a cosine has zero slope at t=0, so the simulated
+            // vario started from a standstill and took ~18 s to cross the
+            // 0.5 m/s beeping threshold. A sine starts at full climb, which is
+            // what you want from a tool whose job is to show the vario working.
+            let altitude = baseAltitude + 250.0 * sin(t / 90.0)
             self.currentAltitude = altitude
             if altitude > (self.maxAltitude ?? altitude) {
                 self.maxAltitude = altitude
