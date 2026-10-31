@@ -1,6 +1,6 @@
 {
   "version": "2026-10-31",
-  "lastUpdated": "2026-10-31T12:02:04Z",
+  "lastUpdated": "2026-10-31T12:05:37Z",
   "manufacturers": [
     {
       "id": "flare",
@@ -492,22 +492,6 @@
       "imageFileId": "ozone-zero-3",
       "year": null,
       "displayOrder": 24
-    },
-    {
-      "id": "swing-sonic-rs",
-      "manufacturer": "swing",
-      "model": "Sonic RS",
-      "fullName": "Swing Sonic RS",
-      "type": "Soaring",
-      "sizes": [
-        "15",
-        "18",
-        "21",
-        "24"
-      ],
-      "imageFileId": null,
-      "year": 2026,
-      "displayOrder": 25
     }
   ]
 }
