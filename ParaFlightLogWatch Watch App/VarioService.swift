@@ -62,6 +62,9 @@ final class VarioService {
     // MARK: - Private state
 
     private var altimeter: CMAltimeter?
+    /// True while the fake flight feed is driving the vario instead of the
+    /// barometer (see `ingestSimulatedAltitude`).
+    private var isSimulated = false
     private var lastRelativeAltitude: Double?
     private var lastSampleTimestamp: TimeInterval?
     private var hapticTimer: Timer?
@@ -76,6 +79,15 @@ final class VarioService {
     /// showing a motionless zero.
     func start() {
         guard !isRunning else { return }
+
+        // Developer mode: the fake flight feed moves altitude, speed and
+        // G-force but the barometer stays where the Watch is, so the vario was
+        // the one tile that could never move during a simulated flight — which
+        // reads exactly like a broken vario. Let the feed drive it instead.
+        if WatchSettings.shared.simulateFlightEnabled {
+            startSimulated()
+            return
+        }
 
         guard Self.isAvailable else {
             status = .unsupported
@@ -137,6 +149,35 @@ final class VarioService {
         watchLogInfo("Vario started", category: .flight)
     }
 
+    /// Runs the vario off the simulated flight feed: no altimeter, no
+    /// permission needed, but the same smoothing and the same haptics, so what
+    /// is exercised is the real code path.
+    private func startSimulated() {
+        isRunning = true
+        isSimulated = true
+        status = .warmingUp
+        verticalSpeed = 0.0
+        lastRelativeAltitude = nil
+        lastSampleTimestamp = nil
+        lastHapticDate = .distantPast
+
+        hapticTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.hapticTick()
+            }
+        }
+
+        watchLogInfo("Vario started on the simulated feed", category: .flight)
+    }
+
+    /// Feeds one simulated altitude sample. Called from the fake flight feed
+    /// so the vario and the altitude tile can never disagree: both come from
+    /// the same number.
+    func ingestSimulatedAltitude(_ altitude: Double) {
+        guard isRunning, isSimulated else { return }
+        process(relativeAltitude: altitude, timestamp: ProcessInfo.processInfo.systemUptime)
+    }
+
     /// Stops altimeter updates and haptics (called when the flight ends).
     func stop() {
         guard isRunning else {
@@ -146,6 +187,7 @@ final class VarioService {
             return
         }
         isRunning = false
+        isSimulated = false
         status = .off
         altimeter?.stopRelativeAltitudeUpdates()
         altimeter = nil

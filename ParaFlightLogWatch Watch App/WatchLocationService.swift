@@ -241,12 +241,19 @@ final class WatchLocationService: NSObject, CLLocationManagerDelegate {
             self.simTick += 1
             let t = Double(self.simTick)
 
-            // Altitude: slow climb/sink between ~500 m and ~1400 m
-            let altitude = baseAltitude + 450.0 * (1.0 - cos(t / 18.0))
+            // Altitude: slow climb/sink between ~500 m and ~1000 m.
+            // Amplitude and period are chosen together: the derivative is
+            // 250/90 ≈ 2.8 m/s peak, a climb rate a glider actually sees. The
+            // old 450 m over a 18 s scale implied ~25 m/s, which made the
+            // simulated vario read like a rocket.
+            let altitude = baseAltitude + 250.0 * (1.0 - cos(t / 90.0))
             self.currentAltitude = altitude
             if altitude > (self.maxAltitude ?? altitude) {
                 self.maxAltitude = altitude
             }
+
+            // Same number drives the vario, so the two tiles cannot disagree.
+            VarioService.shared.ingestSimulatedAltitude(altitude)
 
             // Ground speed oscillating 8–16 m/s; accumulate distance each second
             let speed = 12.0 + 4.0 * sin(t / 7.0)
