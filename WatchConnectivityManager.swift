@@ -90,6 +90,9 @@ final class WatchConnectivityManager: NSObject, WCSessionDelegate {
         let simulate = simulateFlight ?? UserDefaults.standard.bool(forKey: UserDefaultsKeys.simulateFlightEnabled)
         context[UserDefaultsKeys.simulateFlightEnabled] = simulate
 
+        // Community half: the Watch hides its condition-report page with it.
+        context[UserDefaultsKeys.communityEnabled] = AppFeatures.communityEnabled
+
         do {
             try WCSession.default.updateApplicationContext(context)
             logInfo("Sent watch settings: autoWaterLock=\(autoWaterLock), allowDismiss=\(allowSessionDismiss), devMode=\(devMode), simulate=\(simulate)", category: .watchSync)

@@ -418,6 +418,13 @@ struct SettingsView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
+                .onChange(of: communityEnabled) { _, _ in
+                    // The Watch hides its condition-report page with this flag,
+                    // so it has to hear about the change.
+                    let autoWaterLock = UserDefaults.standard.bool(forKey: UserDefaultsKeys.watchAutoWaterLock)
+                    let allowDismiss = UserDefaults.standard.object(forKey: UserDefaultsKeys.watchAllowSessionDismiss) as? Bool ?? true
+                    watchManager.sendWatchSettings(autoWaterLock: autoWaterLock, allowSessionDismiss: allowDismiss)
+                }
 
                 NavigationLink {
                     // LazyView: TimerView's init builds FlightSimulator +

@@ -69,6 +69,7 @@ final class VarioService {
     private var lastSampleTimestamp: TimeInterval?
     private var hapticTimer: Timer?
     private var lastHapticDate: Date = .distantPast
+    private let tone = VarioTone()
 
     private init() {}
 
@@ -139,6 +140,10 @@ final class VarioService {
 
         // Small tick timer that decides when to play the next haptic.
         // The timer block is @Sendable: hop to main before calling hapticTick().
+        if WatchSettings.shared.varioSoundEnabled {
+            tone.start()
+        }
+
         let timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
                 self?.hapticTick()
@@ -160,6 +165,10 @@ final class VarioService {
         lastRelativeAltitude = nil
         lastSampleTimestamp = nil
         lastHapticDate = .distantPast
+
+        if WatchSettings.shared.varioSoundEnabled {
+            tone.start()
+        }
 
         hapticTimer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
             DispatchQueue.main.async {
@@ -193,6 +202,7 @@ final class VarioService {
         altimeter = nil
         hapticTimer?.invalidate()
         hapticTimer = nil
+        tone.stop()
         verticalSpeed = 0.0
         lastRelativeAltitude = nil
         lastSampleTimestamp = nil
@@ -233,21 +243,38 @@ final class VarioService {
 
     // MARK: - Haptics
 
+    /// Decides when the next beep is due, and lets each channel — haptic,
+    /// sound — answer for itself. The pilot can have either, both or neither:
+    /// the rhythm is the same, so the two stay in step when both are on.
     private func hapticTick() {
         guard isRunning else { return }
+        let settings = WatchSettings.shared
+        let haptics = settings.varioHapticsEnabled
+        let sound = settings.varioSoundEnabled
+        guard haptics || sound else { return }
+
+        // The engine is started lazily: the pilot may turn sound on mid-flight.
+        if sound && !tone.isReady {
+            tone.start()
+        }
+
         let speed = verticalSpeed
         let now = Date()
 
         if speed >= climbThreshold {
-            // Climb: repeating .directionUp, faster as the climb strengthens
-            if now.timeIntervalSince(lastHapticDate) >= climbBeepInterval(for: speed) {
-                WKInterfaceDevice.current().play(.directionUp)
+            // Climb: beeps get faster as the climb strengthens.
+            let interval = climbBeepInterval(for: speed)
+            if now.timeIntervalSince(lastHapticDate) >= interval {
+                if haptics { WKInterfaceDevice.current().play(.directionUp) }
+                // Shorter than the gap, so beeps never run into each other.
+                if sound { tone.playClimb(rate: speed, duration: min(0.12, interval * 0.6)) }
                 lastHapticDate = now
             }
         } else if speed <= strongSinkThreshold {
             // Strong sink: alarm
             if now.timeIntervalSince(lastHapticDate) >= sinkAlarmInterval {
-                WKInterfaceDevice.current().play(.failure)
+                if haptics { WKInterfaceDevice.current().play(.failure) }
+                if sound { tone.playSink() }
                 lastHapticDate = now
             }
         }

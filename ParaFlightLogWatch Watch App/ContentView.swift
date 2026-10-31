@@ -28,6 +28,9 @@ struct ContentView: View {
     private let workoutManager = WorkoutManager.shared
     // FlightSessionManager reference for persistence
     private let sessionManager = FlightSessionManager.shared
+    // Observed singleton — hiding the report page follows the iPhone's switch
+    // without a relaunch.
+    private let settings = WatchSettings.shared
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -43,10 +46,14 @@ struct ContentView: View {
             // reporting is the only thing you do before flying, so it must be
             // the nearest neighbour. It used to be the far-right page, which
             // meant swiping THROUGH the Start button to reach it.
-            ConditionReportView()
-                .environment(watchManager)
-                .environment(locationService)
-                .tag(1)
+            // Hidden with the community half: a report that reaches nobody
+            // is a page in the way of the wing list.
+            if settings.communityEnabled {
+                ConditionReportView()
+                    .environment(watchManager)
+                    .environment(locationService)
+                    .tag(1)
+            }
 
             // Screen 2 (opens here): wing selection
             WingSelectionView(selectedWing: $selectedWing, selectedTab: $selectedTab)
@@ -940,8 +947,22 @@ struct WatchSettingsView: View {
 
                 settingCard(icon: "waveform.path.ecg", tint: .green,
                             title: "Vario",
-                            subtitle: "Climb/sink haptics during a flight",
+                            subtitle: "Climb and sink feedback during a flight",
                             isOn: $settings.varioEnabled)
+
+                // Shown only once the vario is on: two switches for something
+                // switched off are noise.
+                if settings.varioEnabled {
+                    settingCard(icon: "hand.tap.fill", tint: .green,
+                                title: "Vario haptics",
+                                subtitle: "Taps on the wrist",
+                                isOn: $settings.varioHapticsEnabled)
+
+                    settingCard(icon: "speaker.wave.2.fill", tint: .green,
+                                title: "Vario sound",
+                                subtitle: "Beeps, pitch rising with the climb",
+                                isOn: $settings.varioSoundEnabled)
+                }
 
                 if settings.developerModeEnabled {
                     HStack(spacing: 6) {
@@ -1242,7 +1263,8 @@ struct FlightSummaryView: View {
                     // the conditions can never put it at risk. Only ask when the
                     // takeoff was located — without a fix there is no spot to
                     // file the report against.
-                    if let takeoff = locationService.takeoffCoordinate {
+                    if WatchSettings.shared.communityEnabled,
+                       let takeoff = locationService.takeoffCoordinate {
                         takeoffCoordinate = takeoff
                         withAnimation(.easeOut(duration: 0.25)) { askingConditions = true }
                     } else {

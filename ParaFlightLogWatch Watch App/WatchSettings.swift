@@ -41,11 +41,35 @@ final class WatchSettings {
         }
     }
 
-    /// Variometer (haptic climb/sink feedback) during a flight. Off by default.
+    /// Variometer (climb/sink feedback) during a flight. Off by default.
     /// Toggled directly on the Watch from the active flight screen.
     var varioEnabled: Bool {
         didSet {
             UserDefaults.standard.set(varioEnabled, forKey: "varioEnabled")
+        }
+    }
+
+    /// Haptic climb beeps and sink alarm. On by default — this is what the
+    /// vario has always done.
+    var varioHapticsEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(varioHapticsEnabled, forKey: "varioHapticsEnabled")
+        }
+    }
+
+    /// Audible beeps, pitch rising with the climb rate. Off by default: a
+    /// Watch beeping for a whole flight is a choice, not a surprise.
+    var varioSoundEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(varioSoundEnabled, forKey: "varioSoundEnabled")
+        }
+    }
+
+    /// Community half of the app (spot condition reports from the wrist).
+    /// Mirrored from the iPhone — the switch lives there.
+    var communityEnabled: Bool {
+        didSet {
+            UserDefaults.standard.set(communityEnabled, forKey: "communityEnabled")
         }
     }
 
@@ -97,6 +121,9 @@ final class WatchSettings {
         self.allowSessionDismiss = UserDefaults.standard.object(forKey: "allowSessionDismiss") as? Bool ?? true
         self.developerModeEnabled = UserDefaults.standard.object(forKey: "developerModeEnabled") as? Bool ?? false
         self.varioEnabled = UserDefaults.standard.object(forKey: "varioEnabled") as? Bool ?? false
+        self.varioHapticsEnabled = UserDefaults.standard.object(forKey: "varioHapticsEnabled") as? Bool ?? true
+        self.varioSoundEnabled = UserDefaults.standard.object(forKey: "varioSoundEnabled") as? Bool ?? false
+        self.communityEnabled = UserDefaults.standard.object(forKey: "communityEnabled") as? Bool ?? false
         self.simulateFlightEnabled = UserDefaults.standard.object(forKey: "simulateFlightEnabled") as? Bool ?? false
         if let rawType = UserDefaults.standard.string(forKey: "lastFlightType"),
            let type = FlightType(rawValue: rawType) {
@@ -142,6 +169,10 @@ final class WatchSettings {
 
         if let simulate = context["simulateFlightEnabled"] as? Bool {
             simulateFlightEnabled = simulate
+        }
+
+        if let community = context["communityEnabled"] as? Bool {
+            communityEnabled = community
         }
 
         // Log only when developer mode is on (avoids the startup log otherwise)
